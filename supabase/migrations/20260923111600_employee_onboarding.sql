@@ -23,6 +23,8 @@ CREATE TABLE IF NOT EXISTS public.employee_onboarding (
     employee_id_number TEXT UNIQUE,
     password_hash TEXT,
     profile_photo TEXT,
+    reporting_manager TEXT,
+    notes TEXT,
     documents JSONB DEFAULT '[]'::jsonb,
 
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

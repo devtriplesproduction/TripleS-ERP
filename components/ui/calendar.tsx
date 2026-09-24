@@ -7,10 +7,84 @@ import {
   getDefaultClassNames,
   type DayButton,
   type Locale,
+  type DropdownProps,
 } from "react-day-picker"
 
 import { Button, buttonVariants } from "@/components/ui/button"
 import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+
+function CalendarRoot({ className, rootRef, ...props }: any) {
+  return (
+    <div
+      data-slot="calendar"
+      ref={rootRef}
+      className={cn(className)}
+      {...props}
+    />
+  )
+}
+
+function CalendarChevron({ className, orientation, ...props }: any) {
+  if (orientation === "left") {
+    return <ChevronLeftIcon className={cn("size-4", className)} {...props} />
+  }
+  if (orientation === "right") {
+    return <ChevronRightIcon className={cn("size-4", className)} {...props} />
+  }
+  return <ChevronDownIcon className={cn("size-4", className)} {...props} />
+}
+
+function CalendarWeekNumber({ children, ...props }: any) {
+  return (
+    <td {...props}>
+      <div className="flex size-(--cell-size) items-center justify-center text-center">
+        {children}
+      </div>
+    </td>
+  )
+}
+
+function CalendarDropdown({ value, onChange, options, ...props }: DropdownProps) {
+  const selected = options?.find((child) => child.value === value)
+  const handleChange = (newVal: string) => {
+    const changeEvent = {
+      target: { value: newVal },
+      currentTarget: { value: newVal },
+      preventDefault: () => {},
+      stopPropagation: () => {},
+    } as any
+    onChange?.(changeEvent)
+  }
+  return (
+    <Select
+      modal={false}
+      value={value?.toString()}
+      onValueChange={handleChange}
+    >
+      <SelectTrigger
+        className={cn(
+          "h-8 w-fit min-w-[75px] rounded-md border border-input/50 bg-background px-3 py-1 text-sm font-medium shadow-sm transition-all hover:bg-accent hover:text-accent-foreground active:scale-95 focus-visible:ring-2 focus-visible:ring-ring/50",
+          props.className
+        )}
+        aria-label={props["aria-label"]}
+      >
+        <SelectValue>{selected?.label}</SelectValue>
+      </SelectTrigger>
+      <SelectContent side="bottom" align="start" className="max-h-[200px]">
+        {options?.map((option, id: number) => (
+          <SelectItem
+            key={`${option.value}-${id}`}
+            value={option.value?.toString() ?? ""}
+            disabled={option.disabled}
+          >
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
 
 function Calendar({
   className,
@@ -51,17 +125,17 @@ function Calendar({
         ),
         month: cn("flex w-full flex-col gap-4", defaultClassNames.month),
         nav: cn(
-          "absolute inset-x-0 top-0 flex w-full items-center justify-between gap-1",
+          "absolute inset-x-0 top-0 flex w-full items-center justify-between gap-1 pointer-events-none",
           defaultClassNames.nav
         ),
         button_previous: cn(
           buttonVariants({ variant: buttonVariant }),
-          "size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
+          "size-(--cell-size) p-0 select-none aria-disabled:opacity-50 pointer-events-auto",
           defaultClassNames.button_previous
         ),
         button_next: cn(
           buttonVariants({ variant: buttonVariant }),
-          "size-(--cell-size) p-0 select-none aria-disabled:opacity-50",
+          "size-(--cell-size) p-0 select-none aria-disabled:opacity-50 pointer-events-auto",
           defaultClassNames.button_next
         ),
         month_caption: cn(
@@ -73,11 +147,11 @@ function Calendar({
           defaultClassNames.dropdowns
         ),
         dropdown_root: cn(
-          "relative rounded-(--cell-radius) overflow-hidden flex items-center bg-input border border-border px-1",
+          "relative flex items-center",
           defaultClassNames.dropdown_root
         ),
         dropdown: cn(
-          "w-full bg-transparent text-sm appearance-none outline-none cursor-pointer z-10 py-1 pl-2 pr-6 text-foreground",
+          "w-full bg-transparent text-sm cursor-pointer z-10",
           defaultClassNames.dropdown
         ),
         caption_label: cn(
@@ -135,45 +209,13 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        Root: ({ className, rootRef, ...props }) => {
-          return (
-            <div
-              data-slot="calendar"
-              ref={rootRef}
-              className={cn(className)}
-              {...props}
-            />
-          )
-        },
-        Chevron: ({ className, orientation, ...props }) => {
-          if (orientation === "left") {
-            return (
-              <ChevronLeftIcon className={cn("size-4", className)} {...props} />
-            )
-          }
-
-          if (orientation === "right") {
-            return (
-              <ChevronRightIcon className={cn("size-4", className)} {...props} />
-            )
-          }
-
-          return (
-            <ChevronDownIcon className={cn("size-4", className)} {...props} />
-          )
-        },
-        DayButton: ({ ...props }) => (
-          <CalendarDayButton locale={locale} {...props} />
+        Root: CalendarRoot,
+        Chevron: CalendarChevron,
+        DayButton: ({ ...dayProps }) => (
+          <CalendarDayButton locale={locale} {...dayProps} />
         ),
-        WeekNumber: ({ children, ...props }) => {
-          return (
-            <td {...props}>
-              <div className="flex size-(--cell-size) items-center justify-center text-center">
-                {children}
-              </div>
-            </td>
-          )
-        },
+        WeekNumber: CalendarWeekNumber,
+        Dropdown: CalendarDropdown,
         ...components,
       }}
       {...props}

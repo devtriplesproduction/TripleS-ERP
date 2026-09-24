@@ -113,6 +113,15 @@ export async function updateEmployee(id: string, formData: FormData) {
   revalidatePath('/hr/onboarding')
 }
 
+export async function updateEmployeeData(id: string, data: Partial<Employee>) {
+  const supabase = await createClient()
+  const { error } = await supabase.from('employee_onboarding').update(data).eq('id', id)
+  if (error) throw new Error(error.message)
+  revalidatePath(`/hr/onboarding/${id}`)
+  revalidatePath('/hr/onboarding')
+  return { success: true }
+}
+
 export async function deleteEmployee(id: string) {
   const supabase = await createClient()
   
@@ -127,6 +136,21 @@ export async function deleteEmployee(id: string) {
 
   revalidatePath('/hr/onboarding')
   redirect('/hr/onboarding')
+}
+
+export async function deleteEmployeesBulk(ids: string[]) {
+  const supabase = await createClient()
+  
+  const { error } = await supabase
+    .from('employee_onboarding')
+    .delete()
+    .in('id', ids)
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  revalidatePath('/hr/onboarding')
 }
 
 export async function toggleTaskStatus(taskId: string, isCompleted: boolean, employeeId: string) {
@@ -195,7 +219,12 @@ export async function onboardEmployeeAction(data: any) {
     gender: data.gender || null,
     personal_email: data.personal_email || null,
     address: data.address || null,
-    emergency_contact: data.emergency_contact || null,
+    emergency_contact: JSON.stringify({
+      name: data.emergency_name || '',
+      relationship: data.emergency_relationship || '',
+      phone: data.emergency_phone || ''
+    }),
+    reporting_manager: data.reporting_manager || null,
     employment_type: data.employment_type || 'full-time',
     salary: data.salary || null,
     experience: data.experience || null,

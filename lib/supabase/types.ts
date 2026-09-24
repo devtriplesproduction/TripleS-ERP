@@ -23,6 +23,8 @@ export interface Employee {
   employee_id_number: string | null
   password_hash: string | null
   profile_photo: string | null
+  reporting_manager: string | null
+  notes: string | null
   documents: any[]
 }
 
