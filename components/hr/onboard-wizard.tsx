@@ -237,7 +237,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
         if (f.file) {
           const formData = new FormData(); formData.append("file", f.file)
           const uploadRes = await uploadEmployeeFileAction(formData)
-          if (uploadRes.success) {
+          if (uploadRes.success && uploadRes.path) {
             uploadedDocs.push({ id: f.id, name: f.name, path: uploadRes.path })
           }
         }
@@ -367,6 +367,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                               onChange={field.onChange}
                               placeholder="DD/MM/YYYY"
                               className="h-10 w-full rounded-lg px-3 py-2 text-sm"
+                              endMonth={new Date()}
                             />
                           )} />
                         </div>

@@ -107,7 +107,7 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
           />
         </div>
         
-        <Select value={departmentFilter} onValueChange={setDepartmentFilter}>
+        <Select value={departmentFilter} onValueChange={(val) => setDepartmentFilter(val ?? "")}>
           <SelectTrigger className="w-full md:w-[180px] h-9 bg-input/50 border-border text-xs shrink-0">
             <SelectValue placeholder="All Departments" />
           </SelectTrigger>
@@ -119,7 +119,7 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
           </SelectContent>
         </Select>
 
-        <Select value={jobTitleFilter} onValueChange={setJobTitleFilter}>
+        <Select value={jobTitleFilter} onValueChange={(val) => setJobTitleFilter(val ?? "")}>
           <SelectTrigger className="w-full md:w-[180px] h-9 bg-input/50 border-border text-xs shrink-0">
             <SelectValue placeholder="All Job Titles" />
           </SelectTrigger>

@@ -47,13 +47,13 @@ function CalendarWeekNumber({ children, ...props }: any) {
 
 function CalendarDropdown({ value, onChange, options, ...props }: DropdownProps) {
   const selected = options?.find((child) => child.value === value)
-  const handleChange = (newVal: string) => {
+  const handleChange = (newVal: string | null) => {
     const changeEvent = {
-      target: { value: newVal },
-      currentTarget: { value: newVal },
+      target: { value: newVal ?? "" },
+      currentTarget: { value: newVal ?? "" },
       preventDefault: () => {},
       stopPropagation: () => {},
-    } as any
+    } as unknown as React.ChangeEvent<HTMLSelectElement>
     onChange?.(changeEvent)
   }
   return (

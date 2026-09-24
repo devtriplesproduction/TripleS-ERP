@@ -15,8 +15,8 @@ export interface DatePickerProps {
   onChange?: (date: string) => void
   placeholder?: string
   className?: string
-  fromYear?: number
-  toYear?: number
+  startMonth?: Date
+  endMonth?: Date
   iconLeft?: boolean
   showChevron?: boolean
 }
@@ -26,8 +26,8 @@ export function DatePicker({
   onChange, 
   placeholder = "mm/dd/yyyy", 
   className,
-  fromYear = 1950,
-  toYear = new Date().getFullYear() + 5,
+  startMonth = new Date(1950, 0),
+  endMonth = new Date(new Date().getFullYear() + 5, 11),
   iconLeft = false,
   showChevron = false
 }: DatePickerProps) {
@@ -54,14 +54,13 @@ export function DatePicker({
         <Calendar
           mode="single"
           captionLayout="dropdown"
-          fromYear={fromYear}
-          toYear={toYear}
+          startMonth={startMonth}
+          endMonth={endMonth}
           selected={dateValue}
           onSelect={(date) => { 
             onChange?.(date ? format(date, "yyyy-MM-dd") : ""); 
             setOpen(false); 
           }}
-          initialFocus
         />
       </PopoverContent>
     </Popover>
