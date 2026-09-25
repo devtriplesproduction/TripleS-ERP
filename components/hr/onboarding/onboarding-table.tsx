@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { EmployeeDetailsModal } from '@/components/hr/employee-details-modal'
+import { EmployeeDetailsModal } from '@/components/hr/onboarding/employee-details-modal'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { DatePicker } from '@/components/ui/date-picker'
 import { ChevronLeft, ChevronRight, Trash2, Search, Filter, Loader2 } from 'lucide-react'
@@ -96,7 +96,7 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
   return (
     <div className="space-y-4">
       {/* Filters Toolbar */}
-      <div className="flex flex-col md:flex-row flex-wrap items-start md:items-center gap-3 bg-[#111111] p-3 rounded-xl border border-border">
+      <div className="flex flex-col md:flex-row flex-wrap items-start md:items-center gap-3 bg-card p-3 rounded-xl border border-border">
         <div className="relative w-full md:w-72 shrink-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
@@ -144,7 +144,7 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
         {(searchQuery || departmentFilter || jobTitleFilter || joiningDateFilter) && (
           <Button 
             variant="outline" 
-            className="h-9 text-xs shrink-0 bg-[#1a1a1a] hover:bg-[#252525] border-border text-muted-foreground hover:text-foreground"
+            className="h-9 text-xs shrink-0 bg-secondary hover:bg-accent border-border text-muted-foreground hover:text-foreground"
             onClick={() => {
               setSearchQuery('')
               setDepartmentFilter('')

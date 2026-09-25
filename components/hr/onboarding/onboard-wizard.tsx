@@ -340,7 +340,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                           ) : (
                             <div className="flex flex-col items-center text-muted-foreground">
                               <Camera className="w-6 h-6 mb-3" />
-                              <span className="text-sm font-bold text-foreground mb-1">Upload Photo <span className="text-red-500">*</span></span>
+                              <span className="text-sm font-bold text-foreground mb-1">Upload Photo <span className="text-destructive">*</span></span>
                               <span className="text-[10px]">JPG, PNG (Max 5MB)</span>
                             </div>
                           )}
@@ -350,17 +350,17 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       {/* Fields */}
                       <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-1">
                         <div className="space-y-1.5">
-                          <label className="text-[11px] font-bold text-foreground">First Name <span className="text-red-500">*</span></label>
+                          <label className="text-[11px] font-bold text-foreground">First Name <span className="text-destructive">*</span></label>
                           <Input {...register("first_name")} placeholder="Enter first name" />
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[11px] font-bold text-foreground">Last Name <span className="text-red-500">*</span></label>
+                          <label className="text-[11px] font-bold text-foreground">Last Name <span className="text-destructive">*</span></label>
                           <Input {...register("last_name")} placeholder="Enter last name" />
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[11px] font-bold text-foreground">Date of Birth <span className="text-red-500">*</span></label>
+                          <label className="text-[11px] font-bold text-foreground">Date of Birth <span className="text-destructive">*</span></label>
                           <Controller name="dob" control={control} render={({ field }) => (
                             <DatePicker
                               value={field.value}
@@ -373,7 +373,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[11px] font-bold text-foreground">Gender <span className="text-red-500">*</span></label>
+                          <label className="text-[11px] font-bold text-foreground">Gender <span className="text-destructive">*</span></label>
                           <Controller name="gender" control={control} render={({ field }) => (
                             <Select onValueChange={field.onChange} value={field.value || ""}>
                               <SelectTrigger className="w-full capitalize"><SelectValue placeholder="Select gender" /></SelectTrigger>
@@ -387,7 +387,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[11px] font-bold text-foreground">Personal Email <span className="text-red-500">*</span></label>
+                          <label className="text-[11px] font-bold text-foreground">Personal Email <span className="text-destructive">*</span></label>
                           <div className="relative">
                             <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input type="email" {...register("personal_email")} placeholder="example@company.com" className="pl-9" />
@@ -395,7 +395,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-[11px] font-bold text-foreground">Phone Number <span className="text-red-500">*</span></label>
+                          <label className="text-[11px] font-bold text-foreground">Phone Number <span className="text-destructive">*</span></label>
                           <div className="relative">
                             <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input {...register("phone_number")} placeholder="+91 98765 43210" className="pl-9" />
@@ -413,7 +413,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
 
                     <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                       <div className="space-y-1.5 sm:col-span-2">
-                        <label className="text-[11px] font-bold text-foreground">Address Line 1 <span className="text-red-500">*</span></label>
+                        <label className="text-[11px] font-bold text-foreground">Address Line 1 <span className="text-destructive">*</span></label>
                         <div className="relative">
                           <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                           <Input {...register("address")} placeholder="Flat No, 302, Sunshine Apartment" className="pl-9" />
@@ -421,12 +421,12 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-foreground">City <span className="text-red-500">*</span></label>
+                        <label className="text-[11px] font-bold text-foreground">City <span className="text-destructive">*</span></label>
                         <Input {...register("city")} placeholder="Pune" />
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-foreground">PIN Code <span className="text-red-500">*</span></label>
+                        <label className="text-[11px] font-bold text-foreground">PIN Code <span className="text-destructive">*</span></label>
                         <Input {...register("pincode")} placeholder="411057" />
                       </div>
                     </div>
@@ -440,17 +440,17 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                     
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-foreground">Contact Name <span className="text-red-500">*</span></label>
+                        <label className="text-[11px] font-bold text-foreground">Contact Name <span className="text-destructive">*</span></label>
                         <Input {...register("emergency_name")} placeholder="Enter contact name" />
                       </div>
                       
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-foreground">Relation <span className="text-red-500">*</span></label>
+                        <label className="text-[11px] font-bold text-foreground">Relation <span className="text-destructive">*</span></label>
                         <Input {...register("emergency_relationship")} placeholder="e.g. Father, Spouse" />
                       </div>
 
                       <div className="space-y-1.5">
-                        <label className="text-[11px] font-bold text-foreground">Phone Number <span className="text-red-500">*</span></label>
+                        <label className="text-[11px] font-bold text-foreground">Phone Number <span className="text-destructive">*</span></label>
                         <Input {...register("emergency_phone")} placeholder="+91 98765 43210" />
                       </div>
                     </div>
@@ -470,7 +470,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="space-y-2">
-                      <label className="text-xs font-medium text-foreground">Department <span className="text-red-500">*</span></label>
+                      <label className="text-xs font-medium text-foreground">Department <span className="text-destructive">*</span></label>
                       <Controller name="department" control={control} render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
                           <SelectTrigger className="w-full"><SelectValue placeholder="Select Department" /></SelectTrigger>
@@ -480,7 +480,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-xs font-medium text-foreground">Designation <span className="text-red-500">*</span></label>
+                      <label className="text-xs font-medium text-foreground">Designation <span className="text-destructive">*</span></label>
                       <Controller name="designation" control={control} render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value} disabled={!watchedDepartment}>
                           <SelectTrigger className="w-full"><SelectValue placeholder="Select Designation" /></SelectTrigger>
@@ -492,7 +492,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-xs font-medium text-foreground">Employment Type <span className="text-red-500">*</span></label>
+                      <label className="text-xs font-medium text-foreground">Employment Type <span className="text-destructive">*</span></label>
                       <Controller name="employment_type" control={control} render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
                           <SelectTrigger className="w-full"><SelectValue placeholder="Select Type" /></SelectTrigger>
@@ -507,7 +507,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-xs font-medium text-foreground">Joining Date <span className="text-red-500">*</span></label>
+                      <label className="text-xs font-medium text-foreground">Joining Date <span className="text-destructive">*</span></label>
                       <Controller name="joining_date" control={control} render={({ field }) => (
                         <DatePicker
                           value={field.value}
@@ -524,7 +524,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-xs font-medium text-foreground">Employment Status <span className="text-red-500">*</span></label>
+                      <label className="text-xs font-medium text-foreground">Employment Status <span className="text-destructive">*</span></label>
                       <Controller name="employment_status" control={control} render={({ field }) => (
                         <Select onValueChange={field.onChange} value={field.value}>
                           <SelectTrigger className="w-full"><SelectValue placeholder="Select Status" /></SelectTrigger>
@@ -539,11 +539,11 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                     </div>
 
                     <div className="space-y-2">
-                      <label className="text-xs font-medium text-foreground">Annual CTC (INR) <span className="text-red-500">*</span></label>
+                      <label className="text-xs font-medium text-foreground">Annual CTC (INR) <span className="text-destructive">*</span></label>
                       <Input type="number" {...register("salary")} placeholder="₹ 1200000" />
                     </div>
                     <div className="space-y-2">
-                      <label className="text-xs font-medium text-foreground">Basic Salary (INR) <span className="text-red-500">*</span></label>
+                      <label className="text-xs font-medium text-foreground">Basic Salary (INR) <span className="text-destructive">*</span></label>
                       <Input type="number" {...register("basic_salary")} placeholder="₹ 480000" />
                     </div>
                   </div>

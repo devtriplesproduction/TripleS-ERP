@@ -5,8 +5,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import Link from 'next/link'
 import { ArrowLeft, User, Mail, Phone, Briefcase, Calendar, Building2 } from 'lucide-react'
 import { notFound } from 'next/navigation'
-import { ChecklistItem } from '@/components/hr/checklist-item'
-import { DeleteEmployeeButton } from '@/components/hr/delete-employee-button'
+import { ChecklistItem } from '@/components/hr/onboarding/checklist-item'
+import { DeleteEmployeeButton } from '@/components/hr/onboarding/delete-employee-button'
 import { cn } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'

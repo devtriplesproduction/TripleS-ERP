@@ -12,8 +12,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import Link from 'next/link'
-import { AddEmployeeModal } from '@/components/hr/add-employee-modal'
-import { OnboardingTable } from '@/components/hr/onboarding-table'
+import { AddEmployeeModal } from '@/components/hr/onboarding/add-employee-modal'
+import { OnboardingTable } from '@/components/hr/onboarding/onboarding-table'
 import { 
   Plus, Users, Clock, CheckCircle2, XCircle, 
   Search, Filter, Calendar as CalendarIcon,

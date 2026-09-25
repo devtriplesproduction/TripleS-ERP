@@ -33,11 +33,11 @@ export function DeleteEmployeeButton({ employeeId, employeeName }: { employeeId:
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger 
-        render={<Button variant="outline" className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700 hover:border-red-300 dark:border-red-900/30 dark:hover:bg-red-950/30 dark:hover:text-red-500" />}
+        render={<Button variant="outline" className="text-destructive border-destructive/20 hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30" />}
       >
         <Trash2 className="mr-2 h-4 w-4" /> Delete Record
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px] bg-white dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800">
+      <DialogContent className="sm:max-w-[425px] bg-background border-border">
         <DialogHeader>
           <DialogTitle>Delete Employee Onboarding</DialogTitle>
           <DialogDescription>
@@ -45,7 +45,7 @@ export function DeleteEmployeeButton({ employeeId, employeeName }: { employeeId:
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="mt-6">
-          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isPending} className="border-zinc-300 text-zinc-700 hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800">
+          <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isPending} className="border-border text-foreground hover:bg-accent">
             Cancel
           </Button>
           <Button variant="destructive" onClick={handleDelete} disabled={isPending}>

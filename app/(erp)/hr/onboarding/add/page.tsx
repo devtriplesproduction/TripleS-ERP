@@ -1,4 +1,4 @@
-import { OnboardWizard } from '@/components/hr/onboard-wizard'
+import { OnboardWizard } from '@/components/hr/onboarding/onboard-wizard'
 
 export default function AddEmployeePage() {
   return (

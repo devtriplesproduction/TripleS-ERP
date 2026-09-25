@@ -33,17 +33,35 @@ export function DatePicker({
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
 
-  const dateValue = value ? new Date(value) : undefined
+  const dateValue = React.useMemo(() => {
+    if (!value) return undefined
+    if (value instanceof Date) return isNaN(value.getTime()) ? undefined : value
+    if (typeof value === "string") {
+      const trimmed = value.trim()
+      if (!trimmed) return undefined
+      if (trimmed.includes("-")) {
+        const parts = trimmed.split("T")[0].split("-").map(Number)
+        if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+          return new Date(parts[0], parts[1] - 1, parts[2])
+        }
+      }
+      const d = new Date(trimmed)
+      return isNaN(d.getTime()) ? undefined : d
+    }
+    return undefined
+  }, [value])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger className={cn(
         "flex h-9 w-full items-center justify-between rounded-md border border-border bg-input/50 px-3 py-1 text-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50",
-        !value && "text-muted-foreground",
+        !dateValue && "text-muted-foreground",
         className
       )}>
         {iconLeft && <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground opacity-70 shrink-0" />}
-        <span className="flex-1 text-left truncate">{value ? format(dateValue as Date, "MM/dd/yyyy") : placeholder}</span>
+        <span className={cn("flex-1 text-left truncate", dateValue ? "text-foreground font-medium" : "text-muted-foreground")}>
+          {dateValue ? format(dateValue, "MM/dd/yyyy") : placeholder}
+        </span>
         {showChevron ? (
           <ChevronDown className="h-4 w-4 text-muted-foreground opacity-70 shrink-0 ml-2" />
         ) : !iconLeft ? (

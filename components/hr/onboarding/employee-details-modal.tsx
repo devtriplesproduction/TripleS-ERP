@@ -121,9 +121,9 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
           <Eye className="h-4 w-4" />
         </DialogTrigger>
       )}
-      <DialogContent className="sm:max-w-[95vw] lg:max-w-[1200px] w-full max-h-[98vh] overflow-hidden p-0 border-border bg-[#0a0a0a] text-foreground flex flex-col">
+      <DialogContent className="sm:max-w-[95vw] lg:max-w-[1200px] w-full max-h-[98vh] overflow-hidden p-0 border-border bg-background text-foreground flex flex-col">
         {/* Header Section */}
-        <div className="px-5 py-3 border-b border-border bg-[#0a0a0a] flex flex-col gap-3 shrink-0">
+        <div className="px-5 py-3 border-b border-border bg-background flex flex-col gap-3 shrink-0">
           <div className="flex items-center justify-between">
             <Button variant="outline" onClick={() => setOpen(false)} className="bg-input/60 border-border/80 hover:bg-input hover:text-foreground text-muted-foreground h-9 px-4 text-sm font-medium shadow-sm transition-all rounded-lg">
               <ArrowLeft className="w-4 h-4 mr-2" /> Back
@@ -131,7 +131,7 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
           </div>
 
           {/* Profile Hero */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-xl border border-border bg-[#111111]">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-4 rounded-xl border border-border bg-card">
             <div className="flex items-center gap-5">
               <div className="w-24 h-24 rounded-full overflow-hidden bg-muted border-2 border-border shrink-0">
                 {photoUrl ? (
@@ -163,7 +163,7 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
               </div>
             </div>
 
-            <div className="flex flex-col gap-3 p-4 rounded-lg bg-[#1a1a1a] border border-border min-w-[240px]">
+            <div className="flex flex-col gap-3 p-4 rounded-lg bg-secondary border border-border min-w-[240px]">
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-full bg-input flex items-center justify-center shrink-0">
                   <User className="w-4 h-4 text-muted-foreground" />
@@ -187,9 +187,9 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto bg-[#0a0a0a] custom-scrollbar min-h-0">
+        <div className="flex-1 overflow-y-auto bg-background custom-scrollbar min-h-0">
           <Tabs defaultValue="overview" className="w-full">
-            <div className="px-5 border-b border-border sticky top-0 bg-[#0a0a0a] z-10">
+            <div className="px-5 border-b border-border sticky top-0 bg-background z-10">
               <TabsList className="bg-transparent h-9 p-0 border-none space-x-6 justify-start w-full overflow-x-auto overflow-y-hidden">
                 {['Overview', 'Personal Info', 'Professional Info', 'Documents', 'Attendance', 'Leave & Time Off', 'Payroll', 'Onboarding', 'Performance', 'Activity'].map((tab) => (
                   <TabsTrigger
@@ -206,27 +206,27 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
             <TabsContent value="overview" className="p-4 m-0 space-y-3">
               {/* 4 Stats Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div className="bg-[#131b26] border border-blue-900/30 rounded-xl p-3 flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-blue-500/20 text-blue-500 flex items-center justify-center shrink-0">
+                <div className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0">
                     <Briefcase className="w-6 h-6" />
                   </div>
                   <div>
-                    <div className="text-xs text-blue-400/80 mb-0.5">Employment Status</div>
-                    <div className="text-lg font-bold text-blue-100">Active</div>
-                    <div className="text-[10px] text-blue-400/60">Since {formattedJoined}</div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Employment Status</div>
+                    <div className="text-lg font-bold text-foreground">Active</div>
+                    <div className="text-[10px] text-muted-foreground">Since {formattedJoined}</div>
                   </div>
                 </div>
-                <div className="bg-[#1b1326] border border-purple-900/30 rounded-xl p-3 flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg bg-purple-500/20 text-purple-500 flex items-center justify-center shrink-0">
+                <div className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-lg bg-secondary/50 text-secondary-foreground flex items-center justify-center shrink-0">
                     <CalendarDays className="w-6 h-6" />
                   </div>
                   <div>
-                    <div className="text-xs text-purple-400/80 mb-0.5">Experience</div>
-                    <div className="text-lg font-bold text-purple-100">{employee.experience || 0} Years</div>
-                    <div className="text-[10px] text-purple-400/60">0 Months</div>
+                    <div className="text-xs text-muted-foreground mb-0.5">Experience</div>
+                    <div className="text-lg font-bold text-foreground">{employee.experience || 0} Years</div>
+                    <div className="text-[10px] text-muted-foreground">0 Months</div>
                   </div>
                 </div>
-                <div className="bg-[#13261a] border border-emerald-900/30 rounded-xl p-3 flex items-center gap-3">
+                <div className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
                   <div className="w-12 h-12 rounded-lg bg-emerald-500/20 text-emerald-500 flex items-center justify-center shrink-0">
                     <Users className="w-6 h-6" />
                   </div>
@@ -236,7 +236,7 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
                     <div className="text-[10px] text-emerald-400/60">of 18 days</div>
                   </div>
                 </div>
-                <div className="bg-[#261d13] border border-amber-900/30 rounded-xl p-3 flex items-center gap-3">
+                <div className="bg-card border border-border rounded-xl p-3 flex items-center gap-3">
                   <div className="w-12 h-12 rounded-lg bg-amber-500/20 text-amber-500 flex items-center justify-center shrink-0">
                     <CheckCircle2 className="w-6 h-6" />
                   </div>
@@ -256,7 +256,7 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
                   <div className="grid grid-cols-1 lg:grid-cols-9 gap-4">
                     {/* Col 1 */}
                     <div className="lg:col-span-4 space-y-4">
-                      <div className="bg-[#111111] border border-border rounded-xl p-4">
+                      <div className="bg-card border border-border rounded-xl p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <User className="w-4 h-4 text-muted-foreground" />
@@ -334,7 +334,7 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
 
                 {/* Col 2 */}
                 <div className="lg:col-span-5 space-y-4">
-                  <div className="bg-[#111111] border border-border rounded-xl p-4">
+                  <div className="bg-card border border-border rounded-xl p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <Briefcase className="w-4 h-4 text-muted-foreground" />
@@ -399,7 +399,7 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
 
                 {/* Notes Section Spanning Both Columns */}
                 <div className="lg:col-span-9">
-                  <div className="bg-[#111111] border border-border rounded-xl p-4">
+                  <div className="bg-card border border-border rounded-xl p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2">
                         <FileText className="w-4 h-4 text-muted-foreground" />
@@ -437,7 +437,7 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
             </div>                {/* Col 3 */}
                 <div className="lg:col-span-3 flex flex-col gap-4">
 
-                  <div className="bg-[#111111] border border-border rounded-xl p-4">
+                  <div className="bg-card border border-border rounded-xl p-4">
                     <div className="flex items-center gap-2 mb-4">
                       <User className="w-4 h-4 text-muted-foreground" />
                       <h3 className="font-bold">Profile Completion</h3>
@@ -446,7 +446,7 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
                       <div className="w-20 h-20 relative flex items-center justify-center mb-2">
                         <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
                           <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="10" className="text-input" />
-                          <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="10" strokeDasharray={`${profileCompletion * 2.827} 282.7`} className="text-blue-500" strokeLinecap="round" />
+                          <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="10" strokeDasharray={`${profileCompletion * 2.827} 282.7`} className="text-primary" strokeLinecap="round" />
                         </svg>
                         <div className="absolute font-bold text-xl">{profileCompletion}%</div>
                       </div>
@@ -457,7 +457,7 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
                     </div>
                   </div>
 
-                  <div className="bg-[#111111] border border-border rounded-xl p-4">
+                  <div className="bg-card border border-border rounded-xl p-4">
                     <div className="flex items-center gap-2 mb-3">
                       <CalendarDays className="w-4 h-4 text-muted-foreground" />
                       <h3 className="font-bold text-sm">Important Dates</h3>
@@ -478,7 +478,7 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
                     </div>
                   </div>
 
-                  <div className="bg-[#111111] border border-border rounded-xl p-4 flex-1 flex flex-col">
+                  <div className="bg-card border border-border rounded-xl p-4 flex-1 flex flex-col">
                     <div className="flex items-center gap-2 mb-3">
                       <Key className="w-4 h-4 text-muted-foreground" />
                       <h3 className="font-bold text-sm">Quick Actions</h3>
@@ -507,7 +507,7 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
               </div>
             </TabsContent>
             <TabsContent value="personal-info" className="p-4 m-0 space-y-4">
-              <div className="bg-[#111111] border border-border rounded-xl p-6">
+              <div className="bg-card border border-border rounded-xl p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="font-bold text-lg flex items-center gap-2">
                     <User className="w-5 h-5 text-muted-foreground" /> Personal Information
@@ -544,7 +544,7 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
             </TabsContent>
 
             <TabsContent value="professional-info" className="p-4 m-0 space-y-4">
-              <div className="bg-[#111111] border border-border rounded-xl p-6">
+              <div className="bg-card border border-border rounded-xl p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="font-bold text-lg flex items-center gap-2">
                     <Briefcase className="w-5 h-5 text-muted-foreground" /> Professional Information
@@ -573,7 +573,7 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
             </TabsContent>
 
             <TabsContent value="documents" className="p-4 m-0 space-y-4">
-              <div className="bg-[#111111] border border-border rounded-xl p-6">
+              <div className="bg-card border border-border rounded-xl p-6">
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="font-bold text-lg flex items-center gap-2">
                     <FileText className="w-5 h-5 text-muted-foreground" /> Uploaded Documents

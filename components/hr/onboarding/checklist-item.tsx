@@ -27,28 +27,28 @@ export function ChecklistItem({
   }
 
   return (
-    <div className="flex items-center space-x-3 p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950/50 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-colors">
+    <div className="flex items-center space-x-3 p-3 rounded-lg border border-border bg-card hover:bg-accent transition-colors">
       <Checkbox 
         id={task.id} 
         checked={task.is_completed} 
         onCheckedChange={(checked) => handleToggle(checked === true)}
         disabled={isPending}
-        className="border-zinc-300 dark:border-zinc-600 data-[state=checked]:bg-zinc-900 data-[state=checked]:border-zinc-900 dark:data-[state=checked]:bg-white dark:data-[state=checked]:border-white dark:data-[state=checked]:text-black"
+        className="border-input data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground"
       />
       <div className="flex-1 flex items-center justify-between">
         <label 
           htmlFor={task.id}
           className={cn(
             "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer",
-            task.is_completed ? "text-zinc-400 dark:text-zinc-500 line-through" : "text-zinc-700 dark:text-zinc-200"
+            task.is_completed ? "text-muted-foreground line-through" : "text-foreground"
           )}
         >
           {task.task_name}
         </label>
         {task.is_required ? (
-          <Badge variant="outline" className="text-[10px] uppercase tracking-wider text-zinc-500 border-zinc-200 dark:border-zinc-800">Required</Badge>
+          <Badge variant="outline" className="text-[10px] uppercase tracking-wider text-muted-foreground border-border">Required</Badge>
         ) : (
-          <Badge variant="outline" className="text-[10px] uppercase tracking-wider text-zinc-400 border-dashed border-zinc-200 dark:border-zinc-800">Optional</Badge>
+          <Badge variant="outline" className="text-[10px] uppercase tracking-wider text-muted-foreground border-dashed border-border">Optional</Badge>
         )}
       </div>
     </div>
