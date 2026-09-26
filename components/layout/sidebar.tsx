@@ -13,6 +13,7 @@ import {
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { ClipboardList } from 'lucide-react'
 
 export function Sidebar() {
   const pathname = usePathname()
@@ -29,7 +30,7 @@ export function Sidebar() {
           {/* Company Logo */}
           <div className="relative h-[72px] w-[72px] overflow-hidden rounded-lg shrink-0 -ml-2">
             {/* Make sure to place your logo image in the 'public' folder and update the src if necessary */}
-            <Image src="/logo.png" alt="Company Logo" fill className="object-contain" />
+            <Image src="/logo.png" alt="Company Logo" fill sizes="72px" className="object-contain" />
           </div>
           <h2 className="text-xl font-bold tracking-tight truncate -ml-3">TripleS ERP</h2>
         </div>
@@ -100,6 +101,18 @@ export function Sidebar() {
                   </div>
                   Leave
                 </Link>
+                <Link
+                  href="/eod"
+                  className={cn(
+                    "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
+                    pathname.startsWith('/eod')
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <ClipboardList className="mr-3 h-5 w-5" />
+                  EOD Reports
+                </Link>
               </div>
             )}
           </div>
@@ -116,6 +129,34 @@ export function Sidebar() {
           >
             <Calendar className="mr-3 h-5 w-5" />
             Employee Leave
+          </Link>
+
+          {/* Employee EOD Standalone */}
+          <Link
+            href="/employee-eod"
+            className={cn(
+              "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors mt-2",
+              pathname.startsWith('/employee-eod')
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <ClipboardList className="mr-3 h-5 w-5" />
+            Employee EOD
+          </Link>
+
+          {/* Admin EOD Standalone */}
+          <Link
+            href="/admin-eod"
+            className={cn(
+              "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors mt-2",
+              pathname.startsWith('/admin-eod')
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <ClipboardList className="mr-3 h-5 w-5" />
+            Admin EOD
           </Link>
 
           {/* Super Admin Module */}
