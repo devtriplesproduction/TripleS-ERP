@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS public.leave_requests (
     end_date DATE NOT NULL,
     is_half_day BOOLEAN NOT NULL DEFAULT false,
     reason TEXT NOT NULL,
-    status TEXT NOT NULL CHECK (status IN ('Pending Level', 'Pending HR', 'Approved', 'Rejected', 'Cancelled')) DEFAULT 'Pending Level',
+    status TEXT NOT NULL CHECK (status IN ('Pending Level', 'Pending HR', 'Pending Admin', 'Approved', 'Rejected', 'Cancelled')) DEFAULT 'Pending Level',
     medical_certificate_url TEXT,
     is_paid BOOLEAN NOT NULL DEFAULT false,
     certificate_verified_by UUID REFERENCES public.employee_onboarding(id) ON DELETE SET NULL,
