@@ -4,6 +4,7 @@
 import { z } from 'zod';
 import { submitEOD, reviewEOD, updateEOD, getEODByEmployeeAndDate } from '@/lib/actions/eod';
 import { revalidatePath } from 'next/cache';
+import { createClient } from '@/lib/supabase/server';
 
 
 
@@ -17,6 +18,7 @@ const eodSubmitSchema = z.object({
   photo_url: z.string().optional(),
   job_card_numbers: z.string().optional(),
   tomorrows_plan: z.string().min(1, "Tomorrow's plan is required"),
+  role_context: z.enum(['Employee', 'HR']).default('Employee'),
 }).refine(data => data.location === 'Office' || (data.location === 'Field' && data.photo_url), {
   message: "Field photo is required when location is Field",
   path: ['photo_url']
@@ -36,6 +38,7 @@ export async function submitEODAction(formData: FormData) {
       photo_url: (formData.get('photo_url') as string | null) ?? undefined,
       job_card_numbers: (formData.get('job_card_numbers') as string | null) ?? undefined,
       tomorrows_plan: (formData.get('tomorrows_plan') as string | null) ?? undefined,
+      role_context: (formData.get('role_context') as 'Employee' | 'HR') || 'Employee',
     };
     console.log("SubmitEODAction rawData:", rawData);
 
@@ -43,10 +46,24 @@ export async function submitEODAction(formData: FormData) {
 
     
 
+    const supabase = await createClient();
+    const existing = await supabase
+      .from("eod_reports")
+      .select("id")
+      .eq("employee_id", validatedData.employee_id)
+      .eq("report_date", validatedData.report_date)
+      .eq("role_context", validatedData.role_context)
+      .maybeSingle();
+
+    if (existing.data) {
+      return { success: false, error: "Frontend Action Block: An EOD report already exists for this date and role." };
+    }
+
     const result = await submitEOD(validatedData);
 
     if (result.success) {
       revalidatePath('/eod');
+      revalidatePath('/admin-eod');
       revalidatePath('/employee-eod');
       return { success: true };
     }
@@ -87,6 +104,7 @@ export async function reviewEODAction(formData: FormData) {
 
     if (result.success) {
       revalidatePath('/eod');
+      revalidatePath('/admin-eod');
       revalidatePath('/employee-eod');
       return { success: true };
     } else {
@@ -100,10 +118,10 @@ export async function reviewEODAction(formData: FormData) {
   }
 }
 
-export async function fetchEODAction(employeeId: string, reportDate: string) {
+export async function fetchEODAction(employeeId: string, reportDate: string, roleContext?: 'Employee' | 'HR') {
   try {
     
-    return await getEODByEmployeeAndDate(employeeId, reportDate);
+    return await getEODByEmployeeAndDate(employeeId, reportDate, roleContext || 'Employee');
   } catch {
     return { success: false, error: "An unexpected error occurred" };
   }
@@ -122,6 +140,7 @@ export async function updateEODAction(formData: FormData) {
       photo_url: (formData.get('photo_url') as string | null) ?? undefined,
       job_card_numbers: (formData.get('job_card_numbers') as string | null) ?? undefined,
       tomorrows_plan: (formData.get('tomorrows_plan') as string | null) ?? undefined,
+      role_context: (formData.get('role_context') as 'Employee' | 'HR') || 'Employee',
     };
 
     const validatedData = eodSubmitSchema.parse(rawData);
@@ -130,6 +149,7 @@ export async function updateEODAction(formData: FormData) {
 
     if (result.success) {
       revalidatePath('/eod');
+      revalidatePath('/admin-eod');
       revalidatePath('/employee-eod');
       return { success: true };
     } else {
@@ -142,5 +162,7 @@ export async function updateEODAction(formData: FormData) {
     return { success: false, error: "An unexpected error occurred" };
   }
 }
+
+
 
 

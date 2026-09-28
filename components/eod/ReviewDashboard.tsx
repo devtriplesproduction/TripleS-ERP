@@ -4,7 +4,7 @@
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/Dropdown';
-import { Search, SlidersHorizontal, RefreshCcw, CheckCircle2, Clock, XCircle, AlertCircle, FileSearch, FileText, User, Calendar, MapPin, AlertTriangle, X } from 'lucide-react';
+import { Search, SlidersHorizontal, RefreshCcw, CheckCircle2, Clock, XCircle, AlertCircle, FileSearch, FileText, User, Calendar, MapPin, AlertTriangle, X, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { EODReport } from '@/lib/actions/eod';
 import { reviewEODAction } from '@/actions/eod.actions';
@@ -15,10 +15,12 @@ type EnrichedEOD = EODReport & { profiles: Employee | null };
 
 export function ReviewDashboard({
   initialEods,
-  employees
+  employees,
+  currentUserId
 }: {
   initialEods: EnrichedEOD[];
   employees: Employee[];
+  currentUserId?: string;
 }) {
   const [eods, setEods] = useState<EnrichedEOD[]>(initialEods);
   const [search, setSearch] = useState('');
@@ -301,6 +303,7 @@ export function ReviewDashboard({
                     <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
                     <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Location</th>
                     <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Hours</th>
+                    <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type</th>
                     <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
@@ -326,6 +329,13 @@ export function ReviewDashboard({
                       </td>
                       <td className="px-6 py-4 text-sm text-muted-foreground">{eod.location}</td>
                       <td className="px-6 py-4 text-sm text-muted-foreground">{eod.office_hours}h</td>
+                      <td className="px-6 py-4">
+                        <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md ${
+                          (eod as any).role_context === 'HR' ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300' : 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300'
+                        }`}>
+                          {(eod as any).role_context || 'Employee'}
+                        </span>
+                      </td>
                       <td className="px-6 py-4">
                         <Button variant="ghost" size="sm" className="text-foreground hover:bg-muted" onClick={() => handleOpenModal(eod)}>
                           View
@@ -434,13 +444,25 @@ export function ReviewDashboard({
                 </div>
 
                 {selectedEod.blockers && (
-                  <div className="bg-rose-50/50 rounded-2xl p-5 border border-rose-100/50">
+                  <div className="bg-muted rounded-2xl p-5 border border-border mt-4">
                     <div className="flex items-center gap-2 mb-3">
                       <AlertTriangle className="w-5 h-5 text-orrange-500" />
                       <h3 className="font-bold text-foreground">Blockers & Issues</h3>
                     </div>
-                    <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-sm bg-card text-card-foreground border-border p-4 rounded-xl border border-rose-100 shadow-sm">
+                    <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-sm bg-card text-card-foreground border-border p-4 rounded-xl border border-border shadow-sm">
                       {selectedEod.blockers}
+                    </div>
+                  </div>
+                )}
+
+                {selectedEod.tomorrows_plan && (
+                  <div className="bg-muted rounded-2xl p-5 border border-border mt-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Calendar className="w-5 h-5 text-blue-500" />
+                      <h3 className="font-bold text-foreground">Tomorrow's Plan</h3>
+                    </div>
+                    <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-sm bg-card text-card-foreground border-border p-4 rounded-xl border border-border shadow-sm">
+                      {selectedEod.tomorrows_plan}
                     </div>
                   </div>
                 )}
@@ -450,6 +472,16 @@ export function ReviewDashboard({
             {/* Modal Footer Actions */}
             <div className="border-t border-border bg-muted p-6 sticky bottom-0 z-10">
               {selectedEod.status === 'Pending' ? (
+                currentUserId && selectedEod.employee_id === currentUserId ? (
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-amber-500" /> You cannot review your own EOD report.
+                    </div>
+                    <Button variant="ghost" className="rounded-xl" onClick={() => setSelectedEod(null)}>
+                      Close window
+                    </Button>
+                  </div>
+                ) : (
                 <>
                   {actionError && (
                     <div className="mb-4 text-sm text-foreground bg-muted p-3 rounded-xl border border-border flex items-center gap-2">
@@ -474,8 +506,8 @@ export function ReviewDashboard({
                         <Button variant="ghost" onClick={() => setIsRejecting(false)} disabled={isSubmitting} className="rounded-xl">
                           Cancel
                         </Button>
-                        <Button variant="danger" className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-sm shadow-rose-200" onClick={() => handleAction('Reject')} isLoading={isSubmitting} disabled={isSubmitting}>
-                          Confirm Rejection
+                        <Button variant="danger" className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-sm shadow-rose-200" onClick={() => handleAction('Reject')} disabled={isSubmitting}>
+                          {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Confirm Rejection
                         </Button>
                       </div>
                     </div>
@@ -486,13 +518,14 @@ export function ReviewDashboard({
                         <Button variant="outline" className="text-foreground border-border hover:bg-muted hover:text-foreground rounded-xl" onClick={() => handleAction('Reject')} disabled={isSubmitting}>
                           <XCircle className="w-4 h-4 mr-2" /> Reject Report
                         </Button>
-                        <Button variant="primary" className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm shadow-emerald-200" onClick={() => handleAction('Approve')} isLoading={isSubmitting} disabled={isSubmitting}>
-                          <CheckCircle2 className="w-4 h-4 mr-2" /> Approve Report
+                        <Button variant="primary" className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm shadow-emerald-200" onClick={() => handleAction('Approve')} disabled={isSubmitting}>
+                          {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />} Approve Report
                         </Button>
                       </div>
                     </div>
                   )}
                 </>
+                )
               ) : (
                 <div className="flex justify-between items-center">
                   <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
@@ -515,3 +548,5 @@ export function ReviewDashboard({
     </div>
   );
 }
+
+

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { getCompOffBalance } from '@/lib/actions/compoff'
 import { LeaveClientPage } from '@/components/hr/leave/LeaveClientPage'
 
 export const dynamic = 'force-dynamic'
@@ -11,8 +12,8 @@ export default async function EmployeeLeavePage() {
   const isHR = false
   const canApprove = false // Crucial: This hides the Approvals tab and HR functions
   // Fetch first employee for testing self-service without auth
-  const { data: firstEmp } = await supabase.from('employee_onboarding').select('id').limit(1).single()
-  const employeeId = firstEmp?.id || null
+  // TEST MODE: Force identity
+  let employeeId = 'a0ef8d37-d4fd-49c7-b20d-b8ed9a512379';
 
   // We reuse the same query but logically an employee only fetches their own leaves or we filter it down
   // In a real app, RLS (Row Level Security) would limit this.
@@ -29,7 +30,7 @@ export default async function EmployeeLeavePage() {
   const leavesToApprove: any[] = []
   
   // Mock compOff balance
-  const compOffBalance = 8
+  const compOffBalance = employeeId ? await getCompOffBalance(employeeId) : 0;
 
   return (
     <div className="max-w-7xl mx-auto">

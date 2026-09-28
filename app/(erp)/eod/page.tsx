@@ -8,7 +8,10 @@ import { EODSubmissionForm } from "@/components/eod/EODSubmissionForm";
 import { ReviewDashboard } from "@/components/eod/ReviewDashboard";
 import { CheckCircle2, Clock, ShieldAlert, Send, History, BarChart2 } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
+import { LiveTaskCounter } from "@/components/eod/LiveTaskCounter";
+import { countTasks } from "@/lib/utils";
 import Link from "next/link";
+import { RecentEODLogs } from "@/components/eod/RecentEODLogs";
 
 import { BranchSelectorClient } from "@/components/eod/BranchSelectorClient";
 
@@ -19,7 +22,9 @@ interface PageProps {
 }
 
 export default async function EODPage({ searchParams }: PageProps) {
-  const user = { id: "11111111-1111-4111-8111-111111111111", first_name: "Omkar", last_name: "Sawant" };
+  const supabase = await createClient();
+  // TEST MODE: Force identity
+  const { data: user } = await supabase.from('employee_onboarding').select('id, first_name, last_name').eq('id', '889bab81-e196-4f40-9793-7cdac9524ed3').single();
   
 
   
@@ -58,9 +63,9 @@ export default async function EODPage({ searchParams }: PageProps) {
   let allEmployees: EmployeeOption[] = [];
 
   if (activeTab === 'submit') {
-    const { data: h } = await getEODHistory(user.id);
+    const { data: h } = await getEODHistory(user.id, 'HR');
     history = (h || []) as EODReport[];
-    const { streak: s } = await getEODStreak(user.id);
+    const { streak: s } = await getEODStreak(user.id, 'HR');
     streak = s || 0;
 
     const today = new Date();
@@ -85,7 +90,7 @@ export default async function EODPage({ searchParams }: PageProps) {
   let todayReportsCount = 0;
 
   if (activeTab === 'review' && canReview) {
-    const { data: eods } = await getAllEODs({ branchId: selectedBranch });
+    const { data: eods } = await getAllEODs({ branchId: selectedBranch, roleContextFilter: 'Employee' });
     allEODs = (eods || []) as unknown as EODWithEmployee[];
 
     if (allEmployees.length === 0) {
@@ -135,7 +140,7 @@ export default async function EODPage({ searchParams }: PageProps) {
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
           {/* Left Column: Form */}
           <div className="xl:col-span-7 2xl:col-span-6">
-            <EODSubmissionForm employeeId={user.id} canEditDate={canManage} employees={canManage ? allEmployees : undefined} canManage={canManage} />
+            <EODSubmissionForm employeeId={user.id} canEditDate={canManage} employees={canManage ? allEmployees : undefined} canManage={canManage} employeeName={`${user.first_name} ${user.last_name}`} employeeStringId="EMP-001" />
           </div>
 
           {/* Right Column: Stats & Logs */}
@@ -204,73 +209,15 @@ export default async function EODPage({ searchParams }: PageProps) {
             </div>
 
             {/* Recent EOD Logs */}
-            <div className="bg-card text-card-foreground border-border rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm overflow-hidden flex flex-col h-[400px]">
-              <div className="p-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-black dark:bg-zinc-800 text-white dark:text-zinc-100 flex items-center justify-center text-black dark:text-white">
-                    <History className="w-4 h-4" />
-                  </div>
-                  <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Recent EOD Logs</h2>
-                </div>
-                <Link href="#" className="text-sm font-semibold text-black dark:text-white hover:text-black dark:text-white">View all</Link>
-              </div>
-
-              <div className="p-5 overflow-y-auto custom-scrollbar flex-1">
-                {history?.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-full space-y-3 opacity-80">
-                    <div className="w-16 h-16 bg-card text-card-foreground border-border dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 rounded-full flex items-center justify-center mb-2">
-                      <History className="w-8 h-8" />
-                    </div>
-                    <p className="text-base font-medium text-zinc-900 dark:text-zinc-100">No recent logs</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {history.slice(0, 5).map((eod) => {
-                      const eodDate = new Date(eod.report_date);
-                      const taskLines = eod.tasks_accomplished.split('\n').filter((t: string) => t.trim().length > 0).length;
-                      return (
-                        <div key={eod.id} className="flex items-center p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-card text-card-foreground border-border shadow-sm hover:shadow-md transition-shadow group">
-                          {/* Date Block */}
-                          <div className="flex flex-col items-center justify-center min-w-[50px] mr-4 text-black dark:text-white font-bold leading-tight">
-                            <span className="text-xl">{eodDate.getDate()}</span>
-                            <span className="text-[10px] uppercase tracking-wider">{eodDate.toLocaleString('default', { month: 'short' })}</span>
-                          </div>
-
-                          {/* Details */}
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
-                              {eodDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                            </h4>
-                            <p className="text-xs text-zinc-900 dark:text-zinc-100 mt-0.5">
-                              {taskLines} tasks &bull; {eod.office_hours}h logged
-                            </p>
-                          </div>
-
-                          {/* Status Badge */}
-                          <div className="ml-3 flex-shrink-0 flex items-center gap-3">
-                            <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border flex items-center gap-1 ${eod.status === 'Approved' ? 'bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-emerald-500/20' :
-                              eod.status === 'Rejected' ? 'bg-rose-50 text-rose-600 border-rose-200' :
-                                'bg-amber-500/10 text-amber-600 border-amber-200'
-                              }`}>
-                              {eod.status === 'Approved' && <CheckCircle2 className="w-3 h-3" />}
-                              {eod.status === 'Pending' && <Clock className="w-3 h-3" />}
-                              {eod.status}
-                            </span>
-                            <svg className="w-4 h-4 text-zinc-900 dark:text-zinc-100 group-hover:text-zinc-900 dark:text-zinc-100" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" /></svg>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
+            <RecentEODLogs history={history} user={{ first_name: user.first_name, last_name: user.last_name, employee_id: "EMP-001" }} />
           </div>
         </div>
       )}
     </div>
   );
 }
+
+
 
 
 

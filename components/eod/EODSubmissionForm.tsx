@@ -18,10 +18,11 @@ type EmployeeOption = { id: string; first_name: string; last_name: string; emplo
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
-export function EODSubmissionForm({ employeeId, canEditDate = false, employees, canManage = false }: { employeeId: string, canEditDate?: boolean, employees?: EmployeeOption[], canManage?: boolean }) {
+export function EODSubmissionForm({ employeeId, canEditDate = false, employees, canManage = false, employeeName = 'Omkar Sawant', employeeStringId = 'EMP-001' }: { employeeId: string, canEditDate?: boolean, employees?: EmployeeOption[], canManage?: boolean, employeeName?: string, employeeStringId?: string }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
   const [location, setLocation] = useState<'Office' | 'Field'>('Office');
   const [file, setFile] = useState<File | null>(null);
   const [fileUrl, setFileUrl] = useState<string | null>(null);
@@ -29,10 +30,20 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
   const supabase = createClient();
   const todayDate = format(new Date(), 'yyyy-MM-dd');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(employeeId);
+  useEffect(() => { setSelectedEmployeeId(employeeId); }, [employeeId]);
   const [reportDate, setReportDate] = useState<string>(todayDate);
   const [isUpdate, setIsUpdate] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [tasksAccomplished, setTasksAccomplished] = useState('');
+
+  useEffect(() => {
+    const tasksCompleted = tasksAccomplished
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .length;
+    window.dispatchEvent(new CustomEvent('eod-tasks-changed', { detail: tasksCompleted }));
+  }, [tasksAccomplished]);
   const [officeHours, setOfficeHours] = useState<string>('');
   const [blockers, setBlockers] = useState('');
   const [jobCardNumbers, setJobCardNumbers] = useState<string[]>([]);
@@ -62,7 +73,8 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
       setFetching(true);
       setError('');
       setSuccess('');
-      const res = await fetchEODAction(selectedEmployeeId, reportDate);
+      const roleContext = (canManage && selectedEmployeeId === employeeId) ? 'HR' : 'Employee';
+      const res = await fetchEODAction(selectedEmployeeId, reportDate, roleContext);
       if (res.success && 'data' in res && res.data) {
         setIsUpdate(true);
         setTasksAccomplished(res.data.tasks_accomplished);
@@ -136,6 +148,10 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
     setSuccess('');
 
     try {
+      if (!selectedEmployeeId) {
+        throw new Error("Please select an employee.");
+      }
+
       if (location === 'Field' && !file && !existingPhotoUrl) {
         throw new Error("A field photo is required when submitting a Field report.");
       }
@@ -175,6 +191,9 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
         formData.set('report_date', reportDate);
       }
 
+      const roleContext = (canManage && selectedEmployeeId === employeeId) ? 'HR' : 'Employee';
+      formData.set('role_context', roleContext);
+
       const res = isUpdate ? await updateEODAction(formData) : await submitEODAction(formData);
 
       if (!res.success) {
@@ -208,35 +227,33 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
 
   return (
     <form onSubmit={handleSubmit} className="bg-surface p-6 rounded-xl shadow-sm border border-border space-y-6">
-      <div className="bg-surface/50 border border-border p-4 rounded-lg flex items-center justify-between mb-2">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-md">
-            <User className="h-5 w-5 text-primary" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-foreground">
-              Submitting as: {canManage && employees ? (employees.find(e => e.id === selectedEmployeeId)?.first_name || 'Omkar Sawant') : 'Omkar Sawant'}
-            </p>
-            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-              <Key className="h-3 w-3" />
-              {selectedEmployeeId || employeeId}
-            </p>
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+        <div className="space-y-1.5">
+          <label className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+             Employee ID *
+          </label>
+          <input
+            type="text"
+            disabled
+            value={canManage && employees ? (employees.find(e => e.id === selectedEmployeeId)?.employee_id || employeeStringId) : employeeStringId}
+            className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 text-zinc-500 cursor-not-allowed focus:outline-none"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <label className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+             Employee Name *
+          </label>
+          <input
+            type="text"
+            disabled
+            value={canManage && employees ? (employees.find(e => e.id === selectedEmployeeId) ? `${employees.find(e => e.id === selectedEmployeeId)?.first_name} ${employees.find(e => e.id === selectedEmployeeId)?.last_name}` : employeeName) : employeeName}
+            className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 text-zinc-500 cursor-not-allowed focus:outline-none"
+          />
         </div>
       </div>
       {error && <div className="text-error text-sm bg-error/10 p-3 rounded-lg border border-error/20 font-medium">{error}</div>}
 
       <div className="space-y-4">
-        {canManage && employees && (
-          <Dropdown
-            label="Employee"
-            name="employee_id_select"
-            required
-            value={selectedEmployeeId}
-            onChange={(val) => setSelectedEmployeeId(val)}
-            options={employees.map(e => ({ label: `${e.first_name} ${e.last_name} (${e.employee_id})`, value: e.id }))}
-          />
-        )}
 
         {canEditDate ? (
           <div className="space-y-1.5">
@@ -372,4 +389,5 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
     </form>
   );
 }
+
 

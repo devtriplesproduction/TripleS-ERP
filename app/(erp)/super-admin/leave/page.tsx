@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { getCompOffBalance } from '@/lib/actions/compoff'
 import { LeaveClientPage } from '@/components/hr/leave/LeaveClientPage'
 
 export const dynamic = 'force-dynamic'
@@ -29,7 +30,7 @@ export default async function SuperAdminLeavePage() {
   const leavesToApprove = leavesList
   
   // No personal comp-off balance for Super Admin in this view
-  const compOffBalance = 0
+  const compOffBalance = 0; // Super admin doesn't apply for leave usually
 
   return (
     <div className="max-w-7xl mx-auto">

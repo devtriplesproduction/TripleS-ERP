@@ -6,9 +6,10 @@ import { Calendar, Clock, FileText, UploadCloud, Info, Loader2 } from "lucide-re
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DatePicker } from "@/components/ui/date-picker"
 import { createClient } from "@/lib/supabase/client"
+import { submitLeaveAction } from "@/actions/leave.actions"
 import { toast } from "sonner"
 
-export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatus = "Pending HR" }: { onCancel: () => void, currentEmployeeId: string, onSuccess: (leave: any) => void, initialStatus?: string }) {
+export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatus = "Pending HR", compOffBalance = 0 }: { onCancel: () => void, currentEmployeeId: string, onSuccess: (leave: any) => void, initialStatus?: string, compOffBalance?: number }) {
   const [leaveType, setLeaveType] = useState("Sick Leave")
   const [duration, setDuration] = useState("Full Day")
   const [startDate, setStartDate] = useState<string>("")
@@ -26,6 +27,23 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
     if (!currentEmployeeId) {
       toast.error("User context missing")
       return
+    }
+
+    if (leaveType === 'Compensatory Off') {
+      const sDate = new Date(startDate);
+      const eDate = new Date(endDate);
+      const diffTime = Math.abs(eDate.getTime() - sDate.getTime());
+      let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+      
+      if (duration === 'Half Day') {
+        diffDays = 0.5;
+      }
+      
+      const requiredHours = diffDays * 8;
+      if (compOffBalance < requiredHours) {
+        toast.error(`Insufficient Comp Off balance. Required: ${requiredHours}h (${diffDays} day${diffDays > 1 ? 's' : ''}), Available: ${compOffBalance}h.`);
+        return;
+      }
     }
 
     setLoading(true)
@@ -99,7 +117,9 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
             <SelectContent>
               <SelectItem value="Sick Leave">Sick Leave</SelectItem>
               <SelectItem value="Casual Leave">Casual Leave</SelectItem>
-              <SelectItem value="Compensatory Off">Compensatory Off</SelectItem>
+              <SelectItem value="Compensatory Off" disabled={compOffBalance < 8}>
+                Compensatory Off {compOffBalance < 8 ? `— Needs 8h, only ${compOffBalance}h available` : `(${compOffBalance}h available)`}
+              </SelectItem>
               <SelectItem value="Unpaid Leave">Unpaid Leave</SelectItem>
             </SelectContent>
           </Select>

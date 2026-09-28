@@ -27,6 +27,7 @@ import {
 import { LeaveForm } from "./LeaveForm"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
+import { reviewLeaveAction } from "@/actions/leave.actions"
 
 export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, canApprove, isSuperAdmin = false, currentEmployeeId, isHR = false }: any) {
   const supabase = createClient()
@@ -105,6 +106,7 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
           <LeaveForm 
             onCancel={() => setShowForm(false)} 
             currentEmployeeId={currentEmployeeId}
+            compOffBalance={compOffBalance}
             initialStatus={isHR ? "Pending Admin" : "Pending HR"}
             onSuccess={(newLeave) => {
               setMyLeavesList(prev => [newLeave, ...prev])
@@ -166,7 +168,7 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
           {!isSuperAdmin && (
             <div className="bg-transparent text-muted-foreground border border-border px-4 h-10 flex items-center rounded-lg text-sm shrink-0 gap-2">
               <Clock className="w-4 h-4" />
-              <span>Comp-Off Balance: <span className="font-medium text-foreground">{compOffBalance} hours</span></span>
+              <span>Comp-Off Balance: <span className="font-medium text-foreground">{compOffBalance >= 8 ? `${Math.floor(compOffBalance / 8)} Day${Math.floor(compOffBalance / 8) > 1 ? 's' : ''} ${compOffBalance % 8 > 0 ? `${compOffBalance % 8} Hour${compOffBalance % 8 > 1 ? 's' : ''}` : ''}` : `${compOffBalance} Hour${compOffBalance > 1 || compOffBalance === 0 ? 's' : ''}`}</span></span>
             </div>
           )}
 

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { getCompOffBalance } from '@/lib/actions/compoff'
 import { LeaveClientPage } from '@/components/hr/leave/LeaveClientPage'
 
 export const dynamic = 'force-dynamic'
@@ -10,8 +11,12 @@ export default async function LeavePage() {
   const isSuperAdmin = false
   const isHR = true
   const canApprove = true
-  const { data: emps } = await supabase.from('employee_onboarding').select('id').limit(2)
-  const employeeId = emps?.[1]?.id || emps?.[0]?.id || null
+  const { data: { user } } = await supabase.auth.getUser();
+  let employeeId = user?.id;
+  if (!employeeId) {
+    // Use Omkar for HR testing
+    employeeId = '889bab81-e196-4f40-9793-7cdac9524ed3';
+  }
 
   const { data: allLeaves } = await supabase.from('leave_requests').select(`
     *,
@@ -23,7 +28,7 @@ export default async function LeavePage() {
   
   const leavesToApproveList = leavesList.filter((l: any) => l.employee_id !== employeeId)
   
-  const compOffBalance = 0
+  const compOffBalance = employeeId ? await getCompOffBalance(employeeId) : 0;
 
   return (
     <div className="max-w-7xl mx-auto">

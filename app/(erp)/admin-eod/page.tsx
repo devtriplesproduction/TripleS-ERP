@@ -1,3 +1,4 @@
+import { createClient } from '@/lib/supabase/server';
 // @ts-nocheck
 
 import { getAllEODs, EODReport } from "@/lib/actions/eod";
@@ -6,6 +7,10 @@ import { PageHeader } from "@/components/PageHeader";
 import { BarChart2 } from "lucide-react";
 
 export default async function AdminEODPage() {
+  const supabase = await createClient();
+  // TEST MODE: Force identity
+  const { data: user } = await supabase.from('employee_onboarding').select('id, first_name, last_name').eq('id', '889bab81-e196-4f40-9793-7cdac9524ed3').single();
+  // Bypass authUser check
   type EmployeeOption = { id: string; first_name: string; last_name: string; employee_id: string };
   type EODWithEmployee = EODReport & { profiles: EmployeeOption | null };
 
