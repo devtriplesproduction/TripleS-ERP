@@ -113,6 +113,32 @@ export function Sidebar() {
                   <ClipboardList className="mr-3 h-5 w-5" />
                   EOD Reports
                 </Link>
+                <Link
+                  href="/hr/holidays"
+                  className={cn(
+                    "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
+                    pathname.startsWith('/hr/holidays')
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <Calendar className="mr-3 h-5 w-5" />
+                  HR Holiday
+                </Link>
+                <Link
+                  href={"/hr/payroll" as any}
+                  className={cn(
+                    "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
+                    pathname.startsWith('/hr/payroll')
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <div className="w-5 flex justify-center mr-3">
+                    <div className={cn("w-1.5 h-1.5 rounded-full", pathname.startsWith('/hr/payroll') ? "bg-background" : "bg-muted-foreground/50")} />
+                  </div>
+                  HR Payroll
+                </Link>
               </div>
             )}
           </div>
@@ -145,6 +171,20 @@ export function Sidebar() {
             Employee EOD
           </Link>
 
+          {/* Employee Holiday Standalone */}
+          <Link
+            href="/employee-holiday"
+            className={cn(
+              "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors mt-2",
+              pathname.startsWith('/employee-holiday')
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <Calendar className="mr-3 h-5 w-5" />
+            Employee Holiday
+          </Link>
+
           {/* Admin EOD Standalone */}
           <Link
             href="/admin-eod"
@@ -157,6 +197,36 @@ export function Sidebar() {
           >
             <ClipboardList className="mr-3 h-5 w-5" />
             Admin EOD
+          </Link>
+
+          {/* Admin Holiday Standalone */}
+          <Link
+            href="/admin-holiday"
+            className={cn(
+              "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors mt-2",
+              pathname.startsWith('/admin-holiday')
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <Calendar className="mr-3 h-5 w-5" />
+            Admin Holiday
+          </Link>
+
+          {/* Admin Payroll Standalone */}
+          <Link
+            href={"/admin-payroll" as any}
+            className={cn(
+              "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors mt-2",
+              pathname.startsWith('/admin-payroll')
+                ? "bg-foreground text-background"
+                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+          >
+            <div className="w-5 flex justify-center mr-3">
+              <div className={cn("w-1.5 h-1.5 rounded-full", pathname.startsWith('/admin-payroll') ? "bg-background" : "bg-muted-foreground/50")} />
+            </div>
+            Admin Payroll
           </Link>
 
           {/* Super Admin Module */}

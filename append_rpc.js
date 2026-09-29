@@ -1,14 +1,6 @@
--- 1. Add role_context column
-ALTER TABLE public.eod_reports ADD COLUMN role_context TEXT DEFAULT 'Employee';
+const fs = require('fs');
 
--- 2. Drop the old unique constraint (if it exists)
--- Replace 'eod_reports_employee_id_report_date_key' with the actual constraint name if different
-ALTER TABLE public.eod_reports DROP CONSTRAINT IF EXISTS eod_reports_employee_id_report_date_key;
-ALTER TABLE public.eod_reports DROP CONSTRAINT IF EXISTS eod_reports_employee_id_report_date_idx;
-
--- 3. Add a new unique constraint that includes role_context
-ALTER TABLE public.eod_reports ADD CONSTRAINT eod_reports_employee_date_role_unique UNIQUE (employee_id, report_date, role_context);
-
+const additionalMigration = `
 -- 4. Update submit_eod_rpc to include role_context
 CREATE OR REPLACE FUNCTION submit_eod_rpc(
   p_employee_id UUID,
@@ -71,3 +63,12 @@ BEGIN
   RETURN v_eod_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+`;
+
+let content = fs.readFileSync('supabase/migrations/20260928000000_add_eod_role_context.sql', 'utf8');
+if (!content.includes('submit_eod_rpc')) {
+  fs.appendFileSync('supabase/migrations/20260928000000_add_eod_role_context.sql', additionalMigration);
+  console.log('Appended RPC updates to migration');
+} else {
+  console.log('RPC updates already exist in migration');
+}

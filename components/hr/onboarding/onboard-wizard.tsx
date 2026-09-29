@@ -39,25 +39,16 @@ interface UploadedFile {
 const DEPARTMENTS = [
   { id: 'HR', name: 'HR' },
   { id: 'Development', name: 'Development' },
-  { id: 'Finance', name: 'Finance' },
-  { id: 'Graphic Design / Content Creation', name: 'Graphic Design / Content Creation' },
+  { id: 'Design / Content Creation', name: 'Design / Content Creation' },
   { id: 'Sales', name: 'Sales' }
 ]
 
 const DESIGNATIONS = {
   'HR': [
-    { id: 'hr-manager', name: 'HR Manager' },
-    { id: 'hr-executive', name: 'HR Executive' },
-    { id: 'hr-generalist', name: 'HR Generalist' },
-    { id: 'hr-recruiter', name: 'HR Recruiter' },
-    { id: 'talent-acquisition-specialist', name: 'Talent Acquisition Specialist' },
-    { id: 'hr-coordinator', name: 'HR Coordinator' }
+    { id: 'hr-manager', name: 'HR Manager' }
   ],
   'Development': [
-    { id: 'head-of-engineering', name: 'Head of Engineering' },
-    { id: 'engineering-manager', name: 'Engineering Manager' },
-    { id: 'technical-lead', name: 'Technical Lead' },
-    { id: 'senior-software-developer', name: 'Senior Software Developer' },
+    { id: 'head-of-department', name: 'Head of Department' },
     { id: 'software-developer', name: 'Software Developer' },
     { id: 'junior-software-developer', name: 'Junior Software Developer' },
     { id: 'frontend-developer', name: 'Frontend Developer' },
@@ -65,24 +56,15 @@ const DESIGNATIONS = {
     { id: 'full-stack-developer', name: 'Full Stack Developer' },
     { id: 'qa-engineer', name: 'QA Engineer' },
     { id: 'devops-engineer', name: 'DevOps Engineer' },
+    { id: 'ui-ux-designer', name: 'UI/UX Designer' },
     { id: 'software-developer-intern', name: 'Software Developer Intern' }
   ],
-  'Finance': [
-    { id: 'finance-manager', name: 'Finance Manager' },
-    { id: 'accounts-manager', name: 'Accounts Manager' },
-    { id: 'senior-accountant', name: 'Senior Accountant' },
-    { id: 'accountant', name: 'Accountant' },
-    { id: 'finance-executive', name: 'Finance Executive' },
-    { id: 'accounts-executive', name: 'Accounts Executive' },
-    { id: 'payroll-executive', name: 'Payroll Executive' },
-    { id: 'financial-analyst', name: 'Financial Analyst' }
-  ],
-  'Graphic Design / Content Creation': [
+  'Design / Content Creation': [
+    { id: 'head-of-department', name: 'Head of Department' },
     { id: 'creative-director', name: 'Creative Director' },
     { id: 'design-manager', name: 'Design Manager' },
     { id: 'senior-graphic-designer', name: 'Senior Graphic Designer' },
     { id: 'graphic-designer', name: 'Graphic Designer' },
-    { id: 'ui-ux-designer', name: 'UI/UX Designer' },
     { id: 'video-editor', name: 'Video Editor' },
     { id: 'motion-graphics-designer', name: 'Motion Graphics Designer' },
     { id: 'content-writer', name: 'Content Writer' },
@@ -90,6 +72,7 @@ const DESIGNATIONS = {
     { id: 'social-media-executive', name: 'Social Media Executive' }
   ],
   'Sales': [
+    { id: 'head-of-department', name: 'Head of Department' },
     { id: 'sales-manager', name: 'Sales Manager' },
     { id: 'sales-team-lead', name: 'Sales Team Lead' },
     { id: 'business-development-manager', name: 'Business Development Manager' },

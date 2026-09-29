@@ -19,6 +19,8 @@ import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2 } from 'lucide-react'
 
+import { SalaryAndHikeTab } from '@/components/hr/payroll/salary-and-hike-tab'
+
 interface EmployeeDetailsModalProps {
   employee: Employee
   trigger?: React.ReactNode
@@ -191,7 +193,7 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
           <Tabs defaultValue="overview" className="w-full">
             <div className="px-5 border-b border-border sticky top-0 bg-background z-10">
               <TabsList className="bg-transparent h-9 p-0 border-none space-x-6 justify-start w-full overflow-x-auto overflow-y-hidden">
-                {['Overview', 'Personal Info', 'Professional Info', 'Documents', 'Attendance', 'Leave & Time Off', 'Payroll', 'Onboarding', 'Performance', 'Activity'].map((tab) => (
+                {['Overview', 'Personal Info', 'Professional Info', 'Documents', 'Attendance', 'Leave & Time Off', 'Salary & Hike', 'Onboarding', 'Performance', 'Activity'].map((tab) => (
                   <TabsTrigger
                     key={tab}
                     value={tab.toLowerCase().replace(/ /g, '-').replace('&', 'and')}
@@ -390,7 +392,7 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
                       {!isEditingProfessional && professionalForm.salary && (
                         <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 border-b border-border/50 pb-1.5 last:border-0 last:pb-0">
                           <span className="text-xs text-muted-foreground w-[140px] shrink-0">Basic Salary (INR)</span>
-                          <span className="text-sm font-medium break-all">{(parseFloat(professionalForm.salary) * 0.4).toLocaleString()}</span>
+                          <span className="text-sm font-medium break-all">{Math.round(parseFloat(professionalForm.salary) / 12).toLocaleString()}</span>
                         </div>
                       )}
                     </div>
@@ -561,6 +563,7 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
                     { label: 'Employment Status', value: employee.status || '-' },
                     { label: 'Date of Joining', value: formattedJoined },
                     { label: 'Annual CTC (INR)', value: employee.salary ? employee.salary.toLocaleString() : '-' },
+                    { label: 'Basic Salary (INR)', value: employee.salary ? Math.round(employee.salary / 12).toLocaleString() : '-' },
                     { label: 'Reporting Manager', value: (employee as any).reporting_manager || '-' },
                   ].map((item, i) => (
                     <div key={i} className="space-y-1.5">
@@ -586,6 +589,10 @@ export function EmployeeDetailsModal({ employee, trigger }: EmployeeDetailsModal
                   <p className="mt-1 text-xs">Documents added during onboarding or later will appear here.</p>
                 </div>
               </div>
+            </TabsContent>
+
+            <TabsContent value="salary-and-hike" className="p-4 m-0">
+              <SalaryAndHikeTab employee={employee} />
             </TabsContent>
           </Tabs>
         </div>
