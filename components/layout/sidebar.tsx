@@ -14,14 +14,89 @@ import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { ClipboardList } from 'lucide-react'
+import { type AppRole, hasRouteAccess } from '@/config/rbac'
 
-export function Sidebar() {
+interface SidebarProps {
+  userRole: AppRole
+}
+
+/**
+ * Sidebar nav items configuration.
+ * Each item has a route and optionally children.
+ * The sidebar only renders items the user's role can access.
+ */
+interface NavItem {
+  label: string
+  href: string
+  icon?: React.ReactNode
+  /** If true, this is a group header with children */
+  children?: NavItem[]
+  /** The key for expandable modules */
+  moduleKey?: string
+}
+
+const ALL_NAV_ITEMS: NavItem[] = [
+  {
+    label: 'HR Department',
+    href: '',
+    moduleKey: 'hr',
+    icon: <Users className="mr-3 h-5 w-5" />,
+    children: [
+      { label: 'Employee Onboarding', href: '/hr/onboarding' },
+      { label: 'Leave', href: '/hr/leave' },
+      { label: 'EOD Reports', href: '/eod', icon: <ClipboardList className="mr-3 h-5 w-5" /> },
+      { label: 'HR Holiday', href: '/hr/holidays', icon: <Calendar className="mr-3 h-5 w-5" /> },
+      { label: 'HR Payroll', href: '/hr/payroll' },
+    ],
+  },
+  { label: 'Employee Leave', href: '/hr/employee-leave', icon: <Calendar className="mr-3 h-5 w-5" /> },
+  { label: 'Employee EOD', href: '/employee-eod', icon: <ClipboardList className="mr-3 h-5 w-5" /> },
+  { label: 'Employee Holiday', href: '/employee-holiday', icon: <Calendar className="mr-3 h-5 w-5" /> },
+  { label: 'Admin EOD', href: '/admin-eod', icon: <ClipboardList className="mr-3 h-5 w-5" /> },
+  { label: 'Admin Holiday', href: '/admin-holiday', icon: <Calendar className="mr-3 h-5 w-5" /> },
+  { label: 'Admin Payroll', href: '/admin-payroll' },
+  { label: 'Super Admin Leave', href: '/super-admin/leave', icon: <Shield className="mr-3 h-5 w-5" /> },
+]
+
+export function Sidebar({ userRole }: SidebarProps) {
   const pathname = usePathname()
   const [openModule, setOpenModule] = useState<string | null>(null)
 
   const toggleModule = (moduleName: string) => {
     setOpenModule(openModule === moduleName ? null : moduleName)
   }
+
+  /**
+   * Filter nav items based on user role.
+   * For group items, filter children and only show the group if it has visible children.
+   */
+  const filterItems = (items: NavItem[]): NavItem[] => {
+    return items.reduce<NavItem[]>((acc, item) => {
+      if (item.children) {
+        // Filter children by role access
+        const visibleChildren = item.children.filter(child =>
+          hasRouteAccess(userRole, child.href)
+        )
+        if (visibleChildren.length > 0) {
+          acc.push({ ...item, children: visibleChildren })
+        }
+      } else {
+        // Standalone item
+        if (hasRouteAccess(userRole, item.href)) {
+          acc.push(item)
+        }
+      }
+      return acc
+    }, [])
+  }
+
+  const visibleItems = filterItems(ALL_NAV_ITEMS)
+
+  const renderDotIcon = (isActive: boolean) => (
+    <div className="w-5 flex justify-center mr-3">
+      <div className={cn("w-1.5 h-1.5 rounded-full", isActive ? "bg-background" : "bg-muted-foreground/50")} />
+    </div>
+  )
 
   return (
     <div className="w-60 border-r border-border bg-background flex flex-col h-full text-muted-foreground shrink-0">
@@ -51,197 +126,71 @@ export function Sidebar() {
             Dashboard
           </Link>
 
-          <div className="pt-6 pb-2">
-            <p className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-              Modules
-            </p>
-          </div>
-
-          {/* HR Department */}
-          <div className="space-y-1">
-            <div
-              className={cn(
-                "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg cursor-pointer transition-colors",
-                openModule === 'hr' ? "text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              )}
-              onClick={() => toggleModule('hr')}
-            >
-              <Users className="mr-3 h-5 w-5" />
-              <span className="flex-1">HR Department</span>
-              <ChevronDown className={cn("h-4 w-4 transition-transform", openModule === 'hr' ? "" : "-rotate-90")} />
+          {visibleItems.length > 0 && (
+            <div className="pt-6 pb-2">
+              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
+                Modules
+              </p>
             </div>
+          )}
 
-            {openModule === 'hr' && (
-              <div className="pt-1 pb-2 space-y-1">
-                <Link
-                  href="/hr/onboarding"
-                  className={cn(
-                    "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
-                    pathname.startsWith('/hr/onboarding')
-                      ? "bg-foreground text-background"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <div className="w-5 flex justify-center mr-3">
-                    <div className={cn("w-1.5 h-1.5 rounded-full", pathname.startsWith('/hr/onboarding') ? "bg-background" : "bg-muted-foreground/50")} />
+          {visibleItems.map((item) => {
+            // Group/expandable module
+            if (item.children && item.moduleKey) {
+              return (
+                <div key={item.moduleKey} className="space-y-1">
+                  <div
+                    className={cn(
+                      "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg cursor-pointer transition-colors",
+                      openModule === item.moduleKey ? "text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                    onClick={() => toggleModule(item.moduleKey!)}
+                  >
+                    {item.icon}
+                    <span className="flex-1">{item.label}</span>
+                    <ChevronDown className={cn("h-4 w-4 transition-transform", openModule === item.moduleKey ? "" : "-rotate-90")} />
                   </div>
-                  Employee Onboarding
-                </Link>
-                <Link
-                  href="/hr/leave"
-                  className={cn(
-                    "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
-                    pathname.startsWith('/hr/leave')
-                      ? "bg-foreground text-background"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+
+                  {openModule === item.moduleKey && (
+                    <div className="pt-1 pb-2 space-y-1">
+                      {item.children.map((child) => (
+                        <Link
+                          key={child.href}
+                          href={child.href as any}
+                          className={cn(
+                            "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
+                            pathname.startsWith(child.href)
+                              ? "bg-foreground text-background"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          )}
+                        >
+                          {child.icon || renderDotIcon(pathname.startsWith(child.href))}
+                          {child.label}
+                        </Link>
+                      ))}
+                    </div>
                   )}
-                >
-                  <div className="w-5 flex justify-center mr-3">
-                    <div className={cn("w-1.5 h-1.5 rounded-full", pathname.startsWith('/hr/leave') ? "bg-background" : "bg-muted-foreground/50")} />
-                  </div>
-                  Leave
-                </Link>
-                <Link
-                  href="/eod"
-                  className={cn(
-                    "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
-                    pathname.startsWith('/eod')
-                      ? "bg-foreground text-background"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <ClipboardList className="mr-3 h-5 w-5" />
-                  EOD Reports
-                </Link>
-                <Link
-                  href="/hr/holidays"
-                  className={cn(
-                    "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
-                    pathname.startsWith('/hr/holidays')
-                      ? "bg-foreground text-background"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <Calendar className="mr-3 h-5 w-5" />
-                  HR Holiday
-                </Link>
-                <Link
-                  href={"/hr/payroll" as any}
-                  className={cn(
-                    "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
-                    pathname.startsWith('/hr/payroll')
-                      ? "bg-foreground text-background"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                  )}
-                >
-                  <div className="w-5 flex justify-center mr-3">
-                    <div className={cn("w-1.5 h-1.5 rounded-full", pathname.startsWith('/hr/payroll') ? "bg-background" : "bg-muted-foreground/50")} />
-                  </div>
-                  HR Payroll
-                </Link>
-              </div>
-            )}
-          </div>
+                </div>
+              )
+            }
 
-          {/* Employee Leave Standalone */}
-          <Link
-            href="/hr/employee-leave"
-            className={cn(
-              "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors mt-2",
-              pathname.startsWith('/hr/employee-leave')
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <Calendar className="mr-3 h-5 w-5" />
-            Employee Leave
-          </Link>
-
-          {/* Employee EOD Standalone */}
-          <Link
-            href="/employee-eod"
-            className={cn(
-              "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors mt-2",
-              pathname.startsWith('/employee-eod')
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <ClipboardList className="mr-3 h-5 w-5" />
-            Employee EOD
-          </Link>
-
-          {/* Employee Holiday Standalone */}
-          <Link
-            href="/employee-holiday"
-            className={cn(
-              "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors mt-2",
-              pathname.startsWith('/employee-holiday')
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <Calendar className="mr-3 h-5 w-5" />
-            Employee Holiday
-          </Link>
-
-          {/* Admin EOD Standalone */}
-          <Link
-            href="/admin-eod"
-            className={cn(
-              "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors mt-2",
-              pathname.startsWith('/admin-eod')
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <ClipboardList className="mr-3 h-5 w-5" />
-            Admin EOD
-          </Link>
-
-          {/* Admin Holiday Standalone */}
-          <Link
-            href="/admin-holiday"
-            className={cn(
-              "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors mt-2",
-              pathname.startsWith('/admin-holiday')
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <Calendar className="mr-3 h-5 w-5" />
-            Admin Holiday
-          </Link>
-
-          {/* Admin Payroll Standalone */}
-          <Link
-            href={"/admin-payroll" as any}
-            className={cn(
-              "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors mt-2",
-              pathname.startsWith('/admin-payroll')
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <div className="w-5 flex justify-center mr-3">
-              <div className={cn("w-1.5 h-1.5 rounded-full", pathname.startsWith('/admin-payroll') ? "bg-background" : "bg-muted-foreground/50")} />
-            </div>
-            Admin Payroll
-          </Link>
-
-          {/* Super Admin Module */}
-          <Link
-            href="/super-admin/leave"
-            className={cn(
-              "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors mt-2",
-              pathname.startsWith('/super-admin/leave')
-                ? "bg-foreground text-background"
-                : "text-muted-foreground hover:bg-muted hover:text-foreground"
-            )}
-          >
-            <Shield className="mr-3 h-5 w-5" />
-            Super Admin Leave
-          </Link>
+            // Standalone item
+            return (
+              <Link
+                key={item.href}
+                href={item.href as any}
+                className={cn(
+                  "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors mt-2",
+                  pathname.startsWith(item.href)
+                    ? "bg-foreground text-background"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                {item.icon || renderDotIcon(pathname.startsWith(item.href))}
+                {item.label}
+              </Link>
+            )
+          })}
         </nav>
       </div>
 

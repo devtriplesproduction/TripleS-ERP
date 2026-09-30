@@ -1,7 +1,9 @@
 import { getHolidaysAction } from "@/actions/holiday.actions";
 import { HolidayManager } from "@/components/modules/HolidayManager";
+import { requireRole } from '@/lib/auth'
 
 export default async function AdminHolidaysPage() {
+  await requireRole('/admin-holiday')
   const { data: holidays, success } = await getHolidaysAction();
   
   if (!success) {

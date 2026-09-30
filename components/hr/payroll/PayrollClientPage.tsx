@@ -27,6 +27,9 @@ interface PayrollData {
   grossSalary: number
   netPayable: number
   isLocked: boolean
+  actualWorkedHours: number
+  creditedLeaveHours: number
+  deductionAmount: number
 }
 
 export function PayrollClientPage({ title, initialEmployees = [] }: { title: string, initialEmployees?: any[] }) {

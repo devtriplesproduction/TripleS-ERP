@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 // @ts-nocheck
 
 import { getEODHistory, getEODStreak, EODReport, getAllEODs } from "@/lib/actions/eod";
@@ -16,23 +18,26 @@ import { RecentEODLogs } from "@/components/eod/RecentEODLogs";
 import { BranchSelectorClient } from "@/components/eod/BranchSelectorClient";
 
 import { EodTabsClient } from "@/components/eod/EodTabsClient";
+import { requireRole } from '@/lib/auth'
 
 interface PageProps {
   searchParams: { tab?: string, branch?: string };
 }
 
 export default async function EODPage({ searchParams }: PageProps) {
+  const authUser = await requireRole('/eod')
   const supabase = await createClient();
-  // TEST MODE: Force identity
-  const { data: user } = await supabase.from('employee_onboarding').select('id, first_name, last_name').eq('id', '889bab81-e196-4f40-9793-7cdac9524ed3').single();
-  
 
-  
-  // bypassed profile fetch
-    
-    
-    
-    
+  // Look up the employee's onboarding record via their profile employee_id
+  let user: any = { id: '', first_name: '', last_name: '' }
+  if (authUser.employee_id) {
+    const { data } = await supabase
+      .from('employee_onboarding')
+      .select('id, first_name, last_name, employee_id_number')
+      .eq('employee_id_number', authUser.employee_id)
+      .single()
+    if (data) user = data
+  }
 
   const canReview = true;
   const canManage = true;
@@ -140,7 +145,7 @@ export default async function EODPage({ searchParams }: PageProps) {
         <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
           {/* Left Column: Form */}
           <div className="xl:col-span-7 2xl:col-span-6">
-            <EODSubmissionForm employeeId={user.id} canEditDate={canManage} employees={canManage ? allEmployees : undefined} canManage={canManage} employeeName={`${user.first_name} ${user.last_name}`} employeeStringId="EMP-001" />
+            <EODSubmissionForm employeeId={authUser.id} canEditDate={canManage} employees={canManage ? allEmployees : undefined} canManage={canManage} employeeName={`${user.first_name} ${user.last_name}`} employeeStringId={user.employee_id_number || ''} />
           </div>
 
           {/* Right Column: Stats & Logs */}
@@ -209,13 +214,15 @@ export default async function EODPage({ searchParams }: PageProps) {
             </div>
 
             {/* Recent EOD Logs */}
-            <RecentEODLogs history={history} user={{ first_name: user.first_name, last_name: user.last_name, employee_id: "EMP-001" }} />
+            <RecentEODLogs history={history} user={{ first_name: user.first_name, last_name: user.last_name, employee_id: user.employee_id_number || '' }} />
           </div>
         </div>
       )}
     </div>
   );
 }
+
+
 
 
 

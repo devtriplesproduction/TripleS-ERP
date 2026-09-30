@@ -1,9 +1,11 @@
 import { PayrollClientPage } from '@/components/hr/payroll/PayrollClientPage'
 import { getEmployees } from '@/lib/actions/onboarding'
+import { requireRole } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminPayrollPage() {
+  await requireRole('/admin-payroll')
   const employees = await getEmployees()
 
   return (

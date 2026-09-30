@@ -297,8 +297,8 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
               required
               min="0"
               max="12"
-              step="0.5"
-              placeholder="e.g. 8"
+              step="0.01"
+              placeholder="e.g. 8.22"
               value={officeHours}
               onChange={(e) => setOfficeHours(e.target.value)}
               onKeyDown={(e) => {
@@ -389,5 +389,6 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
     </form>
   );
 }
+
 
 

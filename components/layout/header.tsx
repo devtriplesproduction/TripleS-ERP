@@ -1,12 +1,29 @@
 'use client'
 
-import { Bell, Search } from 'lucide-react'
+import { Bell, LogOut, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import React from 'react'
 import { ThemeToggle } from '@/components/theme-toggle'
+import { logoutAction } from '@/actions/auth.actions'
+import { type AuthUser } from '@/lib/auth'
 
-export function Header() {
+interface HeaderProps {
+  user: AuthUser
+}
+
+export function Header({ user }: HeaderProps) {
+  const initials = user.employee_name
+    ? user.employee_name
+        .split(' ')
+        .map(n => n[0])
+        .join('')
+        .toUpperCase()
+        .slice(0, 2)
+    : user.email[0]?.toUpperCase() || 'U'
+
+  const displayName = user.employee_name || user.email
+
   return (
     <header className="h-16 border-b border-border bg-background flex items-center justify-between px-6 shrink-0">
       <div className="flex items-center flex-1 gap-8">
@@ -33,12 +50,21 @@ export function Header() {
         
         <div className="flex items-center gap-3 pl-2 border-l border-border">
           <Avatar className="h-9 w-9 border border-border">
-            <AvatarFallback className="bg-muted text-xs font-medium text-foreground">OS</AvatarFallback>
+            <AvatarFallback className="bg-muted text-xs font-medium text-foreground">{initials}</AvatarFallback>
           </Avatar>
           <div className="flex flex-col">
-            <span className="text-sm font-semibold leading-none">Omkar Sawant</span>
-            <span className="text-xs text-muted-foreground mt-1">Admin</span>
+            <span className="text-sm font-semibold leading-none">{displayName}</span>
+            <span className="text-xs text-muted-foreground mt-1">{user.role}</span>
           </div>
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              className="ml-2 text-muted-foreground hover:text-foreground transition-colors"
+              title="Sign out"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </form>
         </div>
       </div>
     </header>

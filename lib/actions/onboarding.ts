@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { Employee, OnboardingTask, EmployeeStatus } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
+import { guardServerAction } from '@/lib/auth'
 
 const DEFAULT_TASKS = [
   { task_name: 'Collect Identity Documents', is_required: true },
@@ -204,8 +205,26 @@ async function updateEmployeeStatusFromTasks(employeeId: string) {
 }
 
 export async function onboardEmployeeAction(data: any) {
+  await guardServerAction(['HR', 'Admin'])
   const supabase = await createClient()
+  const { createEmployeeAccount, generateEmployeeId } = await import('@/actions/auth.actions')
+  const { determineERPRole } = await import('@/config/rbac')
 
+  // Calculate ERP Role based on organizational attributes
+  const erpRole = determineERPRole(data.department, data.division, data.designation)
+
+  // Step 1: Generate sequential employee ID server-side
+  const employeeId = await generateEmployeeId()
+  const employeeName = `${data.first_name} ${data.last_name}`
+  const workEmail = data.email
+
+  // Step 2: Create Supabase Auth account
+  const accountResult = await createEmployeeAccount(workEmail, employeeName, erpRole)
+  if (!accountResult.success) {
+    return { success: false, error: accountResult.error || 'Failed to create auth account' }
+  }
+
+  // Step 3: Insert employee onboarding record
   const employeeData = {
     first_name: data.first_name,
     last_name: data.last_name,
@@ -213,11 +232,15 @@ export async function onboardEmployeeAction(data: any) {
     phone: data.phone_number || null,
     job_title: data.designation,
     department: data.department,
+    division: data.division || null,
+    designation: data.designation || null,
     joining_date: data.joining_date,
     status: 'Not Started',
     dob: data.dob || null,
     gender: data.gender || null,
     personal_email: data.personal_email || null,
+    city: data.city || null,
+    pincode: data.pincode || null,
     address: data.address || null,
     emergency_contact: JSON.stringify({
       name: data.emergency_name || '',
@@ -225,13 +248,23 @@ export async function onboardEmployeeAction(data: any) {
       phone: data.emergency_phone || ''
     }),
     reporting_manager: data.reporting_manager || null,
-    employment_type: data.employment_type || 'full-time',
-    salary: data.salary || null,
-    experience: data.experience || null,
-    employee_id_number: data.employee_id_number,
-    password_hash: data.password, // Ideally hashed with bcrypt
+    employment_type: data.employment_type || 'Full Time',
+    employment_status: data.employment_status || 'Active',
+    probation_start_date: data.probation_start_date || null,
+    probation_end_date: data.probation_end_date || null,
+    probation_period: data.probation_period || null,
+    salary: data.employment_type === 'Intern' ? null : data.salary || null,
+    basic_salary: data.employment_type === 'Intern' ? null : data.basic_salary || null,
+    stipend: data.employment_type === 'Intern' ? data.stipend || null : null,
+    experience_type: data.employment_type === 'Intern' ? null : data.experience_type || null,
+    experience_years: data.employment_type === 'Intern' ? null : data.experience_years || null,
+    experience_months: data.employment_type === 'Intern' ? null : data.experience_months || null,
+    employee_id_number: accountResult.employee_id,
+    password_hash: null, // Never store plaintext passwords
     profile_photo: data.profile_photo || null,
-    documents: data.documents || []
+    documents: data.documents || [],
+    role: erpRole, // Dynamically determined based on Management/HR/HR vs others
+    is_hod: data.employment_type === 'Intern' ? false : data.is_hod || false
   }
 
   const { data: inserted, error } = await supabase
@@ -257,7 +290,14 @@ export async function onboardEmployeeAction(data: any) {
   await supabase.from('onboarding_tasks').insert(tasksToInsert)
 
   revalidatePath('/hr/onboarding')
-  return { success: true, data: { employee_id: employee.employee_id_number || employee.id } }
+  return {
+    success: true,
+    data: {
+      employee_id: accountResult.employee_id,
+      temp_password: accountResult.temp_password,
+      work_email: workEmail,
+    }
+  }
 }
 
 export async function uploadEmployeeFileAction(formData: FormData) {

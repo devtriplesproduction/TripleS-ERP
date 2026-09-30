@@ -13,10 +13,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { EmployeeDetailsModal } from '@/components/hr/onboarding/employee-details-modal'
+import Link from 'next/link'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { DatePicker } from '@/components/ui/date-picker'
-import { ChevronLeft, ChevronRight, Trash2, Search, Filter, Loader2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Trash2, Search, Filter, Loader2, Eye } from 'lucide-react'
 
 import { Employee } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/client'
@@ -244,7 +244,11 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
                   </TableCell>
                   <TableCell className="text-right pr-4">
                     <div className="flex items-center justify-end gap-2">
-                      <EmployeeDetailsModal employee={emp} />
+                      <Link href={`/hr/onboarding/${emp.id}`}>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 bg-input hover:bg-muted text-muted-foreground hover:text-foreground rounded-md border border-border">
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      </Link>
                       <ConfirmModal
                         title="Delete Employee"
                         description={`Are you sure you want to delete ${emp.first_name} ${emp.last_name}? This action cannot be undone.`}

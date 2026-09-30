@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { createClient } from '@/lib/supabase/server';
 // @ts-nocheck
 
@@ -16,6 +18,7 @@ export default async function AdminEODPage() {
 
   const { data: eods } = await getAllEODs({ branchId: 'all' });
   const allEODs = (eods || []) as unknown as EODWithEmployee[];
+    
 
   const allEmployees: EmployeeOption[] = []; // Reused component gets this passed, but maybe it fetches internal or we can just pass empty and let it be used. Wait, HR passes empty if no employees. ReviewDashboard probably does its own filtering from the provided EODs if employees array is empty, or we can fetch all employees.
   // Actually in original eod page, llEmployees was mocked: const { data: emps } = { data: [] }; allEmployees = emps;
@@ -28,7 +31,7 @@ export default async function AdminEODPage() {
 
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto">
-      <PageHeader
+      `n      <PageHeader
         title="Admin EOD"
         subtitle="Review employee and HR end-of-day reports."
         actions={
@@ -45,3 +48,9 @@ export default async function AdminEODPage() {
     </div>
   );
 }
+
+
+
+
+
+

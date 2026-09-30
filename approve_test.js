@@ -1,3 +1,4 @@
+
 const { createClient } = require('@supabase/supabase-js');
 const fs = require('fs');
 const env = fs.readFileSync('.env', 'utf8');
@@ -14,12 +15,12 @@ async function run() {
       p_status: 'Approved',
       p_rejection_reason: null
     });
-    
+
     if (error) {
       console.error('Error approving EOD:', error);
       return;
     }
-    
+
     console.log('Approved successfully! Now testing processEODCompOff server logic by running node process-test.js directly...');
   }
 }

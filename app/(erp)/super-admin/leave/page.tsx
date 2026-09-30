@@ -1,17 +1,17 @@
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/server'
 import { getCompOffBalance } from '@/lib/actions/compoff'
 import { LeaveClientPage } from '@/components/hr/leave/LeaveClientPage'
+import { requireRole } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
 export default async function SuperAdminLeavePage() {
-  const supabase = createClient()
+  await requireRole('/super-admin/leave')
+  const supabase = await createClient()
   
-  // Super Admin context
   const isSuperAdmin = true
-  const canApprove = true // Needed to show approvals tab and actions
+  const canApprove = true
   
-  // Super Admin views ALL leave requests across all departments
   const { data: allLeaves, error } = await supabase.from('leave_requests').select(`
     *,
     employee:employee_onboarding!leave_requests_employee_id_fkey(first_name, last_name, email, department)
@@ -22,15 +22,9 @@ export default async function SuperAdminLeavePage() {
   }
   
   const leavesList = allLeaves || []
-  
-  // Super Admin doesn't have personal leaves shown here
   const myLeaves: any[] = []
-  
-  // All leaves are shown in the Approvals tab
   const leavesToApprove = leavesList
-  
-  // No personal comp-off balance for Super Admin in this view
-  const compOffBalance = 0; // Super admin doesn't apply for leave usually
+  const compOffBalance = 0;
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -38,7 +32,7 @@ export default async function SuperAdminLeavePage() {
         myLeaves={myLeaves}
         canApprove={canApprove}
         leavesToApprove={leavesToApprove}
-        isHR={false} // Depending on RBAC, might be combined or separate
+        isHR={false}
         compOffBalance={compOffBalance}
         isSuperAdmin={isSuperAdmin}
       />

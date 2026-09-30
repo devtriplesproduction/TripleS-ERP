@@ -8,16 +8,31 @@ import { countTasks } from "@/lib/utils";
 import Link from "next/link";
 import { RecentEODLogs } from "@/components/eod/RecentEODLogs";
 import { createClient } from "@/lib/supabase/server";
+import { requireRole } from '@/lib/auth'
 
 export default async function EmployeeEODPage() {
+  const authUser = await requireRole('/employee-eod')
   const supabase = await createClient();
-  // TEST MODE: Mock Identity
-  const { data: user } = await supabase.from('employee_onboarding').select('id, first_name, last_name').eq('id', 'a0ef8d37-d4fd-49c7-b20d-b8ed9a512379').single();
+
+  // Look up the employee's onboarding record
+  let user: any = null
+  if (authUser.employee_id) {
+    const { data } = await supabase
+      .from('employee_onboarding')
+      .select('id, first_name, last_name, employee_id_number')
+      .eq('employee_id_number', authUser.employee_id)
+      .single()
+    user = data
+  }
+
+  if (!user) {
+    return <div className="p-8 text-center text-muted-foreground">Employee record not found. Contact HR.</div>
+  }
 
   // Fetch Data for Submit Tab
-  const { data: h } = await getEODHistory(user.id);
+  const { data: h } = await getEODHistory(authUser.id);
   const history = (h || []) as EODReport[];
-  const { streak: s } = await getEODStreak(user.id);
+  const { streak: s } = await getEODStreak(authUser.id);
   const streak = s || 0;
 
   const today = new Date();
@@ -48,7 +63,7 @@ export default async function EmployeeEODPage() {
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
         {/* Left Column: Form */}
         <div className="xl:col-span-7 2xl:col-span-6">
-          <EODSubmissionForm employeeId={user.id} canEditDate={false} canManage={false} employeeName={`${user.first_name} ${user.last_name}`} employeeStringId="EMP-002" />
+          <EODSubmissionForm employeeId={authUser.id} canEditDate={false} canManage={false} employeeName={`${user.first_name} ${user.last_name}`} employeeStringId={user.employee_id_number || ''} />
         </div>
 
         {/* Right Column: Stats & Logs */}
@@ -117,17 +132,11 @@ export default async function EmployeeEODPage() {
           </div>
 
           {/* Recent EOD Logs */}
-          <RecentEODLogs history={history} user={{ first_name: user.first_name, last_name: user.last_name, employee_id: 'EMP-001' }} />
+          <RecentEODLogs history={history} user={{ first_name: user.first_name, last_name: user.last_name, employee_id: user.employee_id_number || '' }} />
         </div>
       </div>
     </div>
   );
 }
-
-
-
-
-
-
 
 

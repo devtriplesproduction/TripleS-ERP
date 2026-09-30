@@ -1,21 +1,29 @@
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/server'
 import { getCompOffBalance } from '@/lib/actions/compoff'
 import { LeaveClientPage } from '@/components/hr/leave/LeaveClientPage'
+import { requireRole, getCurrentUser } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
 export default async function LeavePage() {
-  const supabase = createClient()
+  const user = await requireRole('/hr/leave')
+  const supabase = await createClient()
   
-  // Dummy authenticated user check
-  const isSuperAdmin = false
   const isHR = true
   const canApprove = true
-  const { data: { user } } = await supabase.auth.getUser();
-  let employeeId = user?.id;
-  if (!employeeId) {
-    // Use Omkar for HR testing
-    employeeId = '889bab81-e196-4f40-9793-7cdac9524ed3';
+  const isSuperAdmin = false
+
+  // Use the authenticated user's linked employee record
+  // For HR, we need to find their employee_onboarding record via their profile
+  let employeeId = ''
+  if (user.employee_id) {
+    // Look up the employee_onboarding record by employee_id_number
+    const { data: empRecord } = await supabase
+      .from('employee_onboarding')
+      .select('id')
+      .eq('employee_id_number', user.employee_id)
+      .single()
+    employeeId = empRecord?.id || ''
   }
 
   const { data: allLeaves } = await supabase.from('leave_requests').select(`
@@ -25,9 +33,7 @@ export default async function LeavePage() {
   
   const leavesList = allLeaves || []
   const myLeaves = leavesList.filter(l => l.employee_id === employeeId)
-  
   const leavesToApproveList = leavesList.filter((l: any) => l.employee_id !== employeeId)
-  
   const compOffBalance = employeeId ? await getCompOffBalance(employeeId) : 0;
 
   return (

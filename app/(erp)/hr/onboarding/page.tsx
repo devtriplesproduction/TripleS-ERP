@@ -1,5 +1,4 @@
 import { getEmployees } from '@/lib/actions/onboarding'
-import { createClient } from '@/lib/supabase/client'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -20,12 +19,13 @@ import {
   Eye, Edit2, MoreHorizontal, ChevronLeft, ChevronRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { requireRole } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
 export default async function OnboardingListPage() {
+  await requireRole('/hr/onboarding')
   const employees = await getEmployees()
-  const supabase = createClient()
   
   const total = employees.length
   const inProgress = employees.filter(e => e.status === 'In Progress').length

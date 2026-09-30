@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { Search, SlidersHorizontal, RefreshCcw, CheckCircle2, Clock, XCircle, AlertCircle, FileSearch, FileText, User, Calendar, MapPin, AlertTriangle, X, Loader2 } from 'lucide-react';
@@ -23,6 +23,7 @@ export function ReviewDashboard({
   currentUserId?: string;
 }) {
   const [eods, setEods] = useState<EnrichedEOD[]>(initialEods);
+  useEffect(() => { setEods(initialEods); }, [initialEods]);
   const [search, setSearch] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState('all');
   const [fromDate, setFromDate] = useState('');
@@ -548,5 +549,6 @@ export function ReviewDashboard({
     </div>
   );
 }
+
 
 

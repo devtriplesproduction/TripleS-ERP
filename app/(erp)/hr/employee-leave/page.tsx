@@ -1,35 +1,37 @@
-import { createClient } from '@/lib/supabase/client'
+import { createClient } from '@/lib/supabase/server'
 import { getCompOffBalance } from '@/lib/actions/compoff'
 import { LeaveClientPage } from '@/components/hr/leave/LeaveClientPage'
+import { requireRole, getCurrentUser } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
 export default async function EmployeeLeavePage() {
-  const supabase = createClient()
+  const user = await requireRole('/hr/employee-leave')
+  const supabase = await createClient()
   
-  // Dummy authenticated user check for Employee
   const isSuperAdmin = false
   const isHR = false
-  const canApprove = false // Crucial: This hides the Approvals tab and HR functions
-  // Fetch first employee for testing self-service without auth
-  // TEST MODE: Force identity
-  let employeeId = 'a0ef8d37-d4fd-49c7-b20d-b8ed9a512379';
+  const canApprove = false
 
-  // We reuse the same query but logically an employee only fetches their own leaves or we filter it down
-  // In a real app, RLS (Row Level Security) would limit this.
+  // Look up the employee's onboarding record via their profile employee_id
+  let employeeId = ''
+  if (user.employee_id) {
+    const { data: empRecord } = await supabase
+      .from('employee_onboarding')
+      .select('id')
+      .eq('employee_id_number', user.employee_id)
+      .single()
+    employeeId = empRecord?.id || ''
+  }
+
   const { data: allLeaves } = await supabase.from('leave_requests').select(`
     *,
     employee:employee_onboarding!leave_requests_employee_id_fkey(first_name, last_name, email, department)
   `) || { data: [] }
   
   const leavesList = allLeaves || []
-  
   const myLeaves = leavesList.filter(l => l.employee_id === employeeId)
-  
-  // No leaves to approve for an employee
   const leavesToApprove: any[] = []
-  
-  // Mock compOff balance
   const compOffBalance = employeeId ? await getCompOffBalance(employeeId) : 0;
 
   return (
