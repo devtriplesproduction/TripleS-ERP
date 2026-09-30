@@ -65,7 +65,8 @@ export async function submitEOD(payload: Omit<EODReport, 'id' | 'status' | 'subm
       status = 'Approved';
     } else {
       if (!canManage) {
-        const todayLocal = format(new Date(), 'yyyy-MM-dd');
+        const getISTDateString = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+        const todayLocal = getISTDateString();
         if (payload.report_date !== todayLocal) {
           return { success: false, error: "You can only submit EOD for today's date." };
         }
@@ -385,8 +386,9 @@ export async function getEODStreak(employeeId: string, roleContext: 'Employee' |
     if (error || !data || data.length === 0) return { success: true, streak: 0 };
 
     let streak = 0;
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const getISTDateString = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const todayStr = getISTDateString();
+    const today = new Date(todayStr + "T00:00:00");
 
     // Strip time from report dates
     const dates = data.map(d => {
@@ -697,6 +699,7 @@ async function logEodActivity(action: string, actor_email: string, user_id: stri
     console.error("Activity log exception:", e);
   }
 }
+
 
 
 

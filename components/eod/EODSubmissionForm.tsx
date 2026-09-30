@@ -28,7 +28,8 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
   const [fileUrl, setFileUrl] = useState<string | null>(null);
   const router = useRouter();
   const supabase = createClient();
-  const todayDate = format(new Date(), 'yyyy-MM-dd');
+  const getISTDateString = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const todayDate = getISTDateString();
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>(employeeId);
   useEffect(() => { setSelectedEmployeeId(employeeId); }, [employeeId]);
   const [reportDate, setReportDate] = useState<string>(todayDate);
@@ -389,6 +390,7 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
     </form>
   );
 }
+
 
 
 

@@ -23,11 +23,9 @@ export default async function AdminEODPage() {
   const allEmployees: EmployeeOption[] = []; // Reused component gets this passed, but maybe it fetches internal or we can just pass empty and let it be used. Wait, HR passes empty if no employees. ReviewDashboard probably does its own filtering from the provided EODs if employees array is empty, or we can fetch all employees.
   // Actually in original eod page, llEmployees was mocked: const { data: emps } = { data: [] }; allEmployees = emps;
 
-  const todayStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
-  const todayReportsCount = allEODs.filter((e) => {
-    const d = new Date(e.report_date);
-    return d.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) === todayStr;
-  }).length;
+  const getISTDateString = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  const todayStr = getISTDateString();
+  const todayReportsCount = allEODs.filter((e) => e.report_date === todayStr).length;
 
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto">
@@ -48,6 +46,7 @@ export default async function AdminEODPage() {
     </div>
   );
 }
+
 
 
 

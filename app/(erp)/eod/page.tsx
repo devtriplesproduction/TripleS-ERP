@@ -73,12 +73,9 @@ export default async function EODPage({ searchParams }: PageProps) {
     const { streak: s } = await getEODStreak(user.id, 'HR');
     streak = s || 0;
 
-    const today = new Date();
-    const todayStr = today.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
-    todayEOD = history.find((h) => {
-      const d = new Date(h.report_date);
-      return d.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) === todayStr;
-    });
+    const getISTDateString = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const todayStr = getISTDateString();
+    todayEOD = history.find((h) => h.report_date === todayStr);
 
     tasksCompleted = todayEOD ? todayEOD.tasks_accomplished.split('\n').filter((t: string) => t.trim().length > 0).length : 0;
     hoursLogged = todayEOD ? todayEOD.office_hours : 0;
@@ -103,11 +100,8 @@ export default async function EODPage({ searchParams }: PageProps) {
       allEmployees = (emps || []) as EmployeeOption[];
     }
 
-    const todayStr = new Date().toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
-    todayReportsCount = allEODs.filter((e) => {
-      const d = new Date(e.report_date);
-      return d.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) === todayStr;
-    }).length;
+    const todayStr2 = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    todayReportsCount = allEODs.filter((e) => e.report_date === todayStr2).length;
   }
 
   return (
@@ -221,6 +215,7 @@ export default async function EODPage({ searchParams }: PageProps) {
     </div>
   );
 }
+
 
 
 
