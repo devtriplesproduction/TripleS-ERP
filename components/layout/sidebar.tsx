@@ -8,12 +8,13 @@ import {
   Settings,
   ChevronDown,
   Shield,
-  Calendar
+  Calendar,
+  Book
 } from 'lucide-react'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { ClipboardList } from 'lucide-react'
+import { ClipboardList, Megaphone } from 'lucide-react'
 import { type AppRole, hasRouteAccess } from '@/config/rbac'
 
 interface SidebarProps {
@@ -56,6 +57,8 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { label: 'Admin Holiday', href: '/admin-holiday', icon: <Calendar className="mr-3 h-5 w-5" /> },
   { label: 'Admin Payroll', href: '/admin-payroll' },
   { label: 'Super Admin Leave', href: '/super-admin/leave', icon: <Shield className="mr-3 h-5 w-5" /> },
+  { label: 'Rulebook', href: '/rulebook', icon: <Book className="mr-3 h-5 w-5" /> },
+  { label: 'Announcements', href: '/announcements', icon: <Megaphone className="mr-3 h-5 w-5" /> },
 ]
 
 export function Sidebar({ userRole }: SidebarProps) {

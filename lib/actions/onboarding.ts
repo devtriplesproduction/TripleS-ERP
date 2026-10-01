@@ -311,7 +311,10 @@ export async function uploadEmployeeFileAction(formData: FormData) {
 
   const { error } = await supabase.storage
     .from('employee-documents')
-    .upload(filePath, file)
+    .upload(filePath, file, {
+      contentType: file.type,
+      upsert: false
+    })
 
   if (error) {
     return { success: false, error: error.message }

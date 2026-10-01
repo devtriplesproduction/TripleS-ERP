@@ -38,7 +38,7 @@ export default async function OnboardingListPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground">Employee Onboarding</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-foreground">Employees</h1>
           <p className="text-sm text-muted-foreground mt-1">Manage and track new employee onboarding process.</p>
         </div>
         <AddEmployeeModal />

@@ -7,7 +7,8 @@ import { Dropdown } from '@/components/ui/Dropdown';
 import { Search, SlidersHorizontal, RefreshCcw, CheckCircle2, Clock, XCircle, AlertCircle, FileSearch, FileText, User, Calendar, MapPin, AlertTriangle, X, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { EODReport } from '@/lib/actions/eod';
-import { reviewEODAction } from '@/actions/eod.actions';
+import { reviewEODAction, updateEODAction } from '@/actions/eod.actions';
+import { Edit2, Save, X as XIcon } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
 
 type Employee = { id: string; first_name: string; last_name: string; employee_id: string };
@@ -35,8 +36,61 @@ export function ReviewDashboard({
   const [isRejecting, setIsRejecting] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [actionError, setActionError] = useState('');
+  const [isEditing, setIsEditing] = useState(false);
+  const [editFormData, setEditFormData] = useState<Partial<EnrichedEOD>>({});
+
+  const handleEditChange = (field: keyof EnrichedEOD, value: string | number) => {
+    setEditFormData(prev => ({ ...prev, [field]: value }));
+  }
+
+  const handleSaveEdit = async () => {
+    if (!selectedEod) return;
+    setIsSubmitting(true);
+    setActionError('');
+    try {
+      const formData = new FormData();
+      formData.append('employee_id', selectedEod.employee_id);
+      formData.append('report_date', selectedEod.report_date);
+      formData.append('tasks_accomplished', editFormData.tasks_accomplished as string || '');
+      formData.append('office_hours', String(editFormData.office_hours));
+      formData.append('location', selectedEod.location);
+      formData.append('blockers', editFormData.blockers as string || 'None');
+      formData.append('job_card_numbers', editFormData.job_card_numbers as string || '');
+      formData.append('tomorrows_plan', editFormData.tomorrows_plan as string || '');
+      formData.append('role_context', (selectedEod as any).role_context || 'Employee');
+      if (selectedEod.photo_url) formData.append('photo_url', selectedEod.photo_url);
+
+      const res = await updateEODAction(formData);
+      if (res.success) {
+        setIsEditing(false);
+        const updatedFields = {
+          tasks_accomplished: editFormData.tasks_accomplished as string,
+          blockers: editFormData.blockers as string,
+          tomorrows_plan: editFormData.tomorrows_plan as string,
+          office_hours: editFormData.office_hours as number,
+          job_card_numbers: editFormData.job_card_numbers as string
+        };
+        setEods(prev => prev.map(e => e.id === selectedEod.id ? { ...e, ...updatedFields } : e));
+        setSelectedEod(prev => prev ? { ...prev, ...updatedFields } : null);
+      } else {
+        setActionError(res.error || 'Failed to update EOD.');
+      }
+    } catch (e) {
+      setActionError('Unexpected error occurred.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   const handleOpenModal = (eod: EnrichedEOD) => {
+    setIsEditing(false);
+    setEditFormData({
+      tasks_accomplished: eod.tasks_accomplished,
+      blockers: eod.blockers || '',
+      tomorrows_plan: eod.tomorrows_plan || '',
+      office_hours: eod.office_hours,
+      job_card_numbers: eod.job_card_numbers || '',
+    });
     setSelectedEod(eod);
     setIsRejecting(false);
     setRejectReason('');
@@ -427,7 +481,11 @@ export function ReviewDashboard({
                     </div>
                     <div>
                       <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Hours</p>
-                      <p className="font-semibold text-foreground text-sm">{selectedEod.office_hours}h</p>
+                      {isEditing ? (
+    <Input type="number" step="0.1" value={editFormData.office_hours || 0} onChange={e => handleEditChange('office_hours', parseFloat(e.target.value) || 0)} className="w-full h-8 px-2 text-sm mt-1" />
+  ) : (
+    <p className="font-semibold text-foreground text-sm">{selectedEod.office_hours}h</p>
+  )}
                     </div>
                   </div>
                 </div>
@@ -440,30 +498,42 @@ export function ReviewDashboard({
                     <h3 className="font-bold text-foreground">Tasks Accomplished</h3>
                   </div>
                   <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-sm bg-card text-card-foreground border-border p-4 rounded-xl border border-border shadow-sm">
-                    {selectedEod.tasks_accomplished}
+                    {isEditing ? (
+    <textarea value={editFormData.tasks_accomplished} onChange={e => handleEditChange('tasks_accomplished', e.target.value)} className="w-full flex rounded-lg border border-border bg-card text-card-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" rows={5} />
+  ) : (
+    selectedEod.tasks_accomplished
+  )}
                   </div>
                 </div>
 
-                {selectedEod.blockers && (
+                {(selectedEod.blockers || isEditing) && (
                   <div className="bg-muted rounded-2xl p-5 border border-border mt-4">
                     <div className="flex items-center gap-2 mb-3">
                       <AlertTriangle className="w-5 h-5 text-orrange-500" />
                       <h3 className="font-bold text-foreground">Blockers & Issues</h3>
                     </div>
                     <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-sm bg-card text-card-foreground border-border p-4 rounded-xl border border-border shadow-sm">
-                      {selectedEod.blockers}
+                      {isEditing ? (
+    <textarea value={editFormData.blockers} onChange={e => handleEditChange('blockers', e.target.value)} className="w-full flex rounded-lg border border-border bg-card text-card-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" rows={3} />
+  ) : (
+    selectedEod.blockers
+  )}
                     </div>
                   </div>
                 )}
 
-                {selectedEod.tomorrows_plan && (
+                {(selectedEod.tomorrows_plan || isEditing) && (
                   <div className="bg-muted rounded-2xl p-5 border border-border mt-4">
                     <div className="flex items-center gap-2 mb-3">
                       <Calendar className="w-5 h-5 text-blue-500" />
                       <h3 className="font-bold text-foreground">Tomorrow's Plan</h3>
                     </div>
                     <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-sm bg-card text-card-foreground border-border p-4 rounded-xl border border-border shadow-sm">
-                      {selectedEod.tomorrows_plan}
+                      {isEditing ? (
+    <textarea value={editFormData.tomorrows_plan} onChange={e => handleEditChange('tomorrows_plan', e.target.value)} className="w-full flex rounded-lg border border-border bg-card text-card-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" rows={3} />
+  ) : (
+    selectedEod.tomorrows_plan
+  )}
                     </div>
                   </div>
                 )}
@@ -516,12 +586,30 @@ export function ReviewDashboard({
                     <div className="flex justify-between items-center">
                       <p className="text-sm text-muted-foreground font-medium hidden sm:block">Please review carefully before deciding.</p>
                       <div className="flex justify-end gap-3 w-full sm:w-auto">
-                        <Button variant="outline" className="text-foreground border-border hover:bg-muted hover:text-foreground rounded-xl" onClick={() => handleAction('Reject')} disabled={isSubmitting}>
-                          <XCircle className="w-4 h-4 mr-2" /> Reject Report
-                        </Button>
-                        <Button variant="primary" className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm shadow-emerald-200" onClick={() => handleAction('Approve')} disabled={isSubmitting}>
-                          {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />} Approve Report
-                        </Button>
+                        {!isEditing ? (
+    <Button variant="outline" className="text-foreground border-border hover:bg-muted hover:text-foreground rounded-xl" onClick={() => setIsEditing(true)} disabled={isSubmitting}>
+      <Edit2 className="w-4 h-4 mr-2" /> Edit
+    </Button>
+  ) : (
+    <>
+      <Button variant="ghost" className="text-muted-foreground rounded-xl" onClick={() => setIsEditing(false)} disabled={isSubmitting}>
+        <XIcon className="w-4 h-4 mr-2" /> Cancel
+      </Button>
+      <Button variant="primary" className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm" onClick={handleSaveEdit} disabled={isSubmitting}>
+        {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} Save
+      </Button>
+    </>
+  )}
+  {!isEditing && (
+    <>
+      <Button variant="outline" className="text-foreground border-border hover:bg-muted hover:text-foreground rounded-xl" onClick={() => handleAction('Reject')} disabled={isSubmitting}>
+        <XCircle className="w-4 h-4 mr-2" /> Reject Report
+      </Button>
+      <Button variant="primary" className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm shadow-emerald-200" onClick={() => handleAction('Approve')} disabled={isSubmitting}>
+        {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />} Approve Report
+      </Button>
+    </>
+  )}
                       </div>
                     </div>
                   )}

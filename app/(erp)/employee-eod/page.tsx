@@ -101,33 +101,7 @@ export default async function EmployeeEODPage() {
                 <div className="mt-1 text-xs text-zinc-900 dark:text-zinc-100 font-medium">Duration</div>
               </div>
 
-              <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-card text-card-foreground border-border shadow-sm flex flex-col justify-between">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-500">
-                    <ShieldAlert className="w-4 h-4" />
-                  </div>
-                  <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Blockers</span>
-                </div>
-                <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">{hasBlockers ? '1' : '0'}</div>
-                <div className="mt-1 text-xs text-zinc-900 dark:text-zinc-100 font-medium">{hasBlockers ? 'Needs attention' : 'Good to go!'}</div>
-              </div>
 
-              <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-card text-card-foreground border-border shadow-sm flex flex-col justify-between">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center text-purple-500">
-                    <Send className="w-4 h-4" />
-                  </div>
-                  <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Status</span>
-                </div>
-                <div className="mb-2">
-                  {todayEOD ? (
-                    <span className="px-3 py-1 bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 text-xs font-bold rounded-full">Submitted</span>
-                  ) : (
-                    <span className="px-3 py-1 bg-black dark:bg-zinc-800 text-white dark:text-zinc-100 text-xs font-bold rounded-full">Not Submitted</span>
-                  )}
-                </div>
-                <div className="mt-auto text-xs text-zinc-900 dark:text-zinc-100 font-medium">{todayEOD ? 'Done for the day' : 'Submit to complete'}</div>
-              </div>
             </div>
           </div>
 

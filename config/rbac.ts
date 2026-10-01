@@ -21,6 +21,8 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/hr/holidays',
     '/hr/payroll',
     '/dashboard',
+    '/rulebook',
+    '/announcements',
   ],
   Admin: [
     '/admin-eod',
@@ -29,12 +31,15 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/super-admin/leave',
     '/hr/onboarding',
     '/dashboard',
+    '/rulebook',
+    '/announcements',
   ],
   Employee: [
     '/hr/employee-leave',
     '/employee-eod',
     '/employee-holiday',
     '/dashboard',
+    '/rulebook',
   ],
 }
 

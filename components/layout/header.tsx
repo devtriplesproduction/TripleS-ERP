@@ -2,6 +2,7 @@
 
 import { Bell, LogOut, Search } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { NotificationBell } from '@/components/announcements/NotificationBell'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import React from 'react'
 import { ThemeToggle } from '@/components/theme-toggle'
@@ -44,9 +45,7 @@ export function Header({ user }: HeaderProps) {
       <div className="flex items-center gap-6">
         <ThemeToggle />
         
-        <button className="text-muted-foreground hover:text-foreground transition-colors">
-          <Bell className="h-5 w-5" />
-        </button>
+        <NotificationBell />
         
         <div className="flex items-center gap-3 pl-2 border-l border-border">
           <Avatar className="h-9 w-9 border border-border">

@@ -11,15 +11,17 @@ import {
   CalendarDays, FileText, User, Users,
   Key, Image as ImageIcon, Send, CheckCircle2, Plus, ArrowLeft, Camera,
   Droplet, Heart, Map, Hash, Contact, ShieldAlert,
-  Building2, CreditCard, Banknote, CalendarCheck2, Activity
+  Building2, CreditCard, Banknote, CalendarCheck2, Activity,
+  ChevronLeft, ChevronRight, Zap, UserX, Code2, Globe, Trash2
 } from 'lucide-react'
 import { Employee } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/client'
-import { updateEmployeeData } from '@/lib/actions/onboarding'
+import { updateEmployeeData, uploadEmployeeFileAction } from '@/lib/actions/onboarding'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2 } from 'lucide-react'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DEPARTMENTS, DIVISIONS, DESIGNATIONS } from '@/config/roles'
@@ -29,7 +31,9 @@ import { SalaryAndHikeTab } from '@/components/hr/payroll/salary-and-hike-tab'
 export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const docInputRef = useRef<HTMLInputElement>(null)
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false)
   const [localPhotoUrl, setLocalPhotoUrl] = useState<string | null>(null)
 
   const [isEditingPersonal, setIsEditingPersonal] = useState(false)
@@ -70,9 +74,9 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
     job_title: employee.job_title || '',
     employment_type: employee.employment_type || '',
     joining_date: employee.joining_date || '',
-    reporting_manager: employee.reporting_manager || '',
     email: employee.email || '',
-    salary: employee.salary ? employee.salary.toString() : ''
+    salary: employee.salary ? employee.salary.toString() : '',
+    stipend: employee.stipend ? employee.stipend.toString() : ''
   })
 
   const handleSaveProfessional = async () => {
@@ -81,7 +85,8 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
       const dataToSave = {
         ...professionalForm,
         job_title: professionalForm.designation,
-        salary: professionalForm.salary ? parseFloat(professionalForm.salary) : null
+        salary: professionalForm.salary ? parseFloat(professionalForm.salary) : null,
+        stipend: professionalForm.stipend ? parseFloat(professionalForm.stipend) : null
       }
       await updateEmployeeData(employee.id, dataToSave)
       setIsEditingProfessional(false)
@@ -91,6 +96,73 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
       toast({ title: 'Error', description: e.message, variant: 'destructive' })
     } finally {
       setIsSavingProfessional(false)
+    }
+  }
+
+  const handleDocumentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploadingDoc(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const res = await uploadEmployeeFileAction(formData)
+      
+      if (res.success && res.path) {
+        const supabase = createClient()
+        const { data } = supabase.storage.from('employee-documents').getPublicUrl(res.path)
+        
+        const newDoc = {
+          name: file.name,
+          url: data.publicUrl,
+          size: file.size,
+          type: file.type,
+          path: res.path
+        }
+        
+        const currentDocs = Array.isArray(employee.documents) ? employee.documents : []
+        const updatedDocs = [...currentDocs, newDoc]
+        
+        await updateEmployeeData(employee.id, { documents: updatedDocs })
+        
+        toast({
+          title: "Document Uploaded",
+          description: "The document has been uploaded successfully.",
+        })
+        router.refresh()
+      } else {
+        throw new Error(res.error || 'Upload failed')
+      }
+    } catch (error: any) {
+      toast({
+        title: "Upload Failed",
+        description: error.message,
+        variant: "destructive",
+      })
+    } finally {
+      setIsUploadingDoc(false)
+      if (docInputRef.current) docInputRef.current.value = ''
+    }
+  }
+
+  const handleDeleteDocument = async (idx: number) => {
+    try {
+      const currentDocs = Array.isArray(employee.documents) ? [...employee.documents] : []
+      currentDocs.splice(idx, 1)
+      
+      await updateEmployeeData(employee.id, { documents: currentDocs })
+      toast({
+        title: "Document Deleted",
+        description: "The document has been deleted successfully.",
+      })
+      router.refresh()
+    } catch (error: any) {
+      toast({
+        title: "Delete Failed",
+        description: error.message,
+        variant: "destructive",
+      })
     }
   }
 
@@ -149,404 +221,620 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
     } catch (e) { }
   }
 
-  const renderField = (icon: React.ReactNode, label: string, value: any, isEditing: boolean, fieldKey: string, formState: any, setFormState: any, type: string = 'text') => {
-    return (
-      <div className="flex flex-col gap-1.5 p-3 rounded-xl border border-border/50 bg-background/50 hover:bg-background transition-colors">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
-          {React.cloneElement(icon as any, { className: "w-3.5 h-3.5" })}
-          {label}
-        </div>
-        <div className="pl-5">
-          {isEditing ? (
-             <Input
-               type={type}
-               className="h-8 text-sm bg-transparent border-border flex-1"
-               value={formState[fieldKey] || ''}
-               onChange={e => setFormState((prev: any) => ({ ...prev, [fieldKey]: e.target.value }))}
-             />
-          ) : (
-             <div className="text-sm font-semibold text-foreground break-all">
-               {type === 'date' && value ? new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) :
-                (value || '-')}
-             </div>
-          )}
-        </div>
-      </div>
-    )
+  // --- Field renderers ---
+  const iconThemeMap: Record<string, string> = {
+    blue: 'bg-blue-500/10 text-blue-500 dark:text-blue-400',
+    emerald: 'bg-emerald-500/10 text-emerald-500 dark:text-emerald-400',
+    amber: 'bg-amber-500/10 text-amber-500 dark:text-amber-400',
+    purple: 'bg-purple-500/10 text-purple-500 dark:text-purple-400',
+    rose: 'bg-rose-500/10 text-rose-500 dark:text-rose-400',
+    indigo: 'bg-indigo-500/10 text-indigo-500 dark:text-indigo-400',
+    orange: 'bg-orange-500/10 text-orange-500 dark:text-orange-400',
+    cyan: 'bg-cyan-500/10 text-cyan-500 dark:text-cyan-400',
+    muted: 'bg-muted/60 text-muted-foreground',
   }
 
-  const renderStaticField = (icon: React.ReactNode, label: string, value: string) => {
-    return (
-      <div className="flex flex-col gap-1.5 p-3 rounded-xl border border-border/50 bg-background/50 hover:bg-background transition-colors">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
-          {React.cloneElement(icon as any, { className: "w-3.5 h-3.5" })}
-          {label}
-        </div>
-        <div className="pl-5">
-           <div className="text-sm font-semibold text-foreground break-all">
-             {value || '-'}
-           </div>
-        </div>
+  const renderInfoCard = (icon: React.ReactNode, label: string, value: string | null | undefined, theme: string = 'muted') => (
+    <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border/40 bg-card/60 hover:bg-card transition-colors">
+      <div className={cn("w-7 h-7 rounded-md flex items-center justify-center shrink-0", iconThemeMap[theme] || iconThemeMap.muted)}>
+        {React.isValidElement(icon) ? React.cloneElement(icon as any, { className: 'w-4 h-4' }) : icon}
       </div>
-    )
-  }
+      <div className="flex flex-col min-w-0">
+        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider leading-none mb-0.5">{label}</span>
+        <span className="text-[13px] font-semibold text-foreground break-all leading-tight">{value || '-'}</span>
+      </div>
+    </div>
+  )
 
-  return (
-    <div className="flex flex-col w-full min-h-screen">
-      <div className="flex-1 w-full">
-        <Tabs defaultValue="personal-info" className="w-full">
-          <div className="mb-6 overflow-x-auto custom-scrollbar pb-2">
-            <TabsList className="bg-transparent h-auto p-0 border-none flex items-center gap-2 justify-start w-max">
-              <TabsTrigger value="personal-info" className="data-[state=active]:bg-foreground data-[state=active]:text-background text-muted-foreground bg-card border border-border/60 hover:bg-card/80 rounded-full h-10 px-5 font-semibold text-sm flex items-center gap-2 transition-all">
-                <User className="w-4 h-4" /> Personal Info
-              </TabsTrigger>
-              <TabsTrigger value="professional-info" className="data-[state=active]:bg-foreground data-[state=active]:text-background text-muted-foreground bg-card border border-border/60 hover:bg-card/80 rounded-full h-10 px-5 font-semibold text-sm flex items-center gap-2 transition-all">
-                <Briefcase className="w-4 h-4" /> Professional Info
-              </TabsTrigger>
-              <TabsTrigger value="documents" className="data-[state=active]:bg-foreground data-[state=active]:text-background text-muted-foreground bg-card border border-border/60 hover:bg-card/80 rounded-full h-10 px-5 font-semibold text-sm flex items-center gap-2 transition-all">
-                <FileText className="w-4 h-4" /> Documents
-              </TabsTrigger>
-              <TabsTrigger value="attendance" className="data-[state=active]:bg-foreground data-[state=active]:text-background text-muted-foreground bg-card border border-border/60 hover:bg-card/80 rounded-full h-10 px-5 font-semibold text-sm flex items-center gap-2 transition-all">
-                <CalendarDays className="w-4 h-4" /> Attendance
-              </TabsTrigger>
-              <TabsTrigger value="leave-and-time-off" className="data-[state=active]:bg-foreground data-[state=active]:text-background text-muted-foreground bg-card border border-border/60 hover:bg-card/80 rounded-full h-10 px-5 font-semibold text-sm flex items-center gap-2 transition-all">
-                <CalendarIcon className="w-4 h-4" /> Leave & Time Off
-              </TabsTrigger>
-              <TabsTrigger value="salary-and-hike" className="data-[state=active]:bg-foreground data-[state=active]:text-background text-muted-foreground bg-card border border-border/60 hover:bg-card/80 rounded-full h-10 px-5 font-semibold text-sm flex items-center gap-2 transition-all">
-                <Banknote className="w-4 h-4" /> Salary & Hike
-              </TabsTrigger>
-              <TabsTrigger value="onboarding" className="data-[state=active]:bg-foreground data-[state=active]:text-background text-muted-foreground bg-card border border-border/60 hover:bg-card/80 rounded-full h-10 px-5 font-semibold text-sm flex items-center gap-2 transition-all">
-                <Mail className="w-4 h-4" /> Onboarding
-              </TabsTrigger>
-              <TabsTrigger value="performance" className="data-[state=active]:bg-foreground data-[state=active]:text-background text-muted-foreground bg-card border border-border/60 hover:bg-card/80 rounded-full h-10 px-5 font-semibold text-sm flex items-center gap-2 transition-all">
-                <Activity className="w-4 h-4" /> Performance
-              </TabsTrigger>
-              <TabsTrigger value="activity" className="data-[state=active]:bg-foreground data-[state=active]:text-background text-muted-foreground bg-card border border-border/60 hover:bg-card/80 rounded-full h-10 px-5 font-semibold text-sm flex items-center gap-2 transition-all">
-                <Droplet className="w-4 h-4" /> Activity
-              </TabsTrigger>
-            </TabsList>
+  const renderEditableCard = (icon: React.ReactNode, label: string, value: any, isEditing: boolean, fieldKey: string, formState: any, setFormState: any, type: string = 'text', theme: string = 'muted') => (
+    <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border/40 bg-card/60 hover:bg-card transition-colors">
+      <div className={cn("w-7 h-7 rounded-md flex items-center justify-center shrink-0", iconThemeMap[theme] || iconThemeMap.muted)}>
+        {React.isValidElement(icon) ? React.cloneElement(icon as any, { className: 'w-4 h-4' }) : icon}
+      </div>
+      <div className="flex flex-col min-w-0 flex-1">
+        <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider leading-none mb-0.5">{label}</span>
+        {isEditing ? (
+          <Input
+            type={type}
+            className="h-7 text-xs bg-transparent border-border"
+            value={formState[fieldKey] || ''}
+            onChange={e => setFormState((prev: any) => ({ ...prev, [fieldKey]: e.target.value }))}
+          />
+        ) : (
+          <span className="text-[13px] font-semibold text-foreground break-all leading-tight">
+            {type === 'date' && value ? new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : (value || '-')}
+          </span>
+        )}
+      </div>
+    </div>
+  )
+
+  // --- Section header with Edit button ---
+  const renderSectionHeader = (icon: React.ReactNode, title: string, isEditing: boolean, onEdit: () => void, onCancel: () => void, onSave: () => void, isSaving: boolean, theme: string = 'muted') => (
+    <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2.5">
+        <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", iconThemeMap[theme] || iconThemeMap.muted)}>
+          {React.isValidElement(icon) ? React.cloneElement(icon as any, { className: 'w-4 h-4' }) : icon}
+        </div>
+        <h3 className="font-bold text-base text-foreground">{title}</h3>
+      </div>
+      {isEditing ? (
+        <div className="flex gap-2">
+          <Button variant="ghost" size="sm" onClick={onCancel} className="h-8 text-xs">Cancel</Button>
+          <Button size="sm" className="bg-foreground text-background h-8 text-xs" onClick={onSave} disabled={isSaving}>
+            {isSaving ? <Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> : null} Save
+          </Button>
+        </div>
+      ) : (
+        <Button variant="outline" size="sm" className="h-8 px-3 text-xs bg-transparent border-border/60 hover:bg-muted/60 gap-1.5" onClick={onEdit}>
+          <Edit2 className="w-3 h-3" /> Edit
+        </Button>
+      )}
+    </div>
+  )
+
+  // --- Profile sidebar card (left column) ---
+  const ProfileCard = () => (
+    <div className="w-full lg:w-[320px] shrink-0 space-y-4">
+      {/* Profile Card */}
+      <div className="bg-card border border-border/40 rounded-2xl p-5 shadow-sm">
+        {/* Edit Profile button */}
+        <div className="flex justify-end mb-2">
+          <Button variant="outline" size="sm" className="h-7 px-3 text-[11px] bg-transparent border-border/60 hover:bg-muted/60 gap-1.5" onClick={() => setIsEditingPersonal(true)}>
+            <Edit2 className="w-3 h-3" /> Edit Profile
+          </Button>
+        </div>
+
+        {/* Photo */}
+        <div className="flex flex-col items-center">
+          <div className="w-[140px] h-[140px] rounded-full overflow-hidden bg-muted border-[3px] border-border/30 shadow-lg mb-4 relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+            {localPhotoUrl || photoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={localPhotoUrl || photoUrl!} alt={`${employee.first_name} ${employee.last_name}`} className="w-full h-full object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-muted-foreground bg-input">
+                {employee.first_name[0]}{employee.last_name[0]}
+              </div>
+            )}
+            <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-full">
+              {isUploadingPhoto ? <Loader2 className="w-6 h-6 text-white animate-spin" /> : <Camera className="w-6 h-6 text-white" />}
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handlePhotoUpload}
+              disabled={isUploadingPhoto}
+            />
           </div>
 
-          <TabsContent value="personal-info" className="m-0 space-y-6">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                  <User className="w-5 h-5 text-foreground" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-foreground">Personal Information</h3>
-                  <p className="text-xs text-muted-foreground">Basic personal details of the employee.</p>
-                </div>
-              </div>
-              {isEditingPersonal ? (
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => setIsEditingPersonal(false)}>Cancel</Button>
-                  <Button size="sm" className="bg-foreground text-background" onClick={handleSavePersonal} disabled={isSavingPersonal}>
-                    {isSavingPersonal ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Save
-                  </Button>
-                </div>
-              ) : (
-                <Button variant="outline" size="sm" className="bg-transparent border-border hover:bg-input h-9 px-4" onClick={() => setIsEditingPersonal(true)}>
-                  <Edit2 className="w-4 h-4 mr-2" /> Edit
-                </Button>
-              )}
+          {/* Name + Status */}
+          <div className="flex flex-col items-center gap-2 mb-4 w-full">
+            <h2 className="text-xl font-bold text-foreground text-center leading-tight max-w-full break-words">
+              {employee.first_name} {employee.last_name}
+            </h2>
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-muted-foreground font-mono">{employee.employee_id_number || 'N/A'}</span>
+              <div className="w-1 h-1 rounded-full bg-border/60" />
+              <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20 text-[10px] px-2 py-0 h-5 font-semibold">
+                Active <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 ml-1" />
+              </Badge>
             </div>
+          </div>
+        </div>
 
-            <div className="flex flex-col lg:flex-row gap-6">
-              {/* Left Profile Box */}
-              <div className="w-full lg:w-[280px] shrink-0 bg-card/40 border border-border rounded-2xl p-6 flex flex-col items-center justify-center text-center h-fit shadow-sm">
-                <div className="w-32 h-32 rounded-full overflow-hidden bg-input shadow-lg mb-5 relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
-                  {localPhotoUrl || photoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={localPhotoUrl || photoUrl!} alt={`${employee.first_name} ${employee.last_name}`} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-4xl font-bold text-muted-foreground">
-                      {employee.first_name[0]}{employee.last_name[0]}
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                    {isUploadingPhoto ? <Loader2 className="w-6 h-6 text-white animate-spin" /> : <Camera className="w-6 h-6 text-white" />}
-                  </div>
-                  <div className="absolute bottom-1 right-1 w-7 h-7 bg-background rounded-full flex items-center justify-center shadow-md border border-border">
-                    <Camera className="w-3.5 h-3.5 text-foreground" />
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={handlePhotoUpload}
-                    disabled={isUploadingPhoto}
-                  />
-                </div>
-                <h2 className="text-lg font-bold text-foreground mb-1">{employee.first_name} {employee.last_name}</h2>
-                <p className="text-xs text-muted-foreground font-medium mb-4">{employee.job_title}</p>
-                <div className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-500 text-xs font-semibold border border-emerald-500/20 shadow-sm">
-                  Employee ID: {employee.employee_id_number || 'N/A'}
-                </div>
+        {/* Department, Designation & Joined Date */}
+        <div className="flex justify-between items-center mb-4 p-3 rounded-xl border border-border/40 bg-card/40 gap-2">
+          
+          {/* Left: Dept + Desig */}
+          <div className="flex flex-col gap-3 flex-1 min-w-0">
+            
+            {/* Department */}
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                <Code2 className="w-3.5 h-3.5 text-indigo-400" />
               </div>
-
-              {/* Right Content Area */}
-              <div className="flex-1 space-y-6">
-                
-                {/* Basic Details */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4 text-muted-foreground" />
-                    <h4 className="font-semibold text-sm">Basic Details</h4>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {renderField(<User className="w-3.5 h-3.5" />, 'First Name', personalForm.first_name, isEditingPersonal, 'first_name', personalForm, setPersonalForm)}
-                    {renderField(<User className="w-3.5 h-3.5" />, 'Last Name', personalForm.last_name, isEditingPersonal, 'last_name', personalForm, setPersonalForm)}
-                    {renderField(<CalendarIcon className="w-3.5 h-3.5" />, 'Date of Birth', personalForm.dob, isEditingPersonal, 'dob', personalForm, setPersonalForm, 'date')}
-                    {renderField(<User className="w-3.5 h-3.5" />, 'Gender', personalForm.gender, isEditingPersonal, 'gender', personalForm, setPersonalForm)}
-                  </div>
-                </div>
-
-                {/* Contact Information */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-muted-foreground" />
-                    <h4 className="font-semibold text-sm">Contact Information</h4>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {renderField(<Mail className="w-3.5 h-3.5" />, 'Personal Email', personalForm.personal_email, isEditingPersonal, 'personal_email', personalForm, setPersonalForm)}
-                    {renderField(<Phone className="w-3.5 h-3.5" />, 'Phone Number', personalForm.phone, isEditingPersonal, 'phone', personalForm, setPersonalForm)}
-                  </div>
-                </div>
-
-                {/* Address Information */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                    <h4 className="font-semibold text-sm">Address Information</h4>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div className="md:col-span-2">
-                      {renderField(<MapPin className="w-3.5 h-3.5" />, 'Address', personalForm.address, isEditingPersonal, 'address', personalForm, setPersonalForm)}
-                    </div>
-                    {renderStaticField(<Building2 className="w-3.5 h-3.5" />, 'City', '-')}
-                  </div>
-                </div>
-
-                {/* Emergency Contact */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <ShieldAlert className="w-4 h-4 text-muted-foreground" />
-                    <h4 className="font-semibold text-sm">Emergency Contact</h4>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {renderStaticField(<User className="w-3.5 h-3.5" />, 'Name & Relation', `${ec.name} ${ec.relationship ? `(${ec.relationship})` : ''}`.trim() || '-')}
-                    {renderStaticField(<Phone className="w-3.5 h-3.5" />, 'Phone Number', ec.phone)}
-                    {renderStaticField(<MapPin className="w-3.5 h-3.5" />, 'Address', ec.address)}
-                  </div>
-                </div>
-
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="professional-info" className="m-0 space-y-6">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                  <Briefcase className="w-5 h-5 text-foreground" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-foreground">Professional Information</h3>
-                  <p className="text-xs text-muted-foreground">Work related details and assignments.</p>
-                </div>
-              </div>
-              {isEditingProfessional ? (
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => setIsEditingProfessional(false)}>Cancel</Button>
-                  <Button size="sm" className="bg-foreground text-background" onClick={handleSaveProfessional} disabled={isSavingProfessional}>
-                    {isSavingProfessional ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Save
-                  </Button>
-                </div>
-              ) : (
-                <Button variant="outline" size="sm" className="bg-transparent border-border hover:bg-input h-9 px-4" onClick={() => setIsEditingProfessional(true)}>
-                  <Edit2 className="w-4 h-4 mr-2" /> Edit
-                </Button>
-              )}
-            </div>
-
-            <div className="bg-card border border-border rounded-2xl p-6">
-              <div className="space-y-8">
-                {/* Employment Details */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Briefcase className="w-4 h-4 text-muted-foreground" />
-                    <h4 className="font-semibold text-sm">Employment Details</h4>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {renderField(<Hash className="w-3.5 h-3.5" />, 'Employee ID', professionalForm.employee_id_number, isEditingProfessional, 'employee_id_number', professionalForm, setProfessionalForm)}
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 border-b border-border/50 py-3 last:border-0 last:pb-0">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground w-[180px] shrink-0"><Building2 className="w-3.5 h-3.5" /><span>Department</span></div>
-                      {isEditingProfessional ? (
-                        <Select value={professionalForm.department} onValueChange={v => setProfessionalForm(p => ({ ...p, department: v as string, division: '', designation: '' }))}>
-                          <SelectTrigger className="h-9 bg-transparent border-border flex-1"><SelectValue placeholder="Select Department" /></SelectTrigger>
-                          <SelectContent>{DEPARTMENTS.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
-                        </Select>
-                      ) : <span className="text-sm font-medium break-all">{professionalForm.department || '-'}</span>}
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 border-b border-border/50 py-3 last:border-0 last:pb-0">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground w-[180px] shrink-0"><Building2 className="w-3.5 h-3.5" /><span>Division</span></div>
-                      {isEditingProfessional ? (
-                        <Select value={professionalForm.division} onValueChange={v => setProfessionalForm(p => ({ ...p, division: v as string, designation: '' }))} disabled={!professionalForm.department}>
-                          <SelectTrigger className="h-9 bg-transparent border-border flex-1"><SelectValue placeholder="Select Division" /></SelectTrigger>
-                          <SelectContent>{professionalForm.department && DIVISIONS[professionalForm.department]?.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
-                        </Select>
-                      ) : <span className="text-sm font-medium break-all">{professionalForm.division || '-'}</span>}
-                    </div>
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 border-b border-border/50 py-3 last:border-0 last:pb-0">
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground w-[180px] shrink-0"><Briefcase className="w-3.5 h-3.5" /><span>Designation</span></div>
-                      {isEditingProfessional ? (
-                        <Select value={professionalForm.designation} onValueChange={v => setProfessionalForm(p => ({ ...p, designation: v as string }))} disabled={!professionalForm.division}>
-                          <SelectTrigger className="h-9 bg-transparent border-border flex-1"><SelectValue placeholder="Select Designation" /></SelectTrigger>
-                          <SelectContent>{professionalForm.division && DESIGNATIONS[professionalForm.division]?.map(d => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>)}</SelectContent>
-                        </Select>
-                      ) : <span className="text-sm font-medium break-all">{professionalForm.designation || '-'}</span>}
-                    </div>
-                    {renderField(<Briefcase className="w-3.5 h-3.5" />, 'Employment Type', professionalForm.employment_type, isEditingProfessional, 'employment_type', professionalForm, setProfessionalForm)}
-                    {renderField(<CalendarIcon className="w-3.5 h-3.5" />, 'Date of Joining', professionalForm.joining_date, isEditingProfessional, 'joining_date', professionalForm, setProfessionalForm, 'date')}
-                    {renderField(<User className="w-3.5 h-3.5" />, 'Reporting Manager', professionalForm.reporting_manager, isEditingProfessional, 'reporting_manager', professionalForm, setProfessionalForm)}
-                  </div>
-                </div>
-
-                {/* Work Contact */}
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-muted-foreground" />
-                    <h4 className="font-semibold text-sm">Work Contact</h4>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {renderField(<Mail className="w-3.5 h-3.5" />, 'Work Email', professionalForm.email, isEditingProfessional, 'email', professionalForm, setProfessionalForm)}
-                    {renderStaticField(<MapPin className="w-3.5 h-3.5" />, 'Work Location', 'Satara (Office)')}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="documents" className="m-0 space-y-6">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                  <FileText className="w-5 h-5 text-foreground" />
-                </div>
-                <div>
-                  <h3 className="font-bold text-lg text-foreground">Uploaded Documents</h3>
-                  <p className="text-xs text-muted-foreground">Files and documents related to the employee.</p>
-                </div>
-              </div>
-              <Button variant="outline" size="sm" className="bg-transparent border-border hover:bg-input"><Plus className="w-4 h-4 mr-2" /> Upload</Button>
-            </div>
-
-            <div className="bg-card border border-border rounded-2xl p-6">
-              {(!employee.documents || employee.documents.length === 0) ? (
-                <div className="text-muted-foreground text-sm text-center py-12 border border-dashed border-border rounded-xl bg-background/50">
-                  <FileText className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                  <p className="font-medium text-foreground">No documents uploaded yet</p>
-                  <p className="mt-1 text-xs">Documents added during onboarding or later will appear here.</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {employee.documents.map((doc: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between p-4 border border-border rounded-xl bg-background/50 hover:bg-background transition-colors">
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <div className="w-10 h-10 rounded-lg bg-input flex items-center justify-center shrink-0">
-                          <FileText className="w-5 h-5 text-muted-foreground" />
-                        </div>
-                        <div className="overflow-hidden">
-                          <div className="text-sm font-medium truncate" title={doc.name || (typeof doc === 'string' ? doc : 'Document')}>
-                            {doc.name || (typeof doc === 'string' ? doc : 'Document')}
-                          </div>
-                          {doc.size && <div className="text-xs text-muted-foreground">{(doc.size / 1024).toFixed(1)} KB</div>}
-                        </div>
-                      </div>
-                      <Button variant="ghost" size="icon" className="shrink-0 h-8 w-8" onClick={() => window.open(doc.url || '#', '_blank')}>
-                        <Download className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="onboarding" className="m-0 space-y-6">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center shrink-0">
-                <User className="w-5 h-5 text-foreground" />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg text-foreground">Onboarding Status</h3>
-                <p className="text-xs text-muted-foreground">Progress and important dates.</p>
+              <div className="min-w-0">
+                <div className="text-[10px] text-muted-foreground font-medium mb-0.5">Department</div>
+                <div className="text-xs font-bold text-foreground leading-none truncate">{employee.department || '-'}</div>
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-card border border-border rounded-2xl p-6 flex flex-col items-center justify-center">
-                <div className="font-semibold mb-6">Profile Completion</div>
-                <div className="w-32 h-32 relative flex items-center justify-center mb-4">
-                  <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="10" className="text-input" />
-                    <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="10" strokeDasharray={`${profileCompletion * 2.827} 282.7`} className="text-foreground" strokeLinecap="round" />
-                  </svg>
-                  <div className="absolute font-bold text-3xl text-foreground">{profileCompletion}%</div>
-                </div>
-                <div className="text-center">
-                  <div className="font-bold text-foreground">Profile Complete</div>
-                  <div className="text-xs text-muted-foreground mt-1">All information has been provided.</div>
+            {/* Designation */}
+            <div className="flex items-center gap-2.5 w-full">
+              <div className="w-8 h-8 rounded-lg bg-muted/30 border border-border/40 flex items-center justify-center shrink-0">
+                <Briefcase className="w-3.5 h-3.5 text-muted-foreground" />
+              </div>
+              <div className="min-w-0">
+                <div className="text-[10px] text-muted-foreground font-medium mb-0.5">Designation</div>
+                <div className="text-xs font-bold text-foreground leading-none truncate">{employee.job_title || employee.designation || '-'}</div>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Vertical Divider */}
+          <div className="w-px h-12 bg-border/40 shrink-0" />
+
+          {/* Right: Joined Date */}
+          <div className="shrink-0">
+            <div className="flex flex-col items-center justify-center border border-emerald-500/20 bg-emerald-500/5 rounded-xl px-2.5 py-2.5 text-center min-w-[90px]">
+              <div className="text-[10px] text-muted-foreground font-medium mb-1">Joining Date</div>
+              <div className="text-xs font-bold text-foreground mb-1">{formattedJoined}</div>
+              <div className="w-6 h-6 rounded-md bg-emerald-500/10 flex items-center justify-center">
+                <CalendarDays className="w-3 h-3 text-emerald-400" />
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="bg-card border border-border/40 rounded-2xl p-5 shadow-sm">
+        <div className="flex items-center gap-2 mb-3">
+          <Zap className="w-4 h-4 text-foreground" />
+          <h4 className="font-bold text-sm text-foreground">Quick Actions</h4>
+        </div>
+        <div className="space-y-1.5">
+          <button className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors" onClick={() => setIsEditingPersonal(true)}>
+            <Edit2 className="w-3.5 h-3.5" /> Edit Employee
+          </button>
+          <button className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
+            <Download className="w-3.5 h-3.5" /> Download Profile PDF
+          </button>
+          <button className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-sm bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">
+            <UserX className="w-3.5 h-3.5" /> Deactivate Employee
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="flex flex-col w-full min-w-0">
+      <div className="flex items-center justify-start mb-4">
+        <button onClick={() => router.push('/hr/onboarding')} className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors font-medium">
+          <ChevronLeft className="w-4 h-4" /> Back
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <Tabs defaultValue="personal-info" className="w-full max-w-full min-w-0" style={{ maxWidth: '100%' }}>
+        <div 
+          className="mb-6 w-full max-w-full min-w-0 pb-2 overflow-x-auto scroll-smooth" 
+          style={{ width: '100%', maxWidth: '100%' }}
+        >
+          <TabsList 
+            className="bg-card/40 h-10 p-1 border border-border/20 flex items-center justify-start flex-nowrap rounded-xl w-full"
+          >
+            {[
+              { value: 'personal-info', label: 'Personal Info' },
+              { value: 'professional-info', label: 'Professional Info' },
+              { value: 'documents', label: 'Documents' },
+              { value: 'attendance', label: 'Attendance' },
+              { value: 'leave-and-time-off', label: 'Leave & Time Off' },
+              { value: 'salary-and-hike', label: 'Payroll' },
+              { value: 'onboarding', label: 'Onboarding' },
+              { value: 'performance', label: 'Performance' },
+              { value: 'activity', label: 'Activity' },
+            ].map(tab => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-sm text-muted-foreground hover:text-foreground rounded-lg h-8 px-4 font-medium text-xs transition-all whitespace-nowrap"
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
+
+        {/* ============ PERSONAL INFO TAB ============ */}
+        <TabsContent value="personal-info" className="m-0">
+          <div className="flex flex-col lg:flex-row gap-5">
+            <ProfileCard />
+
+            {/* Right content */}
+            <div className="flex-1 space-y-5 min-w-0">
+              {/* Personal Information */}
+              <div className="bg-card/30 border border-border/30 rounded-2xl p-5">
+                {renderSectionHeader(
+                  <Contact className="w-4 h-4" />,
+                  'Personal Information',
+                  isEditingPersonal,
+                  () => setIsEditingPersonal(true),
+                  () => setIsEditingPersonal(false),
+                  handleSavePersonal,
+                  isSavingPersonal,
+                  'blue'
+                )}
+                <div className="flex items-stretch gap-2.5">
+                  <div className="flex-1 min-w-0">
+                    {renderEditableCard(<User className="w-4 h-4" />, 'First Name', personalForm.first_name, isEditingPersonal, 'first_name', personalForm, setPersonalForm, 'text', 'blue')}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {renderEditableCard(<User className="w-4 h-4" />, 'Last Name', personalForm.last_name, isEditingPersonal, 'last_name', personalForm, setPersonalForm, 'text', 'blue')}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {renderEditableCard(<CalendarIcon className="w-4 h-4" />, 'Date of Birth', personalForm.dob, isEditingPersonal, 'dob', personalForm, setPersonalForm, 'date', 'blue')}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {renderEditableCard(<Users className="w-4 h-4" />, 'Gender', personalForm.gender, isEditingPersonal, 'gender', personalForm, setPersonalForm, 'text', 'blue')}
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-card border border-border rounded-2xl p-6">
-                <div className="font-semibold mb-6 flex items-center gap-2">
-                  <CalendarDays className="w-5 h-5" />
-                  Important Dates
+              {/* Contact Information */}
+              <div className="bg-card/30 border border-border/30 rounded-2xl p-5">
+                {renderSectionHeader(
+                  <Send className="w-4 h-4" />,
+                  'Contact Information',
+                  isEditingPersonal,
+                  () => setIsEditingPersonal(true),
+                  () => setIsEditingPersonal(false),
+                  handleSavePersonal,
+                  isSavingPersonal,
+                  'emerald'
+                )}
+                <div className="flex items-stretch gap-2.5">
+                  <div className="w-[55%] min-w-0">
+                    {renderEditableCard(<Mail className="w-4 h-4" />, 'Personal Email', personalForm.personal_email, isEditingPersonal, 'personal_email', personalForm, setPersonalForm, 'email', 'emerald')}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {renderEditableCard(<Phone className="w-4 h-4" />, 'Phone Number', personalForm.phone, isEditingPersonal, 'phone', personalForm, setPersonalForm, 'tel', 'emerald')}
+                  </div>
                 </div>
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/50">
-                    <div className="text-sm text-muted-foreground">Date of Joining</div>
-                    <div className="text-sm font-medium">{formattedJoined}</div>
+              </div>
+
+              {/* Address Information */}
+              <div className="bg-card/30 border border-border/30 rounded-2xl p-5">
+                {renderSectionHeader(
+                  <Map className="w-4 h-4" />,
+                  'Address Information',
+                  isEditingPersonal,
+                  () => setIsEditingPersonal(true),
+                  () => setIsEditingPersonal(false),
+                  handleSavePersonal,
+                  isSavingPersonal,
+                  'amber'
+                )}
+                <div className="flex items-stretch gap-2.5">
+                  <div className="w-[55%] min-w-0">
+                    {renderEditableCard(<MapPin className="w-4 h-4" />, 'Address', personalForm.address, isEditingPersonal, 'address', personalForm, setPersonalForm, 'text', 'amber')}
                   </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/50">
-                    <div className="text-sm text-muted-foreground">Probation End Date</div>
-                    <div className="text-sm font-medium">31 Mar 2027</div>
+                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border/40 bg-card/60 hover:bg-card transition-colors flex-1">
+                    <div className="w-5 h-5 rounded bg-amber-500/10 text-amber-500 dark:text-amber-400 flex items-center justify-center shrink-0">
+                      <Building2 className="w-3 h-3" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider leading-none">City</span>
+                      <span className="text-xs font-semibold text-foreground">{employee.city || '-'}</span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-background/50">
-                    <div className="text-sm text-muted-foreground">Work Anniversary</div>
-                    <div className="text-sm font-medium">01 Oct 2027</div>
+                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border/40 bg-card/60 hover:bg-card transition-colors flex-1">
+                    <div className="w-5 h-5 rounded bg-amber-500/10 text-amber-500 dark:text-amber-400 flex items-center justify-center shrink-0">
+                      <Hash className="w-3 h-3" />
+                    </div>
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider leading-none">PIN Code</span>
+                      <span className="text-xs font-semibold text-foreground">{employee.pincode || '-'}</span>
+                    </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Emergency Contact */}
+              <div className="bg-card/30 border border-border/30 rounded-2xl p-5">
+                {renderSectionHeader(
+                  <ShieldAlert className="w-4 h-4" />,
+                  'Emergency Contact',
+                  isEditingPersonal,
+                  () => setIsEditingPersonal(true),
+                  () => setIsEditingPersonal(false),
+                  handleSavePersonal,
+                  isSavingPersonal,
+                  'rose'
+                )}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {renderInfoCard(<User className="w-4 h-4" />, 'Contact Name', ec.name, 'rose')}
+                  {renderInfoCard(<Users className="w-4 h-4" />, 'Relationship', ec.relationship, 'rose')}
+                  {renderInfoCard(<Phone className="w-4 h-4" />, 'Phone Number', ec.phone, 'rose')}
                 </div>
               </div>
             </div>
-          </TabsContent>
+          </div>
+        </TabsContent>
 
-          <TabsContent value="salary-and-hike" className="m-0">
-            <SalaryAndHikeTab employee={employee} />
-          </TabsContent>
-          
-          <TabsContent value="attendance" className="m-0">
-             <div className="p-8 text-center text-muted-foreground border border-dashed rounded-xl">Attendance module pending</div>
-          </TabsContent>
-          
-          <TabsContent value="leave-and-time-off" className="m-0">
-             <div className="p-8 text-center text-muted-foreground border border-dashed rounded-xl">Leave & Time Off module pending</div>
-          </TabsContent>
-          
-          <TabsContent value="performance" className="m-0">
-             <div className="p-8 text-center text-muted-foreground border border-dashed rounded-xl">Performance module pending</div>
-          </TabsContent>
-          
-          <TabsContent value="activity" className="m-0">
-             <div className="p-8 text-center text-muted-foreground border border-dashed rounded-xl">Activity module pending</div>
-          </TabsContent>
+        <TabsContent value="professional-info" className="m-0 space-y-5">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 text-purple-500 dark:text-purple-400 flex items-center justify-center shrink-0">
+                <Briefcase className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-foreground">Professional Information</h3>
+                <p className="text-xs text-muted-foreground">Work related details and assignments.</p>
+              </div>
+            </div>
+            {isEditingProfessional ? (
+              <div className="flex gap-2">
+                <Button variant="ghost" size="sm" onClick={() => setIsEditingProfessional(false)}>Cancel</Button>
+                <Button size="sm" className="bg-foreground text-background" onClick={handleSaveProfessional} disabled={isSavingProfessional}>
+                  {isSavingProfessional ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Save
+                </Button>
+              </div>
+            ) : (
+              <Button variant="outline" size="sm" className="bg-transparent border-border hover:bg-muted/60 h-8 px-3 text-xs gap-1.5" onClick={() => setIsEditingProfessional(true)}>
+                <Edit2 className="w-3 h-3" /> Edit
+              </Button>
+            )}
+          </div>
 
-        </Tabs>
-      </div>
+          <div className="bg-card/30 border border-border/30 rounded-2xl p-5">
+            <div className="space-y-6">
+              {/* Employment Details */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Briefcase className="w-4 h-4 text-purple-500 dark:text-purple-400" />
+                  <h4 className="font-semibold text-sm">Employment Details</h4>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {renderEditableCard(<Hash className="w-4 h-4 text-muted-foreground" />, 'Employee ID', professionalForm.employee_id_number, isEditingProfessional, 'employee_id_number', professionalForm, setProfessionalForm, 'text', 'purple')}
+                  <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border/40 bg-card/60 hover:bg-card transition-colors">
+                    <div className="w-7 h-7 rounded-md bg-purple-500/10 text-purple-500 dark:text-purple-400 flex items-center justify-center shrink-0">
+                      <Building2 className="w-4 h-4" />
+                    </div>
+                    <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                      <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider leading-none mb-0.5">Department</span>
+                      {isEditingProfessional ? (
+                        <Select value={professionalForm.department} onValueChange={v => setProfessionalForm(p => ({ ...p, department: v as string, division: '', designation: '' }))}>
+                          <SelectTrigger className="h-8 bg-transparent border-border"><SelectValue placeholder="Select Department" /></SelectTrigger>
+                          <SelectContent>{DEPARTMENTS.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                      ) : <span className="text-sm font-semibold text-foreground">{professionalForm.department || '-'}</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border/40 bg-card/60 hover:bg-card transition-colors">
+                    <div className="w-7 h-7 rounded-md bg-purple-500/10 text-purple-500 dark:text-purple-400 flex items-center justify-center shrink-0">
+                      <Building2 className="w-4 h-4" />
+                    </div>
+                    <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                      <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider leading-none mb-0.5">Division</span>
+                      {isEditingProfessional ? (
+                        <Select value={professionalForm.division} onValueChange={v => setProfessionalForm(p => ({ ...p, division: v as string, designation: '' }))} disabled={!professionalForm.department}>
+                          <SelectTrigger className="h-8 bg-transparent border-border"><SelectValue placeholder="Select Division" /></SelectTrigger>
+                          <SelectContent>{professionalForm.department && DIVISIONS[professionalForm.department]?.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                      ) : <span className="text-sm font-semibold text-foreground">{professionalForm.division || '-'}</span>}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border/40 bg-card/60 hover:bg-card transition-colors">
+                    <div className="w-7 h-7 rounded-md bg-purple-500/10 text-purple-500 dark:text-purple-400 flex items-center justify-center shrink-0">
+                      <Briefcase className="w-4 h-4" />
+                    </div>
+                    <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                      <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider leading-none mb-0.5">Designation</span>
+                      {isEditingProfessional ? (
+                        <Select value={professionalForm.designation} onValueChange={v => setProfessionalForm(p => ({ ...p, designation: v as string }))} disabled={!professionalForm.division}>
+                          <SelectTrigger className="h-8 bg-transparent border-border"><SelectValue placeholder="Select Designation" /></SelectTrigger>
+                          <SelectContent>{professionalForm.division && DESIGNATIONS[professionalForm.division]?.map(d => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                      ) : <span className="text-sm font-semibold text-foreground">{professionalForm.designation || '-'}</span>}
+                    </div>
+                  </div>
+                  {renderEditableCard(<Briefcase className="w-4 h-4" />, 'Employment Type', professionalForm.employment_type, isEditingProfessional, 'employment_type', professionalForm, setProfessionalForm, 'text', 'purple')}
+                  {renderEditableCard(<CalendarIcon className="w-4 h-4" />, 'Date of Joining', professionalForm.joining_date, isEditingProfessional, 'joining_date', professionalForm, setProfessionalForm, 'date', 'purple')}
+                  {professionalForm.employment_type === 'Intern' 
+                    ? renderEditableCard(<Banknote className="w-4 h-4" />, 'Stipend', professionalForm.stipend ? `₹${professionalForm.stipend}` : '-', isEditingProfessional, 'stipend', professionalForm, setProfessionalForm, 'text', 'emerald')
+                    : renderEditableCard(<Banknote className="w-4 h-4" />, 'Salary', professionalForm.salary ? `₹${professionalForm.salary}` : '-', isEditingProfessional, 'salary', professionalForm, setProfessionalForm, 'text', 'emerald')
+                  }
+                </div>
+              </div>
+
+              {/* Work Contact */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Mail className="w-4 h-4 text-cyan-500 dark:text-cyan-400" />
+                  <h4 className="font-semibold text-sm">Work Contact</h4>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {renderEditableCard(<Mail className="w-4 h-4" />, 'Work Email', professionalForm.email, isEditingProfessional, 'email', professionalForm, setProfessionalForm, 'email', 'cyan')}
+                  {renderInfoCard(<MapPin className="w-4 h-4" />, 'Work Location', 'Satara (Office)', 'amber')}
+                </div>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ============ DOCUMENTS TAB ============ */}
+        <TabsContent value="documents" className="m-0 space-y-5">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-blue-500/10 text-blue-500 dark:text-blue-400 flex items-center justify-center shrink-0">
+                <FileText className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-foreground">Uploaded Documents</h3>
+                <p className="text-xs text-muted-foreground">Files and documents related to the employee.</p>
+              </div>
+            </div>
+            <div>
+              <input 
+                type="file" 
+                ref={docInputRef} 
+                className="hidden" 
+                onChange={handleDocumentUpload} 
+              />
+              <Button 
+                variant="default" 
+                size="sm" 
+                className="h-8 px-4 text-xs font-semibold gap-1.5 shadow-sm"
+                onClick={() => docInputRef.current?.click()}
+                disabled={isUploadingDoc}
+              >
+                {isUploadingDoc ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />} 
+                {isUploadingDoc ? 'Uploading...' : 'Upload'}
+              </Button>
+            </div>
+          </div>
+
+          <div className="bg-card/30 border border-border/30 rounded-2xl p-5">
+            {(!employee.documents || employee.documents.length === 0) ? (
+              <div className="text-muted-foreground text-sm text-center py-12 border border-dashed border-border/40 rounded-xl bg-background/30">
+                <FileText className="w-12 h-12 mx-auto mb-4 opacity-20 text-blue-500" />
+                <p className="font-medium text-foreground">No documents uploaded yet</p>
+                <p className="mt-1 text-xs">Documents added during onboarding or later will appear here.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {employee.documents.map((doc: any, idx: number) => (
+                  <div key={idx} className="flex items-center justify-between p-3.5 border border-border/40 rounded-xl bg-card/60 hover:bg-card transition-colors">
+                    <div className="flex items-center gap-3 overflow-hidden">
+                      <div className="w-9 h-9 rounded-lg bg-blue-500/10 text-blue-500 dark:text-blue-400 flex items-center justify-center shrink-0">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div className="overflow-hidden">
+                        <div className="text-sm font-medium truncate" title={doc.name || (typeof doc === 'string' ? doc : 'Document')}>
+                          {doc.name || (typeof doc === 'string' ? doc : 'Document')}
+                        </div>
+                        {doc.size && <div className="text-xs text-muted-foreground">{(doc.size / 1024).toFixed(1)} KB</div>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => window.open(doc.url || '#', '_blank')} title="View Document">
+                        <Eye className="w-4 h-4" />
+                      </Button>
+                      <ConfirmModal
+                        title="Delete Document"
+                        description="Are you sure you want to delete this document? This action cannot be undone."
+                        onConfirm={() => handleDeleteDocument(idx)}
+                        confirmText="Delete"
+                      >
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10" title="Delete Document">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </ConfirmModal>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* ============ ONBOARDING TAB ============ */}
+        <TabsContent value="onboarding" className="m-0 space-y-5">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-10 h-10 rounded-xl bg-muted/60 flex items-center justify-center shrink-0">
+              <User className="w-5 h-5 text-foreground" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg text-foreground">Onboarding Status</h3>
+              <p className="text-xs text-muted-foreground">Progress and important dates.</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="bg-card/30 border border-border/30 rounded-2xl p-6 flex flex-col items-center justify-center">
+              <div className="font-semibold mb-6">Profile Completion</div>
+              <div className="w-32 h-32 relative flex items-center justify-center mb-4">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="10" className="text-input" />
+                  <circle cx="50" cy="50" r="45" fill="none" stroke="currentColor" strokeWidth="10" strokeDasharray={`${profileCompletion * 2.827} 282.7`} className="text-foreground" strokeLinecap="round" />
+                </svg>
+                <div className="absolute font-bold text-3xl text-foreground">{profileCompletion}%</div>
+              </div>
+              <div className="text-center">
+                <div className="font-bold text-foreground">Profile Complete</div>
+                <div className="text-xs text-muted-foreground mt-1">All information has been provided.</div>
+              </div>
+            </div>
+
+            <div className="bg-card/30 border border-border/30 rounded-2xl p-6">
+              <div className="font-semibold mb-6 flex items-center gap-2">
+                <CalendarDays className="w-5 h-5" />
+                Important Dates
+              </div>
+              <div className="space-y-3">
+                <div className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-card/60">
+                  <div className="text-sm text-muted-foreground">Date of Joining</div>
+                  <div className="text-sm font-semibold">{formattedJoined}</div>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-card/60">
+                  <div className="text-sm text-muted-foreground">Probation End Date</div>
+                  <div className="text-sm font-semibold">{employee.probation_end_date ? new Date(employee.probation_end_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</div>
+                </div>
+                <div className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-card/60">
+                  <div className="text-sm text-muted-foreground">Employment Type</div>
+                  <div className="text-sm font-semibold">{employee.employment_type || '-'}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* ============ SALARY & HIKE TAB ============ */}
+        <TabsContent value="salary-and-hike" className="m-0">
+          <SalaryAndHikeTab employee={employee} />
+        </TabsContent>
+        
+        {/* ============ PLACEHOLDER TABS ============ */}
+        <TabsContent value="attendance" className="m-0">
+          <div className="p-12 text-center text-muted-foreground border border-dashed border-border/40 rounded-2xl bg-card/20">
+            <CalendarDays className="w-12 h-12 mx-auto mb-4 opacity-20 text-emerald-500" />
+            <p className="font-medium text-foreground">Attendance module pending</p>
+            <p className="mt-1 text-xs text-muted-foreground">This section will show attendance records.</p>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="leave-and-time-off" className="m-0">
+          <div className="p-12 text-center text-muted-foreground border border-dashed border-border/40 rounded-2xl bg-card/20">
+            <CalendarIcon className="w-12 h-12 mx-auto mb-4 opacity-20 text-rose-500" />
+            <p className="font-medium text-foreground">Leave & Time Off module pending</p>
+            <p className="mt-1 text-xs text-muted-foreground">This section will show leave history.</p>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="performance" className="m-0">
+          <div className="p-12 text-center text-muted-foreground border border-dashed border-border/40 rounded-2xl bg-card/20">
+            <Activity className="w-12 h-12 mx-auto mb-4 opacity-20 text-amber-500" />
+            <p className="font-medium text-foreground">Performance module pending</p>
+            <p className="mt-1 text-xs text-muted-foreground">This section will show performance reviews.</p>
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="activity" className="m-0">
+          <div className="p-12 text-center text-muted-foreground border border-dashed border-border/40 rounded-2xl bg-card/20">
+            <Globe className="w-12 h-12 mx-auto mb-4 opacity-20 text-purple-500" />
+            <p className="font-medium text-foreground">Activity Log pending</p>
+            <p className="mt-1 text-xs text-muted-foreground">This section will show employee activity timeline.</p>
+          </div>
+        </TabsContent>
+
+      </Tabs>
     </div>
   )
 }

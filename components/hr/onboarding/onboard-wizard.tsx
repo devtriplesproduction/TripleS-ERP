@@ -5,7 +5,7 @@ import { useForm, Controller, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import {
   User, Loader2, Camera, FileText, Trash2, CalendarIcon, CheckCircle2, Circle, Eye,
-  Save, X, MapPin, Phone, Mail, Lock, Copy
+  Save, X, MapPin, Phone, Mail, Lock, Copy, Edit2
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DatePicker } from "@/components/ui/date-picker"
+import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { format } from "date-fns"
 import { useRouter } from "next/navigation"
 import { jsPDF } from "jspdf"
@@ -137,6 +138,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+  const [highestStep, setHighestStep] = useState(1)
   const [generatedCredentials, setGeneratedCredentials] = useState<{ employee_id: string; temp_password: string; work_email: string } | null>(null)
 
   const [selectedAvatar, setSelectedAvatar] = useState<string>("")
@@ -265,7 +267,10 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
     else if (step === 3) { setStep(4); return }
 
     const isValid = await trigger(fields)
-    if (isValid) setStep(step + 1)
+    if (isValid) {
+      setStep(step + 1)
+      setHighestStep(prev => Math.max(prev, step + 1))
+    }
     else {
       const vals = getValues()
       if (step === 1 && !/^\+91 ?\d{10}$/.test(vals.phone_number || "")) {
@@ -522,9 +527,12 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
           <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Create Employee Profile</h1>
           <p className="text-sm text-muted-foreground mt-1">Add a new employee to the organization.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-4 mr-2">
           <Button onClick={saveAsDraft} className="bg-foreground text-background hover:bg-foreground/90 h-8 text-xs">
             <Save className="w-4 h-4 mr-2" /> Save as Draft
+          </Button>
+          <Button variant="ghost" size="icon" onClick={() => onClose ? onClose() : router.push('/hr/onboarding')} className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full">
+            <X className="w-5 h-5" />
           </Button>
         </div>
       </div>
@@ -593,7 +601,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         </div>
 
                         {/* Fields */}
-                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <div className="space-y-1.5">
                             <label className="text-xs font-bold text-foreground">First Name <span className="text-destructive">*</span></label>
                             <Input {...register("first_name")} placeholder="Enter first name" />
@@ -651,12 +659,12 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                     </div>
 
                     <div className="pt-6 mt-4 border-t border-border">
-                      <div className="flex items-center gap-2 mb-4">
+                      <div className="flex items-center gap-2 mb-6">
                         <MapPin className="w-4 h-4 text-foreground" />
                         <h3 className="text-base font-bold text-foreground">Address Information</h3>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                         <div className="space-y-1.5 sm:col-span-2">
                           <label className="text-xs font-bold text-foreground">Address Line 1</label>
                           <div className="relative">
@@ -678,12 +686,12 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                     </div>
 
                     <div className="pt-6 mt-4 border-t border-border">
-                      <div className="flex items-center gap-2 mb-4">
+                      <div className="flex items-center gap-2 mb-6">
                         <Phone className="w-4 h-4 text-foreground" />
                         <h3 className="text-base font-bold text-foreground">Emergency Contact</h3>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div className="space-y-1.5">
                           <label className="text-xs font-bold text-foreground">Contact Name</label>
                           <Input {...register("emergency_name")} placeholder="Enter contact name" />
@@ -707,13 +715,13 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                 {/* Step 2: Professional */}
                 {step === 2 && (
                   <div className="space-y-3">
-                    <div className="flex items-start gap-2 mb-3">
+                    <div className="flex items-start gap-2 mb-6">
                       <User className="w-4 h-4 text-foreground" />
                       <div>
                         <h3 className="text-base font-bold text-foreground">Professional Information</h3>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div className="space-y-2">
                         <label className="text-xs font-medium text-foreground">Department <span className="text-destructive">*</span></label>
                         <Controller name="department" control={control} render={({ field }) => (
@@ -787,24 +795,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         )} />
                       </div>
 
-                      <div className="space-y-2">
-                        <label className="text-xs font-medium text-foreground">Reporting Manager</label>
-                        <Input {...register("reporting_manager")} placeholder="Enter manager name" />
-                      </div>
 
-                      <div className="space-y-2">
-                        <label className="text-xs font-medium text-foreground">Employment Status <span className="text-destructive">*</span></label>
-                        <Controller name="employment_status" control={control} render={({ field }) => (
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <SelectTrigger className="w-full"><SelectValue placeholder="Select Status" /></SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Active">Active</SelectItem>
-                              {watchedEmploymentType === 'Full Time' && <SelectItem value="Probation">Probation</SelectItem>}
-                              <SelectItem value="Inactive">Inactive</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )} />
-                      </div>
 
                       <div className="space-y-2">
                         <label className="text-xs font-medium text-foreground">Role Assignment</label>
@@ -890,18 +881,6 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         </div>
                       )}
 
-                      {watchedEmploymentStatus === 'Probation' && (
-                        <div className="space-y-2 col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-5 p-4 rounded-md bg-muted border border-border">
-                          <div className="space-y-2">
-                            <label className="text-xs font-medium text-foreground">Probation Period</label>
-                            <Input value="3 Months" disabled className="bg-background opacity-70" />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-xs font-medium text-foreground">Probation End Date</label>
-                            <Input value={watchedProbationEndDate ? format(new Date(watchedProbationEndDate as string), "dd MMM yyyy") : ""} disabled className="bg-background opacity-70" />
-                          </div>
-                        </div>
-                      )}
 
                       <input type="hidden" {...register("basic_salary")} />
                     </div>
@@ -919,7 +898,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       <p className="text-sm font-medium text-foreground">Click to upload documents</p>
                       <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, PNG, JPG up to 10MB</p>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {uploadedFiles.map(f => (
                         <div key={f.id} className="p-3 border border-border rounded-lg flex justify-between items-center bg-card">
                           <div className="flex items-center gap-3 overflow-hidden">
@@ -940,75 +919,90 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
 
                 {/* Step 4: Review */}
                 {step === 4 && (
-                  <div id="review-section" className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar bg-background">
+                  <div id="review-section" className="space-y-4 flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar">
                     {/* Show generated credentials after successful creation */}
-                    {generatedCredentials ? (
-                      <div className="flex flex-col items-center justify-center p-8 bg-card border border-border rounded-xl max-w-md mx-auto my-6 shadow-2xl relative overflow-hidden">
-                        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-foreground/20 via-foreground to-foreground/20"></div>
-                        <div className="w-14 h-14 bg-foreground rounded-full flex items-center justify-center mb-6 shadow-lg">
-                          <User className="w-7 h-7 text-background" />
-                        </div>
-                        <h2 className="text-2xl font-black text-foreground mb-1 tracking-tight">TripleS ERP</h2>
-                        <p className="text-sm text-muted-foreground mb-8">Employee account created successfully</p>
-                        
-                        <div className="w-full space-y-5 text-left">
-                          <div className="space-y-1.5">
-                            <label className="text-sm font-bold text-foreground">Work Email</label>
-                            <div className="relative group">
-                              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                              <Input readOnly value={generatedCredentials.work_email} className="pl-9 bg-muted/30 font-medium h-11 border-border/60 hover:border-border transition-colors cursor-default focus-visible:ring-0" />
+                    {generatedCredentials && (
+                      <Dialog open={true}>
+                        <DialogContent showCloseButton={false} className="sm:max-w-[360px] p-0 overflow-hidden border-none bg-transparent shadow-none">
+                          <div className="flex flex-col items-center justify-center p-6 bg-card border border-border rounded-xl w-full shadow-2xl relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-foreground/20 via-foreground to-foreground/20"></div>
+
+                            <div className="w-24 flex items-center justify-center -mt-2 -mb-2">
+                              <Image src="/logo.png" alt="Logo" width={96} height={96} className="w-full h-auto object-contain scale-110" />
                             </div>
-                          </div>
-                          
-                          <div className="space-y-1.5">
-                            <label className="text-sm font-bold text-foreground">Password</label>
-                            <div className="relative group">
-                              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                              <Input readOnly value={generatedCredentials.temp_password} className="pl-9 pr-10 bg-muted/30 font-mono h-11 border-border/60 hover:border-border transition-colors cursor-default focus-visible:ring-0" type="text" />
-                              <div className="absolute right-3 top-1/2 -translate-y-1/2 cursor-pointer p-1 rounded-md hover:bg-muted" onClick={() => {
-                                navigator.clipboard.writeText(generatedCredentials.temp_password);
-                                toast({ title: "Password Copied", description: "Temporary password copied to clipboard." });
-                              }}>
-                                <Copy className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors" />
+
+                            <h2 className="text-xl font-black text-foreground mb-1 tracking-tight">TripleS ERP</h2>
+                            <p className="text-xs text-muted-foreground mb-6 text-center leading-tight">Employee account created<br />successfully</p>
+
+                            <div className="w-full space-y-4 text-left">
+                              <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-foreground">Work Email</label>
+                                <div className="relative group">
+                                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                                  <Input readOnly value={generatedCredentials.work_email} className="pl-9 bg-muted/30 font-medium h-9 text-xs border-border/60 hover:border-border transition-colors cursor-default focus-visible:ring-0" />
+                                </div>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-foreground">Password</label>
+                                <div className="relative group">
+                                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                                  <Input readOnly value={generatedCredentials.temp_password} className="pl-9 pr-10 bg-muted/30 font-mono h-9 text-xs border-border/60 hover:border-border transition-colors cursor-default focus-visible:ring-0" type="text" />
+                                  <div className="absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-1.5 rounded-md hover:bg-muted" onClick={() => {
+                                    navigator.clipboard.writeText(generatedCredentials.temp_password);
+                                    toast({ title: "Password Copied", description: "Temporary password copied to clipboard." });
+                                  }}>
+                                    <Copy className="w-3.5 h-3.5 text-muted-foreground hover:text-foreground transition-colors" />
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <label className="text-xs font-bold text-foreground">Employee ID</label>
+                                <div className="relative group">
+                                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
+                                  <Input readOnly value={generatedCredentials.employee_id} className="pl-9 bg-muted/30 font-mono h-9 text-xs border-border/60 hover:border-border transition-colors cursor-default focus-visible:ring-0" />
+                                </div>
+                              </div>
+
+                              <div className="pt-2 flex flex-col gap-2">
+                                <Button type="button" onClick={() => {
+                                  navigator.clipboard.writeText(`Email: ${generatedCredentials.work_email}\nPassword: ${generatedCredentials.temp_password}\nEmployee ID: ${generatedCredentials.employee_id}`);
+                                  toast({ title: "Credentials Copied!", description: "All login details copied to clipboard." });
+                                }} className="w-full bg-foreground text-background hover:bg-foreground/90 font-bold h-9 text-xs shadow-md transition-all active:scale-[0.98]">
+                                  <Copy className="w-3.5 h-3.5 mr-2" /> Copy Login Details
+                                </Button>
+
+                                <Button type="button" onClick={() => {
+                                  if (onClose) onClose()
+                                  else router.push('/hr/onboarding')
+                                }} className="w-full bg-muted text-foreground hover:bg-muted/80 font-bold h-9 text-xs transition-all active:scale-[0.98]">
+                                  Finish & Close
+                                </Button>
                               </div>
                             </div>
                           </div>
-                          
-                          <div className="space-y-1.5">
-                            <label className="text-sm font-bold text-foreground">Employee ID</label>
-                            <div className="relative group">
-                              <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
-                              <Input readOnly value={generatedCredentials.employee_id} className="pl-9 bg-muted/30 font-mono h-11 border-border/60 hover:border-border transition-colors cursor-default focus-visible:ring-0" />
-                            </div>
-                          </div>
-                          
-                          <Button type="button" onClick={() => {
-                            navigator.clipboard.writeText(`Email: ${generatedCredentials.work_email}\nPassword: ${generatedCredentials.temp_password}\nEmployee ID: ${generatedCredentials.employee_id}`);
-                            toast({ title: "Credentials Copied!", description: "All login details copied to clipboard." });
-                          }} className="w-full mt-8 bg-foreground text-background hover:bg-foreground/90 font-bold h-11 text-sm shadow-md transition-all active:scale-[0.98]">
-                            <Copy className="w-4 h-4 mr-2" /> Copy Login Details
-                          </Button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="bg-muted/50 rounded-lg p-3 space-y-3 border border-border">
-                        <div className="flex items-center gap-2 mb-1">
-                          <User className="w-5 h-5 text-foreground" />
-                          <h4 className="text-lg font-bold text-foreground">Account Information</h4>
-                        </div>
-                        <p className="text-xs text-muted-foreground">Employee ID and password will be auto-generated upon creation.</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Employee ID</label><div className="text-sm font-medium text-muted-foreground">Auto-generated</div></div>
-                          <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Work Email</label><div className="text-sm font-medium truncate" title={watchedEmail}>{watchedEmail}</div></div>
-                          <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Password</label><div className="text-sm font-medium text-muted-foreground">Auto-generated</div></div>
-                        </div>
-                      </div>
+                        </DialogContent>
+                      </Dialog>
                     )}
+
+                    <div className="bg-muted/50 rounded-lg p-3 space-y-3 border border-border">
+                      <div className="flex items-center gap-2 mb-1">
+                        <User className="w-5 h-5 text-foreground" />
+                        <h4 className="text-lg font-bold text-foreground">Account Information</h4>
+                      </div>
+                      <p className="text-xs text-muted-foreground">Employee ID and password will be auto-generated upon creation.</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Employee ID</label><div className="text-sm font-medium text-muted-foreground">Auto-generated</div></div>
+                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Work Email</label><div className="text-sm font-medium truncate" title={watchedEmail}>{watchedEmail}</div></div>
+                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Password</label><div className="text-sm font-medium text-muted-foreground">Auto-generated</div></div>
+                      </div>
+                    </div>
 
                     <div className="space-y-3">
                       <div className="flex items-center justify-between border-b border-border pb-2 pt-2">
                         <h3 className="text-lg font-bold text-foreground">Personal Information</h3>
-                        <Button variant="ghost" size="sm" onClick={() => setStep(1)} className="h-7 text-xs">Edit</Button>
+                        {!generatedCredentials && <Button variant="outline" size="sm" onClick={() => setStep(1)} className="h-8 text-xs font-semibold px-3 rounded-md shadow-sm"><Edit2 className="w-3.5 h-3.5 mr-1.5" /> Edit</Button>}
                       </div>
 
                       {selectedAvatar && (
@@ -1032,27 +1026,28 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         <div className="space-y-1 col-span-2 sm:col-span-4"><label className="text-xs uppercase font-bold text-muted-foreground">Address</label><div className="text-sm font-medium">{getValues("address") || "-"}</div></div>
                       </div>
 
-                      <div className="mt-4 bg-muted/30 p-3 rounded-lg border border-border">
-                        <h4 className="text-sm font-bold mb-3">Emergency Contact</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                          <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Name</label><div className="text-sm font-medium">{getValues("emergency_name") || "-"}</div></div>
-                          <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Relationship</label><div className="text-sm font-medium">{getValues("emergency_relationship") || "-"}</div></div>
-                          <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Phone</label><div className="text-sm font-medium">{getValues("emergency_phone") || "-"}</div></div>
+                      {(getValues("emergency_name") || getValues("emergency_relationship") || getValues("emergency_phone")) && (
+                        <div className="mt-4 bg-muted/30 p-3 rounded-lg border border-border">
+                          <h4 className="text-sm font-bold mb-3">Emergency Contact</h4>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                            <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Name</label><div className="text-sm font-medium">{getValues("emergency_name") || "-"}</div></div>
+                            <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Relationship</label><div className="text-sm font-medium">{getValues("emergency_relationship") || "-"}</div></div>
+                            <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Phone</label><div className="text-sm font-medium">{getValues("emergency_phone") || "-"}</div></div>
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
 
                     <div className="space-y-3">
                       <div className="flex items-center justify-between border-b border-border pb-2 pt-2">
                         <h3 className="text-lg font-bold text-foreground">Professional Information</h3>
-                        <Button variant="ghost" size="sm" onClick={() => setStep(2)} className="h-7 text-xs">Edit</Button>
+                        {!generatedCredentials && <Button variant="outline" size="sm" onClick={() => setStep(2)} className="h-8 text-xs font-semibold px-3 rounded-md shadow-sm"><Edit2 className="w-3.5 h-3.5 mr-1.5" /> Edit</Button>}
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Department</label><div className="text-sm font-medium">{DEPARTMENTS.find(d => d.id === getValues("department"))?.name || getValues("department")}</div></div>
                         <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Division</label><div className="text-sm font-medium">{getValues("division") || "-"}</div></div>
                         <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Designation</label><div className="text-sm font-medium">{getValues("designation") || "-"}</div></div>
                         <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Employment Type</label><div className="text-sm font-medium">{getValues("employment_type") || "-"}</div></div>
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Status</label><div className="text-sm font-medium">{getValues("employment_status") || "-"}</div></div>
                         <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Role</label><div className="text-sm font-medium">{getValues("role") || "-"}</div></div>
                         {getValues("employment_type") !== 'Intern' && (
                           <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">HOD Status</label><div className="text-sm font-medium">{getValues("is_hod") ? "True" : "False"}</div></div>
@@ -1061,7 +1056,6 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         {getValues("employment_type") !== 'Intern' && (
                           <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Experience</label><div className="text-sm font-medium">{formatExperience(getValues("experience_type"), getValues("experience_years"), getValues("experience_months"))}</div></div>
                         )}
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Reporting Manager</label><div className="text-sm font-medium">{getValues("reporting_manager") || "-"}</div></div>
                         {getValues("employment_type") === 'Intern' ? (
                           <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Stipend</label><div className="text-sm font-medium">₹ {getValues("stipend")?.toLocaleString() || "-"}</div></div>
                         ) : (
@@ -1070,22 +1064,15 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                             <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Basic Salary</label><div className="text-sm font-medium">₹ {getValues("basic_salary")?.toLocaleString() || "-"}</div></div>
                           </>
                         )}
-                        {getValues('employment_status') === 'Probation' && (
-                          <>
-                            <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Probation Period</label><div className="text-sm font-medium">{getValues("probation_period")}</div></div>
-                            <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Probation Start</label><div className="text-sm font-medium">{getValues("probation_start_date") ? format(new Date(getValues("probation_start_date") as string), "dd MMM yyyy") : "-"}</div></div>
-                            <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Probation End</label><div className="text-sm font-medium">{getValues("probation_end_date") ? format(new Date(getValues("probation_end_date") as string), "dd MMM yyyy") : "-"}</div></div>
-                          </>
-                        )}
                       </div>
                     </div>
 
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between border-b border-border pb-2 pt-2">
-                        <h3 className="text-lg font-bold text-foreground">Documents ({uploadedFiles.length})</h3>
-                        <Button variant="ghost" size="sm" onClick={() => setStep(3)} className="h-7 text-xs">Edit</Button>
-                      </div>
-                      {uploadedFiles.length > 0 ? (
+                    {uploadedFiles.length > 0 && (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between border-b border-border pb-2 pt-2">
+                          <h3 className="text-lg font-bold text-foreground">Documents ({uploadedFiles.length})</h3>
+                          {!generatedCredentials && <Button variant="outline" size="sm" onClick={() => setStep(3)} className="h-8 text-xs font-semibold px-3 rounded-md shadow-sm"><Edit2 className="w-3.5 h-3.5 mr-1.5" /> Edit</Button>}
+                        </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           {uploadedFiles.map(f => (
                             <div key={f.id} className="flex items-center justify-between p-3 border border-border rounded-lg bg-card group">
@@ -1109,20 +1096,15 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                             </div>
                           ))}
                         </div>
-                      ) : (
-                        <div className="text-sm text-muted-foreground py-4 text-center border border-dashed border-border rounded-lg">No documents uploaded.</div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
               </div>
 
               {/* Navigation Buttons */}
-              <div className="mt-auto flex justify-between items-center pt-3 border-t border-border shrink-0">
-                <Button type="button" variant="outline" onClick={() => onClose ? onClose() : router.push('/hr/onboarding')} className="rounded-md bg-transparent border-border h-8 w-24 text-foreground text-xs">
-                  &larr; {generatedCredentials ? 'Done' : 'Cancel'}
-                </Button>
+              <div className="mt-auto flex justify-end items-center pt-3 border-t border-border shrink-0">
                 <div className="flex gap-3">
                   {step > 1 && !generatedCredentials && <Button key="back-btn" type="button" variant="outline" onClick={prevStep} className="rounded-md bg-transparent border-border h-9 w-28 text-foreground text-xs">Back</Button>}
                   {step === 4 && (
@@ -1131,12 +1113,20 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       Download PDF
                     </Button>
                   )}
-                  {generatedCredentials ? (
-                    <Button key="done-btn" type="button" onClick={() => router.push('/hr/onboarding')} className="rounded-md bg-foreground text-background hover:bg-foreground/90 h-9 w-40 font-bold text-xs">
-                      Go to Onboarding
-                    </Button>
-                  ) : step < 4 ? (
-                    <Button key="next-btn" type="button" onClick={nextStep} className="rounded-md bg-foreground text-background hover:bg-foreground/90 h-9 w-28 font-bold text-xs">Next &rarr;</Button>
+                  {generatedCredentials ? null : step < 4 ? (
+                    <>
+                      {highestStep === 4 && (
+                        <Button key="jump-btn" type="button" onClick={async () => {
+                          let fields: any = []
+                          if (step === 1) fields = ["first_name", "last_name", "dob", "gender", "phone_number", "personal_email", "address", "city", "pincode", "emergency_name", "emergency_relationship", "emergency_phone"]
+                          else if (step === 2) fields = ["department", "division", "designation", "employment_type", "employment_status", "salary", "basic_salary", "stipend", "experience_type", "experience_years", "experience_months", "joining_date", "role", "is_hod"]
+                          const isValid = step === 3 || await trigger(fields)
+                          if (isValid) setStep(4)
+                          else toast({ title: "Incomplete Fields", description: "Please complete all required fields.", variant: "destructive" })
+                        }} className="rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 w-32 font-bold text-xs">Jump to Review</Button>
+                      )}
+                      <Button key="next-btn" type="button" onClick={nextStep} className="rounded-md bg-foreground text-background hover:bg-foreground/90 h-9 w-28 font-bold text-xs">Next &rarr;</Button>
+                    </>
                   ) : (
                     <Button key="submit-btn" type="submit" disabled={isSubmitting} className="rounded-md bg-foreground text-background hover:bg-foreground/90 h-9 w-40 font-bold text-xs">
                       {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...</> : 'Create Profile'}

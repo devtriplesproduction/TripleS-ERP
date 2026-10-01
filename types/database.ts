@@ -39,6 +39,95 @@ export type Database = {
   }
   public: {
     Tables: {
+      announcements: {
+        Row: {
+          id: string
+          title: string
+          message: string
+          target_audience: string
+          target_department: string | null
+          priority: 'low' | 'medium' | 'high'
+          pinned: boolean
+          status: 'draft' | 'published' | 'archived'
+          created_by: string
+          created_at: string
+          published_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          title: string
+          message: string
+          target_audience: string
+          target_department?: string | null
+          priority?: 'low' | 'medium' | 'high'
+          pinned?: boolean
+          status?: 'draft' | 'published' | 'archived'
+          created_by: string
+          created_at?: string
+          published_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          title?: string
+          message?: string
+          target_audience?: string
+          target_department?: string | null
+          priority?: 'low' | 'medium' | 'high'
+          pinned?: boolean
+          status?: 'draft' | 'published' | 'archived'
+          created_by?: string
+          created_at?: string
+          published_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcements_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      announcement_reads: {
+        Row: {
+          id: string
+          announcement_id: string
+          user_id: string
+          read_at: string
+        }
+        Insert: {
+          id?: string
+          announcement_id: string
+          user_id: string
+          read_at?: string
+        }
+        Update: {
+          id?: string
+          announcement_id?: string
+          user_id?: string
+          read_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "announcement_reads_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "announcements"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "announcement_reads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       leave_requests: {
         Row: {
           id: string

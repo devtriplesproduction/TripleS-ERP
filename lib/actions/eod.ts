@@ -639,9 +639,15 @@ export async function updateEOD(payload: {
 
     
     
-    // Status should remain the same or be reset to Approved? 
-    // Proxy submissions are automatically approved. Updates by admin remain approved.
-    const status = 'Approved';
+    // Fetch the existing EOD to preserve its status
+    const { data: existingEod } = await supabase
+      .from('eod_reports')
+      .select('status')
+      .eq('employee_id', payload.employee_id)
+      .eq('report_date', payload.report_date)
+      .single();
+      
+    const status = existingEod?.status || 'Approved';
 
     const { data: eodId, error: rpcError } = await supabase.rpc('update_eod_rpc', {
       p_employee_id: payload.employee_id,
@@ -699,6 +705,7 @@ async function logEodActivity(action: string, actor_email: string, user_id: stri
     console.error("Activity log exception:", e);
   }
 }
+
 
 
 

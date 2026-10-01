@@ -29,7 +29,7 @@ export default async function AdminEODPage() {
 
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto">
-      `n      <PageHeader
+      <PageHeader
         title="Admin EOD"
         subtitle="Review employee and HR end-of-day reports."
         actions={

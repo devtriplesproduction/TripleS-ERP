@@ -1,11 +1,18 @@
 const fs = require('fs');
+const path = 'c:/Users/HP/Desktop/Triple S Production/TripleS-ERP/lib/actions/eod.ts';
+let content = fs.readFileSync(path, 'utf8');
 
-let code = fs.readFileSync('app/(erp)/eod/page.tsx', 'utf8');
-const replacement = '<EODSubmissionForm employeeId={user.id} canEditDate={canManage} employees={canManage ? allEmployees : undefined} canManage={canManage} employeeName={`${user.first_name} ${user.last_name}`} employeeStringId="EMP-001" />';
-code = code.replace(/<EODSubmissionForm[\s\S]*?\/>/, replacement);
+content = content.replace(
+  /\/\/ Status should remain the same or be reset to Approved\?[\s\S]*?\/\/ Proxy submissions are automatically approved\. Updates by admin remain approved\.[\s\S]*?const status = 'Approved';/,
+  `// Fetch the existing EOD to preserve its status
+    const { data: existingEod } = await supabase
+      .from('eod_reports')
+      .select('status')
+      .eq('employee_id', payload.employee_id)
+      .eq('report_date', payload.report_date)
+      .single();
+      
+    const status = existingEod?.status || 'Approved';`
+);
 
-// Also fix the RecentEODLogs to use the correct name
-code = code.replace(/<RecentEODLogs history=\{history\} user=\{\{ first_name: user\.first_name, last_name: user\.last_name, employee_id: 'EMP-001' \}\} \/>/, '<RecentEODLogs history={history} user={{ first_name: user.first_name, last_name: user.last_name, employee_id: "EMP-001" }} />');
-
-fs.writeFileSync('app/(erp)/eod/page.tsx', code);
-console.log('Fixed HR tab UI');
+fs.writeFileSync(path, content, 'utf8');

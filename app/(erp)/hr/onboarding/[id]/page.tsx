@@ -27,7 +27,7 @@ export default async function EmployeeDetailsPage({ params }: { params: Promise<
   const progressPercentage = totalTasksCount === 0 ? 0 : Math.round((completedTasksCount / totalTasksCount) * 100)
 
   return (
-    <div className="w-full max-w-7xl mx-auto space-y-6">
+    <div className="w-full max-w-7xl mx-auto space-y-6 min-w-0 overflow-hidden">
       <EmployeeDetailsClient employee={employee} />
     </div>
   )
