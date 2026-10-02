@@ -1,0 +1,1 @@
+ALTER TABLE holidays ADD COLUMN holiday_type TEXT DEFAULT 'PAID';

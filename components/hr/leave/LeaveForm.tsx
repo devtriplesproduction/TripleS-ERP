@@ -10,6 +10,7 @@ import { submitLeaveAction } from "@/actions/leave.actions"
 import { toast } from "sonner"
 
 export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatus = "Pending HR", compOffBalance = 0 }: { onCancel: () => void, currentEmployeeId: string, onSuccess: (leave: any) => void, initialStatus?: string, compOffBalance?: number }) {
+  const [requestType, setRequestType] = useState("LEAVE")
   const [leaveType, setLeaveType] = useState("Sick Leave")
   const [duration, setDuration] = useState("Full Day")
   const [startDate, setStartDate] = useState<string>("")
@@ -29,7 +30,7 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
       return
     }
 
-    if (leaveType === 'Compensatory Off') {
+    if (requestType === 'LEAVE' && leaveType === 'Compensatory Off') {
       const sDate = new Date(startDate);
       const eDate = new Date(endDate);
       const diffTime = Math.abs(eDate.getTime() - sDate.getTime());
@@ -49,7 +50,7 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
     setLoading(true)
     let fileUrl = null
 
-    if (file) {
+    if (requestType === 'LEAVE' && file) {
       const fileExt = file.name.split('.').pop()
       const fileName = `${currentEmployeeId}-${Date.now()}.${fileExt}`
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -67,7 +68,8 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
 
     const newLeave = {
       employee_id: currentEmployeeId,
-      leave_type: leaveType,
+      request_type: requestType,
+      leave_type: requestType === 'WFH' ? null : leaveType,
       start_date: startDate,
       end_date: endDate,
       is_half_day: duration === "Half Day",
@@ -88,7 +90,7 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
       console.error(error)
       toast.error("Failed to submit leave application")
     } else {
-      toast.success("Leave application submitted successfully")
+      toast.success(requestType === 'WFH' ? "WFH request submitted successfully" : "Leave application submitted successfully")
       onSuccess(data)
     }
   }
@@ -100,15 +102,31 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
           <Calendar className="w-6 h-6 text-foreground" />
         </div>
         <div>
-          <h1 className="text-xl font-bold tracking-tight text-foreground">New Leave Application</h1>
-          <p className="text-sm text-muted-foreground mt-1">Apply for a new leave from your available leave balance.</p>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">New Request</h1>
+          <p className="text-sm text-muted-foreground mt-1">Submit a leave or work from home request.</p>
         </div>
       </div>
 
       <div className="space-y-6">
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <FileText className="w-4 h-4 text-muted-foreground" /> Leave Type
+            <FileText className="w-4 h-4 text-muted-foreground" /> Request Type
+          </label>
+          <Select value={requestType} onValueChange={(val) => val && setRequestType(val)}>
+            <SelectTrigger className="w-full bg-background border-border h-10">
+              <SelectValue placeholder="Select Request Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="LEAVE">Leave Request</SelectItem>
+              <SelectItem value="WFH">Work From Home (WFH)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {requestType === 'LEAVE' && (
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <FileText className="w-4 h-4 text-muted-foreground" /> Leave Type
           </label>
           <Select value={leaveType} onValueChange={(val) => val && setLeaveType(val)}>
             <SelectTrigger className="w-full bg-background border-border h-10">
@@ -123,7 +141,8 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
               <SelectItem value="Unpaid Leave">Unpaid Leave</SelectItem>
             </SelectContent>
           </Select>
-        </div>
+          </div>
+        )}
 
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-sm font-medium text-foreground">
@@ -181,7 +200,8 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
           />
         </div>
 
-        <div className="space-y-2 border border-border rounded-xl p-4">
+        {requestType === "LEAVE" && (
+<div className="space-y-2 border border-border rounded-xl p-4">
           <div className="flex items-center gap-2 text-sm font-medium text-foreground mb-4">
             <span className="flex items-center justify-center w-5 h-5 rounded-full border border-muted-foreground/50 text-[10px]">!</span>
             Medical Certificate <span className="text-muted-foreground font-normal text-xs">(Optional at time of application)</span>
@@ -206,6 +226,7 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
             Sick leave is unpaid until a certificate is verified
           </div>
         </div>
+        )}
       </div>
 
       <div className="flex items-center justify-end gap-3 pt-4 border-t border-border mt-2">

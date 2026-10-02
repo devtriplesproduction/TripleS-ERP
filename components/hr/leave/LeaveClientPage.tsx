@@ -122,7 +122,7 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
             <Calendar className="w-6 h-6 text-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Leave Management</h1>
+            <h1 className="text-2xl font-bold tracking-tight text-foreground">Leave & WFH Management</h1>
             <p className="text-sm text-muted-foreground mt-1">Manage your leaves and approvals from one place.</p>
           </div>
         </div>
@@ -177,7 +177,7 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
               className="h-10 rounded-lg bg-foreground text-background hover:bg-foreground/90 font-medium gap-2 shrink-0"
               onClick={() => setShowForm(true)}
             >
-              <Plus className="w-4 h-4" /> Apply Leave
+              <Plus className="w-4 h-4" /> Apply Leave / WFH
             </Button>
           )}
         </div>
@@ -212,7 +212,7 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="flex flex-col gap-0.5">
                           <h3 className="font-bold text-foreground text-sm leading-tight flex items-center gap-1.5 group-hover:text-primary transition-colors">
-                            {leave.leave_type} 
+                            {leave.request_type === "WFH" ? "Work From Home" : leave.leave_type} 
                             {leave.is_half_day && (
                               <span className="px-1.5 py-0.5 rounded-md bg-muted text-[9px] font-semibold tracking-wider uppercase text-muted-foreground">Half Day</span>
                             )}
@@ -331,7 +331,7 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                             </div>
                           </div>
                           <p className="text-sm text-muted-foreground mt-2 font-medium">
-                            {leave.employee?.department ? `${leave.employee.department} • ` : ""}{leave.leave_type}
+                            {leave.employee?.department ? `${leave.employee.department} • ` : ""}{leave.request_type === 'WFH' ? 'Work From Home' : leave.leave_type}
                           </p>
                         </div>
                       </div>
@@ -357,7 +357,7 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                           <FileText className="w-3.5 h-3.5" /> Type
                         </div>
                         <div className="inline-flex items-center px-3 py-1.5 rounded-lg bg-muted/50 border border-border/80 text-xs font-semibold text-foreground shadow-xs">
-                          {leave.leave_type}
+                          {leave.request_type === 'WFH' ? 'WFH' : leave.leave_type}
                         </div>
                       </div>
                     </div>

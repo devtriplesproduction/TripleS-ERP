@@ -28,6 +28,7 @@ export async function createHolidayAction(payload: {
   date: string;
   name: string;
   is_optional: boolean;
+  holiday_type: 'PAID' | 'UNPAID';
 }): Promise<ActionResponse> {
   try {
     const supabase = await createClient();
@@ -36,7 +37,8 @@ export async function createHolidayAction(payload: {
       .insert({
         date: payload.date,
         name: payload.name,
-        is_optional: false
+        is_optional: payload.is_optional,
+        holiday_type: payload.holiday_type
       })
       .select()
       .single();
@@ -80,6 +82,7 @@ export async function updateHolidayAction(
     date: string;
     name: string;
     is_optional: boolean;
+    holiday_type: 'PAID' | 'UNPAID';
   }
 ): Promise<ActionResponse> {
   try {
@@ -89,7 +92,8 @@ export async function updateHolidayAction(
       .update({
         date: payload.date,
         name: payload.name,
-        is_optional: false,
+        is_optional: payload.is_optional,
+        holiday_type: payload.holiday_type,
       })
       .eq('id', id)
       .select()

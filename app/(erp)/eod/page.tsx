@@ -13,6 +13,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { LiveTaskCounter } from "@/components/eod/LiveTaskCounter";
 import { countTasks } from "@/lib/utils";
 import Link from "next/link";
+import { formatWorkedTime } from "@/lib/utils/time";
 import { RecentEODLogs } from "@/components/eod/RecentEODLogs";
 
 import { BranchSelectorClient } from "@/components/eod/BranchSelectorClient";
@@ -173,7 +174,7 @@ export default async function EODPage({ searchParams }: PageProps) {
                     </div>
                     <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Hours Logged</span>
                   </div>
-                  <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">{hoursLogged}h</div>
+                  <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">{hoursLogged ? formatWorkedTime(Math.round(Number(hoursLogged) * 60)) : "0h 00m"}</div>
                   <div className="mt-1 text-xs text-zinc-900 dark:text-zinc-100 font-medium">Duration</div>
                 </div>
 

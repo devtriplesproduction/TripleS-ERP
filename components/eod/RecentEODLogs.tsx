@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { CheckCircle2, Clock, History, FileText, User, Calendar, MapPin, AlertTriangle, X, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { formatWorkedTime } from '@/lib/utils/time';
 
 type EODLog = {
   id: string;
@@ -68,7 +69,7 @@ export function RecentEODLogs({ history, user }: { history: EODLog[]; user: User
                         {eodDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                       </h4>
                       <p className="text-xs text-zinc-900 dark:text-zinc-100 mt-0.5">
-                        {taskLines} tasks &bull; {eod.office_hours}h logged
+                        {taskLines} tasks &bull; {formatWorkedTime(Math.round(Number(eod.office_hours) * 60))} logged
                       </p>
                     </div>
 
@@ -176,7 +177,7 @@ export function RecentEODLogs({ history, user }: { history: EODLog[]; user: User
                     </div>
                     <div>
                       <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Hours</p>
-                      <p className="font-semibold text-foreground text-sm">{selectedEod.office_hours}h</p>
+                      <p className="font-semibold text-foreground text-sm">{formatWorkedTime(Math.round(Number(selectedEod.office_hours) * 60))}</p>
                     </div>
                   </div>
                 </div>

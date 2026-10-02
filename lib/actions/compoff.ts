@@ -1,5 +1,6 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createClient } from "@/lib/supabase/server";
+import { calculateExtraMinutes, isSunday } from "@/lib/utils/time";
 
 async function resolveOnboardingId(id: string, supabase: any) {
   const { data: isAlready } = await supabase.from('employee_onboarding').select('id').eq('id', id).maybeSingle();
@@ -58,7 +59,40 @@ export async function processEODCompOff(eodId: string, employeeId: string, worke
     
   if (existing) return;
   
-  const diff = Math.round((Number(workedHours) - 8) * 100) / 100;
+  // 1. Fetch EOD details to know the date
+  const { data: eod } = await supabase.from('eod_reports').select('report_date').eq('id', eodId).single();
+  if (!eod) return;
+
+  // 2. Check context (Sunday, Holiday, Leave)
+  let context: 'normal' | 'sunday' | 'paid_holiday' | 'approved_leave' = 'normal';
+  
+  if (isSunday(eod.report_date)) {
+    context = 'sunday';
+  } else {
+    // Check holiday
+    const { data: holiday } = await supabase.from('holidays').select('*').eq('date', eod.report_date).maybeSingle();
+    if (holiday && holiday.holiday_type === 'PAID') { // Using explicit holiday_type
+      context = 'paid_holiday';
+    } else {
+      // Check leave
+      const { data: leave } = await supabase.from('leave_requests')
+        .select('*')
+        .eq('employee_id', employeeId)
+        .lte('start_date', eod.report_date)
+        .gte('end_date', eod.report_date)
+        .in('status', ['Approved', 'Approved HR'])
+        .maybeSingle();
+        
+      if (leave && !leave.is_half_day) {
+        context = 'approved_leave';
+      }
+    }
+  }
+  
+  const workedMinutes = Math.round(Number(workedHours) * 60);
+  const extraMinutes = calculateExtraMinutes(workedMinutes, context);
+  const diff = Math.round((extraMinutes / 60) * 100) / 100;
+  
   if (diff === 0) return;
   
   const currentBalance = await getCompOffBalance(resolvedId);

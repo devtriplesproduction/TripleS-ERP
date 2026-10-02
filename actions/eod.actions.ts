@@ -12,7 +12,7 @@ const eodSubmitSchema = z.object({
   employee_id: z.string().uuid(),
   report_date: z.string(),
   tasks_accomplished: z.string().min(1, "Tasks accomplished is required"),
-  office_hours: z.number().min(0).max(12, "Office hours must be between 0 and 12"),
+  office_hours: z.number().min(0).max(24, "Office hours must be between 0 and 24"),
   location: z.enum(['Office', 'Field', 'Work From Home']),
   blockers: z.string().min(1, "Please specify blockers or type 'None'"),
   photo_url: z.string().optional(),

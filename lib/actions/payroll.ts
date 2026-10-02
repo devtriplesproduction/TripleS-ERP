@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { calculateMonthlyPayroll } from '@/lib/services/payroll.service'
 
 export async function addSalaryIncrementAction(employeeId: string, previousSalary: number, newSalary: number, incrementPercentage: number, effectiveDate: string, newPackage: number) {
   try {
@@ -45,6 +46,15 @@ export async function getSalaryHistoryAction(employeeId: string) {
       
     if (error) throw error
     return { success: true, data }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+}
+
+export async function getMonthlyPayrollAction(year: number, month: number, employeeIds?: string[]) {
+  try {
+    const results = await calculateMonthlyPayroll(year, month, employeeIds)
+    return { success: true, data: results }
   } catch (error: any) {
     return { success: false, error: error.message }
   }

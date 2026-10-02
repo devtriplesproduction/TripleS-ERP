@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { Search, SlidersHorizontal, RefreshCcw, CheckCircle2, Clock, XCircle, AlertCircle, FileSearch, FileText, User, Calendar, MapPin, AlertTriangle, X, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { formatWorkedTime } from '@/lib/utils/time';
 import { EODReport } from '@/lib/actions/eod';
 import { reviewEODAction, updateEODAction } from '@/actions/eod.actions';
 import { Edit2, Save, X as XIcon } from 'lucide-react';
@@ -383,7 +384,7 @@ export function ReviewDashboard({
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-muted-foreground">{eod.location}</td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">{eod.office_hours}h</td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">{formatWorkedTime(Math.round(Number(eod.office_hours) * 60))}</td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md ${
                           (eod as any).role_context === 'HR' ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300' : 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300'
@@ -482,9 +483,34 @@ export function ReviewDashboard({
                     <div>
                       <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Hours</p>
                       {isEditing ? (
-    <Input type="number" step="0.1" value={editFormData.office_hours || 0} onChange={e => handleEditChange('office_hours', parseFloat(e.target.value) || 0)} className="w-full h-8 px-2 text-sm mt-1" />
+    <div className="flex gap-1 mt-1">
+    <Dropdown
+      value={Math.floor(Math.round((editFormData.office_hours || 0) * 60) / 60).toString()}
+      onChange={(val) => {
+        const m = Math.round((editFormData.office_hours || 0) * 60) % 60;
+        const totalMin = parseInt(val) * 60 + m;
+        handleEditChange('office_hours', parseFloat((totalMin / 60).toFixed(2)));
+      }}
+      options={Array.from({ length: 25 }, (_, i) => ({ label: `${i}h`, value: i.toString() }))}
+      placeholder="Hours"
+      buttonClassName="w-full h-8 px-2 text-xs"
+      contentClassName="max-h-56"
+    />
+    <Dropdown
+      value={(Math.round((editFormData.office_hours || 0) * 60) % 60).toString()}
+      onChange={(val) => {
+        const h = Math.floor(Math.round((editFormData.office_hours || 0) * 60) / 60);
+        const totalMin = h * 60 + parseInt(val);
+        handleEditChange('office_hours', parseFloat((totalMin / 60).toFixed(2)));
+      }}
+      options={Array.from({ length: 60 }, (_, i) => ({ label: `${i}m`, value: i.toString() }))}
+      placeholder="Minutes"
+      buttonClassName="w-full h-8 px-2 text-xs"
+      contentClassName="max-h-56"
+    />
+  </div>
   ) : (
-    <p className="font-semibold text-foreground text-sm">{selectedEod.office_hours}h</p>
+    <p className="font-semibold text-foreground text-sm">{formatWorkedTime(Math.round(Number(selectedEod.office_hours) * 60))}</p>
   )}
                     </div>
                   </div>

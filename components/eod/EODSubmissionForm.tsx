@@ -12,6 +12,7 @@ import { ImagePlus, X, Plus, User, Key } from 'lucide-react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
+import { fromTotalMinutes, toTotalMinutes } from '@/lib/utils/time';
 import { toast } from 'sonner';
 
 type EmployeeOption = { id: string; first_name: string; last_name: string; employee_id: string };
@@ -45,7 +46,9 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
       .length;
     window.dispatchEvent(new CustomEvent('eod-tasks-changed', { detail: tasksCompleted }));
   }, [tasksAccomplished]);
-  const [officeHours, setOfficeHours] = useState<string>('');
+  const [hours, setHours] = useState<string>('');
+  const [minutes, setMinutes] = useState<string>('');
+  // Kept for backward compatibility if needed in the form, but mostly using hours/minutes now
   const [blockers, setBlockers] = useState('');
   const [jobCardNumbers, setJobCardNumbers] = useState<string[]>([]);
   const [jobCardInput, setJobCardInput] = useState('');
@@ -79,7 +82,9 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
       if (res.success && 'data' in res && res.data) {
         setIsUpdate(true);
         setTasksAccomplished(res.data.tasks_accomplished);
-        setOfficeHours(res.data.office_hours.toString());
+        const { hours: h, minutes: m } = fromTotalMinutes(Math.round(Number(res.data.office_hours) * 60));
+        setHours(h.toString());
+        setMinutes(m.toString());
         setLocation(res.data.location as 'Office' | 'Field' | 'Work From Home');
         setBlockers(res.data.blockers || '');
         const jcn = (res.data as Record<string, unknown>).job_card_numbers as string || '';
@@ -92,7 +97,8 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
       } else {
         setIsUpdate(false);
         setTasksAccomplished('');
-        setOfficeHours('');
+        setHours('');
+        setMinutes('');
         setLocation('Office');
         setBlockers('');
         setJobCardNumbers([]);
@@ -290,25 +296,27 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
+                    <div className="space-y-1.5">
             <label className="block text-sm font-medium text-foreground">Worked Hours <span className="text-error">*</span></label>
-            <Input
-              type="number"
-              name="office_hours"
-              required
-              min="0"
-              max="12"
-              step="0.01"
-              placeholder="e.g. 8.22"
-              value={officeHours}
-              onChange={(e) => setOfficeHours(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === '-' || e.key === 'e' || e.key === 'E') {
-                  e.preventDefault();
-                }
-              }}
-              className="[&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none [-moz-appearance:textfield]"
-            />
+            <div className="flex gap-2">
+              <Dropdown
+                value={hours}
+                onChange={(val) => setHours(val as string)}
+                options={Array.from({ length: 17 }, (_, i) => ({ label: `${i}h`, value: i.toString() }))}
+                placeholder="Hours"
+                buttonClassName="w-full"
+                contentClassName="max-h-56"
+              />
+              <Dropdown
+                value={minutes}
+                onChange={(val) => setMinutes(val as string)}
+                options={Array.from({ length: 60 }, (_, i) => ({ label: `${i}m`, value: i.toString() }))}
+                placeholder="Minutes"
+                buttonClassName="w-full"
+                contentClassName="max-h-56"
+              />
+            </div>
+            <input type="hidden" name="office_hours" value={((parseInt(hours || '0') * 60 + parseInt(minutes || '0')) / 60).toFixed(2)} />
           </div>
 
           <Dropdown

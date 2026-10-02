@@ -23,6 +23,7 @@ export interface DropdownProps {
   iconClassName?: string;
   align?: "left" | "right";
   isClearable?: boolean;
+  contentClassName?: string;
 }
 
 export const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
@@ -43,6 +44,7 @@ export const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
       iconClassName,
       align,
       isClearable,
+      contentClassName,
     },
     ref
   ) => {
@@ -72,7 +74,7 @@ export const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
           >
             {value ? options.find(o => o.value === value)?.label || value : <SelectValue placeholder={placeholder} />}
           </SelectTrigger>
-          <SelectContent align={align === "right" ? "end" : "start"}>
+          <SelectContent align={align === "right" ? "end" : "start"} className={contentClassName}>
             {options.map((opt) => (
               <SelectItem key={opt.value} value={opt.value}>
                 {opt.label}

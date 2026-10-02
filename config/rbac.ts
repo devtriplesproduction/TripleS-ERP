@@ -20,6 +20,7 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/eod',
     '/hr/holidays',
     '/hr/payroll',
+    '/hr/attendance',
     '/dashboard',
     '/rulebook',
     '/announcements',
@@ -29,7 +30,9 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/admin-holiday',
     '/admin-payroll',
     '/super-admin/leave',
+    '/super-admin/attendance',
     '/hr/onboarding',
+    '/hr/attendance',
     '/dashboard',
     '/rulebook',
     '/announcements',
@@ -38,6 +41,7 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/hr/employee-leave',
     '/employee-eod',
     '/employee-holiday',
+    '/attendance',
     '/dashboard',
     '/rulebook',
   ],
@@ -85,9 +89,10 @@ export function getDefaultRedirect(role: AppRole | string | null | undefined): s
  */
 export function determineERPRole(department?: string, division?: string, designation?: string): AppRole {
   if (
-    department?.trim().toLowerCase() === 'management' &&
-    division?.trim().toLowerCase() === 'hr' &&
-    designation?.trim().toLowerCase() === 'hr'
+    designation?.trim().toLowerCase() === 'hr' || 
+    (department?.trim().toLowerCase() === 'management' && 
+     division?.trim().toLowerCase() === 'general management' && 
+     designation?.trim().toLowerCase() === 'hr')
   ) {
     return 'HR'
   }
