@@ -384,7 +384,17 @@ export function ReviewDashboard({
                         </span>
                       </td>
                       <td className="px-6 py-4 text-sm text-muted-foreground">{eod.location}</td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">{formatWorkedTime(Math.round(Number(eod.office_hours) * 60))}</td>
+                      <td className="px-6 py-4 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-2">
+                          <span>{formatWorkedTime(Math.round(Number(eod.office_hours) * 60))}</span>
+                          {(() => {
+                            const mins = Math.round(Number(eod.office_hours) * 60);
+                            if (mins < 240) return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-sm bg-destructive/10 text-destructive">Unpaid</span>;
+                            if (mins < 480) return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-sm bg-amber-500/10 text-amber-600 dark:text-amber-400">Half Day</span>;
+                            return null;
+                          })()}
+                        </div>
+                      </td>
                       <td className="px-6 py-4">
                         <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md ${
                           (eod as any).role_context === 'HR' ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300' : 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300'

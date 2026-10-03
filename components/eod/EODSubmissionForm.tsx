@@ -296,8 +296,25 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-foreground">Worked Hours <span className="text-error">*</span></label>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-medium text-foreground">Worked Hours <span className="text-error">*</span></label>
+              {(() => {
+                const h = parseInt(hours || '0');
+                const m = parseInt(minutes || '0');
+                const totalMins = (h * 60) + m;
+                if (totalMins === 0) return null;
+                
+                if (totalMins < 240) { // < 4 hours
+                  return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">Unpaid Leave (&lt;4h)</span>;
+                } else if (totalMins < 480) { // < 8 hours
+                  return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">Half Day</span>;
+                } else {
+                  return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">Full Day</span>;
+                }
+              })()}
+            </div>
             <div className="flex gap-2">
               <Dropdown
                 value={hours}

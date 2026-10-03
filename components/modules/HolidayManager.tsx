@@ -72,7 +72,7 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
     if (!date) { toast.error("Please select a holiday date."); return; }
     if (isNaN(date.getTime())) { toast.error("Please select a valid holiday date."); return; }
     setIsSubmitting(true);
-    const payload = { name, date: getISTDateString(date), is_optional: isOptional, holiday_type: holidayType };
+    const payload = { name, date: getISTDateString(date), is_optional: isOptional, holiday_type: "PAID" };
     try {
       if (editingId) {
         const res = await updateHolidayAction(editingId, payload);
@@ -189,8 +189,8 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
                               <p className="text-xs text-muted-foreground">
                                 {d.toLocaleString("default", { weekday: "long" })}, {name} {d.getDate()}
                               </p>
-                              <span className={cn("text-[10px] font-semibold px-2 py-0.5 rounded-md", h.holiday_type === 'UNPAID' ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary")}>
-                                {h.holiday_type === 'UNPAID' ? 'Unpaid Holiday' : 'Paid Holiday'}
+                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-primary/10 text-primary">
+                                Paid Holiday
                               </span>
                             </div>
                           </div>
@@ -241,7 +241,7 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-foreground truncate">{h.name}</p>
-                          <p className="text-[11px] text-muted-foreground">{h.holiday_type === 'UNPAID' ? 'Unpaid Holiday' : 'Paid Holiday'}</p>
+                          <p className="text-[11px] text-muted-foreground">Paid Holiday</p>
                         </div>
                         {isAdmin && (
                           <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -305,18 +305,7 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
                 placeholder="Select Date"
               />
             </div>
-            <div className="space-y-2">
-              <Label className="text-sm font-semibold ml-1">Holiday Type <span className="text-destructive">*</span></Label>
-              <Select value={holidayType} onValueChange={val => setHolidayType(val as "PAID" | "UNPAID")}>
-                <SelectTrigger className="w-full h-[52px] bg-muted/30 border-transparent focus-visible:bg-background focus-visible:border-primary focus-visible:ring-primary/20 px-4 rounded-xl text-sm outline-none">
-                  <SelectValue placeholder="Select Type" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="PAID">Paid Holiday</SelectItem>
-                  <SelectItem value="UNPAID">Unpaid Holiday</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+
             <div className="flex justify-end gap-3 pt-2">
               <Button type="button" variant="outline" onClick={() => setIsOpen(false)} className="h-11 px-5 rounded-xl">
                 Cancel

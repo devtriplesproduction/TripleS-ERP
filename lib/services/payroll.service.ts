@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { getDayOfWeek, STANDARD_WORK_MINUTES, calculateExtraMinutes, calculateShortMinutes, determineWorkDayContext, isWorkingDay } from '@/lib/utils/time';
+import { getDayOfWeek, STANDARD_WORK_MINUTES, HALF_DAY_THRESHOLD, FULL_DAY_MINUTES, calculateExtraMinutes, calculateShortMinutes, classifyWorkDay, determineWorkDayContext, isWorkingDay, type WorkDayContext } from '@/lib/utils/time';
 
 export interface PayrollResult {
   employeeId: string;
@@ -14,6 +14,13 @@ export interface PayrollResult {
   wfhHours: number;
   extraHours: number;
   shortHours: number;
+  
+  /** Number of half-day (4h-7h59m) working days */
+  daysHalfDay: number;
+  /** Number of <4h unpaid leave days (excluded from payroll) */
+  daysUnpaidLeaveEod: number;
+  /** Total comp off minutes earned this month */
+  compOffMinutesEarned: number;
   
   overtimePay: number;
   unpaidLeaveDeduction: number;
@@ -65,7 +72,6 @@ export async function calculateMonthlyPayroll(year: number, month: number, emplo
     .in('employee_id', authIds);
     
   // 4. Fetch Comp Off Ledger to check converted overtime
-  // Since we don't have source_eod_id, we will assume all credited minutes in ledger are from reference_id
   const eodIds = eods?.map(e => e.id) || [];
   let compOffLedger: any[] = [];
   if (eodIds.length > 0) {
@@ -117,6 +123,7 @@ export async function calculateMonthlyPayroll(year: number, month: number, emplo
     const paidLeaveDates = new Map<string, number>();
     const unpaidLeaveDates = new Map<string, number>();
     const wfhDates = new Map<string, number>();
+    const approvedLeaveDates = new Set<string>();
     
     empLeaves.forEach(l => {
       const mins = l.is_half_day ? STANDARD_WORK_MINUTES / 2 : STANDARD_WORK_MINUTES;
@@ -127,20 +134,44 @@ export async function calculateMonthlyPayroll(year: number, month: number, emplo
       } else {
         paidLeaveDates.set(l.start_date, mins); // Paid leave types (Casual, Sick, Comp-off)
       }
+      // Track all approved leave dates for comp off context
+      approvedLeaveDates.add(l.start_date);
     });
     
     let totalWorkedMinutes = 0;
     let extraMinutes = 0;
     let shortMinutes = 0;
     let convertedToCompOffMinutes = 0;
+    let compOffMinutesEarned = 0;
+    let daysHalfDay = 0;
+    let daysUnpaidLeaveEod = 0;
     
     empEods.forEach(eod => {
       const wMins = Math.round(Number(eod.office_hours) * 60);
       totalWorkedMinutes += wMins;
       
-      const context = determineWorkDayContext(eod.report_date, paidHolidayDates, new Set(paidLeaveDates.keys()));
+      const context = determineWorkDayContext(eod.report_date, paidHolidayDates, approvedLeaveDates);
+      
+      // Use centralized classification
+      const classification = classifyWorkDay(wMins, context);
+      
+      // Track classification results
       extraMinutes += calculateExtraMinutes(wMins, context);
-      shortMinutes += calculateShortMinutes(wMins, context);
+      compOffMinutesEarned += classification.compOffMinutes;
+      
+      if (classification.payrollStatus === 'HALF_DAY') {
+        daysHalfDay++;
+      }
+      if (classification.payrollStatus === 'UNPAID_LEAVE') {
+        daysUnpaidLeaveEod++;
+      }
+      
+      // Short minutes only on normal days where employee worked but didn't hit 8h
+      // Note: <4h is already classified as UNPAID_LEAVE (excluded from payroll)
+      // Half days (4h-7h59m) preserve existing half-day salary treatment
+      if (context === 'normal' && wMins >= HALF_DAY_THRESHOLD) {
+        shortMinutes += calculateShortMinutes(wMins, context);
+      }
       
       // Check if this EOD was already converted to Comp Off
       const ledgerCredits = compOffLedger.filter(l => l.reference_id === eod.id);
@@ -196,7 +227,10 @@ export async function calculateMonthlyPayroll(year: number, month: number, emplo
     // Financial Math
     const overtimePay = payableExtraHours * hourlyRate * 1.5;
     const unpaidLeaveDeduction = unpaidLeaveHours * hourlyRate;
-    const shortHoursDeduction = shortHoursValue * hourlyRate;
+    // IMPORTANT: shortHoursDeduction is set to 0 per new business rules
+    // Half-day treatment preserves existing salary calculation
+    // <4h days are already excluded via UNPAID_LEAVE classification
+    const shortHoursDeduction = 0;
     
     const grossPay = salary + overtimePay; // Base salary + Overtime
     const totalDeductions = unpaidLeaveDeduction + shortHoursDeduction;
@@ -216,9 +250,13 @@ export async function calculateMonthlyPayroll(year: number, month: number, emplo
       extraHours: Math.round(extraHoursValue * 100) / 100,
       shortHours: Math.round(shortHoursValue * 100) / 100,
       
+      daysHalfDay,
+      daysUnpaidLeaveEod,
+      compOffMinutesEarned,
+      
       overtimePay: Math.round(overtimePay * 100) / 100,
       unpaidLeaveDeduction: Math.round(unpaidLeaveDeduction * 100) / 100,
-      shortHoursDeduction: Math.round(shortHoursDeduction * 100) / 100,
+      shortHoursDeduction: 0, // Removed per new rules
       
       totalPaidHours: Math.round(totalPaidHours * 100) / 100,
       grossPay: Math.round(grossPay * 100) / 100,

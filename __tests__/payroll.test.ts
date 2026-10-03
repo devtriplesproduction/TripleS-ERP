@@ -4,8 +4,63 @@ import {
   calculateShortMinutes,
   determineWorkDayContext,
   isWorkingDay,
-  STANDARD_WORK_MINUTES
+  classifyWorkDay,
+  STANDARD_WORK_MINUTES,
+  FULL_DAY_MINUTES,
+  HALF_DAY_THRESHOLD
 } from '../lib/utils/time'
+
+describe('classifyWorkDay - New Classification Logic', () => {
+  it('classifies < 4h as Unpaid Leave on normal days', () => {
+    const result = classifyWorkDay(239, 'normal'); // 3h 59m
+    expect(result.payrollStatus).toBe('UNPAID_LEAVE');
+    expect(result.isPayableDay).toBe(false);
+    expect(result.compOffMinutes).toBe(239); // All time to comp off
+  })
+
+  it('classifies 4h-7h59m as Half Day on normal days', () => {
+    const result4h = classifyWorkDay(240, 'normal'); // 4h
+    expect(result4h.payrollStatus).toBe('HALF_DAY');
+    expect(result4h.isPayableDay).toBe(true);
+    expect(result4h.compOffMinutes).toBe(0);
+
+    const result7h = classifyWorkDay(479, 'normal'); // 7h 59m
+    expect(result7h.payrollStatus).toBe('HALF_DAY');
+    expect(result7h.isPayableDay).toBe(true);
+    expect(result7h.compOffMinutes).toBe(0);
+  })
+
+  it('classifies exactly 8h as Full Day with 0 Comp Off', () => {
+    const result = classifyWorkDay(480, 'normal');
+    expect(result.payrollStatus).toBe('FULL_DAY');
+    expect(result.isPayableDay).toBe(true);
+    expect(result.compOffMinutes).toBe(0);
+  })
+
+  it('classifies > 8h as Full Day and credits extra time to Comp Off', () => {
+    const result = classifyWorkDay(540, 'normal'); // 9h
+    expect(result.payrollStatus).toBe('FULL_DAY');
+    expect(result.isPayableDay).toBe(true);
+    expect(result.compOffMinutes).toBe(60); // 1h extra
+  })
+
+  it('classifies Sunday/Holiday/Leave as Comp Off Day and credits all time', () => {
+    const resultSunday = classifyWorkDay(120, 'sunday');
+    expect(resultSunday.payrollStatus).toBe('COMP_OFF_DAY');
+    expect(resultSunday.isPayableDay).toBe(true);
+    expect(resultSunday.compOffMinutes).toBe(120);
+
+    const resultHoliday = classifyWorkDay(60, 'paid_holiday');
+    expect(resultHoliday.payrollStatus).toBe('COMP_OFF_DAY');
+    expect(resultHoliday.isPayableDay).toBe(true);
+    expect(resultHoliday.compOffMinutes).toBe(60);
+
+    const resultLeave = classifyWorkDay(300, 'approved_leave');
+    expect(resultLeave.payrollStatus).toBe('COMP_OFF_DAY');
+    expect(resultLeave.isPayableDay).toBe(false); // Leave handled separately
+    expect(resultLeave.compOffMinutes).toBe(300);
+  })
+})
 
 describe('Payroll Working Calendar & Time Rules', () => {
   it('identifies working days correctly (Mon-Sat)', () => {

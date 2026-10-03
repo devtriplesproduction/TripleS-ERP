@@ -138,6 +138,17 @@ export function isWorkingDay(dateStr: string): boolean {
   return getDayOfWeek(dateStr) !== 0; // Sunday is the only weekly off
 }
 
+// ─── Constants ──────────────────────────────────────────────────────
+
+/** Full working day in minutes (8 hours) */
+export const FULL_DAY_MINUTES = 480;
+
+/** Half day threshold in minutes (4 hours) */
+export const HALF_DAY_THRESHOLD = 240;
+
+/** Standard working day in hours (display only) */
+export const WORKING_DAY_HOURS = 8;
+
 // ─── Extra Hours Calculation ────────────────────────────────────────
 
 export type WorkDayContext = 'normal' | 'sunday' | 'paid_holiday' | 'approved_leave';
@@ -188,4 +199,136 @@ export function determineWorkDayContext(
   if (paidHolidayDates.has(dateStr)) return 'paid_holiday';
   if (approvedLeaveDates.has(dateStr)) return 'approved_leave';
   return 'normal';
+}
+
+// ─── Work Day Classification (Centralized Business Logic) ───────────
+
+/**
+ * Classification result for a work day.
+ * Single source of truth used by EOD, Attendance, Payroll, and Comp Off modules.
+ */
+export type PayrollDayStatus = 'FULL_DAY' | 'HALF_DAY' | 'UNPAID_LEAVE' | 'COMP_OFF_DAY';
+
+export interface WorkDayClassification {
+  /** The context in which work was done */
+  context: WorkDayContext;
+  /** Total worked minutes from approved EOD */
+  workedMinutes: number;
+  /** Payroll classification for the day */
+  payrollStatus: PayrollDayStatus;
+  /** Whether this day should count towards payroll calculation */
+  isPayableDay: boolean;
+  /** Minutes to credit as Comp Off (never negative) */
+  compOffMinutes: number;
+  /** Human-readable attendance status */
+  attendanceStatus: string;
+}
+
+/**
+ * Classify a work day based on approved EOD worked minutes and context.
+ *
+ * Priority:
+ * A. Sunday / Paid Holiday / Approved Comp Off Leave + EOD → ALL worked → Comp Off
+ * B. Normal <4h → Unpaid Leave, ALL worked → Comp Off, day excluded from payroll
+ * C. Normal ≥4h & <8h → Half Day, 0 Comp Off
+ * D. Normal =8h → Full Day, 0 Comp Off
+ * E. Normal >8h → Full Day, extra → Comp Off
+ *
+ * CRITICAL: Comp Off can NEVER be negative. No subtraction, no deduction from
+ * missing hours, no negative balance calculations.
+ */
+export function classifyWorkDay(workedMinutes: number, context: WorkDayContext): WorkDayClassification {
+  // Ensure non-negative
+  const wm = Math.max(0, Math.round(workedMinutes));
+
+  // Sunday, Paid Holiday, or Approved Leave: ALL worked time → Comp Off
+  if (context === 'sunday' || context === 'paid_holiday' || context === 'approved_leave') {
+    return {
+      context,
+      workedMinutes: wm,
+      payrollStatus: 'COMP_OFF_DAY',
+      isPayableDay: context !== 'approved_leave', // Leave days already handled by leave system
+      compOffMinutes: wm, // ALL time → Comp Off
+      attendanceStatus: context === 'sunday' ? 'Weekly Off' :
+                        context === 'paid_holiday' ? 'Paid Holiday' : 'Comp Off Leave',
+    };
+  }
+
+  // Normal working day (Mon-Sat)
+  if (wm < HALF_DAY_THRESHOLD) {
+    // Case A: Less than 4 hours → Unpaid Leave
+    return {
+      context,
+      workedMinutes: wm,
+      payrollStatus: 'UNPAID_LEAVE',
+      isPayableDay: false, // Excluded from payroll
+      compOffMinutes: wm, // ALL worked time → Comp Off
+      attendanceStatus: 'Unpaid Leave',
+    };
+  }
+
+  if (wm < FULL_DAY_MINUTES) {
+    // Case B: 4h to 7h59m → Half Day
+    return {
+      context,
+      workedMinutes: wm,
+      payrollStatus: 'HALF_DAY',
+      isPayableDay: true,
+      compOffMinutes: 0, // No Comp Off for half day
+      attendanceStatus: 'Half Day',
+    };
+  }
+
+  if (wm === FULL_DAY_MINUTES) {
+    // Case C: Exactly 8h → Full Day
+    return {
+      context,
+      workedMinutes: wm,
+      payrollStatus: 'FULL_DAY',
+      isPayableDay: true,
+      compOffMinutes: 0,
+      attendanceStatus: 'Present',
+    };
+  }
+
+  // Case D: More than 8h → Full Day + Extra → Comp Off
+  return {
+    context,
+    workedMinutes: wm,
+    payrollStatus: 'FULL_DAY',
+    isPayableDay: true,
+    compOffMinutes: wm - FULL_DAY_MINUTES, // Only extra time
+    attendanceStatus: 'Present',
+  };
+}
+
+/**
+ * Calculate comp off minutes to credit for an approved EOD.
+ * Convenience wrapper around classifyWorkDay.
+ * Returns 0 for non-approved statuses.
+ * NEVER returns negative values.
+ */
+export function calculateCompOffMinutes(
+  workedMinutes: number,
+  context: WorkDayContext,
+  eodStatus: string
+): number {
+  if (eodStatus !== 'Approved') return 0;
+  if (workedMinutes <= 0) return 0;
+  return classifyWorkDay(workedMinutes, context).compOffMinutes;
+}
+
+/**
+ * Determine the attendance status string for a given work day.
+ * Convenience wrapper around classifyWorkDay.
+ */
+export function determineAttendanceStatus(
+  workedMinutes: number,
+  context: WorkDayContext,
+  eodStatus: string
+): string {
+  if (eodStatus === 'Pending') return 'Pending';
+  if (eodStatus === 'Rejected') return 'Absent';
+  if (eodStatus !== 'Approved') return 'Absent';
+  return classifyWorkDay(workedMinutes, context).attendanceStatus;
 }

@@ -159,8 +159,8 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
                     <th className="px-6 py-3">Employee Name</th>
                     <th className="px-6 py-3 text-right">Standard Hrs</th>
                     <th className="px-6 py-3 text-right">Worked Hrs</th>
-                    <th className="px-6 py-3 text-right">Leave Hrs</th>
-                    <th className="px-6 py-3 text-right">Extra Hrs</th>
+                    <th className="px-6 py-3 text-right">Half Days</th>
+                    <th className="px-6 py-3 text-right">Unpaid (&lt;4h)</th>
                     <th className="px-6 py-3 text-right">Overtime (₹)</th>
                     <th className="px-6 py-3 text-right">Deduction (₹)</th>
                     <th className="px-6 py-3 text-right">Net Payable (₹)</th>
@@ -175,8 +175,8 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
                       </td>
                       <td className="px-6 py-4 text-right">{res.standardHours}</td>
                       <td className="px-6 py-4 text-right">{res.actualWorkedHours}</td>
-                      <td className="px-6 py-4 text-right">{res.creditedLeaveHours}</td>
-                      <td className="px-6 py-4 text-right text-emerald-500 font-medium">{res.extraHours > 0 ? res.extraHours : 0}</td>
+                      <td className="px-6 py-4 text-right font-medium">{res.daysHalfDay}</td>
+                      <td className="px-6 py-4 text-right text-rose-500 font-medium">{res.daysUnpaidLeaveEod}</td>
                       <td className="px-6 py-4 text-right text-emerald-500 font-medium whitespace-nowrap">
                         {res.overtimePay > 0 ? `+₹${res.overtimePay.toFixed(2)}` : '0.00'}
                       </td>

@@ -4,13 +4,15 @@ import { createClient } from "@/lib/supabase/server"
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { guardServerAction } from "@/lib/auth"
 
-export type AttendanceStatus = 'Present' | 'Leave' | 'WFH' | 'Half Day + Present' | 'Half Day + WFH' | 'Absent' | 'Pending' | 'Holiday' | 'Weekend' | 'Not Marked';
+export type AttendanceStatus = 'Present' | 'Leave' | 'WFH' | 'Half Day + Present' | 'Half Day + WFH' | 'Half Day' | 'Unpaid Leave' | 'Absent' | 'Pending' | 'Holiday' | 'Weekend' | 'Not Marked';
 
 export interface DerivedAttendance {
   date: string;
   status: AttendanceStatus;
   workedHours: number;
   extraHours: number;
+  compOffMinutes: number;
+  payrollStatus: string;
   eod?: any;
   leave?: any;
   wfh?: any;
@@ -18,7 +20,7 @@ export interface DerivedAttendance {
 }
 
 import { calculateAttendanceSummary } from "@/lib/utils/attendance-summary"
-import { getDayOfWeek, STANDARD_WORK_MINUTES, calculateExtraMinutes, determineWorkDayContext, formatWorkedTime } from "@/lib/utils/time"
+import { getDayOfWeek, STANDARD_WORK_MINUTES, HALF_DAY_THRESHOLD, calculateExtraMinutes, classifyWorkDay, determineWorkDayContext, formatWorkedTime } from "@/lib/utils/time"
 
 export async function getAttendanceEmployees(month: number, year: number) {
   // Enforce role-based access for this action
@@ -225,7 +227,18 @@ async function _calculateAttendance(employeeId: string, month: number, year: num
       workedHours = Number((eod as any).office_hours || 0); // Keep for backwards compat
     }
 
-    // Priority: Approved Leave/WFH → Approved EOD → Pending EOD → Absent
+    // Determine extra hours context
+    let context: 'normal' | 'sunday' | 'paid_holiday' | 'approved_leave' = 'normal';
+    if (isWeekend) context = 'sunday';
+    else if (holiday && (holiday as any).holiday_type === 'PAID') context = 'paid_holiday';
+    else if (leave && !leave.is_half_day) context = 'approved_leave';
+
+    // Use centralized classification for approved EODs
+    const classification = isApprovedEod ? classifyWorkDay(workedMinutes, context) : null;
+    const compOffMinutes = classification ? classification.compOffMinutes : 0;
+    const payrollStatus = classification ? classification.payrollStatus : '';
+
+    // Priority: Approved Leave/WFH → Approved EOD (with new classification) → Pending EOD → Absent
     if (leave && leave.is_half_day && isApprovedEod) {
       status = 'Half Day + Present';
     } else if (wfh && wfh.is_half_day && isApprovedEod) {
@@ -235,7 +248,19 @@ async function _calculateAttendance(employeeId: string, month: number, year: num
     } else if (wfh && !wfh.is_half_day) {
       status = 'WFH';
     } else if (isApprovedEod) {
-      status = 'Present';
+      // Use new classification for approved EODs on normal days
+      if (context === 'normal') {
+        if (workedMinutes < HALF_DAY_THRESHOLD) {
+          status = 'Unpaid Leave';
+        } else if (workedMinutes < STANDARD_WORK_MINUTES) {
+          status = 'Half Day';
+        } else {
+          status = 'Present';
+        }
+      } else {
+        // Sunday/Holiday/Leave context - still Present
+        status = 'Present';
+      }
     } else if (isPendingEod) {
       status = 'Pending';
     } else if (holiday) {
@@ -246,12 +271,6 @@ async function _calculateAttendance(employeeId: string, month: number, year: num
       status = 'Not Marked'; // Future dates
     }
 
-    // Determine extra hours context
-    let context: 'normal' | 'sunday' | 'paid_holiday' | 'approved_leave' = 'normal';
-    if (isWeekend) context = 'sunday';
-    else if (holiday && (holiday as any).holiday_type === 'PAID') context = 'paid_holiday';
-    else if (leave && !leave.is_half_day) context = 'approved_leave';
-
     const extraMinutes = calculateExtraMinutes(workedMinutes, context);
     const extraHours = extraMinutes / 60;
     
@@ -260,6 +279,8 @@ async function _calculateAttendance(employeeId: string, month: number, year: num
       status,
       workedHours,
       extraHours,
+      compOffMinutes,
+      payrollStatus,
       eod,
       leave,
       wfh,

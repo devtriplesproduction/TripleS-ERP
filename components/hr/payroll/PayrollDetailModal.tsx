@@ -51,7 +51,7 @@ export function PayrollDetailModal({ isOpen, onClose, payroll }: PayrollDetailMo
               <StatItem label="Monthly Gross (Base)" value={`₹${payroll.salary.toFixed(2)}`} />
               <StatItem label="Overtime Pay (+)" value={`₹${payroll.overtimePay.toFixed(2)}`} valueClass="font-semibold text-emerald-500" />
               <StatItem label="Unpaid Leave (-)" value={`₹${payroll.unpaidLeaveDeduction.toFixed(2)}`} valueClass="font-semibold text-rose-500" />
-              <StatItem label="Short Hours (-)" value={`₹${payroll.shortHoursDeduction.toFixed(2)}`} valueClass="font-semibold text-rose-500" />
+              <StatItem label="Short Hours (-)" value="₹0.00" valueClass="font-semibold text-muted-foreground" />
               
               <div className="mt-4 pt-4 border-t border-border flex justify-between items-center">
                 <span className="font-bold text-foreground">Net Payable</span>
@@ -65,20 +65,21 @@ export function PayrollDetailModal({ isOpen, onClose, payroll }: PayrollDetailMo
             <CardHeader className="pb-3">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                Time & Attendance (Hours)
+                Time & Attendance
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-1">
-              <StatItem label="Standard Expected" value={payroll.standardHours.toFixed(1)} />
-              <StatItem label="Actual Worked" value={payroll.actualWorkedHours.toFixed(1)} />
-              <StatItem label="Paid Leave Credited" value={payroll.creditedLeaveHours.toFixed(1)} />
-              <StatItem label="Unpaid Leave" value={payroll.unpaidLeaveHours.toFixed(1)} valueClass="text-rose-500" />
-              <StatItem label="Paid Holidays" value={payroll.paidHolidayHours.toFixed(1)} />
+              <StatItem label="Standard Expected Hrs" value={payroll.standardHours.toFixed(1)} />
+              <StatItem label="Actual Worked Hrs" value={payroll.actualWorkedHours.toFixed(1)} />
+              <StatItem label="Paid Leave Credited Hrs" value={payroll.creditedLeaveHours.toFixed(1)} />
+              <StatItem label="Unpaid Leave Hrs" value={payroll.unpaidLeaveHours.toFixed(1)} valueClass="text-rose-500" />
+              <StatItem label="Paid Holidays Hrs" value={payroll.paidHolidayHours.toFixed(1)} />
               <StatItem label="WFH Hours" value={payroll.wfhHours.toFixed(1)} />
               
               <div className="mt-4 pt-4 border-t border-border space-y-1">
-                <StatItem label="Extra Hours (Overtime Eligible)" value={payroll.extraHours.toFixed(1)} valueClass="text-emerald-500" />
-                <StatItem label="Short Hours (Deficit)" value={payroll.shortHours.toFixed(1)} valueClass="text-rose-500" />
+                <StatItem label="Half Days (4h-7h59m)" value={payroll.daysHalfDay.toString()} />
+                <StatItem label="Unpaid Leave (<4h)" value={payroll.daysUnpaidLeaveEod.toString()} valueClass="text-rose-500" />
+                <StatItem label="Comp Off Earned" value={`${(payroll.compOffMinutesEarned / 60).toFixed(1)} hrs`} valueClass="text-emerald-500 font-semibold" />
               </div>
             </CardContent>
           </Card>

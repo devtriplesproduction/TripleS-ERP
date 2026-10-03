@@ -38,7 +38,7 @@ export async function createHolidayAction(payload: {
         date: payload.date,
         name: payload.name,
         is_optional: payload.is_optional,
-        holiday_type: payload.holiday_type
+        holiday_type: 'PAID'
       })
       .select()
       .single();
@@ -93,7 +93,7 @@ export async function updateHolidayAction(
         date: payload.date,
         name: payload.name,
         is_optional: payload.is_optional,
-        holiday_type: payload.holiday_type,
+        holiday_type: 'PAID',
       })
       .eq('id', id)
       .select()

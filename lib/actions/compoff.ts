@@ -1,6 +1,6 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { createClient } from "@/lib/supabase/server";
-import { calculateExtraMinutes, isSunday } from "@/lib/utils/time";
+import { calculateCompOffMinutes, isSunday } from "@/lib/utils/time";
 
 async function resolveOnboardingId(id: string, supabase: any) {
   const { data: isAlready } = await supabase.from('employee_onboarding').select('id').eq('id', id).maybeSingle();
@@ -45,25 +45,28 @@ export async function getCompOffBalance(employeeId: string): Promise<number> {
 export async function processEODCompOff(eodId: string, employeeId: string, workedHours: number, status: string) {
   const supabase = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
 
+  // Only process approved EODs
   if (status !== 'Approved') return;
   
   const resolvedId = await resolveOnboardingId(employeeId, supabase);
   if (!resolvedId) return;
 
+  // Idempotency: check if credit already exists for this EOD
   const { data: existing } = await supabase
     .from('comp_off_ledger')
     .select('id')
     .eq('reference_id', eodId)
+    .eq('transaction_type', 'CREDIT')
     .limit(1)
     .maybeSingle();
     
-  if (existing) return;
+  if (existing) return; // Already credited, do not duplicate
   
   // 1. Fetch EOD details to know the date
   const { data: eod } = await supabase.from('eod_reports').select('report_date').eq('id', eodId).single();
   if (!eod) return;
 
-  // 2. Check context (Sunday, Holiday, Leave)
+  // 2. Determine context (Sunday, Holiday, Approved Leave)
   let context: 'normal' | 'sunday' | 'paid_holiday' | 'approved_leave' = 'normal';
   
   if (isSunday(eod.report_date)) {
@@ -71,10 +74,10 @@ export async function processEODCompOff(eodId: string, employeeId: string, worke
   } else {
     // Check holiday
     const { data: holiday } = await supabase.from('holidays').select('*').eq('date', eod.report_date).maybeSingle();
-    if (holiday && holiday.holiday_type === 'PAID') { // Using explicit holiday_type
+    if (holiday && holiday.holiday_type === 'PAID') {
       context = 'paid_holiday';
     } else {
-      // Check leave
+      // Check approved leave (specifically Compensatory Off leaves for emergency work)
       const { data: leave } = await supabase.from('leave_requests')
         .select('*')
         .eq('employee_id', employeeId)
@@ -89,24 +92,20 @@ export async function processEODCompOff(eodId: string, employeeId: string, worke
     }
   }
   
+  // 3. Use centralized classification to determine comp off minutes
   const workedMinutes = Math.round(Number(workedHours) * 60);
-  const extraMinutes = calculateExtraMinutes(workedMinutes, context);
-  const diff = Math.round((extraMinutes / 60) * 100) / 100;
+  const compOffMinutes = calculateCompOffMinutes(workedMinutes, context, 'Approved');
   
-  if (diff === 0) return;
+  // CRITICAL: Never create negative comp off. Only credit positive amounts.
+  if (compOffMinutes <= 0) return;
   
-  const currentBalance = await getCompOffBalance(resolvedId);
-  const newBalance = Math.max(0, currentBalance + diff);
-  const actualDiff = Math.round((newBalance - currentBalance) * 100) / 100;
-  
-  if (actualDiff === 0) return;
-  
-  const transactionType = actualDiff > 0 ? 'CREDIT' : 'DEBIT';
+  // Convert to hours for backward-compatible storage in existing ledger
+  const creditHours = Math.round((compOffMinutes / 60) * 100) / 100;
   
   await supabase.from('comp_off_ledger').insert({
     employee_id: resolvedId,
-    transaction_type: transactionType,
-    hours: Math.abs(actualDiff),
+    transaction_type: 'CREDIT',
+    hours: creditHours,
     reference_id: eodId
   });
 }
