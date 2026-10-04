@@ -72,7 +72,7 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
     if (!date) { toast.error("Please select a holiday date."); return; }
     if (isNaN(date.getTime())) { toast.error("Please select a valid holiday date."); return; }
     setIsSubmitting(true);
-    const payload = { name, date: getISTDateString(date), is_optional: isOptional, holiday_type: "PAID" };
+    const payload = { name, date: getISTDateString(date), is_optional: isOptional, holiday_type: "PAID" as "PAID" | "UNPAID" };
     try {
       if (editingId) {
         const res = await updateHolidayAction(editingId, payload);
@@ -96,14 +96,14 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
   };
 
   const emptyState = (
-    <div className="flex flex-col items-center justify-center text-center py-24 bg-card rounded-2xl ring-1 ring-border">
+    <div className="flex flex-col items-center justify-center text-center py-16 sm:py-24 bg-card rounded-2xl ring-1 ring-border p-4">
       <div className="h-16 w-16 bg-primary/10 rounded-full flex items-center justify-center mb-4">
         <CalendarIcon className="w-8 h-8 text-primary opacity-80" />
       </div>
       <h3 className="text-lg font-bold text-foreground">No holidays for {currentYear}</h3>
       <p className="text-sm text-muted-foreground mt-1 max-w-xs">No public holidays have been added yet.</p>
       {isAdmin && (
-        <Button onClick={handleOpenNew} variant="default" className="mt-5 h-10 rounded-xl gap-2 px-4">
+        <Button onClick={handleOpenNew} variant="default" className="mt-5 min-h-[44px] h-10 rounded-xl gap-2 px-4">
           <Plus className="w-4 h-4" /> Add First Holiday
         </Button>
       )}
@@ -114,19 +114,19 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
             Holiday <span className="text-primary">Calendar</span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             {totalHolidays} public {totalHolidays === 1 ? "holiday" : "holidays"} in {currentYear}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
           <div className="flex items-center bg-card rounded-xl ring-1 ring-border p-1">
             <Button variant="ghost" size="icon" onClick={() => setCurrentYear(y => y - 1)} className="h-8 w-8 rounded-lg">
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <span className="px-3 font-bold text-base w-16 text-center">{currentYear}</span>
+            <span className="px-2 sm:px-3 font-bold text-sm sm:text-base w-14 sm:w-16 text-center">{currentYear}</span>
             <Button variant="ghost" size="icon" onClick={() => setCurrentYear(y => y + 1)} className="h-8 w-8 rounded-lg">
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -156,7 +156,7 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
           </div>
 
           {isAdmin && (
-            <Button onClick={handleOpenNew} variant="default" className="h-10 rounded-xl gap-2 px-4">
+            <Button onClick={handleOpenNew} variant="default" className="min-h-[44px] sm:min-h-9 h-9 sm:h-10 rounded-xl gap-2 px-3 sm:px-4 text-xs sm:text-sm">
               <Plus className="w-4 h-4" /> Add Holiday
             </Button>
           )}
@@ -169,38 +169,38 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
             {months.map(({ month, abbr, name, holidays }, idx) => (
               <div key={month} className={idx < months.length - 1 ? "border-b border-border" : ""}>
                 <div className="flex items-stretch min-h-[72px]">
-                  <div className="w-24 sm:w-32 flex-shrink-0 flex flex-col items-center justify-center border-r border-border bg-muted/30 py-4 gap-0.5">
-                    <span className="text-[11px] font-bold tracking-widest text-muted-foreground uppercase">{abbr}</span>
-                    <span className="text-xs text-muted-foreground/60 font-medium">
+                  <div className="w-20 sm:w-32 flex-shrink-0 flex flex-col items-center justify-center border-r border-border bg-muted/30 py-4 gap-0.5">
+                    <span className="text-[10px] sm:text-[11px] font-bold tracking-widest text-muted-foreground uppercase">{abbr}</span>
+                    <span className="text-[10px] sm:text-xs text-muted-foreground/60 font-medium">
                       {holidays.length} {holidays.length === 1 ? "day" : "days"}
                     </span>
                   </div>
-                  <div className="flex-1 flex flex-col divide-y divide-border/50">
+                  <div className="flex-1 flex flex-col divide-y divide-border/50 min-w-0">
                     {holidays.map(h => {
                       const d = parseLocalDate(h.date);
                       return (
-                        <div key={h.id} className="group flex items-center gap-4 px-5 py-3.5 hover:bg-muted/30 transition-colors">
-                          <div className="flex-shrink-0 w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <span className="text-sm font-extrabold text-primary">{d.getDate()}</span>
+                        <div key={h.id} className="group flex items-center gap-3 sm:gap-4 px-3 sm:px-5 py-3.5 hover:bg-muted/30 transition-colors">
+                          <div className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                            <span className="text-xs sm:text-sm font-extrabold text-primary">{d.getDate()}</span>
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-foreground truncate">{h.name}</p>
-                            <div className="flex items-center gap-2 mt-0.5">
+                            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mt-0.5">
                               <p className="text-xs text-muted-foreground">
-                                {d.toLocaleString("default", { weekday: "long" })}, {name} {d.getDate()}
+                                {d.toLocaleString("default", { weekday: "short" })}, {name} {d.getDate()}
                               </p>
-                              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-primary/10 text-primary">
+                              <span className="text-[9px] sm:text-[10px] font-semibold px-1.5 sm:px-2 py-0.5 rounded-md bg-primary/10 text-primary">
                                 Paid Holiday
                               </span>
                             </div>
                           </div>
                           {isAdmin && (
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => handleOpenEdit(h)}>
+                            <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => handleOpenEdit(h)}>
                                 <Edit2 className="h-3.5 w-3.5" />
                               </Button>
                               <ConfirmModal title="Delete Holiday" description="Are you sure you want to delete this holiday?" onConfirm={() => handleDelete(h.id)} confirmText="Delete" variant="destructive">
-                                <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               </ConfirmModal>
@@ -222,34 +222,34 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {months.map(({ month, abbr, name, holidays }) => (
               <div key={month} className="rounded-2xl ring-1 ring-border bg-card overflow-hidden flex flex-col">
-                <div className="px-5 py-4 flex justify-between items-center border-b border-border">
-                  <p className="text-base font-bold text-foreground">{name}</p>
+                <div className="px-4 sm:px-5 py-3 sm:py-4 flex justify-between items-center border-b border-border">
+                  <p className="text-sm sm:text-base font-bold text-foreground">{name}</p>
                   <span className="text-xs font-semibold bg-primary/10 text-primary rounded-full px-2.5 py-0.5">
                     {holidays.length} {holidays.length === 1 ? "day" : "days"}
                   </span>
                 </div>
-                <div className="p-3 flex flex-col gap-1 flex-1">
+                <div className="p-2 sm:p-3 flex flex-col gap-1 flex-1">
                   {holidays.map(h => {
                     const d = parseLocalDate(h.date);
                     return (
-                      <div key={h.id} className="group flex items-center gap-3 px-2.5 py-2.5 rounded-xl hover:bg-muted/40 transition-colors">
-                        <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-primary/10 flex flex-col items-center justify-center">
-                          <span className="text-[10px] font-bold uppercase tracking-wide text-primary/70 leading-none">
+                      <div key={h.id} className="group flex items-center gap-2.5 sm:gap-3 px-2 sm:px-2.5 py-2 sm:py-2.5 rounded-xl hover:bg-muted/40 transition-colors">
+                        <div className="flex-shrink-0 w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex flex-col items-center justify-center">
+                          <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wide text-primary/70 leading-none">
                             {d.toLocaleString("default", { weekday: "short" })}
                           </span>
-                          <span className="text-base font-extrabold text-primary leading-tight">{d.getDate()}</span>
+                          <span className="text-sm sm:text-base font-extrabold text-primary leading-tight">{d.getDate()}</span>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-foreground truncate">{h.name}</p>
-                          <p className="text-[11px] text-muted-foreground">Paid Holiday</p>
+                          <p className="text-xs sm:text-sm font-semibold text-foreground truncate">{h.name}</p>
+                          <p className="text-[10px] sm:text-[11px] text-muted-foreground">Paid Holiday</p>
                         </div>
                         {isAdmin && (
-                          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => handleOpenEdit(h)}>
+                          <div className="flex gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10" onClick={() => handleOpenEdit(h)}>
                               <Edit2 className="h-3.5 w-3.5" />
                             </Button>
                             <ConfirmModal title="Delete Holiday" description="Are you sure you want to delete this holiday?" onConfirm={() => handleDelete(h.id)} confirmText="Delete" variant="destructive">
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
                                 <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </ConfirmModal>
@@ -266,51 +266,51 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
       )}
 
       <Dialog open={isOpen} onOpenChange={(open) => { if (!open && !isSubmitting) setIsOpen(false); }}>
-        <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden rounded-[24px] shadow-2xl border-0 bg-background">
-          <div className="bg-muted/30 p-6 border-b border-border">
+        <DialogContent className="w-[calc(100vw-1.5rem)] sm:max-w-[480px] p-0 overflow-hidden rounded-[24px] shadow-2xl border-0 bg-background max-h-[calc(100dvh-2rem)] overflow-y-auto">
+          <div className="bg-muted/30 p-4 sm:p-6 border-b border-border">
             <DialogHeader>
-              <div className="flex items-center gap-3.5">
-                <div className="h-11 w-11 bg-primary rounded-2xl flex items-center justify-center shadow-md shadow-primary/20 rotate-3">
+              <div className="flex items-center gap-3 sm:gap-3.5">
+                <div className="h-10 w-10 sm:h-11 sm:w-11 bg-primary rounded-2xl flex items-center justify-center shadow-md shadow-primary/20 rotate-3 shrink-0">
                   <CalendarIcon className="w-5 h-5 text-primary-foreground -rotate-3" />
                 </div>
                 <div>
-                  <DialogTitle className="text-xl font-bold text-foreground">
+                  <DialogTitle className="text-lg sm:text-xl font-bold text-foreground">
                     {editingId ? "Edit Holiday" : "Add Holiday"}
                   </DialogTitle>
-                  <DialogDescription className="text-sm text-muted-foreground">
+                  <DialogDescription className="text-xs sm:text-sm text-muted-foreground">
                     {editingId ? "Update the details below." : "Add a new public holiday."}
                   </DialogDescription>
                 </div>
               </div>
             </DialogHeader>
           </div>
-          <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5">
             <div className="space-y-2">
-              <Label className="text-sm font-semibold ml-1">Holiday Name</Label>
+              <Label className="text-xs sm:text-sm font-semibold ml-1">Holiday Name</Label>
               <Input
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="E.g., New Year's Day"
-                className="bg-muted/30 border-transparent focus:bg-background focus:border-primary focus-visible:ring-primary/20 py-6 px-4 rounded-xl text-sm"
+                className="bg-muted/30 border-transparent focus:bg-background focus:border-primary focus-visible:ring-primary/20 py-4 sm:py-6 px-3 sm:px-4 rounded-xl text-sm min-h-[44px]"
               />
             </div>
             <div className="space-y-2">
-              <Label className="text-sm font-semibold ml-1">Date</Label>
+              <Label className="text-xs sm:text-sm font-semibold ml-1">Date</Label>
               <DatePicker 
                 value={date} 
                 onChange={(d) => setDate(d ? new Date(d) : undefined)} 
-                className="bg-muted/30 border-transparent focus-visible:bg-background focus-visible:border-primary focus-visible:ring-primary/20 h-[52px] px-4 rounded-xl text-sm"
+                className="bg-muted/30 border-transparent focus-visible:bg-background focus-visible:border-primary focus-visible:ring-primary/20 min-h-[44px] sm:h-[52px] px-3 sm:px-4 rounded-xl text-sm"
                 iconLeft={true}
                 showChevron={true}
                 placeholder="Select Date"
               />
             </div>
 
-            <div className="flex justify-end gap-3 pt-2">
-              <Button type="button" variant="outline" onClick={() => setIsOpen(false)} className="h-11 px-5 rounded-xl">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-2">
+              <Button type="button" variant="outline" onClick={() => setIsOpen(false)} className="min-h-[44px] sm:h-11 px-5 rounded-xl w-full sm:w-auto">
                 Cancel
               </Button>
-              <Button type="submit" variant="default" disabled={isSubmitting} className="h-11 px-7 rounded-xl shadow-md shadow-primary/20">
+              <Button type="submit" variant="default" disabled={isSubmitting} className="min-h-[44px] sm:h-11 px-7 rounded-xl shadow-md shadow-primary/20 w-full sm:w-auto">
                 {isSubmitting ? "Saving…" : editingId ? "Save Changes" : "Add Holiday"}
               </Button>
             </div>

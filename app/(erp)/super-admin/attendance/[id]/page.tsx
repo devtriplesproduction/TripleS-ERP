@@ -10,7 +10,7 @@ export default async function AdminAttendanceDetailPage({ params }: { params: Pr
   await guardServerAction(['Admin'])
   const resolvedParams = await params;
   return (
-    <div className="p-6 h-[calc(100vh-4rem)] overflow-y-auto w-full max-w-7xl mx-auto">
+    <div className="w-full max-w-7xl mx-auto space-y-6">
       <AttendanceDetail employeeId={resolvedParams.id} basePath="/super-admin/attendance" />
     </div>
   )

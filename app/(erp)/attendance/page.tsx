@@ -10,7 +10,7 @@ export default async function EmployeeAttendancePage() {
   const user = await requireAuth()
   
   return (
-    <div className="p-6 h-[calc(100vh-4rem)] overflow-y-auto w-full max-w-7xl mx-auto">
+    <div className="w-full max-w-7xl mx-auto space-y-6">
       <AttendanceDetail employeeId={user.id} basePath="/dashboard" />
     </div>
   )

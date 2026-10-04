@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, CheckCircle2, XCircle, Plus, Eye, Check, X, FileText, User, Trash2, Paperclip } from "lucide-react"
+import { Calendar, Clock, CheckCircle2, XCircle, Plus, FileText, Trash2, Paperclip, Check, X } from "lucide-react"
 import { format } from "date-fns"
 import {
   Select,
@@ -15,19 +15,11 @@ import {
   Dialog,
   DialogContent,
 } from "@/components/ui/dialog"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
 
 import { LeaveForm } from "./LeaveForm"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
-import { reviewLeaveAction } from "@/actions/leave.actions"
+import { formatCompOffBalance } from "@/lib/utils/time"
 
 export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, canApprove, isSuperAdmin = false, currentEmployeeId, isHR = false }: any) {
   const supabase = createClient()
@@ -92,17 +84,17 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
 
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'Approved': return <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+      case 'Approved': return <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
       case 'Rejected':
-      case 'Cancelled': return <XCircle className="w-4 h-4 text-rose-500" />
-      default: return <Clock className="w-4 h-4 text-amber-500" />
+      case 'Cancelled': return <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
+      default: return <Clock className="w-4 h-4 text-amber-500 shrink-0" />
     }
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 w-full min-w-0">
       <Dialog open={showForm} onOpenChange={setShowForm}>
-        <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-y-auto p-0 border-none bg-transparent shadow-none" showCloseButton={false}>
+        <DialogContent className="w-[calc(100vw-1.5rem)] sm:max-w-3xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto p-0 border-none bg-transparent shadow-none" showCloseButton={false}>
           <LeaveForm 
             onCancel={() => setShowForm(false)} 
             currentEmployeeId={currentEmployeeId}
@@ -116,75 +108,79 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-col gap-6">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-card border border-border flex items-center justify-center shrink-0">
-            <Calendar className="w-6 h-6 text-foreground" />
+      <div className="flex flex-col gap-4 sm:gap-6">
+        <div className="flex items-center gap-3 sm:gap-4">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-card border border-border flex items-center justify-center shrink-0">
+            <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-foreground" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold tracking-tight text-foreground">Leave & WFH Management</h1>
-            <p className="text-sm text-muted-foreground mt-1">Manage your leaves and approvals from one place.</p>
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Leave & WFH Management</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Manage your leaves and approvals from one place.</p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 overflow-x-auto pb-2">
-          <Select value={statusFilter} onValueChange={(val) => val && setStatusFilter(val)}>
-            <SelectTrigger className="h-10 border-border bg-transparent min-w-[140px] text-foreground">
-              <SelectValue placeholder="All Statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="All Statuses">All Statuses</SelectItem>
-              <SelectItem value="Approved">Approved</SelectItem>
-              <SelectItem value="Rejected">Rejected</SelectItem>
-              <SelectItem value="Pending">Pending</SelectItem>
-              <SelectItem value="Cancelled">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <Select value={statusFilter} onValueChange={(val) => val && setStatusFilter(val)}>
+              <SelectTrigger className="h-10 border-border bg-transparent min-w-[130px] sm:min-w-[140px] text-foreground text-xs sm:text-sm">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="All Statuses">All Statuses</SelectItem>
+                <SelectItem value="Approved">Approved</SelectItem>
+                <SelectItem value="Rejected">Rejected</SelectItem>
+                <SelectItem value="Pending">Pending</SelectItem>
+                <SelectItem value="Cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
 
-          {canApprove && (
-            <div className="flex p-1 space-x-1 bg-background rounded-lg border border-border shrink-0">
-              {!isSuperAdmin && (
-                <button
-                  className={`py-1.5 px-4 text-sm font-medium rounded-md transition-all ${activeTab === 'mine' ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                  onClick={() => setActiveTab('mine')}
-                >
-                  My Leaves
-                </button>
-              )}
-              <button
-                className={`py-1.5 px-4 text-sm font-medium rounded-md transition-all flex items-center gap-2 ${activeTab === 'approve' ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                onClick={() => setActiveTab('approve')}
-              >
-                Approvals
-                {pendingCount > 0 && (
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded-full min-w-[20px] text-center font-bold ${activeTab === 'approve' ? 'bg-background text-foreground' : 'bg-foreground text-background'}`}>
-                    {pendingCount}
-                  </span>
+            {canApprove && (
+              <div className="flex p-1 space-x-1 bg-background rounded-lg border border-border shrink-0">
+                {!isSuperAdmin && (
+                  <button
+                    className={`py-1.5 px-3 sm:px-4 text-xs sm:text-sm font-medium rounded-md transition-all ${activeTab === 'mine' ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                    onClick={() => setActiveTab('mine')}
+                  >
+                    My Leaves
+                  </button>
                 )}
-              </button>
-            </div>
-          )}
+                <button
+                  className={`py-1.5 px-3 sm:px-4 text-xs sm:text-sm font-medium rounded-md transition-all flex items-center gap-1.5 sm:gap-2 ${activeTab === 'approve' ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  onClick={() => setActiveTab('approve')}
+                >
+                  Approvals
+                  {pendingCount > 0 && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full min-w-[18px] text-center font-bold ${activeTab === 'approve' ? 'bg-background text-foreground' : 'bg-foreground text-background'}`}>
+                      {pendingCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+          </div>
 
-          {!isSuperAdmin && (
-            <div className="bg-transparent text-muted-foreground border border-border px-4 h-10 flex items-center rounded-lg text-sm shrink-0 gap-2">
-              <Clock className="w-4 h-4" />
-              <span>Comp-Off Balance: <span className="font-medium text-foreground">{compOffBalance >= 8 ? `${Math.floor(compOffBalance / 8)} Day${Math.floor(compOffBalance / 8) > 1 ? 's' : ''} ${compOffBalance % 8 > 0 ? `${compOffBalance % 8} Hour${compOffBalance % 8 > 1 ? 's' : ''}` : ''}` : `${compOffBalance} Hour${compOffBalance > 1 || compOffBalance === 0 ? 's' : ''}`}</span></span>
-            </div>
-          )}
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            {!isSuperAdmin && (
+              <div className="bg-transparent text-muted-foreground border border-border px-3 sm:px-4 h-10 flex items-center rounded-lg text-xs sm:text-sm shrink-0 gap-2">
+                <Clock className="w-4 h-4 shrink-0" />
+                <span>Comp-Off: <span className="font-medium text-foreground">{formatCompOffBalance(compOffBalance * 60)}</span></span>
+              </div>
+            )}
 
-          {activeTab === 'mine' && !isSuperAdmin && (
-            <Button 
-              className="h-10 rounded-lg bg-foreground text-background hover:bg-foreground/90 font-medium gap-2 shrink-0"
-              onClick={() => setShowForm(true)}
-            >
-              <Plus className="w-4 h-4" /> Apply Leave / WFH
-            </Button>
-          )}
+            {activeTab === 'mine' && !isSuperAdmin && (
+              <Button 
+                className="h-10 w-full sm:w-auto rounded-lg bg-foreground text-background hover:bg-foreground/90 font-medium gap-2 shrink-0 text-xs sm:text-sm"
+                onClick={() => setShowForm(true)}
+              >
+                <Plus className="w-4 h-4" /> Apply Leave / WFH
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
       {activeTab === 'mine' ? (
-        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden min-h-[400px] flex flex-col">
+        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden min-h-[300px] flex flex-col">
           {filteredMyLeaves.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
               <div className="w-16 h-16 rounded-full border border-border bg-background/50 flex items-center justify-center mb-6">
@@ -192,11 +188,11 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
               </div>
               <h3 className="text-xl font-bold text-foreground mb-2">No Leave History</h3>
               <p className="text-muted-foreground text-sm max-w-sm">
-                You haven't applied for any leaves yet. Click the Apply Leave button to create your first request.
+                You haven&apos;t applied for any leaves yet. Click the Apply Leave button to create your first request.
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5 p-5">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 p-4 sm:p-5">
               {filteredMyLeaves.map((leave: any) => {
                 const isApproved = leave.status === 'Approved'
                 const isRejected = leave.status === 'Rejected' || leave.status === 'Cancelled'
@@ -236,7 +232,7 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                         <div className="flex items-center gap-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
                           <Calendar className="w-3 h-3" /> Duration
                         </div>
-                        <div className="text-xs font-medium text-foreground flex items-center gap-1.5">
+                        <div className="text-xs font-medium text-foreground flex items-center gap-1.5 flex-wrap">
                           <span className="bg-background px-1.5 py-0.5 rounded-md border border-border/80">
                             {format(new Date(leave.start_date), 'MMM d, yyyy')}
                           </span>
@@ -252,7 +248,7 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                         <div className="flex items-center gap-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
                           <FileText className="w-3 h-3" /> Reason
                         </div>
-                        <div className="text-xs text-muted-foreground leading-relaxed bg-muted/20 border border-border/40 rounded-lg p-2.5 min-h-[40px]">
+                        <div className="text-xs text-muted-foreground leading-relaxed bg-muted/20 border border-border/40 rounded-lg p-2.5 min-h-[40px] break-words">
                           {leave.reason || <span className="italic opacity-50">No reason provided</span>}
                         </div>
                       </div>
@@ -277,7 +273,7 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
           )}
         </div>
       ) : filteredLeavesToApprove.length === 0 ? (
-        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden min-h-[400px] flex flex-col">
+        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden min-h-[300px] flex flex-col">
           <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
             <div className="w-16 h-16 rounded-full border border-border bg-background/50 flex items-center justify-center mb-6">
               <FileText className="w-8 h-8 text-foreground" />
@@ -289,11 +285,10 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
           {filteredLeavesToApprove.map((leave: any) => {
             const firstName = leave.employee?.first_name || "Employee"
             const lastName = leave.employee?.last_name || ""
-            const initials = `${firstName[0] || ""}${lastName[0] || ""}` || "EM"
             const isApproved = leave.status === 'Approved'
             const isRejected = leave.status === 'Rejected' || leave.status === 'Cancelled'
 
@@ -303,23 +298,23 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                 className="bg-card border border-border/80 hover:border-foreground/20 rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 flex flex-col sm:flex-row group overflow-hidden"
               >
                 {/* Left Column - Details */}
-                <div className="flex-1 p-5 md:p-6 flex flex-col justify-between relative">
+                <div className="flex-1 p-4 sm:p-5 md:p-6 flex flex-col justify-between relative">
                   {/* Vertical Divider for Desktop */}
                   <div className="hidden sm:block absolute right-0 top-6 bottom-6 w-px bg-border/60" />
 
                   <div>
                     {/* Card Header: Avatar, Name, Department & Status Badge */}
-                    <div className="flex items-start justify-between gap-3 mb-5">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-xl bg-muted/50 border border-border/60 flex items-center justify-center text-muted-foreground shrink-0 shadow-2xs">
+                    <div className="flex items-start justify-between gap-3 mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-muted/50 border border-border/60 flex items-center justify-center text-muted-foreground shrink-0 shadow-2xs">
                           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-3">
-                            <h3 className="font-bold text-foreground text-lg leading-none group-hover:text-primary transition-colors">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <h3 className="font-bold text-foreground text-base sm:text-lg leading-none group-hover:text-primary transition-colors truncate">
                               {firstName} {lastName}
                             </h3>
-                            <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border text-[11px] font-medium shrink-0 ${
+                            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-medium shrink-0 ${
                               isApproved 
                                 ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
                                 : isRejected 
@@ -330,7 +325,7 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                               <span>{leave.status}</span>
                             </div>
                           </div>
-                          <p className="text-sm text-muted-foreground mt-2 font-medium">
+                          <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 font-medium truncate">
                             {leave.employee?.department ? `${leave.employee.department} • ` : ""}{leave.request_type === 'WFH' ? 'Work From Home' : leave.leave_type}
                           </p>
                         </div>
@@ -338,34 +333,34 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                     </div>
 
                     {/* Date & Type Details Box */}
-                    <div className="flex flex-row bg-muted/20 border border-border/60 rounded-xl p-4 my-5 gap-4 relative">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                          <Calendar className="w-3.5 h-3.5" /> Date
+                    <div className="flex flex-row bg-muted/20 border border-border/60 rounded-xl p-3 sm:p-4 my-4 gap-3 relative">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                          <Calendar className="w-3.5 h-3.5 shrink-0" /> Date
                         </div>
-                        <div className="text-sm font-medium text-foreground">
-                          <div className="whitespace-nowrap">{format(new Date(leave.start_date), 'MMM d, yyyy')} -</div>
-                          <div className="whitespace-nowrap">{format(new Date(leave.end_date), 'MMM d, yyyy')}</div>
+                        <div className="text-xs sm:text-sm font-medium text-foreground">
+                          <div className="truncate">{format(new Date(leave.start_date), 'MMM d, yyyy')} -</div>
+                          <div className="truncate">{format(new Date(leave.end_date), 'MMM d, yyyy')}</div>
                         </div>
                       </div>
                       
                       {/* Inner Vertical Divider */}
                       <div className="w-px bg-border/60 my-1" />
                       
-                      <div className="flex-1 pl-2">
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
-                          <FileText className="w-3.5 h-3.5" /> Type
+                      <div className="flex-1 min-w-0 pl-1">
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
+                          <FileText className="w-3.5 h-3.5 shrink-0" /> Type
                         </div>
-                        <div className="inline-flex items-center px-3 py-1.5 rounded-lg bg-muted/50 border border-border/80 text-xs font-semibold text-foreground shadow-xs">
+                        <div className="inline-flex items-center px-2 sm:px-3 py-1 rounded-lg bg-muted/50 border border-border/80 text-[11px] sm:text-xs font-semibold text-foreground shadow-xs truncate">
                           {leave.request_type === 'WFH' ? 'WFH' : leave.leave_type}
                         </div>
                       </div>
                     </div>
 
                     {/* Reason Section */}
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5">
                           <FileText className="w-3.5 h-3.5" /> Reason
                         </div>
                         {leave.medical_certificate_url && (
@@ -373,13 +368,13 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                             href={leave.medical_certificate_url} 
                             target="_blank" 
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-muted/40 hover:bg-muted border border-border/60 text-[11px] font-bold text-foreground transition-all shadow-xs hover:shadow-sm"
+                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-muted/40 hover:bg-muted border border-border/60 text-[10px] sm:text-[11px] font-bold text-foreground transition-all shadow-xs hover:shadow-sm"
                           >
-                            <Paperclip className="w-3.5 h-3.5" /> View Document
+                            <Paperclip className="w-3 h-3" /> View Doc
                           </a>
                         )}
                       </div>
-                      <p className="text-sm text-foreground/80 leading-relaxed font-medium">
+                      <p className="text-xs sm:text-sm text-foreground/80 leading-relaxed font-medium break-words">
                         {leave.reason || <span className="italic opacity-50">No reason provided</span>}
                       </p>
                     </div>
@@ -387,28 +382,28 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                 </div>
 
                 {/* Right Column - Actions */}
-                <div className="sm:w-[200px] md:w-[220px] p-5 md:p-6 flex flex-col justify-center gap-3 shrink-0 bg-muted/5 sm:bg-transparent border-t sm:border-t-0 border-border/60">
+                <div className="sm:w-[180px] md:w-[200px] p-4 sm:p-5 md:p-6 flex flex-col justify-center gap-2 sm:gap-3 shrink-0 bg-muted/10 sm:bg-transparent border-t sm:border-t-0 border-border/60">
                   {isApproved || isRejected || leave.status === 'Cancelled' ? (
-                    <div className="flex flex-col items-center text-center justify-center text-muted-foreground opacity-80 py-4">
-                      <div className="w-10 h-10 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center mb-3">
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                    <div className="flex flex-col items-center text-center justify-center text-muted-foreground opacity-80 py-2 sm:py-4">
+                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center mb-2 sm:mb-3">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
                       </div>
-                      <span className="text-[11px] font-extrabold uppercase tracking-widest mb-1.5 text-foreground/60">No Actions</span>
-                      <p className="text-xs font-medium px-2 leading-relaxed">
-                        This leave request has been {isApproved ? 'approved' : 'rejected'}.
+                      <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest mb-1 text-foreground/60">No Actions</span>
+                      <p className="text-[11px] sm:text-xs font-medium px-1 leading-relaxed">
+                        Request {isApproved ? 'approved' : 'rejected'}.
                       </p>
                     </div>
                   ) : (
                     <>
                       <Button 
-                        className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold h-11 rounded-xl gap-2 text-sm shadow-sm transition-all"
+                        className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold h-10 sm:h-11 rounded-xl gap-2 text-xs sm:text-sm shadow-sm transition-all"
                         onClick={() => handleUpdateStatus(leave.id, 'Approved')}
                       >
                         <Check className="w-4 h-4" /> Approve
                       </Button>
                       <Button 
                         variant="outline" 
-                        className="w-full border-border/80 text-rose-500 hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-400 font-bold h-11 rounded-xl gap-2 text-sm transition-all bg-transparent"
+                        className="w-full border-border/80 text-rose-500 hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-400 font-bold h-10 sm:h-11 rounded-xl gap-2 text-xs sm:text-sm transition-all bg-transparent"
                         onClick={() => handleUpdateStatus(leave.id, 'Rejected')}
                       >
                         <X className="w-4 h-4" /> Reject

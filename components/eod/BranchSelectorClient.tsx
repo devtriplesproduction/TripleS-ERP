@@ -18,7 +18,7 @@ export function BranchSelectorClient({ branches }: { branches: { id: string; nam
   };
 
   return (
-    <div className="w-48">
+    <div className="w-full sm:w-48">
       <Dropdown
         name="branch"
         value={currentBranch}

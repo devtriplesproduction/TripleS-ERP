@@ -65,17 +65,17 @@ export function RecentEODLogs({ history, user }: { history: EODLog[]; user: User
 
                     {/* Details */}
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
-                        {eodDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                      <h4 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-zinc-100 truncate">
+                        {eodDate.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })}
                       </h4>
-                      <p className="text-xs text-zinc-900 dark:text-zinc-100 mt-0.5">
-                        {taskLines} tasks &bull; {formatWorkedTime(Math.round(Number(eod.office_hours) * 60))} logged
+                      <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
+                        {taskLines} tasks &bull; {formatWorkedTime(Math.round(Number(eod.office_hours) * 60))}
                       </p>
                     </div>
 
                     {/* Status Badge + View Button */}
-                    <div className="ml-3 flex-shrink-0 flex items-center gap-2">
-                      <span className={`px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border flex items-center gap-1 ${eod.status === 'Approved' ? 'bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-emerald-500/20' :
+                    <div className="ml-2 sm:ml-3 flex-shrink-0 flex items-center gap-1.5 sm:gap-2">
+                      <span className={`px-2 py-0.5 sm:px-2.5 sm:py-1 text-[9px] sm:text-[10px] font-bold uppercase tracking-wider rounded-full border flex items-center gap-1 ${eod.status === 'Approved' ? 'bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border-emerald-500/20' :
                         eod.status === 'Rejected' ? 'bg-rose-50 text-rose-600 border-rose-200' :
                           'bg-amber-500/10 text-amber-600 border-amber-200'
                         }`}>
@@ -85,8 +85,9 @@ export function RecentEODLogs({ history, user }: { history: EODLog[]; user: User
                       </span>
                       <button
                         onClick={() => setSelectedEod(eod)}
-                        className="w-8 h-8 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center justify-center transition-colors"
+                        className="w-8 h-8 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 flex items-center justify-center transition-colors shrink-0"
                         title="View EOD"
+                        aria-label="View EOD"
                       >
                         <Eye className="w-4 h-4 text-zinc-600 dark:text-zinc-300" />
                       </button>
@@ -101,32 +102,33 @@ export function RecentEODLogs({ history, user }: { history: EODLog[]; user: User
 
       {/* EOD View Modal */}
       {selectedEod && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-2xl rounded-3xl bg-card text-card-foreground border-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="w-[calc(100vw-1.5rem)] sm:max-w-2xl rounded-2xl sm:rounded-3xl bg-card text-card-foreground border-border shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-1.5rem)]">
 
             {/* Modal Header */}
-            <div className="bg-muted px-6 py-5 border-b border-border flex items-center justify-between sticky top-0 z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-foreground">
+            <div className="bg-muted px-4 sm:px-6 py-4 sm:py-5 border-b border-border flex items-center justify-between sticky top-0 z-10 shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-muted flex items-center justify-center text-foreground shrink-0">
                   <FileText className="w-5 h-5" />
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-foreground leading-tight">EOD Report</h2>
-                  <p className="text-sm text-muted-foreground font-medium">Review details</p>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold text-foreground leading-tight truncate">EOD Report</h2>
+                  <p className="text-xs sm:text-sm text-muted-foreground font-medium truncate">Review details</p>
                 </div>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                className="rounded-full text-muted-foreground hover:text-muted-foreground hover:bg-slate-200/50"
+                className="rounded-full text-muted-foreground hover:text-muted-foreground hover:bg-slate-200/50 h-8 w-8"
                 onClick={() => setSelectedEod(null)}
+                aria-label="Close modal"
               >
                 <X className="w-5 h-5" />
               </Button>
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 overflow-y-auto custom-scrollbar">
+            <div className="p-4 sm:p-6 overflow-y-auto custom-scrollbar">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 {/* Employee Info Card */}
                 <div className="bg-card text-card-foreground border-border rounded-2xl border border-border p-5 shadow-sm">
@@ -233,18 +235,18 @@ export function RecentEODLogs({ history, user }: { history: EODLog[]; user: User
             </div>
 
             {/* Modal Footer */}
-            <div className="border-t border-border bg-muted p-6 sticky bottom-0 z-10">
-              <div className="flex justify-between items-center">
-                <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+            <div className="border-t border-border bg-muted p-4 sm:p-6 sticky bottom-0 z-10 shrink-0">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                <div className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
                   {selectedEod.status === 'Approved' ? (
-                    <><CheckCircle2 className="w-4 h-4 text-emerald-500" /> This report has been approved.</>
+                    <><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> This report has been approved.</>
                   ) : selectedEod.status === 'Rejected' ? (
-                    <><X className="w-4 h-4 text-rose-500" /> This report was rejected.</>
+                    <><X className="w-4 h-4 text-rose-500 shrink-0" /> This report was rejected.</>
                   ) : (
-                    <><Clock className="w-4 h-4 text-amber-500" /> This report is pending review.</>
+                    <><Clock className="w-4 h-4 text-amber-500 shrink-0" /> This report is pending review.</>
                   )}
                 </div>
-                <Button variant="ghost" className="rounded-xl" onClick={() => setSelectedEod(null)}>
+                <Button variant="ghost" className="rounded-xl w-full sm:w-auto" onClick={() => setSelectedEod(null)}>
                   Close
                 </Button>
               </div>

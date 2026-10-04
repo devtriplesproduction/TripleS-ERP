@@ -59,14 +59,14 @@ export function AttendanceList({ basePath = '/hr/attendance' }: { basePath?: str
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Employee Attendance</h1>
-          <p className="text-muted-foreground">Monitor attendance across the organization</p>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Employee Attendance</h1>
+          <p className="text-xs sm:text-sm text-muted-foreground">Monitor attendance across the organization</p>
         </div>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
           <Select value={month.toString()} onValueChange={v => setMonth(parseInt(v || "1"))}>
-            <SelectTrigger className="w-[140px]">
-              <Calendar className="w-4 h-4 mr-2" />
+            <SelectTrigger className="flex-1 sm:w-[140px] min-h-[44px] sm:min-h-9">
+              <Calendar className="w-4 h-4 mr-2 shrink-0" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -78,7 +78,7 @@ export function AttendanceList({ basePath = '/hr/attendance' }: { basePath?: str
             </SelectContent>
           </Select>
           <Select value={year.toString()} onValueChange={v => setYear(parseInt(v || "2000"))}>
-            <SelectTrigger className="w-[100px]">
+            <SelectTrigger className="w-[100px] min-h-[44px] sm:min-h-9">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -90,19 +90,19 @@ export function AttendanceList({ basePath = '/hr/attendance' }: { basePath?: str
         </div>
       </div>
 
-      <Card className="p-4 bg-background/50 backdrop-blur-sm border-border">
-        <div className="flex flex-col md:flex-row gap-4">
+      <Card className="p-3 sm:p-4 bg-background/50 backdrop-blur-sm border-border">
+        <div className="flex flex-col md:flex-row gap-3 sm:gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
             <Input 
               placeholder="Search by name or ID..." 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
-              className="pl-9"
+              className="pl-9 min-h-[44px] md:min-h-9"
             />
           </div>
           <Select value={department} onValueChange={v => setDepartment(v || "All")}>
-            <SelectTrigger className="w-full md:w-[200px]">
+            <SelectTrigger className="w-full md:w-[200px] min-h-[44px] md:min-h-9">
               <SelectValue placeholder="Department" />
             </SelectTrigger>
             <SelectContent>
@@ -114,43 +114,43 @@ export function AttendanceList({ basePath = '/hr/attendance' }: { basePath?: str
         </div>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
         {filtered.map(emp => (
-          <Card key={emp.id} className="p-5 hover:bg-muted/50 transition-colors cursor-pointer border-border" onClick={() => router.push(`${basePath}/${emp.id}`)}>
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <Avatar>
+          <Card key={emp.id} className="p-4 sm:p-5 hover:bg-muted/50 transition-colors cursor-pointer border-border" onClick={() => router.push(`${basePath}/${emp.id}`)}>
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-3 min-w-0">
+                <Avatar className="shrink-0">
                   <AvatarImage src={emp.profile_photo || ''} />
                   <AvatarFallback>{emp.first_name?.[0]}{emp.last_name?.[0]}</AvatarFallback>
                 </Avatar>
-                <div>
-                  <h3 className="font-semibold text-foreground">{emp.first_name} {emp.last_name}</h3>
-                  <p className="text-xs text-muted-foreground">{emp.employee_id} • {emp.department}</p>
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">{emp.first_name} {emp.last_name}</h3>
+                  <p className="text-xs text-muted-foreground truncate">{emp.employee_id} • {emp.department}</p>
                 </div>
               </div>
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
+              <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0 mt-1" />
             </div>
             
-            <div className="mt-4 grid grid-cols-5 gap-2 text-center text-sm bg-muted/30 rounded-lg p-2">
+            <div className="mt-4 grid grid-cols-5 gap-1 sm:gap-2 text-center text-xs sm:text-sm bg-muted/30 rounded-lg p-2">
               <div>
                 <div className="text-emerald-500 font-semibold">{emp.summary.present}</div>
-                <div className="text-[10px] text-muted-foreground uppercase">Present</div>
+                <div className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-tight">Present</div>
               </div>
               <div>
                 <div className="text-blue-500 font-semibold">{emp.summary.wfh}</div>
-                <div className="text-[10px] text-muted-foreground uppercase">WFH</div>
+                <div className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-tight">WFH</div>
               </div>
               <div>
                 <div className="text-orange-500 font-semibold">{emp.summary.leave}</div>
-                <div className="text-[10px] text-muted-foreground uppercase">Leave</div>
+                <div className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-tight">Leave</div>
               </div>
               <div>
                 <div className="text-red-500 font-semibold">{emp.summary.absent}</div>
-                <div className="text-[10px] text-muted-foreground uppercase">Absent</div>
+                <div className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-tight">Absent</div>
               </div>
               <div>
                 <div className="text-amber-500 font-semibold">{emp.summary.pending}</div>
-                <div className="text-[10px] text-muted-foreground uppercase">Pending</div>
+                <div className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-tight">Pending</div>
               </div>
             </div>
           </Card>

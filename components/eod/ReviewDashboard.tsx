@@ -201,7 +201,7 @@ export function ReviewDashboard({
           <h3 className="font-semibold">Filter Reports</h3>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_1fr_auto] gap-4 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 items-end">
           <div className="space-y-1.5">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Search</label>
             <div className="relative">
@@ -256,12 +256,12 @@ export function ReviewDashboard({
             />
           </div>
 
-          <div className="shrink-0">
+          <div className="shrink-0 w-full sm:w-auto">
             <Button
               type="button"
               variant="outline"
               onClick={handleRefresh}
-              className="h-11 px-4 bg-muted border-border text-foreground hover:bg-muted rounded-xl"
+              className="h-11 w-full sm:w-auto px-4 bg-muted border-border text-foreground hover:bg-muted rounded-xl"
             >
               <RefreshCcw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh
@@ -271,50 +271,50 @@ export function ReviewDashboard({
       </div>
 
       {/* Stats Section */}
-      <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm p-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 divide-x divide-slate-100">
+      <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm p-4 sm:p-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
 
-          <div className="flex items-center gap-4 px-2">
-            <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center border border-border flex-shrink-0">
-              <FileText className="w-6 h-6 text-foreground" />
+          <div className="flex items-center gap-3 sm:gap-4 p-2 rounded-xl bg-muted/20 sm:bg-transparent">
+            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-muted flex items-center justify-center border border-border flex-shrink-0">
+              <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-foreground" />
             </div>
             <div>
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Reports</div>
-              <div className="text-3xl font-bold text-foreground">{totalReports}</div>
-              <div className="text-xs text-muted-foreground font-medium">Selected range</div>
+              <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Reports</div>
+              <div className="text-xl sm:text-3xl font-bold text-foreground">{totalReports}</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground font-medium">Selected range</div>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 px-6">
-            <div className="w-14 h-14 rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-100 flex-shrink-0">
-              <CheckCircle2 className="w-6 h-6 text-emerald-500" />
+          <div className="flex items-center gap-3 sm:gap-4 p-2 rounded-xl bg-emerald-500/5 sm:bg-transparent">
+            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-100 dark:border-emerald-500/20 flex-shrink-0">
+              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500" />
             </div>
             <div>
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Approved</div>
-              <div className="text-3xl font-bold text-foreground">{approved}</div>
-              <div className="text-xs text-muted-foreground font-medium">{calcPercent(approved)}%</div>
+              <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Approved</div>
+              <div className="text-xl sm:text-3xl font-bold text-foreground">{approved}</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground font-medium">{calcPercent(approved)}%</div>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 px-6">
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-100 flex-shrink-0">
-              <Clock className="w-6 h-6 text-amber-600" />
+          <div className="flex items-center gap-3 sm:gap-4 p-2 rounded-xl bg-amber-500/5 sm:bg-transparent">
+            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-100 dark:border-amber-500/20 flex-shrink-0">
+              <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />
             </div>
             <div>
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pending</div>
-              <div className="text-3xl font-bold text-foreground">{pending}</div>
-              <div className="text-xs text-muted-foreground font-medium">{calcPercent(pending)}%</div>
+              <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pending</div>
+              <div className="text-xl sm:text-3xl font-bold text-foreground">{pending}</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground font-medium">{calcPercent(pending)}%</div>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 px-6">
-            <div className="w-14 h-14 rounded-2xl bg-rose-50 flex items-center justify-center border border-rose-100 flex-shrink-0">
-              <XCircle className="w-6 h-6 text-rose-600" />
+          <div className="flex items-center gap-3 sm:gap-4 p-2 rounded-xl bg-rose-500/5 sm:bg-transparent">
+            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-rose-500/10 flex items-center justify-center border border-rose-100 dark:border-rose-500/20 flex-shrink-0">
+              <XCircle className="w-5 h-5 sm:w-6 sm:h-6 text-rose-600" />
             </div>
             <div>
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rejected</div>
-              <div className="text-3xl font-bold text-foreground">{rejected}</div>
-              <div className="text-xs text-muted-foreground font-medium">{calcPercent(rejected)}%</div>
+              <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rejected</div>
+              <div className="text-xl sm:text-3xl font-bold text-foreground">{rejected}</div>
+              <div className="text-[10px] sm:text-xs text-muted-foreground font-medium">{calcPercent(rejected)}%</div>
             </div>
           </div>
 
@@ -322,17 +322,17 @@ export function ReviewDashboard({
       </div>
 
       {/* Data Section */}
-      <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm overflow-hidden min-h-[400px] flex flex-col">
+      <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm overflow-hidden min-h-[300px] flex flex-col">
         {filteredEods.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
-            <div className="w-32 h-32 bg-muted rounded-full flex items-center justify-center mb-6 relative border-4 border-white shadow-sm">
-              <FileSearch className="w-16 h-16 text-orange-400 absolute" />
-              <div className="absolute -top-2 -right-2 w-8 h-8 bg-card text-card-foreground border-border rounded-full shadow flex items-center justify-center">
-                <AlertCircle className="w-5 h-5 text-amber-500" />
+          <div className="flex-1 flex flex-col items-center justify-center p-8 sm:p-12 text-center">
+            <div className="w-24 h-24 sm:w-32 sm:h-32 bg-muted rounded-full flex items-center justify-center mb-6 relative border-4 border-background shadow-sm">
+              <FileSearch className="w-12 h-12 sm:w-16 sm:h-16 text-orange-400 absolute" />
+              <div className="absolute -top-2 -right-2 w-7 h-7 sm:w-8 sm:h-8 bg-card text-card-foreground border-border rounded-full shadow flex items-center justify-center">
+                <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">No Reports Found</h2>
-            <p className="text-muted-foreground max-w-sm mx-auto mb-6">
+            <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">No Reports Found</h2>
+            <p className="text-muted-foreground text-xs sm:text-sm max-w-sm mx-auto mb-6">
               Try adjusting your filters, search terms, or date range to find what you&apos;re looking for.
             </p>
             <Button
@@ -350,7 +350,8 @@ export function ReviewDashboard({
           </div>
         ) : (
           <div className="p-0">
-            <div className="overflow-x-auto">
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto min-w-0">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="bg-muted border-b border-border">
@@ -363,7 +364,7 @@ export function ReviewDashboard({
                     <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-border">
                   {filteredEods.map((eod) => (
                     <tr key={eod.id} className="hover:bg-muted/50 transition-colors">
                       <td className="px-6 py-4">
@@ -376,7 +377,7 @@ export function ReviewDashboard({
                         {new Date(eod.report_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                       </td>
                       <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md inline-flex items-center gap-1 ${eod.status === 'Approved' ? 'bg-emerald-500/20/80 text-emerald-500' :
+                        <span className={`px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md inline-flex items-center gap-1 ${eod.status === 'Approved' ? 'bg-emerald-500/20 text-emerald-500' :
                           eod.status === 'Rejected' ? 'bg-rose-100/80 text-rose-700' :
                             'bg-amber-100/80 text-amber-700'
                           }`}>
@@ -412,22 +413,77 @@ export function ReviewDashboard({
                 </tbody>
               </table>
             </div>
+
+            {/* Mobile Cards View */}
+            <div className="block md:hidden divide-y divide-border">
+              {filteredEods.map((eod) => (
+                <div key={eod.id} className="p-4 space-y-3 hover:bg-muted/30 transition-colors">
+                  <div className="flex items-start justify-between gap-2">
+                    <div>
+                      <h4 className="font-bold text-foreground text-sm">
+                        {eod.profiles?.first_name} {eod.profiles?.last_name}
+                      </h4>
+                      <p className="text-xs text-muted-foreground">{eod.profiles?.employee_id || 'Employee'}</p>
+                    </div>
+                    <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md ${
+                      eod.status === 'Approved' ? 'bg-emerald-500/20 text-emerald-500' :
+                      eod.status === 'Rejected' ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400' :
+                      'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400'
+                    }`}>
+                      {eod.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2 text-xs bg-muted/40 p-2.5 rounded-lg">
+                    <div>
+                      <span className="text-muted-foreground">Date: </span>
+                      <span className="font-medium text-foreground">
+                        {new Date(eod.report_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Location: </span>
+                      <span className="font-medium text-foreground">{eod.location}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Hours: </span>
+                      <span className="font-medium text-foreground">
+                        {formatWorkedTime(Math.round(Number(eod.office_hours) * 60))}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Type: </span>
+                      <span className="font-medium text-foreground">{(eod as any).role_context || 'Employee'}</span>
+                    </div>
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="w-full h-9 rounded-lg text-xs font-semibold"
+                    onClick={() => handleOpenModal(eod)}
+                  >
+                    View & Review Report
+                  </Button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>
       {selectedEod && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-2xl rounded-3xl bg-card text-card-foreground border-border shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="w-[calc(100vw-1.5rem)] sm:max-w-2xl rounded-2xl sm:rounded-3xl bg-card text-card-foreground border-border shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-1.5rem)]">
 
             {/* Modal Header */}
-            <div className="bg-muted px-6 py-5 border-b border-border flex items-center justify-between sticky top-0 z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-foreground">
+            <div className="bg-muted px-4 sm:px-6 py-4 sm:py-5 border-b border-border flex items-center justify-between sticky top-0 z-10 shrink-0">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-muted flex items-center justify-center text-foreground shrink-0">
                   <FileText className="w-5 h-5" />
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-foreground leading-tight">EOD Report</h2>
-                  <p className="text-sm text-muted-foreground font-medium">Review details and take action</p>
+                <div className="min-w-0">
+                  <h2 className="text-lg sm:text-xl font-bold text-foreground leading-tight truncate">EOD Report</h2>
+                  <p className="text-xs sm:text-sm text-muted-foreground font-medium truncate">Review details and take action</p>
                 </div>
               </div>
               <Button
@@ -577,22 +633,22 @@ export function ReviewDashboard({
             </div>
 
             {/* Modal Footer Actions */}
-            <div className="border-t border-border bg-muted p-6 sticky bottom-0 z-10">
+            <div className="border-t border-border bg-muted p-4 sm:p-6 sticky bottom-0 z-10 shrink-0">
               {selectedEod.status === 'Pending' ? (
                 currentUserId && selectedEod.employee_id === currentUserId ? (
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 text-amber-500" /> You cannot review your own EOD report.
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" /> You cannot review your own EOD report.
                     </div>
-                    <Button variant="ghost" className="rounded-xl" onClick={() => setSelectedEod(null)}>
+                    <Button variant="ghost" className="rounded-xl w-full sm:w-auto" onClick={() => setSelectedEod(null)}>
                       Close window
                     </Button>
                   </div>
                 ) : (
                 <>
                   {actionError && (
-                    <div className="mb-4 text-sm text-foreground bg-muted p-3 rounded-xl border border-border flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4" /> {actionError}
+                    <div className="mb-4 text-xs sm:text-sm text-foreground bg-muted p-3 rounded-xl border border-border flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0" /> {actionError}
                     </div>
                   )}
 
@@ -609,58 +665,58 @@ export function ReviewDashboard({
                           required
                         />
                       </div>
-                      <div className="flex justify-end gap-3">
-                        <Button variant="ghost" onClick={() => setIsRejecting(false)} disabled={isSubmitting} className="rounded-xl">
+                      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
+                        <Button variant="ghost" onClick={() => setIsRejecting(false)} disabled={isSubmitting} className="rounded-xl w-full sm:w-auto">
                           Cancel
                         </Button>
-                        <Button variant="danger" className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-sm shadow-rose-200" onClick={() => handleAction('Reject')} disabled={isSubmitting}>
+                        <Button variant="danger" className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-sm shadow-rose-200 w-full sm:w-auto" onClick={() => handleAction('Reject')} disabled={isSubmitting}>
                           {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Confirm Rejection
                         </Button>
                       </div>
                     </div>
                   ) : (
-                    <div className="flex justify-between items-center">
-                      <p className="text-sm text-muted-foreground font-medium hidden sm:block">Please review carefully before deciding.</p>
-                      <div className="flex justify-end gap-3 w-full sm:w-auto">
+                    <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
+                      <p className="text-xs sm:text-sm text-muted-foreground font-medium hidden sm:block">Please review carefully before deciding.</p>
+                      <div className="flex flex-wrap sm:flex-nowrap justify-end gap-2 sm:gap-3 w-full sm:w-auto">
                         {!isEditing ? (
-    <Button variant="outline" className="text-foreground border-border hover:bg-muted hover:text-foreground rounded-xl" onClick={() => setIsEditing(true)} disabled={isSubmitting}>
-      <Edit2 className="w-4 h-4 mr-2" /> Edit
-    </Button>
-  ) : (
-    <>
-      <Button variant="ghost" className="text-muted-foreground rounded-xl" onClick={() => setIsEditing(false)} disabled={isSubmitting}>
-        <XIcon className="w-4 h-4 mr-2" /> Cancel
-      </Button>
-      <Button variant="primary" className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm" onClick={handleSaveEdit} disabled={isSubmitting}>
-        {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} Save
-      </Button>
-    </>
-  )}
-  {!isEditing && (
-    <>
-      <Button variant="outline" className="text-foreground border-border hover:bg-muted hover:text-foreground rounded-xl" onClick={() => handleAction('Reject')} disabled={isSubmitting}>
-        <XCircle className="w-4 h-4 mr-2" /> Reject Report
-      </Button>
-      <Button variant="primary" className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm shadow-emerald-200" onClick={() => handleAction('Approve')} disabled={isSubmitting}>
-        {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />} Approve Report
-      </Button>
-    </>
-  )}
+                          <Button variant="outline" className="text-foreground border-border hover:bg-muted hover:text-foreground rounded-xl flex-1 sm:flex-initial text-xs sm:text-sm" onClick={() => setIsEditing(true)} disabled={isSubmitting}>
+                            <Edit2 className="w-4 h-4 mr-1 sm:mr-2" /> Edit
+                          </Button>
+                        ) : (
+                          <>
+                            <Button variant="ghost" className="text-muted-foreground rounded-xl flex-1 sm:flex-initial text-xs sm:text-sm" onClick={() => setIsEditing(false)} disabled={isSubmitting}>
+                              <XIcon className="w-4 h-4 mr-1 sm:mr-2" /> Cancel
+                            </Button>
+                            <Button variant="primary" className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm flex-1 sm:flex-initial text-xs sm:text-sm" onClick={handleSaveEdit} disabled={isSubmitting}>
+                              {isSubmitting ? <Loader2 className="w-4 h-4 mr-1 sm:mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-1 sm:mr-2" />} Save
+                            </Button>
+                          </>
+                        )}
+                        {!isEditing && (
+                          <>
+                            <Button variant="outline" className="text-foreground border-border hover:bg-muted hover:text-foreground rounded-xl flex-1 sm:flex-initial text-xs sm:text-sm" onClick={() => handleAction('Reject')} disabled={isSubmitting}>
+                              <XCircle className="w-4 h-4 mr-1 sm:mr-2 text-rose-500" /> Reject
+                            </Button>
+                            <Button variant="primary" className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm shadow-emerald-200 flex-1 sm:flex-initial text-xs sm:text-sm font-semibold" onClick={() => handleAction('Approve')} disabled={isSubmitting}>
+                              {isSubmitting ? <Loader2 className="w-4 h-4 mr-1 sm:mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-1 sm:mr-2" />} Approve
+                            </Button>
+                          </>
+                        )}
                       </div>
                     </div>
                   )}
                 </>
                 )
               ) : (
-                <div className="flex justify-between items-center">
-                  <div className="text-sm font-medium text-muted-foreground flex items-center gap-2">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                  <div className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
                     {selectedEod.status === 'Approved' ? (
-                      <><CheckCircle2 className="w-4 h-4 text-emerald-500" /> This report has been approved.</>
+                      <><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> This report has been approved.</>
                     ) : (
-                      <><XCircle className="w-4 h-4 text-rose-500" /> This report was rejected.</>
+                      <><XCircle className="w-4 h-4 text-rose-500 shrink-0" /> This report was rejected.</>
                     )}
                   </div>
-                  <Button variant="ghost" className="rounded-xl" onClick={() => setSelectedEod(null)}>
+                  <Button variant="ghost" className="rounded-xl w-full sm:w-auto" onClick={() => setSelectedEod(null)}>
                     Close window
                   </Button>
                 </div>

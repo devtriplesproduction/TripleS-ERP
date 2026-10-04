@@ -90,6 +90,15 @@ export function formatCompOffBalance(totalMinutes: number): string {
   return parts.join(' ');
 }
 
+/** Format hours into an exact string like "126h 52m" */
+export function formatHoursMinutes(decimalHours: number): string {
+  const totalMinutes = Math.round(decimalHours * 60);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (minutes === 0) return `${hours}h`;
+  return `${hours}h ${minutes}m`;
+}
+
 // ─── Validation ─────────────────────────────────────────────────────
 
 /** Validate hours + minutes input. Returns error string or null. */

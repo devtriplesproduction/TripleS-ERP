@@ -82,76 +82,76 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
 
   return (
     <div className="space-y-6 animate-in fade-in zoom-in-95 duration-300">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" onClick={() => router.push(basePath)}>
+      <div className="flex items-center gap-3 sm:gap-4">
+        <Button variant="outline" size="icon" onClick={() => router.push(basePath)} className="shrink-0 h-10 w-10">
           <ArrowLeft className="w-4 h-4" />
         </Button>
         {employee && (
-          <div className="flex items-center gap-3 flex-1">
-            <Avatar className="w-12 h-12">
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <Avatar className="w-10 h-10 sm:w-12 sm:h-12 shrink-0">
               <AvatarImage src={employee.profile_photo || ''} />
               <AvatarFallback>{employee.first_name?.[0]}{employee.last_name?.[0]}</AvatarFallback>
             </Avatar>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight">{employee.first_name} {employee.last_name}</h1>
-              <p className="text-sm text-muted-foreground">{employee.employee_id} • {employee.department} • {employee.designation}</p>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold tracking-tight truncate">{employee.first_name} {employee.last_name}</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground truncate">{employee.employee_id} • {employee.department} • {employee.designation}</p>
             </div>
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-4">
-        <Card className="p-4 flex flex-col justify-center items-center bg-emerald-500/5 border-emerald-500/20">
-          <div className="text-2xl font-bold text-emerald-500">{summary.present}</div>
-          <div className="text-xs text-muted-foreground uppercase font-medium">Present</div>
+      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2 sm:gap-4">
+        <Card className="p-3 sm:p-4 flex flex-col justify-center items-center bg-emerald-500/5 border-emerald-500/20">
+          <div className="text-xl sm:text-2xl font-bold text-emerald-500">{summary.present}</div>
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase font-medium">Present</div>
         </Card>
-        <Card className="p-4 flex flex-col justify-center items-center bg-blue-500/5 border-blue-500/20">
-          <div className="text-2xl font-bold text-blue-500">{summary.wfh}</div>
-          <div className="text-xs text-muted-foreground uppercase font-medium">WFH</div>
+        <Card className="p-3 sm:p-4 flex flex-col justify-center items-center bg-blue-500/5 border-blue-500/20">
+          <div className="text-xl sm:text-2xl font-bold text-blue-500">{summary.wfh}</div>
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase font-medium">WFH</div>
         </Card>
-        <Card className="p-4 flex flex-col justify-center items-center bg-orange-500/5 border-orange-500/20">
-          <div className="text-2xl font-bold text-orange-500">{summary.leave}</div>
-          <div className="text-xs text-muted-foreground uppercase font-medium">Leave</div>
+        <Card className="p-3 sm:p-4 flex flex-col justify-center items-center bg-orange-500/5 border-orange-500/20">
+          <div className="text-xl sm:text-2xl font-bold text-orange-500">{summary.leave}</div>
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase font-medium">Leave</div>
         </Card>
-        <Card className="p-4 flex flex-col justify-center items-center bg-teal-500/5 border-teal-500/20">
-          <div className="text-2xl font-bold text-teal-500">{summary.halfDay}</div>
-          <div className="text-xs text-muted-foreground uppercase font-medium">Half Days</div>
+        <Card className="p-3 sm:p-4 flex flex-col justify-center items-center bg-teal-500/5 border-teal-500/20">
+          <div className="text-xl sm:text-2xl font-bold text-teal-500">{summary.halfDay}</div>
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase font-medium">Half Days</div>
         </Card>
-        <Card className="p-4 flex flex-col justify-center items-center bg-red-500/5 border-red-500/20">
-          <div className="text-2xl font-bold text-red-500">{summary.absent}</div>
-          <div className="text-xs text-muted-foreground uppercase font-medium">Absent</div>
+        <Card className="p-3 sm:p-4 flex flex-col justify-center items-center bg-red-500/5 border-red-500/20">
+          <div className="text-xl sm:text-2xl font-bold text-red-500">{summary.absent}</div>
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase font-medium">Absent</div>
         </Card>
-        <Card className="p-4 flex flex-col justify-center items-center bg-amber-500/5 border-amber-500/20">
-          <div className="text-2xl font-bold text-amber-500">{summary.pending}</div>
-          <div className="text-xs text-muted-foreground uppercase font-medium">Pending</div>
+        <Card className="p-3 sm:p-4 flex flex-col justify-center items-center bg-amber-500/5 border-amber-500/20">
+          <div className="text-xl sm:text-2xl font-bold text-amber-500">{summary.pending}</div>
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase font-medium">Pending</div>
         </Card>
-        <Card className="p-4 flex flex-col justify-center items-center bg-primary/5 border-primary/20">
-          <div className="text-2xl font-bold text-foreground">{formatWorkedTime(Math.round(summary.workedHours * 60))}</div>
-          <div className="text-xs text-muted-foreground uppercase font-medium">Total Hours</div>
+        <Card className="p-3 sm:p-4 flex flex-col justify-center items-center bg-primary/5 border-primary/20">
+          <div className="text-xl sm:text-2xl font-bold text-foreground">{formatWorkedTime(Math.round(summary.workedHours * 60))}</div>
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase font-medium">Total Hours</div>
         </Card>
-        <Card className="p-4 flex flex-col justify-center items-center bg-indigo-500/5 border-indigo-500/20">
-          <div className="text-2xl font-bold text-indigo-500">{formatWorkedTime(Math.round(summary.extraHours * 60))}</div>
-          <div className="text-xs text-muted-foreground uppercase font-medium">Extra Hours</div>
+        <Card className="p-3 sm:p-4 flex flex-col justify-center items-center bg-indigo-500/5 border-indigo-500/20">
+          <div className="text-xl sm:text-2xl font-bold text-indigo-500">{formatWorkedTime(Math.round(summary.extraHours * 60))}</div>
+          <div className="text-[10px] sm:text-xs text-muted-foreground uppercase font-medium">Extra Hours</div>
         </Card>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        <Card className="md:col-span-2 p-6 bg-card border-border">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <CalendarIcon className="w-5 h-5 text-muted-foreground" />
-              {employee ? `${employee.first_name} ${employee.last_name} — Attendance` : 'Attendance Calendar'}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="md:col-span-2 p-4 sm:p-6 bg-card border-border">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4 sm:mb-6">
+            <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2">
+              <CalendarIcon className="w-5 h-5 text-muted-foreground shrink-0" />
+              <span className="truncate">{employee ? `${employee.first_name} ${employee.last_name} — Attendance` : 'Attendance Calendar'}</span>
             </h2>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={() => {
+            <div className="flex items-center gap-2 self-end sm:self-auto">
+              <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => {
                 const d = new Date(currentDate); d.setMonth(d.getMonth() - 1); setCurrentDate(d);
               }}>
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <div className="font-medium min-w-[120px] text-center">
+              <div className="font-medium min-w-[120px] text-center text-xs sm:text-sm">
                 {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
               </div>
-              <Button variant="outline" size="icon" onClick={() => {
+              <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => {
                 const d = new Date(currentDate); d.setMonth(d.getMonth() + 1); setCurrentDate(d);
               }}>
                 <ChevronRight className="w-4 h-4" />
@@ -159,7 +159,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
             </div>
           </div>
           
-          <div className="border border-border rounded-xl overflow-hidden p-2 bg-background/50">
+          <div className="border border-border rounded-xl overflow-x-auto p-1 sm:p-2 bg-background/50">
             <Calendar
               mode="single"
               selected={selectedDate}
@@ -174,13 +174,8 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
               }}
               components={{
                 DayButton: ({ day, ...props }) => {
-                  // Standard react-day-picker day rendering
-                  // Adjusting to show small dot based on attendance status
-                  
                   const d = day.date;
-                  // normalize to local noon for strict yyyy-mm-dd matching
                   const dStr = new Date(d.getTime() - (d.getTimezoneOffset() * 60000)).toISOString().split('T')[0]
-                  
                   const att = attendance.find(a => a.date === dStr)
                   
                   return (
@@ -197,16 +192,16 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
           </div>
         </Card>
 
-        <Card className="p-6 bg-card border-border flex flex-col h-full">
-          <h2 className="text-lg font-semibold flex items-center gap-2 mb-6">
-            <Info className="w-5 h-5 text-muted-foreground" />
+        <Card className="p-4 sm:p-6 bg-card border-border flex flex-col h-full">
+          <h2 className="text-base sm:text-lg font-semibold flex items-center gap-2 mb-4 sm:mb-6">
+            <Info className="w-5 h-5 text-muted-foreground shrink-0" />
             Day Details
           </h2>
           
           {selectedDate && selectedAttendance ? (
-            <div className="space-y-6 flex-1">
-              <div className="flex flex-col items-center p-6 bg-muted/20 rounded-xl border border-border">
-                <h3 className="text-lg font-medium">
+            <div className="space-y-4 sm:space-y-6 flex-1">
+              <div className="flex flex-col items-center p-4 sm:p-6 bg-muted/20 rounded-xl border border-border text-center">
+                <h3 className="text-base sm:text-lg font-medium">
                   {selectedDate.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </h3>
                 <Badge variant="outline" className={`mt-3 px-3 py-1 text-sm ${getStatusColor(selectedAttendance.status)}`}>
@@ -216,21 +211,21 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
 
               {(selectedAttendance.workedHours > 0 || selectedAttendance.extraHours > 0) && (
                 <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wider">Hours Tracked</h4>
+                  <h4 className="text-xs sm:text-sm font-medium text-muted-foreground uppercase tracking-wider">Hours Tracked</h4>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="bg-background border border-border p-3 rounded-lg flex items-center gap-3">
-                      <Clock className="w-5 h-5 text-muted-foreground" />
-                      <div>
+                      <Clock className="w-5 h-5 text-muted-foreground shrink-0" />
+                      <div className="min-w-0">
                         <div className="text-xs text-muted-foreground">Worked</div>
-                        <div className="font-semibold">{formatWorkedTime(Math.round(selectedAttendance.workedHours * 60))}</div>
+                        <div className="font-semibold text-sm sm:text-base truncate">{formatWorkedTime(Math.round(selectedAttendance.workedHours * 60))}</div>
                       </div>
                     </div>
                     {selectedAttendance.extraHours > 0 && (
                       <div className="bg-indigo-500/10 border border-indigo-500/20 p-3 rounded-lg flex items-center gap-3">
-                        <Clock className="w-5 h-5 text-indigo-500" />
-                        <div>
+                        <Clock className="w-5 h-5 text-indigo-500 shrink-0" />
+                        <div className="min-w-0">
                           <div className="text-xs text-indigo-500">Extra</div>
-                          <div className="font-semibold text-indigo-600 dark:text-indigo-400">{formatWorkedTime(Math.round(selectedAttendance.extraHours * 60))}</div>
+                          <div className="font-semibold text-indigo-600 dark:text-indigo-400 text-sm sm:text-base truncate">{formatWorkedTime(Math.round(selectedAttendance.extraHours * 60))}</div>
                         </div>
                       </div>
                     )}
@@ -275,9 +270,9 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
               )}
             </div>
           ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-8 text-center bg-muted/10 rounded-xl border border-dashed border-border">
-              <CalendarIcon className="w-12 h-12 mb-4 opacity-20" />
-              <p>Select a date to view detailed attendance information.</p>
+            <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground p-6 sm:p-8 text-center bg-muted/10 rounded-xl border border-dashed border-border">
+              <CalendarIcon className="w-10 h-10 sm:w-12 sm:h-12 mb-3 sm:mb-4 opacity-20" />
+              <p className="text-xs sm:text-sm">Select a date to view detailed attendance information.</p>
             </div>
           )}
         </Card>

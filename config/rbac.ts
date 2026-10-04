@@ -4,10 +4,10 @@
  * Adding new roles or modules only requires updating this file.
  */
 
-export type AppRole = 'HR' | 'Admin' | 'Employee'
+export type AppRole = 'HR' | 'Admin' | 'Employee' | 'Manager'
 
 /** All valid roles in the system */
-export const ALL_ROLES: AppRole[] = ['HR', 'Admin', 'Employee']
+export const ALL_ROLES: AppRole[] = ['HR', 'Admin', 'Employee', 'Manager']
 
 /**
  * Route permission map: each role maps to the route prefixes it can access.
@@ -24,6 +24,10 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/dashboard',
     '/rulebook',
     '/announcements',
+    '/clients',
+    '/projects',
+    '/tasks',
+    '/my-tasks',
   ],
   Admin: [
     '/admin-eod',
@@ -36,6 +40,10 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/dashboard',
     '/rulebook',
     '/announcements',
+    '/clients',
+    '/projects',
+    '/tasks',
+    '/my-tasks',
   ],
   Employee: [
     '/hr/employee-leave',
@@ -44,6 +52,22 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/attendance',
     '/dashboard',
     '/rulebook',
+    '/clients',
+    '/projects',
+    '/tasks',
+    '/my-tasks',
+  ],
+  Manager: [
+    '/dashboard',
+    '/attendance',
+    '/employee-eod',
+    '/employee-holiday',
+    '/rulebook',
+    '/announcements',
+    '/clients',
+    '/projects',
+    '/tasks',
+    '/my-tasks',
   ],
 }
 

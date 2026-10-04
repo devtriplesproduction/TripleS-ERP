@@ -9,7 +9,7 @@ export const metadata = {
 export default async function AdminAttendancePage() {
   await guardServerAction(['Admin'])
   return (
-    <div className="p-6 h-[calc(100vh-4rem)] overflow-y-auto w-full max-w-7xl mx-auto">
+    <div className="w-full max-w-7xl mx-auto space-y-6">
       <AttendanceList basePath="/super-admin/attendance" />
     </div>
   )

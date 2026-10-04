@@ -3,9 +3,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { calculateMonthlyPayroll } from '@/lib/services/payroll.service'
+import { getCurrentUser } from '@/lib/auth'
 
 export async function addSalaryIncrementAction(employeeId: string, previousSalary: number, newSalary: number, incrementPercentage: number, effectiveDate: string, newPackage: number) {
   try {
+    const user = await getCurrentUser()
+    if (!user || (user.role !== 'HR' && user.role !== 'Admin')) {
+      return { success: false, error: 'Unauthorized: Financial data access is restricted to HR and Admin.' }
+    }
+
     const supabase = await createClient()
     
     const { error: insertError } = await supabase
@@ -36,6 +42,11 @@ export async function addSalaryIncrementAction(employeeId: string, previousSalar
 
 export async function getSalaryHistoryAction(employeeId: string) {
   try {
+    const user = await getCurrentUser()
+    if (!user || (user.role !== 'HR' && user.role !== 'Admin')) {
+      return { success: false, error: 'Unauthorized: Financial data access is restricted to HR and Admin.' }
+    }
+
     const supabase = await createClient()
     const { data, error } = await supabase
       .from('salary_history')
@@ -53,9 +64,15 @@ export async function getSalaryHistoryAction(employeeId: string) {
 
 export async function getMonthlyPayrollAction(year: number, month: number, employeeIds?: string[]) {
   try {
+    const user = await getCurrentUser()
+    if (!user || (user.role !== 'HR' && user.role !== 'Admin')) {
+      return { success: false, error: 'Unauthorized: Financial data access is restricted to HR and Admin.' }
+    }
+
     const results = await calculateMonthlyPayroll(year, month, employeeIds)
     return { success: true, data: results }
   } catch (error: any) {
     return { success: false, error: error.message }
   }
 }
+

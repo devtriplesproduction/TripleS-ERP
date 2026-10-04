@@ -14,6 +14,10 @@ export interface AuthUser {
   role: AppRole
   employee_id: string | null
   employee_name: string | null
+  is_hod?: boolean
+  department?: string | null
+  designation?: string | null
+  division?: string | null
 }
 
 /**
@@ -32,16 +36,42 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     .eq('id', user.id)
     .single()
 
-  console.log('getCurrentUser Debug -> user.id:', user.id, '| profile:', profile, '| error:', profileError)
-
   if (!profile) return null
+
+  let is_hod = false
+  let department: string | null = null
+  let designation: string | null = null
+  let division: string | null = null
+  let resolvedRole = (profile.role || 'Employee') as AppRole
+
+  if (profile.employee_id) {
+    const { data: emp } = await supabase
+      .from('employee_onboarding')
+      .select('is_hod, department, designation, division, role')
+      .eq('employee_id_number', profile.employee_id)
+      .maybeSingle()
+
+    if (emp) {
+      is_hod = !!emp.is_hod
+      department = emp.department || null
+      designation = emp.designation || null
+      division = emp.division || null
+      if (resolvedRole === 'Employee' && emp.role === 'Manager') {
+        resolvedRole = 'Manager'
+      }
+    }
+  }
 
   return {
     id: user.id,
     email: user.email || '',
-    role: profile.role as AppRole,
+    role: resolvedRole,
     employee_id: profile.employee_id,
     employee_name: (profile.first_name || profile.last_name) ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : null,
+    is_hod,
+    department,
+    designation,
+    division,
   }
 }
 

@@ -233,7 +233,7 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-surface p-6 rounded-xl shadow-sm border border-border space-y-6">
+    <form onSubmit={handleSubmit} className="bg-surface p-4 sm:p-6 rounded-xl shadow-sm border border-border space-y-5 sm:space-y-6 w-full min-w-0">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
         <div className="space-y-1.5">
           <label className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">

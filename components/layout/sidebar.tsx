@@ -9,13 +9,20 @@ import {
   ChevronDown,
   Shield,
   Calendar,
-  Book
+  Book,
+  X,
+  ClipboardList,
+  Megaphone,
+  FolderKanban,
+  Kanban,
+  CheckSquare,
+  Building2
 } from 'lucide-react'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { ClipboardList, Megaphone } from 'lucide-react'
 import { type AppRole, hasRouteAccess } from '@/config/rbac'
+import { useSidebar } from './sidebar-context'
 
 interface SidebarProps {
   userRole: AppRole
@@ -51,6 +58,18 @@ const ALL_NAV_ITEMS: NavItem[] = [
       { label: 'HR Payroll', href: '/hr/payroll' },
     ],
   },
+  {
+    label: 'Project Management',
+    href: '',
+    moduleKey: 'pm',
+    icon: <FolderKanban className="mr-3 h-5 w-5" />,
+    children: [
+      { label: 'Projects', href: '/projects' },
+      { label: 'Tasks & Kanban', href: '/tasks' },
+      { label: 'My Tasks', href: '/my-tasks' },
+      { label: 'Clients', href: '/clients' },
+    ],
+  },
   { label: 'Attendance', href: '/attendance', icon: <ClipboardList className="mr-3 h-5 w-5" /> },
   { label: 'Request Leave / WFH', href: '/hr/employee-leave', icon: <Calendar className="mr-3 h-5 w-5" /> },
   { label: 'Employee EOD', href: '/employee-eod', icon: <ClipboardList className="mr-3 h-5 w-5" /> },
@@ -66,6 +85,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
 
 export function Sidebar({ userRole }: SidebarProps) {
   const pathname = usePathname()
+  const { isOpen, closeSidebar } = useSidebar()
   const [openModule, setOpenModule] = useState<string | null>(null)
 
   const toggleModule = (moduleName: string) => {
@@ -104,36 +124,26 @@ export function Sidebar({ userRole }: SidebarProps) {
     </div>
   )
 
-  return (
-    <div className="w-60 border-r border-border bg-background flex flex-col h-full text-muted-foreground shrink-0">
-      <div className="h-16 flex items-center px-2 border-b border-border shrink-0">
-        <div className="flex items-center text-foreground">
-          {/* Company Logo */}
-          <div className="relative h-[72px] w-[72px] overflow-hidden rounded-lg shrink-0 -ml-2">
-            {/* Make sure to place your logo image in the 'public' folder and update the src if necessary */}
-            <Image src="/logo.png" alt="Company Logo" fill sizes="72px" className="object-contain" />
-          </div>
-          <h2 className="text-xl font-bold tracking-tight truncate -ml-3">TripleS ERP</h2>
-        </div>
-      </div>
-
-      <div className="flex-1 py-6 overflow-y-auto">
+  const renderNavContent = () => (
+    <>
+      <div className="flex-1 py-4 sm:py-6 overflow-y-auto">
         <nav className="space-y-1 px-2">
           <Link
             href="/dashboard"
+            onClick={closeSidebar}
             className={cn(
-              "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
+              "flex items-center px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-lg transition-colors",
               pathname === '/dashboard'
                 ? "bg-foreground text-background"
                 : "hover:bg-muted text-muted-foreground hover:text-foreground"
             )}
           >
-            <LayoutDashboard className="mr-3 h-5 w-5" />
+            <LayoutDashboard className="mr-3 h-5 w-5 shrink-0" />
             Dashboard
           </Link>
 
           {visibleItems.length > 0 && (
-            <div className="pt-6 pb-2">
+            <div className="pt-5 pb-2">
               <p className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
                 Modules
               </p>
@@ -147,7 +157,7 @@ export function Sidebar({ userRole }: SidebarProps) {
                 <div key={item.moduleKey} className="space-y-1">
                   <div
                     className={cn(
-                      "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg cursor-pointer transition-colors",
+                      "flex items-center px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-lg cursor-pointer transition-colors",
                       openModule === item.moduleKey ? "text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                     onClick={() => toggleModule(item.moduleKey!)}
@@ -158,13 +168,14 @@ export function Sidebar({ userRole }: SidebarProps) {
                   </div>
 
                   {openModule === item.moduleKey && (
-                    <div className="pt-1 pb-2 space-y-1">
+                    <div className="pt-1 pb-2 space-y-1 pl-2">
                       {item.children.map((child) => (
                         <Link
                           key={child.href}
                           href={child.href as any}
+                          onClick={closeSidebar}
                           className={cn(
-                            "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors",
+                            "flex items-center px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-lg transition-colors",
                             pathname.startsWith(child.href)
                               ? "bg-foreground text-background"
                               : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -185,8 +196,9 @@ export function Sidebar({ userRole }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href as any}
+                onClick={closeSidebar}
                 className={cn(
-                  "flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-colors mt-2",
+                  "flex items-center px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-lg transition-colors mt-1",
                   pathname.startsWith(item.href)
                     ? "bg-foreground text-background"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -200,15 +212,67 @@ export function Sidebar({ userRole }: SidebarProps) {
         </nav>
       </div>
 
-      <div className="p-4 border-t border-border shrink-0">
+      <div className="p-3 sm:p-4 border-t border-border shrink-0">
         <Link
           href="/settings"
-          className="flex items-center px-3 py-2.5 text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          onClick={closeSidebar}
+          className="flex items-center px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
         >
-          <Settings className="mr-3 h-5 w-5" />
+          <Settings className="mr-3 h-5 w-5 shrink-0" />
           Settings
         </Link>
       </div>
-    </div>
+    </>
+  )
+
+  return (
+    <>
+      {/* Desktop Persistent Sidebar (>= 1024px) */}
+      <aside className="hidden lg:flex w-60 border-r border-border bg-background flex-col h-full text-muted-foreground shrink-0 select-none">
+        <div className="h-16 flex items-center px-3 border-b border-border shrink-0">
+          <div className="flex items-center text-foreground">
+            <div className="relative h-12 w-12 overflow-hidden rounded-lg shrink-0">
+              <Image src="/logo.png" alt="Company Logo" fill sizes="48px" className="object-contain" priority />
+            </div>
+            <h2 className="text-xl font-bold tracking-tight truncate ml-2">TripleS ERP</h2>
+          </div>
+        </div>
+
+        {renderNavContent()}
+      </aside>
+
+      {/* Mobile & Tablet Drawer (< 1024px) */}
+      {isOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true" aria-label="Mobile navigation">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs transition-opacity duration-300"
+            onClick={closeSidebar}
+          />
+
+          {/* Drawer Panel */}
+          <div className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-background border-r border-border shadow-2xl flex flex-col z-50 animate-in slide-in-from-left duration-300">
+            <div className="h-16 flex items-center justify-between px-4 border-b border-border shrink-0">
+              <div className="flex items-center text-foreground">
+                <div className="relative h-10 w-10 overflow-hidden rounded-lg shrink-0">
+                  <Image src="/logo.png" alt="Company Logo" fill sizes="40px" className="object-contain" priority />
+                </div>
+                <h2 className="text-lg font-bold tracking-tight truncate ml-2">TripleS ERP</h2>
+              </div>
+              <button
+                type="button"
+                onClick={closeSidebar}
+                className="w-10 h-10 rounded-lg flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                aria-label="Close navigation"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {renderNavContent()}
+          </div>
+        </div>
+      )}
+    </>
   )
 }

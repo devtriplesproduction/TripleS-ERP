@@ -1,22 +1,23 @@
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
+import { SidebarProvider } from '@/components/layout/sidebar-context'
 import { ReactNode } from 'react'
 import { requireAuth } from '@/lib/auth'
-import { redirect } from 'next/navigation'
-import { hasRouteAccess } from '@/config/rbac'
 
 export default async function ERPLayout({ children }: { children: ReactNode }) {
   const user = await requireAuth()
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar userRole={user.role} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header user={user} />
-        <main className="flex-1 overflow-y-auto bg-background p-6">
-          {children}
-        </main>
+    <SidebarProvider>
+      <div className="flex h-screen overflow-hidden bg-background">
+        <Sidebar userRole={user.role} />
+        <div className="flex-1 flex flex-col min-w-0 overflow-hidden w-full">
+          <Header user={user} />
+          <main className="flex-1 overflow-y-auto overflow-x-hidden bg-background p-3 sm:p-5 lg:p-8 min-w-0 w-full">
+            {children}
+          </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   )
 }

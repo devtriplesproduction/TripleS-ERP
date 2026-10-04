@@ -428,7 +428,7 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
           style={{ width: '100%', maxWidth: '100%' }}
         >
           <TabsList 
-            className="bg-card/40 h-10 p-1 border border-border/20 flex items-center justify-start flex-nowrap rounded-xl w-full"
+            className="bg-card/40 h-10 p-1 border border-border/20 flex items-center justify-start flex-nowrap rounded-xl w-max"
           >
             {[
               { value: 'personal-info', label: 'Personal Info' },

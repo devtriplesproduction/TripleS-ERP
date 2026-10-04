@@ -38,7 +38,7 @@ function getPageHeaderIcon(title: string | ReactNode, PropIcon?: LucideIcon): Lu
 
 function renderPageHeaderIcon(title: string | ReactNode, icon: LucideIcon | undefined, iconClassName: string) {
   return React.createElement(getPageHeaderIcon(title, icon), {
-    className: cn("w-6 h-6 sm:w-7 sm:h-7", iconClassName),
+    className: cn("w-5 h-5 sm:w-6 sm:h-6 lg:w-7 lg:h-7", iconClassName),
   });
 }
 
@@ -68,24 +68,24 @@ export function PageHeader({
   };
 
   return (
-    <div className={cn("flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full", className)}>
-      <div className="flex items-center gap-3.5">
-        <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 shadow-sm">
+    <div className={cn("flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full min-w-0", className)}>
+      <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+        <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 rounded-xl sm:rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center flex-shrink-0 shadow-sm">
           {renderPageHeaderIcon(title, PropIcon, iconClassName)}
         </div>
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight">
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-foreground leading-tight truncate">
             {renderTitle()}
           </h1>
           {subtitle && (
-            <p className="text-sm sm:text-base text-muted-foreground mt-0.5 font-medium">
+            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 font-medium line-clamp-1 sm:line-clamp-none">
               {subtitle}
             </p>
           )}
         </div>
       </div>
       {actions && (
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap w-full sm:w-auto flex-shrink-0 mt-2 sm:mt-0">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap w-full sm:w-auto flex-shrink-0 mt-1 sm:mt-0">
           {actions}
         </div>
       )}

@@ -6,7 +6,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { IndianRupee, Clock, CalendarDays, Wallet, ArrowRight, MinusCircle, PlusCircle, LayoutList } from 'lucide-react'
+import { Clock, Wallet, LayoutList } from 'lucide-react'
 import { PayrollResult } from '@/lib/services/payroll.service'
 
 interface PayrollDetailModalProps {
@@ -19,30 +19,30 @@ export function PayrollDetailModal({ isOpen, onClose, payroll }: PayrollDetailMo
   if (!payroll) return null
 
   const StatItem = ({ label, value, valueClass = "font-semibold" }: { label: string, value: React.ReactNode, valueClass?: string }) => (
-    <div className="flex justify-between items-center py-2 border-b border-border/50 last:border-0">
-      <span className="text-sm text-muted-foreground">{label}</span>
-      <span className={`text-sm ${valueClass}`}>{value}</span>
+    <div className="flex justify-between items-center py-2 border-b border-border/50 last:border-0 gap-2">
+      <span className="text-xs sm:text-sm text-muted-foreground">{label}</span>
+      <span className={`text-xs sm:text-sm ${valueClass}`}>{value}</span>
     </div>
   )
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-1.5rem)] sm:max-w-4xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
-          <DialogTitle className="text-xl flex items-center gap-2">
-            <LayoutList className="h-5 w-5" />
-            Payroll Detail: {payroll.name}
+          <DialogTitle className="text-lg sm:text-xl flex items-center gap-2">
+            <LayoutList className="h-5 w-5 shrink-0" />
+            <span className="truncate">Payroll Detail: {payroll.name}</span>
           </DialogTitle>
-          <div className="text-sm text-muted-foreground">
+          <div className="text-xs sm:text-sm text-muted-foreground truncate">
             {payroll.department} | ID: {payroll.employeeId.slice(0,8).toUpperCase()}
           </div>
         </DialogHeader>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-2">
           {/* Salary Breakdown */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
+              <CardTitle className="text-xs sm:text-sm flex items-center gap-2">
                 <Wallet className="h-4 w-4" />
                 Financial Breakdown
               </CardTitle>
@@ -54,8 +54,8 @@ export function PayrollDetailModal({ isOpen, onClose, payroll }: PayrollDetailMo
               <StatItem label="Short Hours (-)" value="₹0.00" valueClass="font-semibold text-muted-foreground" />
               
               <div className="mt-4 pt-4 border-t border-border flex justify-between items-center">
-                <span className="font-bold text-foreground">Net Payable</span>
-                <span className="text-lg font-bold text-foreground">₹{payroll.netPayable.toFixed(2)}</span>
+                <span className="font-bold text-sm sm:text-base text-foreground">Net Payable</span>
+                <span className="text-base sm:text-lg font-bold text-foreground">₹{payroll.netPayable.toFixed(2)}</span>
               </div>
             </CardContent>
           </Card>
@@ -63,7 +63,7 @@ export function PayrollDetailModal({ isOpen, onClose, payroll }: PayrollDetailMo
           {/* Time & Attendance */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-sm flex items-center gap-2">
+              <CardTitle className="text-xs sm:text-sm flex items-center gap-2">
                 <Clock className="h-4 w-4" />
                 Time & Attendance
               </CardTitle>

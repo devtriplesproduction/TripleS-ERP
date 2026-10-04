@@ -17,9 +17,6 @@ import { createRule } from '@/lib/actions/rulebook'
 import { DatePicker } from '@/components/ui/date-picker'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 
-// Mocking some UI elements that would ideally be full dialogs for brevity
-// You should expand these into proper shadcn dialogs
-
 interface RulebookClientProps {
   initialRules: CompanyRule[]
   userRole: 'Admin' | 'HR' | 'Employee'
@@ -82,11 +79,8 @@ export function RulebookClient({ initialRules, userRole, employeeId, acknowledge
     setIsSubmitting(true)
     try {
       if (editingRuleId) {
-        // Find existing to know if we need a new version
         const existing = rules.find(r => r.id === editingRuleId);
         const isPublished = existing?.status === 'Published';
-        // If it's already published, any edit MUST create a new version
-        // If it's a Draft, we can just overwrite
         const createNewVersion = isPublished;
 
         const { updateRule } = await import('@/lib/actions/rulebook');
@@ -131,38 +125,39 @@ export function RulebookClient({ initialRules, userRole, employeeId, acknowledge
 
   return (
     <div className="space-y-6">
-      {/* Category Tags */}
-      <div className="flex flex-wrap gap-2 pb-4 border-b border-border">
-        {CATEGORIES.map(cat => (
-          <button
-            key={cat}
-            onClick={() => setActiveCategory(cat)}
-            className={cn(
-              "px-4 py-2 rounded-full text-sm font-medium transition-colors border",
-              activeCategory === cat 
-                ? "bg-foreground text-background border-foreground" 
-                : "bg-background text-muted-foreground border-border hover:bg-muted"
-            )}
-          >
-            {cat}
-          </button>
-        ))}
-        <div className="flex-1" />
+      {/* Category Tags & Actions */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 max-w-full">
+          {CATEGORIES.map(cat => (
+            <button
+              key={cat}
+              onClick={() => setActiveCategory(cat)}
+              className={cn(
+                "px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-colors border shrink-0 min-h-[38px] sm:min-h-9 flex items-center",
+                activeCategory === cat 
+                  ? "bg-foreground text-background border-foreground" 
+                  : "bg-background text-muted-foreground border-border hover:bg-muted"
+              )}
+            >
+              {cat}
+            </button>
+          ))}
+        </div>
         {(userRole === 'Admin' || userRole === 'HR') && (
           <Button onClick={() => {
             setEditingRuleId(null)
             setNewRule({ status: 'Draft', category: 'Work Policy' })
             setIsAddOpen(true)
-          }} className="gap-2">
+          }} className="gap-2 min-h-[44px] sm:min-h-9 w-full sm:w-auto shrink-0">
             <Plus className="h-4 w-4" /> Add Rule
           </Button>
         )}
       </div>
 
       {/* Rules List */}
-      <div className="grid grid-cols-1 gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6">
         {filteredRules.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground border border-dashed rounded-lg bg-card/50">
+          <div className="text-center py-12 text-muted-foreground border border-dashed rounded-lg bg-card/50 text-sm">
             No rules found for this category.
           </div>
         ) : (
@@ -172,32 +167,37 @@ export function RulebookClient({ initialRules, userRole, employeeId, acknowledge
 
             return (
               <Card key={rule.id} className="bg-card/40 backdrop-blur-md border-border overflow-hidden">
-                <CardHeader className="pb-4">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="outline">{rule.category}</Badge>
-                        <Badge variant={rule.status === 'Published' ? 'default' : 'secondary'}>
+                <CardHeader className="p-4 sm:p-6 pb-3 sm:pb-4">
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 mb-2">
+                        <Badge variant="outline" className="text-[10px] sm:text-xs">{rule.category}</Badge>
+                        <Badge variant={rule.status === 'Published' ? 'default' : 'secondary'} className="text-[10px] sm:text-xs">
                           {rule.status}
                         </Badge>
-                        <Badge variant="outline" className="font-mono">
+                        <Badge variant="outline" className="font-mono text-[10px] sm:text-xs">
                           v{String(rule.version)?.endsWith('.0') ? String(rule.version).split('.')[0] : String(rule.version)}
                         </Badge>
                       </div>
-                      <CardTitle className="text-xl">{rule.title}</CardTitle>
-                      <CardDescription className="mt-1 flex items-center gap-2 text-xs">
-                        Effective: {rule.effective_date ? new Date(rule.effective_date).toLocaleDateString() : 'TBD'}
-                        {rule.published_at && ` • Published: ${new Date(rule.published_at).toLocaleDateString()}`}
+                      <CardTitle className="text-lg sm:text-xl break-words">{rule.title}</CardTitle>
+                      <CardDescription className="mt-1 flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs">
+                        <span>Effective: {rule.effective_date ? new Date(rule.effective_date).toLocaleDateString() : 'TBD'}</span>
+                        {rule.published_at && (
+                          <>
+                            <span>•</span>
+                            <span>Published: {new Date(rule.published_at).toLocaleDateString()}</span>
+                          </>
+                        )}
                       </CardDescription>
                     </div>
                     
                     {(userRole === 'Admin' || userRole === 'HR') && (
-                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
-                          <History className="h-4 w-4 mr-2" />
+                      <div className="flex flex-wrap gap-2 w-full sm:w-auto justify-end shrink-0">
+                        <Button variant="outline" size="sm" className="h-8 text-xs">
+                          <History className="h-3.5 w-3.5 mr-1.5" />
                           History
                         </Button>
-                        <Button variant="outline" size="sm" onClick={() => {
+                        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => {
                           setEditingRuleId(rule.id)
                           setNewRule(rule)
                           setIsAddOpen(true)
@@ -208,36 +208,36 @@ export function RulebookClient({ initialRules, userRole, employeeId, acknowledge
                           confirmText="Delete"
                           onConfirm={() => handleDelete(rule.id)}
                         >
-                          <Button variant="destructive" size="sm">
-                            <Trash2 className="h-4 w-4" />
+                          <Button variant="destructive" size="sm" className="h-8 w-8 p-0">
+                            <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </ConfirmModal>
                       </div>
                     )}
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground whitespace-pre-wrap">
+                <CardContent className="p-4 sm:p-6 pt-0">
+                  <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground whitespace-pre-wrap text-xs sm:text-sm">
                     {rule.description}
                   </div>
                 </CardContent>
                 {needsAck && (
-                  <CardFooter className="bg-muted/30 pt-4 border-t border-border flex justify-between items-center">
-                    <div className="text-sm">
+                  <CardFooter className="bg-muted/30 p-4 sm:p-6 pt-3 sm:pt-4 border-t border-border flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+                    <div className="text-xs sm:text-sm">
                       {isAcked ? (
                         <span className="flex items-center text-green-600 dark:text-green-400 font-medium">
-                          <CheckCircle2 className="h-4 w-4 mr-2" />
+                          <CheckCircle2 className="h-4 w-4 mr-2 shrink-0" />
                           Acknowledged
                         </span>
                       ) : (
                         <span className="flex items-center text-amber-600 dark:text-amber-400 font-medium">
-                          <ShieldAlert className="h-4 w-4 mr-2" />
+                          <ShieldAlert className="h-4 w-4 mr-2 shrink-0" />
                           Acknowledgement Required
                         </span>
                       )}
                     </div>
                     {!isAcked && (
-                      <Button onClick={() => handleAcknowledge(rule.id, String(rule.version))} variant="default">
+                      <Button onClick={() => handleAcknowledge(rule.id, String(rule.version))} variant="default" className="min-h-[44px] sm:min-h-9 w-full sm:w-auto text-xs sm:text-sm">
                         Acknowledge v{String(rule.version)?.endsWith('.0') ? String(rule.version).split('.')[0] : String(rule.version)}
                       </Button>
                     )}
@@ -257,31 +257,31 @@ export function RulebookClient({ initialRules, userRole, employeeId, acknowledge
           setChangeType('Minor')
         }
       }}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="w-[calc(100vw-1.5rem)] sm:max-w-[600px] max-h-[calc(100dvh-2rem)] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-xl">
-              <BookOpen className="h-5 w-5 text-blue-500" />
+            <DialogTitle className="flex items-center gap-2 text-lg sm:text-xl">
+              <BookOpen className="h-5 w-5 text-blue-500 shrink-0" />
               {editingRuleId ? 'Edit Rule' : 'Add New Rule'}
             </DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Title</Label>
+          <div className="grid gap-3 sm:gap-4 py-3 sm:py-4">
+            <div className="grid grid-cols-1 sm:grid-cols-4 items-start sm:items-center gap-1.5 sm:gap-4">
+              <Label className="text-left sm:text-right text-xs sm:text-sm">Title</Label>
               <Input
-                className="col-span-3"
+                className="col-span-1 sm:col-span-3 min-h-[44px]"
                 value={newRule.title || ''}
                 onChange={e => setNewRule({ ...newRule, title: e.target.value })}
                 placeholder="e.g. Remote Work Policy"
               />
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Category</Label>
-              <div className="col-span-3">
+            <div className="grid grid-cols-1 sm:grid-cols-4 items-start sm:items-center gap-1.5 sm:gap-4">
+              <Label className="text-left sm:text-right text-xs sm:text-sm">Category</Label>
+              <div className="col-span-1 sm:col-span-3">
                 <Select
                   value={newRule.category}
                   onValueChange={(val) => setNewRule({ ...newRule, category: val as any })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="min-h-[44px]">
                     <SelectValue placeholder="Select Category" />
                   </SelectTrigger>
                   <SelectContent>
@@ -292,14 +292,14 @@ export function RulebookClient({ initialRules, userRole, employeeId, acknowledge
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Status</Label>
-              <div className="col-span-3">
+            <div className="grid grid-cols-1 sm:grid-cols-4 items-start sm:items-center gap-1.5 sm:gap-4">
+              <Label className="text-left sm:text-right text-xs sm:text-sm">Status</Label>
+              <div className="col-span-1 sm:col-span-3">
                 <Select
                   value={newRule.status}
                   onValueChange={(val) => setNewRule({ ...newRule, status: val as any })}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="min-h-[44px]">
                     <SelectValue placeholder="Select Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -309,14 +309,14 @@ export function RulebookClient({ initialRules, userRole, employeeId, acknowledge
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Change Type</Label>
-              <div className="col-span-3">
+            <div className="grid grid-cols-1 sm:grid-cols-4 items-start sm:items-center gap-1.5 sm:gap-4">
+              <Label className="text-left sm:text-right text-xs sm:text-sm">Change Type</Label>
+              <div className="col-span-1 sm:col-span-3">
                 <Select
                   value={changeType}
                   onValueChange={(val) => setChangeType(val as any)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="min-h-[44px]">
                     <SelectValue placeholder="Select Change Type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -333,9 +333,9 @@ export function RulebookClient({ initialRules, userRole, employeeId, acknowledge
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-4 items-center gap-4">
-              <Label className="text-right">Effective Date</Label>
-              <div className="col-span-3">
+            <div className="grid grid-cols-1 sm:grid-cols-4 items-start sm:items-center gap-1.5 sm:gap-4">
+              <Label className="text-left sm:text-right text-xs sm:text-sm">Effective Date</Label>
+              <div className="col-span-1 sm:col-span-3">
                 <DatePicker
                   value={newRule.effective_date || ''}
                   onChange={val => setNewRule({ ...newRule, effective_date: val })}
@@ -343,19 +343,19 @@ export function RulebookClient({ initialRules, userRole, employeeId, acknowledge
                 />
               </div>
             </div>
-            <div className="grid grid-cols-4 items-start gap-4">
-              <Label className="text-right mt-3">Description</Label>
+            <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-1.5 sm:gap-4">
+              <Label className="text-left sm:text-right text-xs sm:text-sm mt-1 sm:mt-3">Description</Label>
               <textarea
-                className="col-span-3 flex min-h-[150px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                className="col-span-1 sm:col-span-3 flex min-h-[150px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                 value={newRule.description || ''}
                 onChange={e => setNewRule({ ...newRule, description: e.target.value })}
                 placeholder="Rule details..."
               />
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
-            <Button disabled={isSubmitting} onClick={handleCreateRule}>
+          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setIsAddOpen(false)} className="min-h-[44px] sm:min-h-9 w-full sm:w-auto">Cancel</Button>
+            <Button disabled={isSubmitting} onClick={handleCreateRule} className="min-h-[44px] sm:min-h-9 w-full sm:w-auto">
               {isSubmitting ? "Saving..." : "Save Rule"}
             </Button>
           </DialogFooter>
