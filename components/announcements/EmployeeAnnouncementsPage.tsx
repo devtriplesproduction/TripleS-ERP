@@ -85,7 +85,7 @@ export function EmployeeAnnouncementsPage({ announcements: initialAnnouncements 
               className="pl-9 bg-background min-h-[44px] sm:min-h-10"
             />
           </div>
-          <Select value={filter} onValueChange={setFilter}>
+          <Select value={filter} onValueChange={(v) => setFilter(v ?? 'all')}>
             <SelectTrigger className="w-full sm:w-[160px] bg-background min-h-[44px] sm:min-h-10 capitalize"><SelectValue placeholder="Filter" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>

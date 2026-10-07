@@ -17,6 +17,7 @@ export interface ProjectFileMetadata {
   profile?: {
     first_name: string
     last_name: string | null
+    profile_photo?: string | null
   }
 }
 
@@ -138,7 +139,7 @@ export async function getProjectFilesAction(projectId: string): Promise<{ succes
       .from('project_files')
       .select(`
         *,
-        profile:profiles!project_files_uploaded_by_fkey(first_name, last_name)
+        profile:profiles!project_files_uploaded_by_fkey(first_name, last_name, profile_photo)
       `)
       .eq('project_id', projectId)
       .order('created_at', { ascending: false })

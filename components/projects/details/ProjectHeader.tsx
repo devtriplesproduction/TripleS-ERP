@@ -196,9 +196,9 @@ export function ProjectHeader({
             {teamStats.slice(0, 5).map((member, i) => {
               const initials = member.name.substring(0, 2).toUpperCase()
               return (
-                <Avatar key={member.user_id} className="h-8 w-8 border-2 border-card shadow-xs transition-transform hover:scale-110 hover:z-10 cursor-pointer">
-                  {member.profile_photo ? (
-                    <AvatarImage src={member.profile_photo} alt={member.name} />
+                <Avatar key={member.userId} className="h-8 w-8 border-2 border-card shadow-xs transition-transform hover:scale-110 hover:z-10 cursor-pointer">
+                  {member.profilePhoto ? (
+                    <AvatarImage src={member.profilePhoto} alt={member.name} />
                   ) : null}
                   <AvatarFallback className="bg-secondary text-xs">{initials}</AvatarFallback>
                 </Avatar>

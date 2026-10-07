@@ -283,7 +283,7 @@ export function AnnouncementsClientPage({ announcements: initialAnnouncements, d
               className="pl-9 bg-background min-h-[44px] sm:min-h-10"
             />
           </div>
-          <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+          <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v ?? 'all')}>
             <SelectTrigger className="w-full sm:w-[140px] bg-background min-h-[44px] sm:min-h-10 capitalize"><SelectValue placeholder="Priority" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Priorities</SelectItem>
@@ -293,7 +293,7 @@ export function AnnouncementsClientPage({ announcements: initialAnnouncements, d
               <SelectItem value="low">Low</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? 'all')}>
             <SelectTrigger className="w-full sm:w-[140px] bg-background min-h-[44px] sm:min-h-10 capitalize"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
