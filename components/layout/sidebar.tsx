@@ -7,31 +7,29 @@ import {
   LayoutDashboard,
   Settings,
   ChevronDown,
-  Shield,
   Calendar,
   Book,
   X,
   ClipboardList,
   Megaphone,
   FolderKanban,
-  Kanban,
-  CheckSquare,
-  Building2
+  CreditCard,
 } from 'lucide-react'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { type AppRole, hasRouteAccess } from '@/config/rbac'
+import { type AppRole, hasRouteAccess, canAccessProjectManagement } from '@/config/rbac'
 import { useSidebar } from './sidebar-context'
 
 interface SidebarProps {
   userRole: AppRole
+  isHod?: boolean
+  hasProjectAccess?: boolean
 }
 
 /**
- * Sidebar nav items configuration.
- * Each item has a route and optionally children.
- * The sidebar only renders items the user's role can access.
+ * Sidebar nav item configuration.
+ * Each item has a route and optionally children for expandable groups.
  */
 interface NavItem {
   label: string
@@ -43,80 +41,193 @@ interface NavItem {
   moduleKey?: string
 }
 
-const ALL_NAV_ITEMS: NavItem[] = [
-  {
-    label: 'HR Department',
-    href: '',
-    moduleKey: 'hr',
-    icon: <Users className="mr-3 h-5 w-5" />,
-    children: [
-      { label: 'Employee Onboarding', href: '/hr/onboarding' },
-      { label: 'Attendance', href: '/hr/attendance' },
-      { label: 'Leave', href: '/hr/leave' },
-      { label: 'EOD Reports', href: '/eod', icon: <ClipboardList className="mr-3 h-5 w-5" /> },
-      { label: 'HR Holiday', href: '/hr/holidays', icon: <Calendar className="mr-3 h-5 w-5" /> },
-      { label: 'HR Payroll', href: '/hr/payroll' },
-    ],
-  },
-  {
-    label: 'Project Management',
-    href: '',
-    moduleKey: 'pm',
-    icon: <FolderKanban className="mr-3 h-5 w-5" />,
-    children: [
-      { label: 'Projects', href: '/projects' },
-      { label: 'Tasks & Kanban', href: '/tasks' },
-      { label: 'My Tasks', href: '/my-tasks' },
-      { label: 'Clients', href: '/clients' },
-    ],
-  },
-  { label: 'Attendance', href: '/attendance', icon: <ClipboardList className="mr-3 h-5 w-5" /> },
-  { label: 'Request Leave / WFH', href: '/hr/employee-leave', icon: <Calendar className="mr-3 h-5 w-5" /> },
-  { label: 'Employee EOD', href: '/employee-eod', icon: <ClipboardList className="mr-3 h-5 w-5" /> },
-  { label: 'Employee Holiday', href: '/employee-holiday', icon: <Calendar className="mr-3 h-5 w-5" /> },
-  { label: 'Admin Attendance', href: '/super-admin/attendance', icon: <ClipboardList className="mr-3 h-5 w-5" /> },
-  { label: 'Admin EOD', href: '/admin-eod', icon: <ClipboardList className="mr-3 h-5 w-5" /> },
-  { label: 'Admin Holiday', href: '/admin-holiday', icon: <Calendar className="mr-3 h-5 w-5" /> },
-  { label: 'Admin Payroll', href: '/admin-payroll' },
-  { label: 'Super Admin Leave', href: '/super-admin/leave', icon: <Shield className="mr-3 h-5 w-5" /> },
-  { label: 'Rulebook', href: '/rulebook', icon: <Book className="mr-3 h-5 w-5" /> },
-  { label: 'Announcements', href: '/announcements', icon: <Megaphone className="mr-3 h-5 w-5" /> },
-]
+/**
+ * Standardized navigation items generator based on role.
+ * Enforces the exact 6-module sequence without role prefixes:
+ * 1. Employees
+ * 2. EOD Reports
+ * 3. Request Leave / WFH
+ * 4. Attendance
+ * 5. Holiday
+ * 6. Payroll
+ * Followed by other modules (Project Management, Rulebook, Announcements) per RBAC.
+ */
+function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: boolean): NavItem[] {
+  // 1. Employees destination (same route /hr/onboarding, guarded by existing RBAC)
+  const employeesHref = '/hr/onboarding'
 
-export function Sidebar({ userRole }: SidebarProps) {
+  // 2. EOD Reports role-specific route
+  const eodHref =
+    userRole === 'Admin'
+      ? '/admin-eod'
+      : userRole === 'Employee' || userRole === 'Manager'
+      ? '/employee-eod'
+      : '/eod'
+
+  // 3. Request Leave / WFH role-specific route
+  const leaveHref =
+    userRole === 'Admin'
+      ? '/super-admin/leave'
+      : userRole === 'Employee' || userRole === 'Manager'
+      ? '/hr/employee-leave'
+      : '/hr/leave'
+
+  // 4. Attendance role-specific route
+  const attendanceHref =
+    userRole === 'Admin'
+      ? '/super-admin/attendance'
+      : userRole === 'Employee' || userRole === 'Manager'
+      ? '/attendance'
+      : '/hr/attendance'
+
+  // 5. Holiday role-specific route
+  const holidayHref =
+    userRole === 'Admin'
+      ? '/admin-holiday'
+      : userRole === 'Employee' || userRole === 'Manager'
+      ? '/employee-holiday'
+      : '/hr/holidays'
+
+  // 6. Payroll role-specific route
+  const payrollHref = userRole === 'Admin' ? '/admin-payroll' : '/hr/payroll'
+
+  // Standardized first 6 modules (always in this exact sequence for all roles)
+  const standardModules: NavItem[] = [
+    {
+      label: 'Employees',
+      href: employeesHref,
+      icon: <Users className="mr-3 h-5 w-5 shrink-0" />,
+    },
+    {
+      label: 'EOD Reports',
+      href: eodHref,
+      icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" />,
+    },
+    {
+      label: 'Request Leave / WFH',
+      href: leaveHref,
+      icon: <Calendar className="mr-3 h-5 w-5 shrink-0" />,
+    },
+    {
+      label: 'Attendance',
+      href: attendanceHref,
+      icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" />,
+    },
+    {
+      label: 'Holiday',
+      href: holidayHref,
+      icon: <Calendar className="mr-3 h-5 w-5 shrink-0" />,
+    },
+    {
+      label: 'Payroll',
+      href: payrollHref,
+      icon: <CreditCard className="mr-3 h-5 w-5 shrink-0" />,
+    },
+  ]
+
+  // Filter standard modules based on role (Employees and Payroll are removed for Employee role)
+  const visibleStandard = standardModules.filter((item) => {
+    if ((userRole === 'Employee' || userRole === 'Manager') && (item.label === 'Employees' || item.label === 'Payroll')) {
+      return false
+    }
+    return hasRouteAccess(userRole, item.href, isHod)
+  })
+
+  // Other modules (Project Management, Rulebook, Announcements) filtered by existing RBAC
+  const otherModules: NavItem[] = [
+    {
+      label: 'Rulebook',
+      href: '/rulebook',
+      icon: <Book className="mr-3 h-5 w-5 shrink-0" />,
+    },
+    {
+      label: 'Announcements',
+      href: '/announcements',
+      icon: <Megaphone className="mr-3 h-5 w-5 shrink-0" />,
+    },
+  ]
+
+  if (canAccessProjectManagement(userRole, isHod)) {
+    otherModules.unshift({
+      label: 'Project Management',
+      href: '',
+      moduleKey: 'pm',
+      icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" />,
+      children: [
+        { label: 'Projects', href: '/projects' },
+        { label: 'Tasks & Kanban', href: '/tasks' },
+        { label: 'My Tasks', href: '/my-tasks' },
+        { label: 'Clients', href: '/clients' },
+      ],
+    })
+  } else if (hasProjectAccess) {
+    // If they have explicit project access (assigned task/membership), show My Projects
+    otherModules.unshift({
+      label: 'Project Management',
+      href: '',
+      moduleKey: 'pm',
+      icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" />,
+      children: [
+        { label: 'My Projects', href: '/projects' },
+        ...(hasRouteAccess(userRole, '/my-tasks') ? [{ label: 'My Tasks', href: '/my-tasks' }] : [])
+      ],
+    })
+  } else {
+    // If they can't access project management, they still might have "My Tasks"
+    // Let's add My Tasks standalone if allowed by RBAC
+    if (hasRouteAccess(userRole, '/my-tasks')) {
+      otherModules.unshift({
+        label: 'My Tasks',
+        href: '/my-tasks',
+        icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" />,
+      })
+    }
+  }
+
+  const visibleOther = otherModules.reduce<NavItem[]>((acc, item) => {
+    if (item.children) {
+      const visibleChildren = item.children.filter((child) =>
+        hasRouteAccess(userRole, child.href, isHod)
+      )
+      if (visibleChildren.length > 0) {
+        acc.push({ ...item, children: visibleChildren })
+      }
+    } else {
+      if (hasRouteAccess(userRole, item.href, isHod)) {
+        acc.push(item)
+      }
+    }
+    return acc
+  }, [])
+
+  return [...visibleStandard, ...visibleOther]
+}
+
+export function Sidebar({ userRole, isHod, hasProjectAccess }: SidebarProps) {
   const pathname = usePathname()
   const { isOpen, closeSidebar } = useSidebar()
-  const [openModule, setOpenModule] = useState<string | null>(null)
+  const [openModule, setOpenModule] = useState<string | null>(() => {
+    if (
+      pathname.startsWith('/projects') ||
+      pathname.startsWith('/tasks') ||
+      pathname.startsWith('/my-tasks') ||
+      pathname.startsWith('/clients')
+    ) {
+      return 'pm'
+    }
+    return null
+  })
 
   const toggleModule = (moduleName: string) => {
     setOpenModule(openModule === moduleName ? null : moduleName)
   }
 
-  /**
-   * Filter nav items based on user role.
-   * For group items, filter children and only show the group if it has visible children.
-   */
-  const filterItems = (items: NavItem[]): NavItem[] => {
-    return items.reduce<NavItem[]>((acc, item) => {
-      if (item.children) {
-        // Filter children by role access
-        const visibleChildren = item.children.filter(child =>
-          hasRouteAccess(userRole, child.href)
-        )
-        if (visibleChildren.length > 0) {
-          acc.push({ ...item, children: visibleChildren })
-        }
-      } else {
-        // Standalone item
-        if (hasRouteAccess(userRole, item.href)) {
-          acc.push(item)
-        }
-      }
-      return acc
-    }, [])
-  }
+  const visibleItems = getRoleNavItems(userRole, isHod, hasProjectAccess)
 
-  const visibleItems = filterItems(ALL_NAV_ITEMS)
+  const isItemActive = (href: string) => {
+    if (!href) return false
+    return pathname === href || pathname.startsWith(href + '/')
+  }
 
   const renderDotIcon = (isActive: boolean) => (
     <div className="w-5 flex justify-center mr-3">
@@ -151,7 +262,7 @@ export function Sidebar({ userRole }: SidebarProps) {
           )}
 
           {visibleItems.map((item) => {
-            // Group/expandable module
+            // Group/expandable module (e.g., Project Management)
             if (item.children && item.moduleKey) {
               return (
                 <div key={item.moduleKey} className="space-y-1">
@@ -176,12 +287,12 @@ export function Sidebar({ userRole }: SidebarProps) {
                           onClick={closeSidebar}
                           className={cn(
                             "flex items-center px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-lg transition-colors",
-                            pathname.startsWith(child.href)
+                            isItemActive(child.href)
                               ? "bg-foreground text-background"
                               : "text-muted-foreground hover:bg-muted hover:text-foreground"
                           )}
                         >
-                          {child.icon || renderDotIcon(pathname.startsWith(child.href))}
+                          {child.icon || renderDotIcon(isItemActive(child.href))}
                           {child.label}
                         </Link>
                       ))}
@@ -191,20 +302,20 @@ export function Sidebar({ userRole }: SidebarProps) {
               )
             }
 
-            // Standalone item
+            // Standalone module
             return (
               <Link
-                key={item.href}
+                key={`${item.label}-${item.href}`}
                 href={item.href as any}
                 onClick={closeSidebar}
                 className={cn(
                   "flex items-center px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-lg transition-colors mt-1",
-                  pathname.startsWith(item.href)
+                  isItemActive(item.href)
                     ? "bg-foreground text-background"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
-                {item.icon || renderDotIcon(pathname.startsWith(item.href))}
+                {item.icon || renderDotIcon(isItemActive(item.href))}
                 {item.label}
               </Link>
             )

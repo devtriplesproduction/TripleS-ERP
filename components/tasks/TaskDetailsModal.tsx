@@ -177,7 +177,7 @@ export function TaskDetailsModal({
           {task.description && (
             <div className="space-y-1.5">
               <h5 className="text-xs font-semibold text-muted-foreground uppercase">Description</h5>
-              <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed bg-secondary/15 p-3 rounded-md border border-border/50">
+              <p className="text-sm text-foreground whitespace-pre-wrap break-words break-all bg-secondary/15 p-3 rounded-md border border-border/50 overflow-hidden">
                 {task.description}
               </p>
             </div>
@@ -295,9 +295,9 @@ export function TaskDetailsModal({
                     <div key={c.id} className="p-3 bg-secondary/30 border border-border/70 rounded-md space-y-1 text-xs">
                       <div className="flex items-center justify-between text-muted-foreground">
                         <span className="font-semibold text-foreground">{author}</span>
-                        <span className="text-[10px]">{dayjs(c.created_at).format('DD MMM, hh:mm A')}</span>
+                        <span className="text-[10px] shrink-0 ml-2">{dayjs(c.created_at).format('DD MMM, hh:mm A')}</span>
                       </div>
-                      <p className="text-foreground leading-relaxed whitespace-pre-wrap">{c.comment}</p>
+                      <p className="text-foreground leading-relaxed whitespace-pre-wrap break-words break-all overflow-hidden">{c.comment}</p>
                     </div>
                   )
                 })

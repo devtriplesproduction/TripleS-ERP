@@ -27,6 +27,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DEPARTMENTS, DIVISIONS, DESIGNATIONS } from '@/config/roles'
 
 import { SalaryAndHikeTab } from '@/components/hr/payroll/salary-and-hike-tab'
+import { HodAssignmentAction } from '@/components/hr/onboarding/hod-assignment-action'
+import { HodStatusBadge } from '@/components/hr/onboarding/hod-status-badge'
 
 export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
   const router = useRouter()
@@ -337,10 +339,10 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
             </h2>
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted-foreground font-mono">{employee.employee_id_number || 'N/A'}</span>
-              <div className="w-1 h-1 rounded-full bg-border/60" />
               <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20 text-[10px] px-2 py-0 h-5 font-semibold">
                 Active <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-400 ml-1" />
               </Badge>
+              <HodStatusBadge employee={employee} />
             </div>
           </div>
         </div>
@@ -405,6 +407,7 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
           <button className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
             <Download className="w-3.5 h-3.5" /> Download Profile PDF
           </button>
+          <HodAssignmentAction employee={employee} />
           <button className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-sm bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">
             <UserX className="w-3.5 h-3.5" /> Deactivate Employee
           </button>

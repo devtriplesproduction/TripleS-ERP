@@ -12,14 +12,18 @@ interface ProjectHeaderProps {
   project: Project
   totalOperationalHours: number
   canEdit: boolean
+  canManageTasks?: boolean
   onEdit: () => void
+  onAddTask?: () => void
 }
 
 export function ProjectHeader({
   project,
   totalOperationalHours,
   canEdit,
+  canManageTasks,
   onEdit,
+  onAddTask,
 }: ProjectHeaderProps) {
   const getStatusVariant = (status: string) => {
     switch (status) {
@@ -51,8 +55,8 @@ export function ProjectHeader({
 
   return (
     <div className="space-y-4 bg-card border border-border rounded-lg p-5 sm:p-6 shadow-xs">
-      {/* Back button & ID */}
-      <div className="flex items-center justify-between gap-3">
+      {/* Back button */}
+      <div className="flex items-center gap-3">
         <Link
           href="/projects"
           className="inline-flex items-center text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
@@ -60,58 +64,75 @@ export function ProjectHeader({
           <ArrowLeft className="mr-1.5 h-3.5 w-3.5" />
           Back to Projects
         </Link>
-
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-xs font-semibold text-muted-foreground">
-            {project.project_id_display}
-          </span>
-          {canEdit && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onEdit}
-              className="h-8 px-3 text-xs"
-            >
-              <Edit className="mr-1.5 h-3.5 w-3.5" />
-              Edit Project
-            </Button>
-          )}
-        </div>
       </div>
 
-      {/* Title & Badges */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            {project.name}
-          </h1>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1 flex-wrap">
-            <span className="flex items-center gap-1 font-medium text-foreground">
-              <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
-              {project.client_name}
-            </span>
-            {project.department && (
-              <>
-                <span>•</span>
-                <span>{project.department}</span>
-              </>
+      {/* Title & Metadata */}
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                {project.name}
+              </h1>
+              <span className="font-mono text-xs font-medium text-muted-foreground bg-secondary px-2 py-0.5 rounded-md">
+                {project.project_id_display}
+              </span>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2">
+              {/* Client */}
+              <div className="flex items-center gap-1.5">
+                <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className="text-sm font-medium text-foreground">{project.client_name}</span>
+              </div>
+              
+              <div className="w-px h-4 bg-border hidden sm:block" />
+
+              {/* Status */}
+              <Badge className={`px-2 py-0.5 text-xs rounded-md ${getStatusVariant(project.status)}`}>
+                {project.status.replace('_', ' ')}
+              </Badge>
+
+              <div className="w-px h-4 bg-border hidden sm:block" />
+
+              {/* Priority */}
+              <Badge variant="outline" className={`px-2 py-0.5 text-xs ${getPriorityVariant(project.priority)}`}>
+                {project.priority}
+              </Badge>
+
+              <div className="w-px h-4 bg-border hidden sm:block" />
+
+              {/* Deadline */}
+              <div className="flex items-center gap-1.5 text-sm">
+                <span className="text-muted-foreground">Deadline:</span>
+                <span className={project.is_overdue ? 'text-destructive font-bold' : 'text-foreground font-medium'}>
+                  {project.deadline ? dayjs(project.deadline).format('DD MMM YYYY') : 'Not set'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 self-start">
+            {canEdit && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onEdit}
+                className="h-9 px-4 text-xs font-medium bg-card border-border hover:bg-secondary/80 hover:text-foreground"
+              >
+                Edit Project
+              </Button>
             )}
-            {project.project_manager_name && (
-              <>
-                <span>•</span>
-                <span>Manager: {project.project_manager_name}</span>
-              </>
+            {canManageTasks && onAddTask && (
+              <Button
+                size="sm"
+                onClick={onAddTask}
+                className="h-9 px-4 text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                + Add Task
+              </Button>
             )}
           </div>
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="outline" className={`px-2.5 py-1 text-xs ${getPriorityVariant(project.priority)}`}>
-            {project.priority}
-          </Badge>
-          <Badge className={`px-2.5 py-1 text-xs ${getStatusVariant(project.status)}`}>
-            {project.status.replace('_', ' ')}
-          </Badge>
         </div>
       </div>
 

@@ -1,0 +1,174 @@
+'use client'
+
+import { useState } from 'react'
+import { Task } from '@/types/project-management'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Dropdown } from '@/components/ui/Dropdown'
+import { Search, Calendar, Clock, AlertCircle } from 'lucide-react'
+import dayjs from 'dayjs'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+
+interface ProjectListTabProps {
+  tasks: Task[]
+}
+
+export function ProjectListTab({ tasks }: ProjectListTabProps) {
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('ALL')
+  const [priorityFilter, setPriorityFilter] = useState('ALL')
+
+  const filteredTasks = tasks.filter((t) => {
+    const matchesSearch = t.title.toLowerCase().includes(search.toLowerCase()) || t.task_id_display.toLowerCase().includes(search.toLowerCase())
+    const matchesStatus = statusFilter === 'ALL' || t.status === statusFilter
+    const matchesPriority = priorityFilter === 'ALL' || t.priority === priorityFilter
+    return matchesSearch && matchesStatus && matchesPriority
+  })
+
+  const getPriorityVariant = (priority: string) => {
+    switch (priority) {
+      case 'URGENT': return 'border-destructive text-destructive font-bold'
+      case 'HIGH': return 'border-foreground/80 text-foreground font-semibold'
+      case 'MEDIUM': return 'border-border text-foreground'
+      default: return 'border-border text-muted-foreground'
+    }
+  }
+
+  const getStatusVariant = (status: string) => {
+    switch (status) {
+      case 'IN_PROGRESS': return 'bg-foreground text-background font-semibold'
+      case 'DONE': return 'bg-muted text-foreground border border-border'
+      case 'ON_HOLD': return 'border-border text-muted-foreground'
+      default: return 'border-border text-muted-foreground'
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center bg-card border border-border p-3 rounded-lg shadow-xs">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search tasks..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="pl-9 h-9 text-xs bg-card border-border"
+          />
+        </div>
+        <div className="flex items-center gap-2">
+          <Dropdown
+            value={statusFilter}
+            onChange={(val) => setStatusFilter(val || 'ALL')}
+            options={[
+              { value: 'ALL', label: 'All Status' },
+              { value: 'TODO', label: 'To Do' },
+              { value: 'IN_PROGRESS', label: 'In Progress' },
+              { value: 'IN_REVIEW', label: 'In Review' },
+              { value: 'DONE', label: 'Done' },
+              { value: 'ON_HOLD', label: 'On Hold' },
+            ]}
+            buttonClassName="h-9 text-xs border-border bg-card w-32"
+          />
+          <Dropdown
+            value={priorityFilter}
+            onChange={(val) => setPriorityFilter(val || 'ALL')}
+            options={[
+              { value: 'ALL', label: 'All Priority' },
+              { value: 'LOW', label: 'Low' },
+              { value: 'MEDIUM', label: 'Medium' },
+              { value: 'HIGH', label: 'High' },
+              { value: 'URGENT', label: 'Urgent' },
+            ]}
+            buttonClassName="h-9 text-xs border-border bg-card w-32"
+          />
+        </div>
+      </div>
+
+      {/* Task List */}
+      <div className="bg-card border border-border rounded-lg shadow-xs overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm whitespace-nowrap">
+            <thead className="bg-secondary/40 border-b border-border text-xs text-muted-foreground uppercase font-medium">
+              <tr>
+                <th className="px-4 py-3">Task</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Priority</th>
+                <th className="px-4 py-3">Assignees</th>
+                <th className="px-4 py-3">Dates</th>
+                <th className="px-4 py-3 text-right">Hours</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border">
+              {filteredTasks.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-muted-foreground text-sm">
+                    No tasks found matching your criteria.
+                  </td>
+                </tr>
+              ) : (
+                filteredTasks.map((t) => (
+                  <tr key={t.id} className="hover:bg-secondary/20 transition-colors group cursor-pointer">
+                    <td className="px-4 py-3">
+                      <div className="flex flex-col">
+                        <span className="font-medium text-foreground text-sm group-hover:text-primary transition-colors">{t.title}</span>
+                        <span className="text-xs text-muted-foreground font-mono">{t.task_id_display}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge className={`text-[10px] px-2 py-0.5 rounded-md ${getStatusVariant(t.status)}`}>
+                        {t.status.replace('_', ' ')}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <Badge variant="outline" className={`text-[10px] px-2 py-0.5 ${getPriorityVariant(t.priority)}`}>
+                        {t.priority}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center -space-x-2">
+                        {(t.assignees || []).slice(0, 3).map((a, idx) => {
+                          const name = a.profile ? `${a.profile.first_name || ''} ${a.profile.last_name || ''}`.trim() : 'User'
+                          const initials = name.slice(0, 2).toUpperCase()
+                          return (
+                            <Avatar key={idx} className="h-6 w-6 border-2 border-card bg-secondary text-[9px]">
+                              {a.profile?.profile_photo && <AvatarImage src={a.profile.profile_photo} alt={name} />}
+                              <AvatarFallback>{initials}</AvatarFallback>
+                            </Avatar>
+                          )
+                        })}
+                        {(t.assignees?.length || 0) > 3 && (
+                          <div className="h-6 w-6 rounded-full bg-secondary border-2 border-card flex items-center justify-center text-[9px] font-bold text-muted-foreground">
+                            +{(t.assignees?.length || 0) - 3}
+                          </div>
+                        )}
+                        {(t.assignees?.length || 0) === 0 && (
+                          <span className="text-[11px] text-muted-foreground ml-2">Unassigned</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-xs">
+                      <div className="flex flex-col gap-0.5">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Calendar className="h-3 w-3" />
+                          {t.start_date ? dayjs(t.start_date).format('DD MMM YYYY') : '-'}
+                        </span>
+                        <span className={`flex items-center gap-1 ${t.is_overdue ? 'text-destructive font-bold' : 'text-muted-foreground'}`}>
+                          {t.is_overdue ? <AlertCircle className="h-3 w-3" /> : <Clock className="h-3 w-3" />}
+                          {t.due_date ? dayjs(t.due_date).format('DD MMM YYYY') : '-'}
+                        </span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 text-right text-xs font-mono font-medium text-foreground">
+                      {t.worked_hours || 0} / {t.estimated_hours || 0}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}

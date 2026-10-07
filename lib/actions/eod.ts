@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
@@ -603,6 +603,7 @@ export async function updateEOD(payload: {
   photo_url?: string;
   job_card_numbers?: string;
   tomorrows_plan?: string;
+  admin_note?: string;
 }) {
   try {
     const _authSupabase = await createClient();
@@ -663,6 +664,10 @@ export async function updateEOD(payload: {
       p_tomorrows_plan: payload.tomorrows_plan || ''
     });
 
+    if (payload.admin_note !== undefined) {
+      await supabase.from('eod_reports').update({ rejection_reason: payload.admin_note }).eq('id', eodId);
+    }
+
     if (rpcError) {
       console.error("EOD update RPC error:", rpcError);
       return { success: false, error: "Failed to update EOD" };
@@ -705,6 +710,8 @@ async function logEodActivity(action: string, actor_email: string, user_id: stri
     console.error("Activity log exception:", e);
   }
 }
+
+
 
 
 

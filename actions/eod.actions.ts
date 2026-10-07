@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 'use server';
 
 import { z } from 'zod';
@@ -38,6 +38,7 @@ export async function submitEODAction(formData: FormData) {
       photo_url: (formData.get('photo_url') as string | null) ?? undefined,
       job_card_numbers: (formData.get('job_card_numbers') as string | null) ?? undefined,
       tomorrows_plan: (formData.get('tomorrows_plan') as string | null) ?? undefined,
+      admin_note: (formData.get('admin_note') as string | null) ?? undefined,
       role_context: (formData.get('role_context') as 'Employee' | 'HR') || 'Employee',
     };
     console.log("SubmitEODAction rawData:", rawData);
@@ -140,12 +141,13 @@ export async function updateEODAction(formData: FormData) {
       photo_url: (formData.get('photo_url') as string | null) ?? undefined,
       job_card_numbers: (formData.get('job_card_numbers') as string | null) ?? undefined,
       tomorrows_plan: (formData.get('tomorrows_plan') as string | null) ?? undefined,
+      admin_note: (formData.get('admin_note') as string | null) ?? undefined,
       role_context: (formData.get('role_context') as 'Employee' | 'HR') || 'Employee',
     };
 
     const validatedData = eodSubmitSchema.parse(rawData);
 
-    const result = await updateEOD(validatedData);
+    const result = await updateEOD({ ...validatedData, admin_note: rawData.admin_note });
 
     if (result.success) {
       revalidatePath('/eod');
@@ -162,6 +164,7 @@ export async function updateEODAction(formData: FormData) {
     return { success: false, error: "An unexpected error occurred" };
   }
 }
+
 
 
 

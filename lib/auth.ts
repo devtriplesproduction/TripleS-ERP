@@ -32,13 +32,13 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
-    .select('role, employee_id, first_name, last_name')
+    .select('role, employee_id, first_name, last_name, is_hod')
     .eq('id', user.id)
     .single()
 
   if (!profile) return null
 
-  let is_hod = false
+  let is_hod = !!profile.is_hod
   let department: string | null = null
   let designation: string | null = null
   let division: string | null = null
@@ -52,7 +52,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
       .maybeSingle()
 
     if (emp) {
-      is_hod = !!emp.is_hod
+      if (!is_hod) is_hod = !!emp.is_hod
       department = emp.department || null
       designation = emp.designation || null
       division = emp.division || null
@@ -91,7 +91,7 @@ export async function requireAuth(): Promise<AuthUser> {
  */
 export async function requireRole(pathname: string): Promise<AuthUser> {
   const user = await requireAuth()
-  if (!hasRouteAccess(user.role, pathname)) {
+  if (!hasRouteAccess(user.role, pathname, user.is_hod)) {
     redirect('/unauthorized')
   }
   return user

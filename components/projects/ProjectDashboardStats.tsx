@@ -13,19 +13,19 @@ export function ProjectStatsOverview({ stats }: ProjectStatsProps) {
     {
       label: 'Total Projects',
       value: stats.totalProjects,
-      icon: <FolderGit2 className="h-5 w-5 text-foreground" />,
+      icon: <FolderGit2 className="h-5 w-5 text-muted-foreground" />,
       desc: 'All recorded projects',
     },
     {
       label: 'Active Projects',
       value: stats.activeProjects,
-      icon: <Clock className="h-5 w-5 text-foreground" />,
+      icon: <Clock className="h-5 w-5 text-blue-500" />,
       desc: 'Planned or In Progress',
     },
     {
       label: 'Completed Projects',
       value: stats.completedProjects,
-      icon: <CheckCircle2 className="h-5 w-5 text-foreground" />,
+      icon: <CheckCircle2 className="h-5 w-5 text-emerald-500" />,
       desc: 'Successfully delivered',
     },
     {
@@ -38,23 +38,23 @@ export function ProjectStatsOverview({ stats }: ProjectStatsProps) {
   ]
 
   return (
-    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       {statItems.map((item, idx) => (
         <Card
           key={idx}
-          className={`border-border bg-card shadow-xs transition-shadow hover:shadow-sm ${
-            item.isWarning ? 'border-destructive/40 bg-destructive/5' : ''
-          }`}
+          className="border-border/60 bg-card rounded-[14px] shadow-xs hover:border-border transition-all"
         >
-          <CardContent className="p-4 sm:p-5 flex items-center justify-between">
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">{item.label}</p>
-              <h3 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground mt-1">
+          <CardContent className="p-[20px] flex items-start justify-between">
+            <div className="space-y-3">
+              <p className="text-sm font-medium text-muted-foreground">{item.label}</p>
+              <h3 className="text-3xl font-bold tracking-tight text-foreground font-sans">
                 {item.value}
               </h3>
-              <p className="text-[11px] text-muted-foreground mt-0.5">{item.desc}</p>
+              <p className="text-xs text-muted-foreground">{item.desc}</p>
             </div>
-            <div className="p-2.5 rounded-lg bg-accent/60 shrink-0">{item.icon}</div>
+            <div className="p-2.5 rounded-lg bg-secondary/50 shrink-0 border border-border/40">
+              {item.icon}
+            </div>
           </CardContent>
         </Card>
       ))}

@@ -197,6 +197,138 @@ export async function getProjects(filters?: {
 }
 
 /**
+ * Fetch projects assigned to the current employee.
+ * Useful for the Employee Dashboard "My Projects" view.
+ */
+export async function getMyProjects(): Promise<{ success: boolean; data: Project[]; error?: string }> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return { success: false, data: [], error: 'Authentication required' }
+    }
+
+    const admin = await createAdminClient()
+    const canSeeContact = canViewRestrictedClientInfo(user)
+
+    // Build client select without contact info for restricted roles
+    const clientSelect = canSeeContact
+      ? 'clients(id, client_id_display, name, location, contact_number, whatsapp_number, email)'
+      : 'clients(id, client_id_display, name, location)'
+
+    // First find projects where the user is a member or the manager
+    const { data: memberProjects } = await admin
+      .from('project_members')
+      .select('project_id')
+      .eq('user_id', user.id)
+
+    // Second find tasks where the user is assigned, then get those project IDs
+    const { data: userTasks } = await admin
+      .from('task_assignees')
+      .select('task_id')
+      .eq('user_id', user.id)
+      
+    const taskIds = (userTasks || []).map(t => t.task_id)
+    let taskProjectIds: string[] = []
+    
+    if (taskIds.length > 0) {
+      const { data: tData } = await admin
+        .from('tasks')
+        .select('project_id')
+        .in('id', taskIds)
+      taskProjectIds = (tData || []).map(t => t.project_id)
+    }
+
+    const memberProjectIds = (memberProjects || []).map(m => m.project_id)
+    
+    // Combine all project IDs
+    const allProjectIds = Array.from(new Set([...memberProjectIds, ...taskProjectIds]))
+    
+    let query = admin
+      .from('projects')
+      .select(`
+        *,
+        ${clientSelect},
+        project_manager:profiles!projects_project_manager_id_fkey(id, first_name, last_name),
+        members:project_members(
+          id, user_id, role,
+          profile:profiles(id, first_name, last_name, employee_id)
+        ),
+        tasks(id, status, worked_hours, due_date)
+      `)
+      .order('deadline', { ascending: true })
+
+    if (allProjectIds.length > 0) {
+      query = query.or(`id.in.(${allProjectIds.join(',')}),project_manager_id.eq.${user.id}`)
+    } else {
+      query = query.eq('project_manager_id', user.id)
+    }
+
+    const { data, error } = await query
+
+    if (error) {
+      if (error.code === 'PGRST205' || error.message.includes('does not exist')) {
+        return { success: true, data: [] }
+      }
+      return { success: false, data: [], error: error.message }
+    }
+
+    const now = new Date()
+    const projects: Project[] = (data || []).map((row: any) => {
+      const tasks = row.tasks || []
+      const total = tasks.length
+      const done = tasks.filter((t: any) => t.status === 'DONE').length
+      const in_progress = tasks.filter((t: any) => t.status === 'IN_PROGRESS').length
+      const in_review = tasks.filter((t: any) => t.status === 'IN_REVIEW').length
+      const on_hold = tasks.filter((t: any) => t.status === 'ON_HOLD').length
+      const todo = tasks.filter((t: any) => t.status === 'TODO').length
+
+      const progress = total > 0 ? Math.round((done / total) * 100) : 0
+      const is_overdue = row.deadline && new Date(row.deadline) < now && row.status !== 'COMPLETED' && row.status !== 'CANCELLED'
+
+      const managerName = row.project_manager
+        ? `${row.project_manager.first_name || ''} ${row.project_manager.last_name || ''}`.trim()
+        : null
+
+      return {
+        id: row.id,
+        project_id_display: row.project_id_display,
+        name: row.name,
+        client_id: row.client_id,
+        client_name: row.clients?.name || 'Unknown Client',
+        description: row.description,
+        start_date: row.start_date,
+        deadline: row.deadline,
+        status: row.status,
+        priority: row.priority,
+        department: row.department,
+        project_manager_id: row.project_manager_id,
+        project_manager_name: managerName,
+        objective: row.objective,
+        notes: row.notes,
+        created_by: row.created_by,
+        created_at: row.created_at,
+        updated_at: row.updated_at,
+        members: row.members || [],
+        task_summary: {
+          total,
+          done,
+          in_progress,
+          in_review,
+          todo,
+          on_hold,
+        },
+        progress,
+        is_overdue: !!is_overdue,
+      }
+    })
+
+    return { success: true, data: projects }
+  } catch (err: any) {
+    return { success: false, data: [], error: err.message || 'Failed to fetch my projects' }
+  }
+}
+
+/**
  * Fetch detailed project view by ID:
  * Overview, Tasks, Team (with operational hours, STRICTLY NO SALARY/FINANCIAL DATA), Timeline, Activity.
  */
@@ -218,6 +350,38 @@ export async function getProjectById(projectId: string): Promise<{
 
     const admin = await createAdminClient()
     const canSeeContact = canViewRestrictedClientInfo(user)
+
+    // Ensure authorization
+    const isGlobalAdminOrManager = user.role === 'Admin' || user.is_hod
+    let isAuthorized = isGlobalAdminOrManager
+    
+    if (!isAuthorized) {
+      // Check if project manager
+      const { data: pCheck } = await admin.from('projects').select('project_manager_id').eq('id', projectId).single()
+      if (pCheck?.project_manager_id === user.id) {
+        isAuthorized = true
+      } else {
+        // Check membership
+        const { data: mCheck } = await admin.from('project_members').select('id').eq('project_id', projectId).eq('user_id', user.id)
+        if (mCheck && mCheck.length > 0) {
+          isAuthorized = true
+        } else {
+          // Check task assignment
+          const { data: tCheck } = await admin.from('tasks').select('id').eq('project_id', projectId)
+          if (tCheck && tCheck.length > 0) {
+            const taskIds = tCheck.map((t: any) => t.id)
+            const { data: taCheck } = await admin.from('task_assignees').select('id').in('task_id', taskIds).eq('user_id', user.id).limit(1)
+            if (taCheck && taCheck.length > 0) {
+              isAuthorized = true
+            }
+          }
+        }
+      }
+    }
+    
+    if (!isAuthorized) {
+      return { success: false, error: 'Unauthorized access: You are not assigned to this project or its tasks.' }
+    }
 
     const clientSelect = canSeeContact
       ? 'clients(id, client_id_display, name, location, contact_number, whatsapp_number, email)'
@@ -568,7 +732,6 @@ export async function updateProjectAction(input: UpdateProjectInput): Promise<{ 
         await admin.from('project_members').insert(memberRows)
       }
     }
-
     // Log activity
     await admin.from('project_activity').insert({
       project_id: input.id,
@@ -585,5 +748,31 @@ export async function updateProjectAction(input: UpdateProjectInput): Promise<{ 
     return { success: true, data: updated as Project }
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to update project' }
+  }
+}
+
+/**
+ * Check if the user has access to any projects via membership or task assignments.
+ */
+export async function checkEmployeeProjectAccess(userId: string): Promise<boolean> {
+  try {
+    const admin = await createAdminClient()
+
+    // Check project manager
+    const { data: pCheck } = await admin.from('projects').select('id').eq('project_manager_id', userId).limit(1)
+    if (pCheck && pCheck.length > 0) return true
+
+    // Check membership
+    const { data: mCheck } = await admin.from('project_members').select('id').eq('user_id', userId).limit(1)
+    if (mCheck && mCheck.length > 0) return true
+
+    // Check task assignment
+    const { data: taCheck } = await admin.from('task_assignees').select('id').eq('user_id', userId).limit(1)
+    if (taCheck && taCheck.length > 0) return true
+
+    return false
+  } catch (err) {
+    console.error('Error checking project access:', err)
+    return false
   }
 }

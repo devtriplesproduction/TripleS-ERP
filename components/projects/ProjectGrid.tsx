@@ -9,7 +9,7 @@ import { ProjectModal } from './ProjectModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dropdown } from '@/components/ui/Dropdown'
-import { Plus, Search, FolderKanban, SlidersHorizontal } from 'lucide-react'
+import { Plus, Search, FolderKanban, SlidersHorizontal, FolderGit2 } from 'lucide-react'
 
 interface ProjectGridProps {
   initialProjects: Project[]
@@ -34,6 +34,8 @@ export function ProjectGrid({
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [priorityFilter, setPriorityFilter] = useState('ALL')
+  const [clientFilter, setClientFilter] = useState('ALL')
+  const [viewMode, setViewMode] = useState<'GRID' | 'LIST'>('GRID')
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const filteredProjects = projects.filter((p) => {
@@ -44,8 +46,9 @@ export function ProjectGrid({
 
     const matchesStatus = statusFilter === 'ALL' || p.status === statusFilter
     const matchesPriority = priorityFilter === 'ALL' || p.priority === priorityFilter
+    const matchesClient = clientFilter === 'ALL' || p.client_id === clientFilter
 
-    return matchesSearch && matchesStatus && matchesPriority
+    return matchesSearch && matchesStatus && matchesPriority && matchesClient
   })
 
   const handleSuccess = () => {
@@ -93,7 +96,7 @@ export function ProjectGrid({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-          <div className="w-full sm:w-44">
+          <div className="w-full sm:w-32">
             <Dropdown
               value={statusFilter}
               onChange={(val) => setStatusFilter(val || 'ALL')}
@@ -110,7 +113,20 @@ export function ProjectGrid({
             />
           </div>
 
-          <div className="w-full sm:w-40">
+          <div className="w-full sm:w-32">
+            <Dropdown
+              value={clientFilter}
+              onChange={(val) => setClientFilter(val || 'ALL')}
+              options={[
+                { value: 'ALL', label: 'All Clients' },
+                ...clients.map(c => ({ value: c.id, label: c.name }))
+              ]}
+              buttonClassName="bg-card border-border h-11 text-xs"
+              className="w-full"
+            />
+          </div>
+
+          <div className="w-full sm:w-32">
             <Dropdown
               value={priorityFilter}
               onChange={(val) => setPriorityFilter(val || 'ALL')}
@@ -125,20 +141,58 @@ export function ProjectGrid({
               className="w-full"
             />
           </div>
+
+          {/* Grid / List Toggle */}
+          <div className="flex bg-card border border-border p-1 rounded-md shrink-0">
+            <button
+              onClick={() => setViewMode('GRID')}
+              className={`px-4 py-1.5 text-xs font-medium rounded-sm transition-colors ${
+                viewMode === 'GRID' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Grid
+            </button>
+            <button
+              onClick={() => setViewMode('LIST')}
+              className={`px-4 py-1.5 text-xs font-medium rounded-sm transition-colors ${
+                viewMode === 'LIST' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              List
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Responsive Project Card Grid: 1 col on mobile, 2 col on tablet, 3-4 col on desktop */}
+      {/* Responsive Project Card Grid or List */}
       {filteredProjects.length === 0 ? (
-        <div className="p-12 text-center text-muted-foreground bg-card border border-border rounded-lg space-y-2">
-          <FolderKanban className="h-10 w-10 mx-auto text-muted-foreground/60" />
-          <h3 className="font-semibold text-foreground">No projects found</h3>
-          <p className="text-xs">Try adjusting your search criteria or create a new project.</p>
+        <div className="py-16 px-6 text-center text-muted-foreground bg-card border border-border/60 rounded-[14px] flex flex-col items-center justify-center space-y-4 mt-6">
+          <div className="p-4 bg-secondary/50 rounded-full">
+            <FolderGit2 className="h-10 w-10 text-muted-foreground" />
+          </div>
+          <div className="space-y-1.5 max-w-sm mx-auto">
+            <h3 className="text-lg font-bold text-foreground font-sans">No projects yet</h3>
+            <p className="text-[13px] leading-relaxed">
+              Create your first project to start tracking delivery, tasks, and team assignments.
+            </p>
+          </div>
+          {canCreate && (
+            <Button
+              onClick={() => setIsModalOpen(true)}
+              className="mt-4 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create Project
+            </Button>
+          )}
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-5">
+        <div className={viewMode === 'GRID' 
+          ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5" 
+          : "flex flex-col gap-3"
+        }>
           {filteredProjects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
+            <ProjectCard key={project.id} project={project} viewMode={viewMode} />
           ))}
         </div>
       )}

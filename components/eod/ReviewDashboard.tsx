@@ -4,13 +4,13 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/Dropdown';
-import { Search, SlidersHorizontal, RefreshCcw, CheckCircle2, Clock, XCircle, AlertCircle, FileSearch, FileText, User, Calendar, MapPin, AlertTriangle, X, Loader2 } from 'lucide-react';
+import { Search, SlidersHorizontal, RefreshCcw, CheckCircle2, Clock, XCircle, AlertCircle, FileSearch, FileText } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { formatWorkedTime } from '@/lib/utils/time';
 import { EODReport } from '@/lib/actions/eod';
 import { reviewEODAction, updateEODAction } from '@/actions/eod.actions';
-import { Edit2, Save, X as XIcon } from 'lucide-react';
 import { DatePicker } from '@/components/ui/date-picker';
+import { EodCard } from './EodCard';
+import { toast } from 'sonner';
 
 type Employee = { id: string; first_name: string; last_name: string; employee_id: string };
 type EnrichedEOD = EODReport & { profiles: Employee | null };
@@ -31,117 +31,86 @@ export function ReviewDashboard({
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [selectedEod, setSelectedEod] = useState<EnrichedEOD | null>(null);
+  const [submittingIds, setSubmittingIds] = useState<Set<string>>(new Set());
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isRejecting, setIsRejecting] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
-  const [actionError, setActionError] = useState('');
-  const [isEditing, setIsEditing] = useState(false);
-  const [editFormData, setEditFormData] = useState<Partial<EnrichedEOD>>({});
-
-  const handleEditChange = (field: keyof EnrichedEOD, value: string | number) => {
-    setEditFormData(prev => ({ ...prev, [field]: value }));
-  }
-
-  const handleSaveEdit = async () => {
-    if (!selectedEod) return;
-    setIsSubmitting(true);
-    setActionError('');
+  const handleSaveEdit = async (eodId: string, formDataFields: any) => {
+    setSubmittingIds(prev => new Set(prev).add(eodId));
     try {
+      const eodToEdit = eods.find(e => e.id === eodId);
+      if (!eodToEdit) throw new Error("EOD not found");
+
       const formData = new FormData();
-      formData.append('employee_id', selectedEod.employee_id);
-      formData.append('report_date', selectedEod.report_date);
-      formData.append('tasks_accomplished', editFormData.tasks_accomplished as string || '');
-      formData.append('office_hours', String(editFormData.office_hours));
-      formData.append('location', selectedEod.location);
-      formData.append('blockers', editFormData.blockers as string || 'None');
-      formData.append('job_card_numbers', editFormData.job_card_numbers as string || '');
-      formData.append('tomorrows_plan', editFormData.tomorrows_plan as string || '');
-      formData.append('role_context', (selectedEod as any).role_context || 'Employee');
-      if (selectedEod.photo_url) formData.append('photo_url', selectedEod.photo_url);
+      formData.append('employee_id', eodToEdit.employee_id);
+      formData.append('report_date', eodToEdit.report_date);
+      formData.append('tasks_accomplished', formDataFields.tasks_accomplished || '');
+      formData.append('office_hours', String(formDataFields.office_hours));
+      formData.append('location', eodToEdit.location);
+      formData.append('blockers', formDataFields.blockers || 'None');
+      formData.append('tomorrows_plan', formDataFields.tomorrows_plan || '');
+      formData.append('role_context', (eodToEdit as any).role_context || 'Employee');
+      
+      // Pass the admin note to rejection_reason so it saves using the existing field
+      if (formDataFields.admin_note !== undefined) {
+         formData.append('admin_note', formDataFields.admin_note);
+      }
 
       const res = await updateEODAction(formData);
       if (res.success) {
-        setIsEditing(false);
-        const updatedFields = {
-          tasks_accomplished: editFormData.tasks_accomplished as string,
-          blockers: editFormData.blockers as string,
-          tomorrows_plan: editFormData.tomorrows_plan as string,
-          office_hours: editFormData.office_hours as number,
-          job_card_numbers: editFormData.job_card_numbers as string
-        };
-        setEods(prev => prev.map(e => e.id === selectedEod.id ? { ...e, ...updatedFields } : e));
-        setSelectedEod(prev => prev ? { ...prev, ...updatedFields } : null);
+        setEods(prev => prev.map(e => e.id === eodId ? { 
+          ...e, 
+          ...formDataFields,
+          rejection_reason: formDataFields.admin_note // Update locally
+        } : e));
+        toast.success("EOD Updated Successfully");
       } else {
-        setActionError(res.error || 'Failed to update EOD.');
+        toast.error(res.error || 'Failed to update EOD.');
       }
     } catch (e) {
-      setActionError('Unexpected error occurred.');
+      toast.error('Unexpected error occurred.');
     } finally {
-      setIsSubmitting(false);
+      setSubmittingIds(prev => {
+        const next = new Set(prev);
+        next.delete(eodId);
+        return next;
+      });
     }
   }
 
-  const handleOpenModal = (eod: EnrichedEOD) => {
-    setIsEditing(false);
-    setEditFormData({
-      tasks_accomplished: eod.tasks_accomplished,
-      blockers: eod.blockers || '',
-      tomorrows_plan: eod.tomorrows_plan || '',
-      office_hours: eod.office_hours,
-      job_card_numbers: eod.job_card_numbers || '',
-    });
-    setSelectedEod(eod);
-    setIsRejecting(false);
-    setRejectReason('');
-    setActionError('');
-  };
-
-  const handleAction = async (action: 'Approve' | 'Reject') => {
-    if (!selectedEod) return;
-
-    if (action === 'Reject' && !isRejecting) {
-      setIsRejecting(true);
-      return;
-    }
-
-    if (action === 'Reject' && (!rejectReason || rejectReason.trim() === '')) {
-      setActionError("Rejection reason is required");
-      return;
-    }
-
-    setIsSubmitting(true);
-    setActionError('');
+  const handleAction = async (eodId: string, action: 'Approve' | 'Reject', reason?: string) => {
+    setSubmittingIds(prev => new Set(prev).add(eodId));
 
     const formData = new FormData();
-    formData.append('eod_id', selectedEod.id);
+    formData.append('eod_id', eodId);
     formData.append('action', action);
-    if (action === 'Reject') {
-      formData.append('rejection_reason', rejectReason);
+    if (action === 'Reject' && reason) {
+      formData.append('rejection_reason', reason);
     }
 
     try {
       const res = await reviewEODAction(formData);
       if (res.success) {
         setEods(prev => prev.map(e => {
-          if (e.id === selectedEod.id) {
-            return { ...e, status: action === 'Approve' ? 'Approved' : 'Rejected' };
+          if (e.id === eodId) {
+            return { 
+              ...e, 
+              status: action === 'Approve' ? 'Approved' : 'Rejected',
+              ...(action === 'Reject' && reason ? { rejection_reason: reason } : {})
+            };
           }
           return e;
         }));
-        setSelectedEod(null);
+        toast.success(`EOD ${action === 'Approve' ? 'Approved' : 'Rejected'} Successfully`);
       } else {
-        setActionError(res.error || "Failed to submit action");
+        toast.error(res.error || "Failed to submit action");
       }
     } catch (err: unknown) {
-      if (err instanceof Error) {
-        setActionError(err.message);
-      } else {
-        setActionError("An unexpected error occurred");
-      }
+      toast.error("An unexpected error occurred");
     } finally {
-      setIsSubmitting(false);
+      setSubmittingIds(prev => {
+        const next = new Set(prev);
+        next.delete(eodId);
+        return next;
+      });
     }
   };
 
@@ -175,18 +144,16 @@ export function ReviewDashboard({
   const totalReports = filteredEods.length;
   const approved = filteredEods.filter(e => e.status === 'Approved').length;
   const pending = filteredEods.filter(e => e.status === 'Pending').length;
-  const rejected = filteredEods.filter(e => e.status === 'Rejected').length; // mapped to "Not Submitted" or "Rejected" in the UI? The mockup says "Not Submitted", but EODs in DB are Pending/Approved/Rejected. We'll use Rejected for the red cross.
+  const rejected = filteredEods.filter(e => e.status === 'Rejected').length;
 
   const calcPercent = (val: number) => totalReports === 0 ? 0 : Math.round((val / totalReports) * 100 * 100) / 100;
 
   const handleRefresh = () => {
     setIsRefreshing(true);
-    // Clear filters
     setSearch('');
     setSelectedEmployee('all');
     setFromDate('');
     setToDate('');
-    // In a real app we'd re-fetch from the server, but for now we just simulate it
     setTimeout(() => {
       setIsRefreshing(false);
     }, 500);
@@ -227,7 +194,7 @@ export function ReviewDashboard({
               options={[
                 { label: 'All Employees', value: 'all' },
                 ...employees.map(emp => ({
-                  label: `${emp.first_name} ${emp.last_name}`,
+                  label: emp.first_name + ' ' + (emp.last_name || ''),
                   value: emp.id
                 }))
               ]}
@@ -322,9 +289,9 @@ export function ReviewDashboard({
       </div>
 
       {/* Data Section */}
-      <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm overflow-hidden min-h-[300px] flex flex-col">
+      <div className="flex flex-col gap-4 min-h-[300px]">
         {filteredEods.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center p-8 sm:p-12 text-center">
+          <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm flex-1 flex flex-col items-center justify-center p-8 sm:p-12 text-center">
             <div className="w-24 h-24 sm:w-32 sm:h-32 bg-muted rounded-full flex items-center justify-center mb-6 relative border-4 border-background shadow-sm">
               <FileSearch className="w-12 h-12 sm:w-16 sm:h-16 text-orange-400 absolute" />
               <div className="absolute -top-2 -right-2 w-7 h-7 sm:w-8 sm:h-8 bg-card text-card-foreground border-border rounded-full shadow flex items-center justify-center">
@@ -349,386 +316,21 @@ export function ReviewDashboard({
             </Button>
           </div>
         ) : (
-          <div className="p-0">
-            {/* Desktop Table */}
-            <div className="hidden md:block overflow-x-auto min-w-0">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-muted border-b border-border">
-                    <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Employee</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Location</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Hours</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Type</th>
-                    <th className="px-6 py-4 text-xs font-semibold text-muted-foreground uppercase tracking-wider">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {filteredEods.map((eod) => (
-                    <tr key={eod.id} className="hover:bg-muted/50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-foreground">
-                          {eod.profiles?.first_name} {eod.profiles?.last_name}
-                        </div>
-                        <div className="text-xs text-muted-foreground">{eod.profiles?.employee_id}</div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">
-                        {new Date(eod.report_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md inline-flex items-center gap-1 ${eod.status === 'Approved' ? 'bg-emerald-500/20 text-emerald-500' :
-                          eod.status === 'Rejected' ? 'bg-rose-100/80 text-rose-700' :
-                            'bg-amber-100/80 text-amber-700'
-                          }`}>
-                          {eod.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">{eod.location}</td>
-                      <td className="px-6 py-4 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-2">
-                          <span>{formatWorkedTime(Math.round(Number(eod.office_hours) * 60))}</span>
-                          {(() => {
-                            const mins = Math.round(Number(eod.office_hours) * 60);
-                            if (mins < 240) return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-sm bg-destructive/10 text-destructive">Unpaid</span>;
-                            if (mins < 480) return <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-sm bg-amber-500/10 text-amber-600 dark:text-amber-400">Half Day</span>;
-                            return null;
-                          })()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md ${
-                          (eod as any).role_context === 'HR' ? 'bg-purple-100 dark:bg-purple-500/20 text-purple-700 dark:text-purple-300' : 'bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300'
-                        }`}>
-                          {(eod as any).role_context || 'Employee'}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <Button variant="ghost" size="sm" className="text-foreground hover:bg-muted" onClick={() => handleOpenModal(eod)}>
-                          View
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Mobile Cards View */}
-            <div className="block md:hidden divide-y divide-border">
-              {filteredEods.map((eod) => (
-                <div key={eod.id} className="p-4 space-y-3 hover:bg-muted/30 transition-colors">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <h4 className="font-bold text-foreground text-sm">
-                        {eod.profiles?.first_name} {eod.profiles?.last_name}
-                      </h4>
-                      <p className="text-xs text-muted-foreground">{eod.profiles?.employee_id || 'Employee'}</p>
-                    </div>
-                    <span className={`px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-md ${
-                      eod.status === 'Approved' ? 'bg-emerald-500/20 text-emerald-500' :
-                      eod.status === 'Rejected' ? 'bg-rose-100 dark:bg-rose-500/20 text-rose-700 dark:text-rose-400' :
-                      'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400'
-                    }`}>
-                      {eod.status}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 text-xs bg-muted/40 p-2.5 rounded-lg">
-                    <div>
-                      <span className="text-muted-foreground">Date: </span>
-                      <span className="font-medium text-foreground">
-                        {new Date(eod.report_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Location: </span>
-                      <span className="font-medium text-foreground">{eod.location}</span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Hours: </span>
-                      <span className="font-medium text-foreground">
-                        {formatWorkedTime(Math.round(Number(eod.office_hours) * 60))}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground">Type: </span>
-                      <span className="font-medium text-foreground">{(eod as any).role_context || 'Employee'}</span>
-                    </div>
-                  </div>
-
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full h-9 rounded-lg text-xs font-semibold"
-                    onClick={() => handleOpenModal(eod)}
-                  >
-                    View & Review Report
-                  </Button>
-                </div>
-              ))}
-            </div>
+          <div className="space-y-4">
+            {filteredEods.map((eod) => (
+              <EodCard 
+                key={eod.id}
+                eod={eod}
+                isReview={true}
+                isSubmitting={submittingIds.has(eod.id)}
+                currentUserId={currentUserId}
+                onAction={(id, action, reason) => handleAction(id, action, reason)}
+                onSaveEdit={handleSaveEdit}
+              />
+            ))}
           </div>
         )}
       </div>
-      {selectedEod && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-200">
-          <div className="w-[calc(100vw-1.5rem)] sm:max-w-2xl rounded-2xl sm:rounded-3xl bg-card text-card-foreground border-border shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-1.5rem)]">
-
-            {/* Modal Header */}
-            <div className="bg-muted px-4 sm:px-6 py-4 sm:py-5 border-b border-border flex items-center justify-between sticky top-0 z-10 shrink-0">
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-muted flex items-center justify-center text-foreground shrink-0">
-                  <FileText className="w-5 h-5" />
-                </div>
-                <div className="min-w-0">
-                  <h2 className="text-lg sm:text-xl font-bold text-foreground leading-tight truncate">EOD Report</h2>
-                  <p className="text-xs sm:text-sm text-muted-foreground font-medium truncate">Review details and take action</p>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-full text-muted-foreground hover:text-muted-foreground hover:bg-slate-200/50"
-                onClick={() => setSelectedEod(null)}
-              >
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
-
-            {/* Modal Body */}
-            <div className="p-6 overflow-y-auto custom-scrollbar">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                {/* Employee Info Card */}
-                <div className="bg-card text-card-foreground border-border rounded-2xl border border-border p-5 shadow-sm">
-                  <div className="flex items-center gap-2 mb-4 text-foreground">
-                    <User className="w-4 h-4 text-foreground" />
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Employee Details</h3>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground font-bold text-lg border-2 border-white shadow-sm">
-                      {selectedEod.profiles?.first_name?.[0]}{selectedEod.profiles?.last_name?.[0]}
-                    </div>
-                    <div>
-                      <div className="font-bold text-foreground text-lg">
-                        {selectedEod.profiles?.first_name} {selectedEod.profiles?.last_name}
-                      </div>
-                      <div className="text-sm font-medium text-muted-foreground bg-muted inline-block px-2 py-0.5 rounded-md mt-1">
-                        {selectedEod.profiles?.employee_id}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Report Meta Card */}
-                <div className="bg-card text-card-foreground border-border rounded-2xl border border-border p-5 shadow-sm space-y-4">
-                  <div className="flex items-center gap-2 mb-2 text-foreground">
-                    <Calendar className="w-4 h-4 text-blue-500" />
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Report Info</h3>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Date</p>
-                      <p className="font-semibold text-foreground text-sm">
-                        {new Date(selectedEod.report_date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1">Status</p>
-                      <span className={`px-2.5 py-1 text-[11px] font-bold uppercase tracking-wider rounded-md inline-flex items-center gap-1 ${selectedEod.status === 'Approved' ? 'bg-emerald-500/20/80 text-emerald-500' :
-                        selectedEod.status === 'Rejected' ? 'bg-rose-100/80 text-rose-700' :
-                          'bg-amber-100/80 text-amber-700'
-                        }`}>
-                        {selectedEod.status}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1"><MapPin className="w-3 h-3" /> Location</p>
-                      <p className="font-semibold text-foreground text-sm">{selectedEod.location}</p>
-                    </div>
-                    <div>
-                      <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-1 flex items-center gap-1"><Clock className="w-3 h-3" /> Hours</p>
-                      {isEditing ? (
-    <div className="flex gap-1 mt-1">
-    <Dropdown
-      value={Math.floor(Math.round((editFormData.office_hours || 0) * 60) / 60).toString()}
-      onChange={(val) => {
-        const m = Math.round((editFormData.office_hours || 0) * 60) % 60;
-        const totalMin = parseInt(val) * 60 + m;
-        handleEditChange('office_hours', parseFloat((totalMin / 60).toFixed(2)));
-      }}
-      options={Array.from({ length: 25 }, (_, i) => ({ label: `${i}h`, value: i.toString() }))}
-      placeholder="Hours"
-      buttonClassName="w-full h-8 px-2 text-xs"
-      contentClassName="max-h-56"
-    />
-    <Dropdown
-      value={(Math.round((editFormData.office_hours || 0) * 60) % 60).toString()}
-      onChange={(val) => {
-        const h = Math.floor(Math.round((editFormData.office_hours || 0) * 60) / 60);
-        const totalMin = h * 60 + parseInt(val);
-        handleEditChange('office_hours', parseFloat((totalMin / 60).toFixed(2)));
-      }}
-      options={Array.from({ length: 60 }, (_, i) => ({ label: `${i}m`, value: i.toString() }))}
-      placeholder="Minutes"
-      buttonClassName="w-full h-8 px-2 text-xs"
-      contentClassName="max-h-56"
-    />
-  </div>
-  ) : (
-    <p className="font-semibold text-foreground text-sm">{formatWorkedTime(Math.round(Number(selectedEod.office_hours) * 60))}</p>
-  )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-6">
-                <div className="bg-muted rounded-2xl p-5 border border-border">
-                  <div className="flex items-center gap-2 mb-3">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-500" />
-                    <h3 className="font-bold text-foreground">Tasks Accomplished</h3>
-                  </div>
-                  <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-sm bg-card text-card-foreground border-border p-4 rounded-xl border border-border shadow-sm">
-                    {isEditing ? (
-    <textarea value={editFormData.tasks_accomplished} onChange={e => handleEditChange('tasks_accomplished', e.target.value)} className="w-full flex rounded-lg border border-border bg-card text-card-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" rows={5} />
-  ) : (
-    selectedEod.tasks_accomplished
-  )}
-                  </div>
-                </div>
-
-                {(selectedEod.blockers || isEditing) && (
-                  <div className="bg-muted rounded-2xl p-5 border border-border mt-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <AlertTriangle className="w-5 h-5 text-orrange-500" />
-                      <h3 className="font-bold text-foreground">Blockers & Issues</h3>
-                    </div>
-                    <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-sm bg-card text-card-foreground border-border p-4 rounded-xl border border-border shadow-sm">
-                      {isEditing ? (
-    <textarea value={editFormData.blockers} onChange={e => handleEditChange('blockers', e.target.value)} className="w-full flex rounded-lg border border-border bg-card text-card-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" rows={3} />
-  ) : (
-    selectedEod.blockers
-  )}
-                    </div>
-                  </div>
-                )}
-
-                {(selectedEod.tomorrows_plan || isEditing) && (
-                  <div className="bg-muted rounded-2xl p-5 border border-border mt-4">
-                    <div className="flex items-center gap-2 mb-3">
-                      <Calendar className="w-5 h-5 text-blue-500" />
-                      <h3 className="font-bold text-foreground">Tomorrow's Plan</h3>
-                    </div>
-                    <div className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-sm bg-card text-card-foreground border-border p-4 rounded-xl border border-border shadow-sm">
-                      {isEditing ? (
-    <textarea value={editFormData.tomorrows_plan} onChange={e => handleEditChange('tomorrows_plan', e.target.value)} className="w-full flex rounded-lg border border-border bg-card text-card-foreground px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary" rows={3} />
-  ) : (
-    selectedEod.tomorrows_plan
-  )}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Modal Footer Actions */}
-            <div className="border-t border-border bg-muted p-4 sm:p-6 sticky bottom-0 z-10 shrink-0">
-              {selectedEod.status === 'Pending' ? (
-                currentUserId && selectedEod.employee_id === currentUserId ? (
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                    <div className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 text-amber-500 shrink-0" /> You cannot review your own EOD report.
-                    </div>
-                    <Button variant="ghost" className="rounded-xl w-full sm:w-auto" onClick={() => setSelectedEod(null)}>
-                      Close window
-                    </Button>
-                  </div>
-                ) : (
-                <>
-                  {actionError && (
-                    <div className="mb-4 text-xs sm:text-sm text-foreground bg-muted p-3 rounded-xl border border-border flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4 shrink-0" /> {actionError}
-                    </div>
-                  )}
-
-                  {isRejecting ? (
-                    <div className="space-y-4 animate-in slide-in-from-bottom-2 duration-200">
-                      <div className="space-y-1.5">
-                        <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Reason for Rejection</label>
-                        <textarea
-                          value={rejectReason}
-                          onChange={(e) => setRejectReason(e.target.value)}
-                          className="w-full flex rounded-xl border border-border bg-card text-card-foreground border-border px-4 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-400 resize-none shadow-sm transition-all"
-                          rows={3}
-                          placeholder="Please provide constructive feedback..."
-                          required
-                        />
-                      </div>
-                      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3">
-                        <Button variant="ghost" onClick={() => setIsRejecting(false)} disabled={isSubmitting} className="rounded-xl w-full sm:w-auto">
-                          Cancel
-                        </Button>
-                        <Button variant="danger" className="bg-rose-600 hover:bg-rose-700 text-white rounded-xl shadow-sm shadow-rose-200 w-full sm:w-auto" onClick={() => handleAction('Reject')} disabled={isSubmitting}>
-                          {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Confirm Rejection
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col sm:flex-row justify-between items-center gap-3">
-                      <p className="text-xs sm:text-sm text-muted-foreground font-medium hidden sm:block">Please review carefully before deciding.</p>
-                      <div className="flex flex-wrap sm:flex-nowrap justify-end gap-2 sm:gap-3 w-full sm:w-auto">
-                        {!isEditing ? (
-                          <Button variant="outline" className="text-foreground border-border hover:bg-muted hover:text-foreground rounded-xl flex-1 sm:flex-initial text-xs sm:text-sm" onClick={() => setIsEditing(true)} disabled={isSubmitting}>
-                            <Edit2 className="w-4 h-4 mr-1 sm:mr-2" /> Edit
-                          </Button>
-                        ) : (
-                          <>
-                            <Button variant="ghost" className="text-muted-foreground rounded-xl flex-1 sm:flex-initial text-xs sm:text-sm" onClick={() => setIsEditing(false)} disabled={isSubmitting}>
-                              <XIcon className="w-4 h-4 mr-1 sm:mr-2" /> Cancel
-                            </Button>
-                            <Button variant="primary" className="bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm flex-1 sm:flex-initial text-xs sm:text-sm" onClick={handleSaveEdit} disabled={isSubmitting}>
-                              {isSubmitting ? <Loader2 className="w-4 h-4 mr-1 sm:mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-1 sm:mr-2" />} Save
-                            </Button>
-                          </>
-                        )}
-                        {!isEditing && (
-                          <>
-                            <Button variant="outline" className="text-foreground border-border hover:bg-muted hover:text-foreground rounded-xl flex-1 sm:flex-initial text-xs sm:text-sm" onClick={() => handleAction('Reject')} disabled={isSubmitting}>
-                              <XCircle className="w-4 h-4 mr-1 sm:mr-2 text-rose-500" /> Reject
-                            </Button>
-                            <Button variant="primary" className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm shadow-emerald-200 flex-1 sm:flex-initial text-xs sm:text-sm font-semibold" onClick={() => handleAction('Approve')} disabled={isSubmitting}>
-                              {isSubmitting ? <Loader2 className="w-4 h-4 mr-1 sm:mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-1 sm:mr-2" />} Approve
-                            </Button>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </>
-                )
-              ) : (
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                  <div className="text-xs sm:text-sm font-medium text-muted-foreground flex items-center gap-2">
-                    {selectedEod.status === 'Approved' ? (
-                      <><CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" /> This report has been approved.</>
-                    ) : (
-                      <><XCircle className="w-4 h-4 text-rose-500 shrink-0" /> This report was rejected.</>
-                    )}
-                  </div>
-                  <Button variant="ghost" className="rounded-xl w-full sm:w-auto" onClick={() => setSelectedEod(null)}>
-                    Close window
-                  </Button>
-                </div>
-              )}
-            </div>
-
-          </div>
-        </div>
-      )}
     </div>
   );
 }
-
-
-

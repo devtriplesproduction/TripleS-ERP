@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { getEODHistory, getEODStreak, EODReport } from "@/lib/actions/eod";
 import { EODSubmissionForm } from "@/components/eod/EODSubmissionForm";
-import { CheckCircle2, Clock, ShieldAlert, Send, History } from "lucide-react";
+import { CheckCircle2, Clock, ShieldAlert, Send, History, CalendarDays, FileText } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { LiveTaskCounter } from "@/components/eod/LiveTaskCounter";
 import { countTasks } from "@/lib/utils";
@@ -20,7 +20,7 @@ export default async function EmployeeEODPage() {
   if (authUser.employee_id) {
     const { data } = await supabase
       .from('employee_onboarding')
-      .select('id, first_name, last_name, employee_id_number')
+      .select('id, first_name, last_name, employee_id_number, department, designation')
       .eq('employee_id_number', authUser.employee_id)
       .single()
     user = data
@@ -48,71 +48,82 @@ export default async function EmployeeEODPage() {
   const hasBlockers = !!(todayEOD && todayEOD.blockers && todayEOD.blockers.trim().length > 0);
 
   return (
-    <div className="space-y-6 max-w-[1600px] mx-auto">
-      <PageHeader
-        title="Employee EOD"
-        subtitle="Submit your daily end-of-day update."
-        actions={
-          <div className="flex items-center gap-3">
-            <div className="bg-black dark:bg-zinc-800 text-white dark:text-zinc-100 px-4 py-2 rounded-xl font-semibold border border-black dark:border-white flex items-center gap-2">
-              Current Streak: {streak} days 🔥
+        <div className="max-w-[1280px] mx-auto space-y-6 md:space-y-8">
+      
+      {/* Header Area */}
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 pt-4 md:pt-6">
+        <div className="flex flex-col gap-1.5 md:gap-2">
+          <h1 className="text-[24px] md:text-[32px] font-bold text-foreground tracking-tight leading-none">Daily Status Report</h1>
+          <p className="text-sm md:text-base text-muted-foreground">Log your daily achievements and identify blockers.</p>
+        </div>
+        <div className="bg-card text-card-foreground px-5 py-3 rounded-2xl border border-border shadow-sm flex items-center gap-4 self-start md:mt-0">
+          <div className="w-10 h-10 rounded-full bg-muted/50 border border-border flex items-center justify-center">
+            <CalendarDays className="w-5 h-5 text-muted-foreground" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-muted-foreground text-[11px] uppercase tracking-widest font-semibold mb-0.5">Current Streak</span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xl font-bold">{streak} days</span>
+              <span className="text-lg">{"\u{1F525}"}</span>
             </div>
           </div>
-        }
-      />
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Form */}
-        <div className="xl:col-span-7 2xl:col-span-6">
-          <EODSubmissionForm employeeId={authUser.id} canEditDate={false} canManage={false} employeeName={`${user.first_name} ${user.last_name}`} employeeStringId={user.employee_id_number || ''} />
+
+      {/* Form */}
+        <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-border bg-muted/30 flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-lg bg-card/80 shadow-sm flex items-center justify-center border border-border/50">
+                <FileText className="w-4 h-4 text-foreground/80" />
+              </div>
+              <h2 className="text-lg font-bold text-foreground">Today's EOD</h2>
+            </div>
+            <div className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground bg-card/50 px-3 py-1.5 rounded-md border border-border/40">
+              <CalendarDays className="w-3.5 h-3.5 opacity-70" />
+              {today.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+            </div>
+          </div>
+          <EODSubmissionForm employeeId={authUser.id} canEditDate={false} canManage={false} />
         </div>
 
-        {/* Right Column: Stats & Logs */}
-        <div className="xl:col-span-5 2xl:col-span-6 space-y-6">
-
-          {/* Today at a glance */}
-          <div className="bg-card text-card-foreground border-border rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6">
-            <div className="flex items-center gap-2 mb-6">
-              <div className="w-8 h-8 rounded-lg bg-black dark:bg-zinc-800 text-white dark:text-zinc-100 flex items-center justify-center">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>
-              </div>
-              <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Today at a glance</h2>
+        {/* Today's Summary */}
+        <div>
+          <h3 className="text-lg font-bold text-foreground mb-4 pl-1">Today's Summary</h3>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="p-4 rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Tasks Completed</span>
+              <div className="text-2xl font-bold text-foreground">{tasksCompleted}</div>
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-card text-card-foreground border-border shadow-sm flex flex-col justify-between">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-900 dark:text-zinc-100">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                  <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Tasks Completed</span>
-                </div>
-                <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">{tasksCompleted}</div>
-                <div className="mt-1 text-xs text-black dark:text-white font-medium cursor-pointer hover:underline">View details</div>
+            <div className="p-4 rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Hours Logged</span>
+              <div className="text-2xl font-bold text-foreground">{todayEOD ? formatWorkedTime(Math.round(Number(hoursLogged) * 60)) : "0h 00m"}</div>
+            </div>
+            <div className="p-4 rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Today's Work Duration</span>
+              <div className="text-2xl font-bold text-foreground">{todayEOD ? formatWorkedTime(Math.round(Number(hoursLogged) * 60)) : "0h 00m"}</div>
+            </div>
+            <div className="p-4 rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Extra Hours</span>
+              <div className="text-2xl font-bold text-foreground">
+                {todayEOD && Number(hoursLogged) > 8 ? formatWorkedTime(Math.round((Number(hoursLogged) - 8) * 60)) : "0h 00m"}
               </div>
-
-              <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-card text-card-foreground border-border shadow-sm flex flex-col justify-between">
-                <div className="flex items-center gap-3 mb-2">
-                  <div className="w-8 h-8 rounded-full bg-black dark:bg-zinc-800 text-white dark:text-zinc-100 flex items-center justify-center">
-                    <Clock className="w-4 h-4" />
-                  </div>
-                  <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Hours Logged</span>
-                </div>
-                <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">{todayEOD ? formatWorkedTime(Math.round(Number(hoursLogged) * 60)) : "0h 00m"}</div>
-                <div className="mt-1 text-xs text-zinc-900 dark:text-zinc-100 font-medium">Duration</div>
-              </div>
-
-
             </div>
           </div>
+        </div>
 
-          {/* Recent EOD Logs */}
+        {/* Recent EOD Reports */}
+        <div>
+          <h3 className="text-lg font-bold text-foreground mb-4 pl-1">Recent EOD Reports</h3>
           <RecentEODLogs history={history} user={{ first_name: user.first_name, last_name: user.last_name, employee_id: user.employee_id_number || '' }} />
         </div>
       </div>
-    </div>
   );
 }
+
+
+
 
 
 

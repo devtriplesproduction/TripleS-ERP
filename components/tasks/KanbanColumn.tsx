@@ -14,6 +14,7 @@ interface KanbanColumnProps {
   onDropTask: (taskId: string, targetStatus: TaskStatus) => void
   canManage: boolean
   onQuickStatusChange: (taskId: string, newStatus: TaskStatus) => void
+  onAddTask?: (status: TaskStatus) => void
 }
 
 export function KanbanColumn({
@@ -25,6 +26,7 @@ export function KanbanColumn({
   onDropTask,
   canManage,
   onQuickStatusChange,
+  onAddTask,
 }: KanbanColumnProps) {
   const [isOver, setIsOver] = useState(false)
 
@@ -52,30 +54,50 @@ export function KanbanColumn({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`flex flex-col min-w-[280px] max-w-[320px] w-full shrink-0 bg-secondary/30 border rounded-lg p-3 transition-colors ${
-        isOver ? 'border-foreground bg-accent/30' : 'border-border'
+      className={`flex flex-col min-w-[280px] w-[300px] max-w-[320px] shrink-0 bg-secondary/30 border rounded-lg p-3 transition-all duration-200 ${
+        isOver ? 'border-foreground/50 bg-accent/40 shadow-sm' : 'border-border/60 hover:border-border'
       }`}
     >
       {/* Column Header */}
-      <div className="flex items-center justify-between pb-3 mb-2 border-b border-border/60">
-        <div className="flex items-center gap-2">
-          <h3 className="font-bold text-xs uppercase tracking-wider text-foreground">
+      <div className="flex items-center justify-between h-12 pb-3 mb-3 border-b border-border/40">
+        <div className="flex items-center gap-2.5">
+          {status === 'TODO' && <div className="h-2 w-2 rounded-full bg-muted-foreground/60" />}
+          {status === 'IN_PROGRESS' && <div className="h-2 w-2 rounded-full bg-blue-500" />}
+          {status === 'IN_REVIEW' && <div className="h-2 w-2 rounded-full bg-orange-500" />}
+          {status === 'DONE' && <div className="h-2 w-2 rounded-full bg-green-500" />}
+          {status === 'ON_HOLD' && <div className="h-2 w-2 rounded-full bg-purple-500" />}
+          <h3 className="font-semibold text-[13px] uppercase tracking-wide text-foreground font-sans">
             {title}
           </h3>
           <Badge
             variant="outline"
-            className="text-[10px] px-1.5 py-0 border-border bg-card font-mono text-muted-foreground"
+            className="text-[11px] px-1.5 py-0 border-border/60 bg-background/50 font-mono text-muted-foreground"
           >
             {tasks.length}
           </Badge>
         </div>
+        {canManage && onAddTask && (
+          <button 
+            onClick={() => onAddTask(status)}
+            className="text-muted-foreground hover:text-foreground hover:bg-secondary rounded p-1 transition-colors"
+            title="Add Task"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
+          </button>
+        )}
       </div>
 
       {/* Task List */}
-      <div className="flex-1 space-y-2.5 overflow-y-auto max-h-[calc(100vh-280px)] pr-0.5">
+      <div className="flex-1 space-y-3 overflow-y-auto max-h-[calc(100vh-290px)] pr-0.5 custom-scrollbar">
         {tasks.length === 0 ? (
-          <div className="p-6 text-center border border-dashed border-border/80 rounded-md text-xs text-muted-foreground">
-            No tasks here
+          <div className="p-4 text-center border border-dashed border-border/40 rounded-md flex flex-col items-center justify-center gap-2 bg-background/20 h-28">
+            <div className="h-6 w-6 rounded-full bg-secondary/50 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground"><circle cx="12" cy="12" r="10"/><path d="M8 12h8"/></svg>
+            </div>
+            <div className="space-y-0.5">
+              <p className="text-[13px] font-medium text-muted-foreground">No tasks here</p>
+              <p className="text-[11px] text-muted-foreground/60">Drag a task here or create a new task.</p>
+            </div>
           </div>
         ) : (
           tasks.map((task) => (

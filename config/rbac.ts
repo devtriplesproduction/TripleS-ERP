@@ -24,9 +24,6 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/dashboard',
     '/rulebook',
     '/announcements',
-    '/clients',
-    '/projects',
-    '/tasks',
     '/my-tasks',
   ],
   Admin: [
@@ -52,9 +49,6 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/attendance',
     '/dashboard',
     '/rulebook',
-    '/clients',
-    '/projects',
-    '/tasks',
     '/my-tasks',
   ],
   Manager: [
@@ -64,11 +58,20 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/employee-holiday',
     '/rulebook',
     '/announcements',
-    '/clients',
-    '/projects',
-    '/tasks',
     '/my-tasks',
   ],
+}
+
+/**
+ * Check if a user has Project Management access.
+ * Admin has full access.
+ * HOD (is_hod = true) has access as an additional responsibility.
+ * HR does NOT automatically get Project Management access.
+ * Normal employees do NOT get access.
+ */
+export function canAccessProjectManagement(role?: AppRole | string | null, isHod?: boolean): boolean {
+  if (role === 'Admin') return true
+  return !!isHod
 }
 
 /** Public routes that don't require authentication */
@@ -77,8 +80,22 @@ export const PUBLIC_ROUTES = ['/login', '/unauthorized']
 /**
  * Check if a given role has permission to access a specific pathname.
  */
-export function hasRouteAccess(role: AppRole | string | null | undefined, pathname: string): boolean {
+export function hasRouteAccess(
+  role: AppRole | string | null | undefined, 
+  pathname: string, 
+  isHod?: boolean
+): boolean {
   if (!role || !ALL_ROLES.includes(role as AppRole)) return false
+
+  // Special Project Management bypass for HODs
+  if (
+    pathname.startsWith('/projects') || 
+    pathname.startsWith('/tasks') || 
+    pathname.startsWith('/clients')
+  ) {
+    if (canAccessProjectManagement(role as AppRole, isHod)) return true
+  }
+
   const allowedPrefixes = ROLE_ROUTE_MAP[role as AppRole]
   if (!allowedPrefixes) return false
   return allowedPrefixes.some(prefix => pathname === prefix || pathname.startsWith(prefix + '/'))

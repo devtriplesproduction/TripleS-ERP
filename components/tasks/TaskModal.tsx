@@ -20,6 +20,7 @@ interface TaskModalProps {
   projects: Array<{ id: string; name: string }>
   employees: AssignableEmployee[]
   defaultProjectId?: string
+  defaultStatus?: TaskStatus
   taskToEdit?: Task | null
 }
 
@@ -33,6 +34,7 @@ export function TaskModal({
   projects,
   employees,
   defaultProjectId,
+  defaultStatus,
   taskToEdit,
 }: TaskModalProps) {
   const isEditing = !!taskToEdit
@@ -41,7 +43,7 @@ export function TaskModal({
   const [description, setDescription] = useState(taskToEdit?.description || '')
   const [projectId, setProjectId] = useState(taskToEdit?.project_id || defaultProjectId || '')
   const [priority, setPriority] = useState<TaskPriority>(taskToEdit?.priority || 'MEDIUM')
-  const [status, setStatus] = useState<TaskStatus>(taskToEdit?.status || 'TODO')
+  const [status, setStatus] = useState<TaskStatus>(taskToEdit?.status || defaultStatus || 'TODO')
   const [startDate, setStartDate] = useState(taskToEdit?.start_date || '')
   const [dueDate, setDueDate] = useState(taskToEdit?.due_date || '')
   const [estimatedHours, setEstimatedHours] = useState(

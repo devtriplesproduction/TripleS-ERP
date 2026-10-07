@@ -233,7 +233,8 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-surface p-4 sm:p-6 rounded-xl shadow-sm border border-border space-y-5 sm:space-y-6 w-full min-w-0">
+    <form onSubmit={handleSubmit} className={canManage ? "bg-surface p-4 sm:p-6 rounded-xl shadow-sm border border-border space-y-5 sm:space-y-6 w-full min-w-0" : "p-4 sm:p-6 space-y-5 sm:space-y-6 w-full min-w-0"}>
+      {canManage && (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
         <div className="space-y-1.5">
           <label className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
@@ -258,6 +259,7 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
           />
         </div>
       </div>
+      )}
       {error && <div className="text-error text-sm bg-error/10 p-3 rounded-lg border border-error/20 font-medium">{error}</div>}
 
       <div className="space-y-4">
@@ -272,27 +274,34 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
             <input type="hidden" name="report_date" value={reportDate} />
           </div>
         ) : (
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-foreground">Report Date</label>
-            <DatePicker
-              value={todayDate}
-              disabled
-            />
-            <input type="hidden" name="report_date" value={todayDate} />
-          </div>
+          <input type="hidden" name="report_date" value={todayDate} />
         )}
 
-        <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-foreground">Work Done Today</label>
-          <textarea
-            name="tasks_accomplished"
-            required
-            rows={6}
-            value={tasksAccomplished}
-            onChange={(e) => setTasksAccomplished(e.target.value)}
-            className="flex w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
-            placeholder="What did you do today?"
-          ></textarea>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-foreground">What did you accomplish today? *</label>
+            <textarea
+              name="tasks_accomplished"
+              required
+              rows={6}
+              value={tasksAccomplished}
+              onChange={(e) => setTasksAccomplished(e.target.value)}
+              className="flex w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+              placeholder={"Write the tasks you completed Today\nenter one task per line"}
+            ></textarea>
+          </div>
+          <div className="space-y-1.5">
+            <label className="block text-sm font-medium text-foreground">Pending Work / Blockers *</label>
+            <textarea
+              name="blockers"
+              rows={6}
+              value={blockers}
+              required
+              onChange={(e) => setBlockers(e.target.value)}
+              className="flex w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+              placeholder='Any issues blocking your work? Write "None" if there are no blockers.'
+            ></textarea>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -382,18 +391,7 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
           </div>
         )}
 
-        <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-foreground">Pending Work/Blockers <span className="text-error ml-1">*</span></label>
-          <textarea
-            name="blockers"
-            rows={6}
-            value={blockers}
-            required
-            onChange={(e) => setBlockers(e.target.value)}
-            className="flex w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
-            placeholder="Any issues blocking your work? (Write 'None' if none)"
-          ></textarea>
-        </div>
+
 
         <div className="space-y-1.5">
           <label className="block text-sm font-medium text-foreground">Tomorrow&apos;s Plan <span className="text-error ml-1">*</span></label>
@@ -415,6 +413,12 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
     </form>
   );
 }
+
+
+
+
+
+
 
 
 
