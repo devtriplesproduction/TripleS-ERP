@@ -50,6 +50,7 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/dashboard',
     '/rulebook',
     '/my-tasks',
+    '/projects',
   ],
   Manager: [
     '/dashboard',

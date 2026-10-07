@@ -1,9 +1,10 @@
 import { requireRole } from '@/lib/auth'
-import { getProjects } from '@/lib/actions/projects'
+import { getProjects, checkEmployeeProjectAccess } from '@/lib/actions/projects'
 import { getClients } from '@/lib/actions/clients'
 import { getAssignableEmployees } from '@/lib/actions/team'
 import { canCreateProjects } from '@/lib/permissions/project-management'
 import { ProjectGrid } from '@/components/projects/ProjectGrid'
+import { redirect } from 'next/navigation'
 
 export const metadata = {
   title: 'Projects | TripleS ERP',
@@ -12,6 +13,13 @@ export const metadata = {
 
 export default async function ProjectsPage() {
   const user = await requireRole('/projects')
+
+  if (user.role === 'Employee' && !user.is_hod) {
+    const hasAccess = await checkEmployeeProjectAccess(user.id)
+    if (!hasAccess) {
+      redirect('/unauthorized')
+    }
+  }
 
   const [projectsRes, clientsRes, employeesRes] = await Promise.all([
     getProjects(),

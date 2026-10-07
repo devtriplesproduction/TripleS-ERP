@@ -14,6 +14,8 @@ import {
   Megaphone,
   FolderKanban,
   CreditCard,
+  Briefcase,
+  CheckSquare,
 } from 'lucide-react'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
@@ -99,7 +101,7 @@ function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: 
       icon: <Users className="mr-3 h-5 w-5 shrink-0" />,
     },
     {
-      label: 'EOD Reports',
+      label: eodHref === '/employee-eod' ? 'EOD Reports' : 'Review EOD',
       href: eodHref,
       icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" />,
     },
@@ -148,30 +150,20 @@ function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: 
   ]
 
   if (canAccessProjectManagement(userRole, isHod)) {
-    otherModules.unshift({
-      label: 'Project Management',
-      href: '',
-      moduleKey: 'pm',
-      icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" />,
-      children: [
-        { label: 'Projects', href: '/projects' },
-        { label: 'Tasks & Kanban', href: '/tasks' },
-        { label: 'My Tasks', href: '/my-tasks' },
-        { label: 'Clients', href: '/clients' },
-      ],
-    })
+    const pmModules: NavItem[] = [
+      { label: 'Projects', href: '/projects', icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" /> },
+      { label: 'Tasks & Kanban', href: '/tasks', icon: <CheckSquare className="mr-3 h-5 w-5 shrink-0" /> },
+      ...(userRole !== 'Admin' ? [{ label: 'My Tasks', href: '/my-tasks', icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> }] : []),
+      { label: 'Clients', href: '/clients', icon: <Briefcase className="mr-3 h-5 w-5 shrink-0" /> },
+    ]
+    otherModules.unshift(...pmModules)
   } else if (hasProjectAccess) {
     // If they have explicit project access (assigned task/membership), show My Projects
-    otherModules.unshift({
-      label: 'Project Management',
-      href: '',
-      moduleKey: 'pm',
-      icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" />,
-      children: [
-        { label: 'My Projects', href: '/projects' },
-        ...(hasRouteAccess(userRole, '/my-tasks') ? [{ label: 'My Tasks', href: '/my-tasks' }] : [])
-      ],
-    })
+    const pmModules: NavItem[] = [
+      { label: 'Projects', href: '/projects', icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" /> },
+      ...(hasRouteAccess(userRole, '/my-tasks') ? [{ label: 'My Tasks', href: '/my-tasks', icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> }] : [])
+    ]
+    otherModules.unshift(...pmModules)
   } else {
     // If they can't access project management, they still might have "My Tasks"
     // Let's add My Tasks standalone if allowed by RBAC

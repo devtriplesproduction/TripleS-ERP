@@ -90,6 +90,45 @@ export async function getProjects(filters?: {
       `)
       .order('created_at', { ascending: false })
 
+    if (user.role === 'Employee' && !user.is_hod) {
+      // First find projects where the user is a member
+      const { data: memberProjects } = await admin
+        .from('project_members')
+        .select('project_id')
+        .eq('user_id', user.id)
+
+      // Second find tasks where the user is assigned, then get those project IDs
+      const { data: userTasks } = await admin
+        .from('task_assignees')
+        .select('task_id')
+        .eq('user_id', user.id)
+        
+      const taskIds = (userTasks || []).map(t => t.task_id)
+      let taskProjectIds: string[] = []
+      
+      if (taskIds.length > 0) {
+        const { data: tData } = await admin
+          .from('tasks')
+          .select('project_id')
+          .in('id', taskIds)
+        taskProjectIds = (tData || []).map(t => t.project_id)
+      }
+
+      const memberProjectIds = (memberProjects || []).map(m => m.project_id)
+      const allProjectIds = Array.from(new Set([...memberProjectIds, ...taskProjectIds]))
+
+      if (allProjectIds.length > 0) {
+        query = query.in('id', allProjectIds)
+      } else {
+        // If employee has no projects, return empty immediately
+        return {
+          success: true,
+          data: [],
+          stats: { totalProjects: 0, activeProjects: 0, completedProjects: 0, overdueProjects: 0 }
+        }
+      }
+    }
+
     if (filters?.status && filters.status !== 'ALL') {
       query = query.eq('status', filters.status)
     }

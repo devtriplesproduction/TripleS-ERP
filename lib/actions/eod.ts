@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 
 import { createClient } from "@/lib/supabase/server";
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
@@ -643,7 +643,7 @@ export async function updateEOD(payload: {
     // Fetch the existing EOD to preserve its status
     const { data: existingEod } = await supabase
       .from('eod_reports')
-      .select('status')
+      .select('status, tasks_accomplished, blockers, tomorrows_plan, location, job_card_numbers, photo_url')
       .eq('employee_id', payload.employee_id)
       .eq('report_date', payload.report_date)
       .single();
@@ -653,15 +653,15 @@ export async function updateEOD(payload: {
     const { data: eodId, error: rpcError } = await supabase.rpc('update_eod_rpc', {
       p_employee_id: payload.employee_id,
       p_report_date: payload.report_date,
-      p_tasks_accomplished: payload.tasks_accomplished,
+      p_tasks_accomplished: existingEod?.tasks_accomplished || payload.tasks_accomplished,
       p_office_hours: payload.office_hours,
-      p_location: payload.location,
-      p_blockers: payload.blockers || '',
-      p_photo_url: payload.photo_url || '',
+      p_location: existingEod?.location || payload.location,
+      p_blockers: existingEod?.blockers || '',
+      p_photo_url: existingEod?.photo_url || '',
       p_status: status,
       p_submitted_by: payload.employee_id,
-      p_job_card_numbers: payload.job_card_numbers || '',
-      p_tomorrows_plan: payload.tomorrows_plan || ''
+      p_job_card_numbers: existingEod?.job_card_numbers || '',
+      p_tomorrows_plan: existingEod?.tomorrows_plan || ''
     });
 
     if (payload.admin_note !== undefined) {

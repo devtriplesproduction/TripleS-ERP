@@ -42,11 +42,11 @@ export function ReviewDashboard({
       const formData = new FormData();
       formData.append('employee_id', eodToEdit.employee_id);
       formData.append('report_date', eodToEdit.report_date);
-      formData.append('tasks_accomplished', formDataFields.tasks_accomplished || '');
+      formData.append('tasks_accomplished', eodToEdit.tasks_accomplished || '');
       formData.append('office_hours', String(formDataFields.office_hours));
       formData.append('location', eodToEdit.location);
-      formData.append('blockers', formDataFields.blockers || 'None');
-      formData.append('tomorrows_plan', formDataFields.tomorrows_plan || '');
+      formData.append('blockers', eodToEdit.blockers || 'None');
+      formData.append('tomorrows_plan', eodToEdit.tomorrows_plan || '');
       formData.append('role_context', (eodToEdit as any).role_context || 'Employee');
       
       // Pass the admin note to rejection_reason so it saves using the existing field
