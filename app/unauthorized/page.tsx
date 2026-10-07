@@ -8,7 +8,7 @@ export default function UnauthorizedPage() {
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-destructive/10 mb-6">
           <ShieldOff className="h-8 w-8 text-destructive" />
         </div>
-        <h1 className="text-2xl font-bold text-foreground mb-2">Access Denied</h1>
+        <h1 className="text-[28px] font-bold text-foreground mb-2">Access Denied</h1>
         <p className="text-muted-foreground text-sm mb-8">
           You don&apos;t have permission to access this page. Contact your administrator if you believe this is an error.
         </p>

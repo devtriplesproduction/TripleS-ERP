@@ -51,7 +51,9 @@ export async function getAssignableEmployees(): Promise<{ success: boolean; data
       }
     }
 
-    const result: AssignableEmployee[] = profiles.map(p => {
+    const result: AssignableEmployee[] = profiles
+      .filter(p => p.first_name?.toLowerCase() !== 'admin' && `${p.first_name || ''} ${p.last_name || ''}`.trim().toLowerCase() !== 'admin')
+      .map(p => {
       const emp = p.employee_id ? onboardingMap.get(p.employee_id) : null
       const fullName = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Employee'
 

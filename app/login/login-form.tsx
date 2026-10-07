@@ -45,7 +45,7 @@ export function LoginForm() {
           <div className="relative h-20 w-20 overflow-hidden rounded-2xl mb-4">
             <Image src="/logo.png" alt="TripleS ERP" fill sizes="80px" className="object-contain" />
           </div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">TripleS ERP</h1>
+          <h1 className="text-[28px] font-bold text-foreground tracking-tight">TripleS ERP</h1>
           <p className="text-sm text-muted-foreground mt-1">Sign in to your account</p>
         </div>
 

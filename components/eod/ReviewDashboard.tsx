@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/Dropdown';
-import { Search, SlidersHorizontal, RefreshCcw, CheckCircle2, Clock, XCircle, AlertCircle, FileSearch, FileText } from 'lucide-react';
+import { Search, SlidersHorizontal, CheckCircle2, Clock, XCircle, AlertCircle, FileSearch, FileText } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { EODReport } from '@/lib/actions/eod';
 import { reviewEODAction, updateEODAction } from '@/actions/eod.actions';
@@ -30,7 +30,8 @@ export function ReviewDashboard({
   const [selectedEmployee, setSelectedEmployee] = useState('all');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [daysLimit, setDaysLimit] = useState(7);
+
   const [submittingIds, setSubmittingIds] = useState<Set<string>>(new Set());
 
   const handleSaveEdit = async (eodId: string, formDataFields: any) => {
@@ -115,8 +116,8 @@ export function ReviewDashboard({
   };
 
   // Client-side filtering logic
-  const filteredEods = useMemo(() => {
-    return eods.filter(eod => {
+  const { filteredEods, hasMore } = useMemo(() => {
+    const matched = eods.filter(eod => {
       // Employee filter
       if (selectedEmployee !== 'all' && eod.employee_id !== selectedEmployee) return false;
 
@@ -138,7 +139,20 @@ export function ReviewDashboard({
 
       return true;
     });
-  }, [eods, search, selectedEmployee, fromDate, toDate]);
+
+    if (fromDate || toDate) {
+      return { filteredEods: matched, hasMore: false };
+    }
+
+    const uniqueDates = Array.from(new Set(matched.map(e => e.report_date))).sort().reverse();
+    const allowedDates = new Set(uniqueDates.slice(0, daysLimit));
+    const finalFiltered = matched.filter(e => allowedDates.has(e.report_date));
+
+    return { 
+      filteredEods: finalFiltered, 
+      hasMore: uniqueDates.length > daysLimit 
+    };
+  }, [eods, search, selectedEmployee, fromDate, toDate, daysLimit]);
 
   // Statistics
   const totalReports = filteredEods.length;
@@ -148,16 +162,7 @@ export function ReviewDashboard({
 
   const calcPercent = (val: number) => totalReports === 0 ? 0 : Math.round((val / totalReports) * 100 * 100) / 100;
 
-  const handleRefresh = () => {
-    setIsRefreshing(true);
-    setSearch('');
-    setSelectedEmployee('all');
-    setFromDate('');
-    setToDate('');
-    setTimeout(() => {
-      setIsRefreshing(false);
-    }, 500);
-  };
+
 
   return (
     <div className="space-y-6 w-full">
@@ -169,7 +174,7 @@ export function ReviewDashboard({
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 items-end">
-          <div className="space-y-1.5">
+          <div className="space-y-3">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Search</label>
             <div className="relative">
               <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -183,7 +188,7 @@ export function ReviewDashboard({
             </div>
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-3">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Employee</label>
             <Dropdown
               className="!space-y-0"
@@ -193,7 +198,9 @@ export function ReviewDashboard({
               placeholder="All Employees"
               options={[
                 { label: 'All Employees', value: 'all' },
-                ...employees.map(emp => ({
+                ...employees
+                  .filter(emp => emp.first_name.toLowerCase() !== 'admin')
+                  .map(emp => ({
                   label: emp.first_name + ' ' + (emp.last_name || ''),
                   value: emp.id
                 }))
@@ -201,7 +208,7 @@ export function ReviewDashboard({
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-3">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">From</label>
             <DatePicker
               placeholder="Start Date"
@@ -212,7 +219,7 @@ export function ReviewDashboard({
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-3">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">To</label>
             <DatePicker
               placeholder="End Date"
@@ -223,17 +230,7 @@ export function ReviewDashboard({
             />
           </div>
 
-          <div className="shrink-0 w-full sm:w-auto">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleRefresh}
-              className="h-11 w-full sm:w-auto px-4 bg-muted border-border text-foreground hover:bg-muted rounded-xl"
-            >
-              <RefreshCcw className={`w-4 h-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
-              Refresh
-            </Button>
-          </div>
+
         </div>
       </div>
 
@@ -317,17 +314,31 @@ export function ReviewDashboard({
           </div>
         ) : (
           <div className="space-y-4">
-            {filteredEods.map((eod) => (
-              <EodCard 
-                key={eod.id}
-                eod={eod}
-                isReview={true}
-                isSubmitting={submittingIds.has(eod.id)}
-                currentUserId={currentUserId}
-                onAction={(id, action, reason) => handleAction(id, action, reason)}
-                onSaveEdit={handleSaveEdit}
-              />
-            ))}
+            <div className="space-y-2">
+              {filteredEods.map((eod) => (
+                <EodCard 
+                  key={eod.id}
+                  eod={eod}
+                  isReview={true}
+                  isSubmitting={submittingIds.has(eod.id)}
+                  currentUserId={currentUserId}
+                  onAction={(id, action, reason) => handleAction(id, action, reason)}
+                  onSaveEdit={handleSaveEdit}
+                />
+              ))}
+            </div>
+            
+            {hasMore && (
+              <div className="pt-2 pb-6 flex justify-center">
+                <Button 
+                  variant="outline" 
+                  className="rounded-xl px-8"
+                  onClick={() => setDaysLimit(prev => prev + 7)}
+                >
+                  Load More 7 Days
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>

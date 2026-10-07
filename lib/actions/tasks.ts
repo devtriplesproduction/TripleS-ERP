@@ -64,6 +64,22 @@ export async function getTasks(filters?: {
 
     const admin = await createAdminClient()
 
+    const isPrivileged = user.role === 'Admin' || user.role === 'HR' || user.is_hod
+    let allowedTaskIds: string[] | null = null
+
+    if (!isPrivileged) {
+      const { data: userTasks } = await admin
+        .from('task_assignees')
+        .select('task_id')
+        .eq('user_id', user.id)
+      
+      allowedTaskIds = (userTasks || []).map((t: any) => t.task_id)
+
+      if (allowedTaskIds.length === 0) {
+        return { success: true, data: [] }
+      }
+    }
+
     let query = admin
       .from('tasks')
       .select(`
@@ -97,6 +113,10 @@ export async function getTasks(filters?: {
       query = query.ilike('title', `%${filters.search}%`)
     }
 
+    if (allowedTaskIds) {
+      query = query.in('id', allowedTaskIds)
+    }
+
     const { data, error } = await query
 
     if (error) {
@@ -116,7 +136,7 @@ export async function getTasks(filters?: {
         title: row.title,
         description: row.description,
         project_id: row.project_id,
-        project_name: row.project?.name || 'Project',
+        project_name: row.projects?.name || row.project?.name || null,
         priority: row.priority,
         status: row.status,
         start_date: row.start_date,
@@ -242,7 +262,7 @@ export async function getMyTasks(): Promise<{
         title: row.title,
         description: row.description,
         project_id: row.project_id,
-        project_name: row.project?.name || 'Project',
+        project_name: row.project?.name || null,
         priority: row.priority,
         status: row.status,
         start_date: row.start_date,
@@ -283,7 +303,7 @@ export async function getMyTasks(): Promise<{
       if (t.project_id) {
         const existing = projectMap.get(t.project_id) || {
           id: t.project_id,
-          name: t.project_name || 'Project',
+          name: t.project_name || 'Unknown Project',
           taskCount: 0,
         }
         existing.taskCount += 1
@@ -430,6 +450,10 @@ export async function updateTaskStatusAction(
     // Enforce permission: HOD/Manager/Admin or assigned employee
     if (!canUpdateTaskStatus(user, isAssignee)) {
       return { success: false, error: 'Unauthorized: You are not permitted to change this task status.' }
+    }
+
+    if (newStatus === 'DONE' && user.role === 'Employee' && !user.is_hod) {
+      return { success: false, error: 'Employees cannot mark tasks as DONE. Please mark as IN_REVIEW instead.' }
     }
 
     const updatePayload: Record<string, any> = {

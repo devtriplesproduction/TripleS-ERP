@@ -8,7 +8,8 @@ import { getProjectFilesAction, uploadProjectFileAction, deleteProjectFileAction
 import { format } from 'date-fns'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
-
+import { Badge } from '@/components/ui/badge'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 interface ProjectFilesTabProps {
   projectId: string
 }
@@ -146,44 +147,69 @@ export function ProjectFilesTab({ projectId }: ProjectFilesTabProps) {
           </CardContent>
         </Card>
       ) : (
-        <div className="border border-border rounded-lg bg-card overflow-hidden">
-          {files.map((f, i) => {
-            const fileExt = f.file_name.substring(f.file_name.lastIndexOf('.') + 1).toUpperCase()
-            const uploaderName = f.profile ? `${f.profile.first_name} ${f.profile.last_name || ''}`.trim() : 'Unknown'
-            
-            return (
-              <div key={f.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 ${i !== files.length - 1 ? 'border-b border-border' : ''} hover:bg-muted/30 transition-colors`}>
-                <div className="flex items-start sm:items-center gap-3">
-                  <div className="mt-1 sm:mt-0">
-                    {getFileIcon(f.mime_type)}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="font-medium text-sm text-foreground truncate max-w-[200px] sm:max-w-[300px] md:max-w-[400px]">
-                      {f.file_name}
-                    </span>
-                    <div className="flex items-center text-xs text-muted-foreground gap-2 mt-0.5">
-                      <span>{fileExt}</span>
-                      <span>&bull;</span>
-                      <span>{formatBytes(f.file_size)}</span>
-                      <span>&bull;</span>
-                      <span>{format(new Date(f.created_at), 'dd MMM yyyy')}</span>
-                      <span>&bull;</span>
-                      <span className="truncate max-w-[120px]">By {uploaderName}</span>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 mt-3 sm:mt-0">
-                  <Button variant="ghost" size="sm" onClick={() => handleDownload(f.storage_path, f.file_name)} className="h-8 text-xs font-medium px-2">
-                    <Download className="h-4 w-4 mr-1.5" />
-                    Download
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => handleDelete(f.id, f.storage_path)} className="h-8 w-8 text-muted-foreground hover:text-destructive">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
-            )
-          })}
+        <div className="bg-card border border-border/60 rounded-xl shadow-sm overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm whitespace-nowrap">
+              <thead className="bg-secondary/40 border-b border-border/60 text-[11px] text-muted-foreground uppercase font-bold tracking-wider">
+                <tr>
+                  <th className="px-5 py-3 w-[40%]">File Name</th>
+                  <th className="px-5 py-3">Type</th>
+                  <th className="px-5 py-3">Uploaded By</th>
+                  <th className="px-5 py-3">Date</th>
+                  <th className="px-5 py-3 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {files.map((f) => {
+                  const fileExt = f.file_name.substring(f.file_name.lastIndexOf('.') + 1).toUpperCase()
+                  const uploaderName = f.profile ? `${f.profile.first_name} ${f.profile.last_name || ''}`.trim() : 'Unknown'
+                  
+                  return (
+                    <tr key={f.id} className="hover:bg-secondary/30 transition-colors h-14 group">
+                      <td className="px-5 py-2">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded bg-secondary/50 flex items-center justify-center shrink-0">
+                            {getFileIcon(f.mime_type)}
+                          </div>
+                          <span className="font-semibold text-foreground text-sm truncate max-w-[200px] sm:max-w-[300px] group-hover:text-primary transition-colors">
+                            {f.file_name}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-2">
+                        <Badge variant="outline" className="text-[10px] px-2 py-0.5 bg-background">
+                          {fileExt}
+                        </Badge>
+                      </td>
+                      <td className="px-5 py-2">
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-6 w-6 border border-border/50 bg-secondary">
+                            {f.profile?.profile_photo && <AvatarImage src={f.profile.profile_photo} />}
+                            <AvatarFallback className="text-[9px] font-medium">{uploaderName.substring(0, 2).toUpperCase()}</AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm font-medium">{uploaderName}</span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-2 text-xs text-muted-foreground">
+                        {format(new Date(f.created_at), 'MMM dd, yyyy')}
+                      </td>
+                      <td className="px-5 py-2 text-right">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button variant="ghost" size="sm" onClick={() => handleDownload(f.storage_path, f.file_name)} className="h-8 text-xs font-medium px-2 hover:bg-secondary">
+                            <Download className="h-4 w-4 mr-1.5" />
+                            Download
+                          </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleDelete(f.id, f.storage_path)} className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 

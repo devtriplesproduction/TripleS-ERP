@@ -11,6 +11,8 @@
  * - Weekly off: Sunday
  * - Business timezone: Asia/Kolkata
  * - NO floating-point arithmetic for business-hour calculations
+ * - User-facing time format: HH.MM (e.g. 8.19 = 8h 19m, NOT decimal hours)
+ * - Database storage: decimal hours (for backward compat)
  */
 
 /** Standard working day in minutes */
@@ -42,13 +44,97 @@ export function minutesToDecimalHours(totalMinutes: number): number {
   return Math.round((totalMinutes / 60) * 100) / 100;
 }
 
+// ─── HH.MM Format (Primary User-Facing Format) ─────────────────────
+
+/**
+ * Parse an HH.MM formatted string into total minutes.
+ * 
+ * The value is NOT a mathematical decimal. It is an hours-and-minutes representation:
+ *   8.19  = 8 hours 19 minutes = 499 total minutes
+ *   9.05  = 9 hours 05 minutes = 545 total minutes
+ *   9.30  = 9 hours 30 minutes = 570 total minutes
+ *   10.45 = 10 hours 45 minutes = 645 total minutes
+ * 
+ * Returns null if the input is invalid.
+ */
+export function parseHHMM(value: string): number | null {
+  if (!value || typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (trimmed === '') return null;
+
+  // Allow integer-only input (e.g. "8" means 8h 00m)
+  if (/^\d+$/.test(trimmed)) {
+    const h = parseInt(trimmed, 10);
+    if (h < 0 || h > 24) return null;
+    return h * 60;
+  }
+
+  // Must match HH.MM pattern (one dot, digits on both sides)
+  if (!/^\d+\.\d{1,2}$/.test(trimmed)) return null;
+
+  const [hoursPart, minutesPart] = trimmed.split('.');
+  const h = parseInt(hoursPart, 10);
+  
+  // As per rules: 8.5 -> 5 mins, 8.05 -> 5 mins, 8.30 -> 30 mins
+  const m = parseInt(minutesPart, 10);
+
+  if (h < 0 || h > 24) return null;
+  if (m < 0 || m > 59) return null;
+  if (h === 24 && m > 0) return null;
+
+  return h * 60 + m;
+}
+
+/**
+ * Format total minutes as HH.MM string for user display.
+ * 
+ * Examples:
+ *   499  → "8.19"
+ *   545  → "9.05"
+ *   570  → "9.30"
+ *   480  → "8.00"
+ *   30   → "0.30"
+ *   1440 → "24.00"
+ */
+export function formatMinutesAsHHMM(totalMinutes: number): string {
+  const m = Math.round(Math.max(0, totalMinutes));
+  const hours = Math.floor(m / 60);
+  const minutes = m % 60;
+  return `${hours}.${String(minutes).padStart(2, '0')}`;
+}
+
+/**
+ * Convert a database office_hours decimal value to HH.MM display format.
+ * 
+ * Existing DB values are stored as decimal hours:
+ *   DB 8.5  → 510 minutes → "8.30"
+ *   DB 7.2  → 432 minutes → "7.12"
+ *   DB 9.75 → 585 minutes → "9.45"
+ */
+export function formatOfficeHoursAsHHMM(decimalHours: number): string {
+  const totalMinutes = Math.round(decimalHours * 60);
+  return formatMinutesAsHHMM(totalMinutes);
+}
+
+/**
+ * Validate an HH.MM string input. Returns error message or null if valid.
+ */
+export function validateHHMM(value: string): string | null {
+  if (!value || !value.trim()) return 'Worked hours are required.';
+  const result = parseHHMM(value);
+  if (result === null) {
+    return 'Enter valid hours and minutes in HH.MM format. Minutes must be between 00 and 59.';
+  }
+  if (result === 0) return 'Worked time cannot be zero.';
+  if (result > 24 * 60) return 'Worked time exceeds maximum (24.00).';
+  return null;
+}
+
 // ─── Formatting ─────────────────────────────────────────────────────
 
-/** Format total minutes as short human-readable string: "9h 45m", "0h 30m", "8h 00m" */
+/** Format total minutes as HH.MM string (primary user-facing format). */
 export function formatWorkedTime(totalMinutes: number): string {
-  const { hours, minutes } = fromTotalMinutes(Math.abs(totalMinutes));
-  const sign = totalMinutes < 0 ? '-' : '';
-  return `${sign}${hours}h ${String(minutes).padStart(2, '0')}m`;
+  return formatMinutesAsHHMM(totalMinutes);
 }
 
 /** Format total minutes with days: "1d 2h 30m" */

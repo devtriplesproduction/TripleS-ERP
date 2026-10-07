@@ -12,7 +12,7 @@ import { ImagePlus, X, Plus, User, Key } from 'lucide-react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
-import { fromTotalMinutes, toTotalMinutes } from '@/lib/utils/time';
+import { parseHHMM, validateHHMM, formatOfficeHoursAsHHMM } from '@/lib/utils/time';
 import { toast } from 'sonner';
 
 type EmployeeOption = { id: string; first_name: string; last_name: string; employee_id: string };
@@ -46,9 +46,7 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
       .length;
     window.dispatchEvent(new CustomEvent('eod-tasks-changed', { detail: tasksCompleted }));
   }, [tasksAccomplished]);
-  const [hours, setHours] = useState<string>('');
-  const [minutes, setMinutes] = useState<string>('');
-  // Kept for backward compatibility if needed in the form, but mostly using hours/minutes now
+  const [workedHoursInput, setWorkedHoursInput] = useState<string>('');
   const [blockers, setBlockers] = useState('');
   const [jobCardNumbers, setJobCardNumbers] = useState<string[]>([]);
   const [jobCardInput, setJobCardInput] = useState('');
@@ -82,9 +80,8 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
       if (res.success && 'data' in res && res.data) {
         setIsUpdate(true);
         setTasksAccomplished(res.data.tasks_accomplished);
-        const { hours: h, minutes: m } = fromTotalMinutes(Math.round(Number(res.data.office_hours) * 60));
-        setHours(h.toString());
-        setMinutes(m.toString());
+        const { hours: h, minutes: m } = { hours: Math.floor(Math.round(Number(res.data.office_hours) * 60) / 60), minutes: Math.round(Number(res.data.office_hours) * 60) % 60 };
+        setWorkedHoursInput(formatOfficeHoursAsHHMM(Number(res.data.office_hours)));
         setLocation(res.data.location as 'Office' | 'Field' | 'Work From Home');
         setBlockers(res.data.blockers || '');
         const jcn = (res.data as Record<string, unknown>).job_card_numbers as string || '';
@@ -97,8 +94,7 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
       } else {
         setIsUpdate(false);
         setTasksAccomplished('');
-        setHours('');
-        setMinutes('');
+        setWorkedHoursInput('');
         setLocation('Office');
         setBlockers('');
         setJobCardNumbers([]);
@@ -214,7 +210,7 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
         setExistingPhotoUrl(null);
         setLocation('Office');
         setTasksAccomplished('');
-        setOfficeHours('');
+        setWorkedHoursInput('');
         setBlockers('');
         setJobCardNumbers([]);
         setTomorrowsPlan('');
@@ -310,10 +306,8 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
             <div className="flex items-center justify-between">
               <label className="block text-sm font-medium text-foreground">Worked Hours <span className="text-error">*</span></label>
               {(() => {
-                const h = parseInt(hours || '0');
-                const m = parseInt(minutes || '0');
-                const totalMins = (h * 60) + m;
-                if (totalMins === 0) return null;
+                const totalMins = parseHHMM(workedHoursInput);
+                if (totalMins === null || totalMins === 0) return null;
                 
                 if (totalMins < 240) { // < 4 hours
                   return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">Unpaid Leave (&lt;4h)</span>;
@@ -324,25 +318,22 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
                 }
               })()}
             </div>
-            <div className="flex gap-2">
-              <Dropdown
-                value={hours}
-                onChange={(val) => setHours(val as string)}
-                options={Array.from({ length: 17 }, (_, i) => ({ label: `${i}h`, value: i.toString() }))}
-                placeholder="Hours"
-                buttonClassName="w-full"
-                contentClassName="max-h-56"
-              />
-              <Dropdown
-                value={minutes}
-                onChange={(val) => setMinutes(val as string)}
-                options={Array.from({ length: 60 }, (_, i) => ({ label: `${i}m`, value: i.toString() }))}
-                placeholder="Minutes"
-                buttonClassName="w-full"
-                contentClassName="max-h-56"
-              />
-            </div>
-            <input type="hidden" name="office_hours" value={((parseInt(hours || '0') * 60 + parseInt(minutes || '0')) / 60).toFixed(2)} />
+            <input
+              type="text"
+              inputMode="decimal"
+              placeholder="8.19"
+              value={workedHoursInput}
+              onChange={(e) => setWorkedHoursInput(e.target.value)}
+              className="flex w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+            />
+            <p className="text-xs text-muted-foreground">HH.MM format — e.g. 8.19 = 8h 19m</p>
+            {workedHoursInput && validateHHMM(workedHoursInput) && (
+              <p className="text-xs text-rose-500">{validateHHMM(workedHoursInput)}</p>
+            )}
+            <input type="hidden" name="office_hours" value={(() => {
+              const totalMins = parseHHMM(workedHoursInput);
+              return totalMins !== null ? (totalMins / 60).toFixed(6) : '0';
+            })()} />
           </div>
 
           <Dropdown

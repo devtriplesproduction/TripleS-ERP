@@ -52,7 +52,7 @@ export function RecentEODLogs({ history, user }: { history: EODLog[]; user: User
               <p className="text-base font-medium text-zinc-900 dark:text-zinc-100">No recent logs</p>
             </div>
           ) : (
-            <div className="space-y-4">
+            <div className="space-y-2">
               {history.slice(0, 5).map((eod) => (
                 <EodCard 
                   key={eod.id} 

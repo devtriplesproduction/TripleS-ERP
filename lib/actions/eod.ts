@@ -255,7 +255,7 @@ export async function getEODHistory(employeeId: string, roleContext: 'Employee' 
       .from('eod_reports')
       .select('id, employee_id, report_date, tasks_accomplished, office_hours, location, blockers, photo_url, status, submitted_by, approved_by, approved_at, rejection_reason, submitted_at')
       .eq('employee_id', employeeId)
-      .eq('role_context', roleContext)
+      .ilike('role_context', roleContext)
       .order('report_date', { ascending: false });
 
     if (error) {

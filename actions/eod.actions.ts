@@ -1,4 +1,4 @@
-﻿// @ts-nocheck
+// @ts-nocheck
 'use server';
 
 import { z } from 'zod';
@@ -12,7 +12,11 @@ const eodSubmitSchema = z.object({
   employee_id: z.string().uuid(),
   report_date: z.string(),
   tasks_accomplished: z.string().min(1, "Tasks accomplished is required"),
-  office_hours: z.number().min(0).max(24, "Office hours must be between 0 and 24"),
+  office_hours: z.number().min(0).max(24, "Office hours must be between 0 and 24").refine(val => {
+    // Server-side: ensure the decimal-hours value produces valid total minutes
+    const totalMinutes = Math.round(val * 60);
+    return totalMinutes >= 0 && totalMinutes <= 1440;
+  }, "Invalid office hours value"),
   location: z.enum(['Office', 'Field', 'Work From Home']),
   blockers: z.string().min(1, "Please specify blockers or type 'None'"),
   photo_url: z.string().optional(),

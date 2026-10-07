@@ -74,29 +74,38 @@ export function ProjectActivityTab({ activities }: ProjectActivityTabProps) {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+          Project Activity
+        </h3>
+      </div>
+
       {activities.length === 0 ? (
-        <div className="p-8 text-center text-muted-foreground bg-card border border-border rounded-lg">
+        <div className="p-12 text-center text-muted-foreground bg-card border border-border/60 rounded-xl shadow-sm flex flex-col items-center justify-center">
+          <Activity className="h-8 w-8 mb-2 opacity-20" />
           No project activity recorded yet.
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {activities.map((act) => (
-            <Card key={act.id} className="border-border bg-card shadow-xs">
-              <CardContent className="p-4 flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 rounded-lg bg-secondary mt-0.5 shrink-0">
-                    {getActivityIcon(act.activity_type)}
-                  </div>
-                  <div>
-                    <p className="text-sm text-foreground font-medium">{formatActivityText(act)}</p>
-                    <span className="text-xs text-muted-foreground mt-0.5 block">
-                      {dayjs(act.created_at).format('DD MMM YYYY, hh:mm A')} ({dayjs(act.created_at).fromNow()})
-                    </span>
-                  </div>
+            <div
+              key={act.id}
+              className="border border-border/60 bg-card rounded-xl p-4 shadow-sm hover:border-foreground/30 transition-colors flex items-start gap-4"
+            >
+              <div className="p-2 rounded-full bg-secondary/80 shrink-0 border border-border/50 text-muted-foreground mt-0.5">
+                {getActivityIcon(act.activity_type)}
+              </div>
+              <div className="flex-1 min-w-0 pt-1">
+                <p className="text-sm text-foreground leading-snug">{formatActivityText(act)}</p>
+                <div className="flex items-center gap-2 text-[11px] text-muted-foreground mt-2 bg-secondary/30 px-2.5 py-1 rounded-md w-fit border border-border/40">
+                  <Clock className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{dayjs(act.created_at).format('DD MMM YYYY, hh:mm A')}</span>
+                  <div className="w-px h-3 bg-border/60 shrink-0" />
+                  <span className="font-medium shrink-0">{dayjs(act.created_at).fromNow()}</span>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           ))}
         </div>
       )}

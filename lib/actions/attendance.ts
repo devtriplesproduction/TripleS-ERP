@@ -199,9 +199,14 @@ async function _calculateAttendance(employeeId: string, month: number, year: num
 
   const attendance: DerivedAttendance[] = [];
   
-  // Build today's date string in local time (IST) for comparison
-  const now = new Date();
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  // Build today's date string in local time (Asia/Kolkata) for comparison
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  const todayStr = formatter.format(new Date());
 
   for (let d = 1; d <= endDate.getDate(); d++) {
     const currentDate = new Date(year, month - 1, d); // local date
@@ -269,6 +274,8 @@ async function _calculateAttendance(employeeId: string, month: number, year: num
       status = 'Weekend';
     } else if (dateStr > todayStr) {
       status = 'Not Marked'; // Future dates
+    } else if (dateStr === todayStr && !eod) {
+      status = 'Pending'; // Current day without EOD is Pending, not Absent.
     }
 
     const extraMinutes = calculateExtraMinutes(workedMinutes, context);

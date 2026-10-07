@@ -8,12 +8,12 @@ import { createClient } from "@/lib/supabase/server";
 
 import { EODSubmissionForm } from "@/components/eod/EODSubmissionForm";
 import { ReviewDashboard } from "@/components/eod/ReviewDashboard";
-import { CheckCircle2, Clock, ShieldAlert, Send, History, BarChart2 } from "lucide-react";
+import { CheckCircle2, Clock, ShieldAlert, Send, History, BarChart2, CalendarDays, FileText } from "lucide-react";
 import { PageHeader } from "@/components/PageHeader";
 import { LiveTaskCounter } from "@/components/eod/LiveTaskCounter";
 import { countTasks } from "@/lib/utils";
 import Link from "next/link";
-import { formatWorkedTime } from "@/lib/utils/time";
+import { formatOfficeHoursAsHHMM, formatMinutesAsHHMM } from "@/lib/utils/time";
 import { RecentEODLogs } from "@/components/eod/RecentEODLogs";
 
 import { BranchSelectorClient } from "@/components/eod/BranchSelectorClient";
@@ -83,7 +83,9 @@ export default async function EODPage({ searchParams }: PageProps) {
     hasBlockers = !!(todayEOD && todayEOD.blockers && todayEOD.blockers.trim().length > 0);
 
     if (canManage) {
-      const { data: emps } = { data: [] };
+      const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
+      const adminSupa = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+      const { data: emps } = await adminSupa.from('profiles').select('id, first_name, last_name, employee_id').neq('role', 'SUPER_ADMIN').neq('role', 'Admin').neq('first_name', 'admin');
       allEmployees = (emps || []) as EmployeeOption[];
     }
   }
@@ -97,7 +99,9 @@ export default async function EODPage({ searchParams }: PageProps) {
     allEODs = (eods || []) as unknown as EODWithEmployee[];
 
     if (allEmployees.length === 0) {
-      const { data: emps } = { data: [] };
+      const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
+      const adminSupa = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+      const { data: emps } = await adminSupa.from('profiles').select('id, first_name, last_name, employee_id').neq('role', 'SUPER_ADMIN').neq('role', 'Admin').neq('first_name', 'admin');
       allEmployees = (emps || []) as EmployeeOption[];
     }
 
@@ -126,7 +130,7 @@ export default async function EODPage({ searchParams }: PageProps) {
                 </div>
               )
             ) : (
-              <div className="bg-black dark:bg-zinc-800 text-white dark:text-zinc-100 px-4 py-2 rounded-xl font-semibold border border-black dark:border-white flex items-center gap-2">
+              <div className="bg-black dark:bg-zinc-800 text-white dark:text-zinc-100 px-4 py-2 rounded-xl font-semibold border border-black dark:border-white flex items-center gap-2 whitespace-nowrap">
                 Current Streak: {streak} days 🔥
               </div>
             )}
@@ -137,51 +141,54 @@ export default async function EODPage({ searchParams }: PageProps) {
       {activeTab === 'review' && canReview ? (
         <ReviewDashboard initialEods={allEODs} employees={allEmployees} />
       ) : (
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-          {/* Left Column: Form */}
-          <div className="xl:col-span-7 2xl:col-span-6">
-            <EODSubmissionForm employeeId={authUser.id} canEditDate={canManage} employees={canManage ? allEmployees : undefined} canManage={canManage} employeeName={`${user.first_name} ${user.last_name}`} employeeStringId={user.employee_id_number || ''} />
-          </div>
+        <div className="max-w-[1280px] mx-auto space-y-4 w-full">
 
-          {/* Right Column: Stats & Logs */}
-          <div className="xl:col-span-5 2xl:col-span-6 space-y-6">
 
-            {/* Today at a glance */}
-            <div className="bg-card text-card-foreground border-border rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm p-6">
-              <div className="flex items-center gap-2 mb-6">
-                <div className="w-8 h-8 rounded-lg bg-black dark:bg-zinc-800 text-white dark:text-zinc-100 flex items-center justify-center text-black dark:text-white">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" /></svg>
+          {/* Form */}
+          <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm overflow-hidden">
+            <div className="px-5 py-4 border-b border-border bg-muted/30 flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-lg bg-card/80 shadow-sm flex items-center justify-center border border-border/50">
+                  <FileText className="w-4 h-4 text-foreground/80" />
                 </div>
-                <h2 className="text-lg font-bold text-zinc-900 dark:text-zinc-100">Today at a glance</h2>
+                <h2 className="text-lg font-bold text-foreground">Today's EOD</h2>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-card text-card-foreground border-border shadow-sm flex flex-col justify-between">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-900 flex items-center justify-center text-zinc-900 dark:text-zinc-100">
-                      <CheckCircle2 className="w-4 h-4" />
-                    </div>
-                    <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Tasks Completed</span>
-                  </div>
-                  <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">{tasksCompleted}</div>
-                  <div className="mt-1 text-xs text-black dark:text-white font-medium cursor-pointer hover:underline">View details</div>
-                </div>
-
-                <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-card text-card-foreground border-border shadow-sm flex flex-col justify-between">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 rounded-full bg-black dark:bg-zinc-800 text-white dark:text-zinc-100 flex items-center justify-center text-black dark:text-white">
-                      <Clock className="w-4 h-4" />
-                    </div>
-                    <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Hours Logged</span>
-                  </div>
-                  <div className="text-3xl font-bold text-zinc-900 dark:text-zinc-100">{hoursLogged ? formatWorkedTime(Math.round(Number(hoursLogged) * 60)) : "0h 00m"}</div>
-                  <div className="mt-1 text-xs text-zinc-900 dark:text-zinc-100 font-medium">Duration</div>
-                </div>
-
+              <div className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground bg-card/50 px-3 py-1.5 rounded-md border border-border/40">
+                <CalendarDays className="w-3.5 h-3.5 opacity-70" />
+                {new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'Asia/Kolkata' }).format(new Date())}
               </div>
             </div>
+            <EODSubmissionForm employeeId={authUser.id} canEditDate={false} canManage={false} employeeName={`${user.first_name} ${user.last_name}`} employeeStringId={user.employee_id_number || ''} />
+          </div>
 
-            {/* Recent EOD Logs */}
+          {/* Today's Summary */}
+          <div>
+            <h3 className="text-lg font-bold text-foreground mb-4 pl-1">Today's Summary</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="p-4 rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Tasks Completed</span>
+                <div className="text-2xl font-bold text-foreground">{tasksCompleted}</div>
+              </div>
+              <div className="p-4 rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Hours Logged</span>
+                <div className="text-2xl font-bold text-foreground">{todayEOD ? formatOfficeHoursAsHHMM(Number(hoursLogged)) : "0.00"}</div>
+              </div>
+              <div className="p-4 rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Today's Work Duration</span>
+                <div className="text-2xl font-bold text-foreground">{todayEOD ? formatOfficeHoursAsHHMM(Number(hoursLogged)) : "0.00"}</div>
+              </div>
+              <div className="p-4 rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col justify-between">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Extra Hours</span>
+                <div className="text-2xl font-bold text-foreground">
+                  {todayEOD && Number(hoursLogged) > 8 ? formatMinutesAsHHMM(Math.round(Number(hoursLogged) * 60) - 480) : "0.00"}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent EOD Reports */}
+          <div>
+            <h3 className="text-lg font-bold text-foreground mb-4 pl-1">Recent EOD Reports</h3>
             <RecentEODLogs history={history} user={{ first_name: user.first_name, last_name: user.last_name, employee_id: user.employee_id_number || '' }} />
           </div>
         </div>
@@ -189,6 +196,7 @@ export default async function EODPage({ searchParams }: PageProps) {
     </div>
   );
 }
+
 
 
 

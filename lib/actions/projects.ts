@@ -90,7 +90,10 @@ export async function getProjects(filters?: {
       `)
       .order('created_at', { ascending: false })
 
-    if (user.role === 'Employee' && !user.is_hod) {
+    const isEmployee = user.role === 'Employee' && !user.is_hod
+    let allowedTaskIds: string[] = []
+
+    if (isEmployee) {
       // First find projects where the user is a member
       const { data: memberProjects } = await admin
         .from('project_members')
@@ -103,15 +106,15 @@ export async function getProjects(filters?: {
         .select('task_id')
         .eq('user_id', user.id)
         
-      const taskIds = (userTasks || []).map(t => t.task_id)
+      allowedTaskIds = (userTasks || []).map((t: any) => t.task_id)
       let taskProjectIds: string[] = []
       
-      if (taskIds.length > 0) {
+      if (allowedTaskIds.length > 0) {
         const { data: tData } = await admin
           .from('tasks')
           .select('project_id')
-          .in('id', taskIds)
-        taskProjectIds = (tData || []).map(t => t.project_id)
+          .in('id', allowedTaskIds)
+        taskProjectIds = (tData || []).map((t: any) => t.project_id)
       }
 
       const memberProjectIds = (memberProjects || []).map(m => m.project_id)
@@ -166,7 +169,13 @@ export async function getProjects(filters?: {
     const now = new Date()
 
     const projects: Project[] = (data || []).map((row: any) => {
-      const tasks = row.tasks || []
+      let tasks = row.tasks || []
+      
+      // If employee, filter their visible tasks for accurate counts
+      if (isEmployee) {
+        tasks = tasks.filter((t: any) => allowedTaskIds.includes(t.id))
+      }
+      
       const total = tasks.length
       const done = tasks.filter((t: any) => t.status === 'DONE').length
       const in_progress = tasks.filter((t: any) => t.status === 'IN_PROGRESS').length
@@ -446,7 +455,7 @@ export async function getProjectById(projectId: string): Promise<{
     }
 
     // 2. Fetch tasks for this project
-    const { data: tasks } = await admin
+    let tasksQuery = admin
       .from('tasks')
       .select(`
         id, task_id_display, title, description, priority, status, start_date, due_date,
@@ -458,6 +467,24 @@ export async function getProjectById(projectId: string): Promise<{
       `)
       .eq('project_id', projectId)
       .order('created_at', { ascending: true })
+
+    if (user.role === 'Employee' && !user.is_hod) {
+      const { data: userTasks } = await admin
+        .from('task_assignees')
+        .select('task_id')
+        .eq('user_id', user.id)
+      
+      const allowedTaskIds = (userTasks || []).map((t: any) => t.task_id)
+      
+      if (allowedTaskIds.length === 0) {
+        // Fallback: no tasks allowed
+        tasksQuery = tasksQuery.in('id', ['00000000-0000-0000-0000-000000000000'])
+      } else {
+        tasksQuery = tasksQuery.in('id', allowedTaskIds)
+      }
+    }
+
+    const { data: tasks } = await tasksQuery
 
     const projectTasks = tasks || []
 

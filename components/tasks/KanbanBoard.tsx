@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Task, TaskStatus, Project } from '@/types/project-management'
 import { AssignableEmployee } from '@/lib/actions/team'
 import { KanbanColumn } from './KanbanColumn'
+import { TaskCard } from './TaskCard'
 import { TaskDetailsModal } from './TaskDetailsModal'
 import { TaskModal } from './TaskModal'
 import { Button } from '@/components/ui/button'
@@ -215,32 +216,53 @@ export function KanbanBoard({
         </div>
       </div>
 
-      {/* Kanban Columns Horizontal Container */}
-      <div className="w-full overflow-x-auto pb-6 pt-2 custom-scrollbar">
-        <div className="flex items-start gap-4 min-w-max">
-          {COLUMNS.map((col) => {
-            const colTasks = filteredTasks.filter((t) => t.status === col.status)
-            return (
-              <KanbanColumn
-                key={col.status}
-                status={col.status}
-                title={col.title}
-                tasks={colTasks}
-                onTaskClick={handleTaskClick}
-                onDragStart={handleDragStart}
-                onDropTask={handleDropTask}
-                canManage={canManage}
-                onQuickStatusChange={handleDropTask}
-                onAddTask={(status) => {
-                  setTaskToEdit(null)
-                  setDefaultStatusForNew(status)
-                  setIsCreateOpen(true)
-                }}
-              />
-            )
-          })}
+      {viewMode === 'board' ? (
+        /* Kanban Columns Horizontal Container */
+        <div className="w-full overflow-x-auto pb-6 pt-2 custom-scrollbar">
+          <div className="flex items-start gap-4 min-w-max">
+            {COLUMNS.map((col) => {
+              const colTasks = filteredTasks.filter((t) => t.status === col.status)
+              return (
+                <KanbanColumn
+                  key={col.status}
+                  status={col.status}
+                  title={col.title}
+                  tasks={colTasks}
+                  onTaskClick={handleTaskClick}
+                  onDragStart={handleDragStart}
+                  onDropTask={handleDropTask}
+                  canManage={canManage}
+                  onQuickStatusChange={handleDropTask}
+                  onAddTask={(status) => {
+                    setTaskToEdit(null)
+                    setDefaultStatusForNew(status)
+                    setIsCreateOpen(true)
+                  }}
+                />
+              )
+            })}
+          </div>
         </div>
-      </div>
+      ) : (
+        /* List View (Grid of Cards) */
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 pb-6 pt-2">
+          {filteredTasks.length === 0 ? (
+            <div className="col-span-full text-center py-12 text-muted-foreground bg-secondary/20 rounded-lg border border-border/50">
+              No tasks found.
+            </div>
+          ) : (
+            filteredTasks.map((task) => (
+              <div key={task.id} className="h-full">
+                <TaskCard
+                  task={task}
+                  onClick={() => handleTaskClick(task)}
+                  canManage={canManage}
+                />
+              </div>
+            ))
+          )}
+        </div>
+      )}
 
       {/* Task Details Modal */}
       {selectedTask && (

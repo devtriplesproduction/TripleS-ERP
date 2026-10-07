@@ -20,7 +20,10 @@ export default async function AdminEODPage() {
   const allEODs = (eods || []) as unknown as EODWithEmployee[];
     
 
-  const allEmployees: EmployeeOption[] = []; // Reused component gets this passed, but maybe it fetches internal or we can just pass empty and let it be used. Wait, HR passes empty if no employees. ReviewDashboard probably does its own filtering from the provided EODs if employees array is empty, or we can fetch all employees.
+  const { createClient: createSupabaseClient } = require('@supabase/supabase-js');
+  const adminSupa = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+  const { data: emps } = await adminSupa.from('profiles').select('id, first_name, last_name, employee_id').neq('role', 'SUPER_ADMIN').neq('role', 'Admin').neq('first_name', 'admin');
+  const allEmployees: EmployeeOption[] = (emps || []) as EmployeeOption[];
   // Actually in original eod page, llEmployees was mocked: const { data: emps } = { data: [] }; allEmployees = emps;
 
   const getISTDateString = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -30,7 +33,7 @@ export default async function AdminEODPage() {
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto">
       <PageHeader
-        title="Admin EOD"
+        title="Review EOD"
         subtitle="Review employee and HR end-of-day reports."
         actions={
           <div className="flex items-center gap-3">

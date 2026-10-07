@@ -298,7 +298,7 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                 className="bg-card border border-border/80 hover:border-foreground/20 rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 flex flex-col sm:flex-row group overflow-hidden"
               >
                 {/* Left Column - Details */}
-                <div className="flex-1 p-4 sm:p-5 md:p-6 flex flex-col justify-between relative">
+                <div className="flex-1 min-w-0 p-4 sm:p-5 md:p-6 flex flex-col justify-between relative">
                   {/* Vertical Divider for Desktop */}
                   <div className="hidden sm:block absolute right-0 top-6 bottom-6 w-px bg-border/60" />
 

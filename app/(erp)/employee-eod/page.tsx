@@ -5,7 +5,7 @@ import { CheckCircle2, Clock, ShieldAlert, Send, History, CalendarDays, FileText
 import { PageHeader } from "@/components/PageHeader";
 import { LiveTaskCounter } from "@/components/eod/LiveTaskCounter";
 import { countTasks } from "@/lib/utils";
-import { formatWorkedTime } from "@/lib/utils/time";
+import { formatOfficeHoursAsHHMM, formatMinutesAsHHMM } from "@/lib/utils/time";
 import Link from "next/link";
 import { RecentEODLogs } from "@/components/eod/RecentEODLogs";
 import { createClient } from "@/lib/supabase/server";
@@ -36,40 +36,42 @@ export default async function EmployeeEODPage() {
   const { streak: s } = await getEODStreak(authUser.id);
   const streak = s || 0;
 
+  console.log("=== UI EOD FETCH DEBUG ===");
+  console.log("AuthUser.id:", authUser.id);
+  console.log("Resolved Employee Onboarding ID:", user?.employee_id_number);
+  console.log("Requested Role Context: Employee");
+  console.log("Records returned:", history.length);
+  history.forEach(h => console.log(`  -> ID: ${h.id}, Date: ${h.report_date}, Status: ${h.status}, Role: ${h.role_context}`));
+  console.log("==========================");
+
   const today = new Date();
-  const todayStr = today.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' });
-  const todayEOD = history.find((report) => {
-    const d = new Date(report.report_date);
-    return d.toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }) === todayStr;
-  });
+  const getISTDateString = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(today);
+  const todayStr = getISTDateString();
+  const todayEOD = history.find((report) => report.report_date === todayStr);
 
   const tasksCompleted = todayEOD ? countTasks(todayEOD.tasks_accomplished) : 0;
   const hoursLogged = todayEOD ? todayEOD.office_hours : 0;
   const hasBlockers = !!(todayEOD && todayEOD.blockers && todayEOD.blockers.trim().length > 0);
 
   return (
-        <div className="max-w-[1280px] mx-auto space-y-6 md:space-y-8">
+        <div className="max-w-[1280px] mx-auto space-y-4">
       
       {/* Header Area */}
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 pt-4 md:pt-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex flex-col gap-1.5 md:gap-2">
-          <h1 className="text-[24px] md:text-[32px] font-bold text-foreground tracking-tight leading-none">Daily Status Report</h1>
+          <h1 className="text-[28px] font-bold text-foreground tracking-tight leading-none">Daily Status Report</h1>
           <p className="text-sm md:text-base text-muted-foreground">Log your daily achievements and identify blockers.</p>
         </div>
-        <div className="bg-card text-card-foreground px-5 py-3 rounded-2xl border border-border shadow-sm flex items-center gap-4 self-start md:mt-0">
-          <div className="w-10 h-10 rounded-full bg-muted/50 border border-border flex items-center justify-center">
-            <CalendarDays className="w-5 h-5 text-muted-foreground" />
+        <div className="bg-card text-card-foreground px-4 py-2.5 rounded-xl border border-border shadow-sm flex items-center gap-3 self-start md:self-center md:mt-0">
+          <div className="w-8 h-8 rounded-full bg-muted/50 border border-border flex items-center justify-center">
+            <CalendarDays className="w-4 h-4 text-muted-foreground" />
           </div>
-          <div className="flex flex-col">
-            <span className="text-muted-foreground text-[11px] uppercase tracking-widest font-semibold mb-0.5">Current Streak</span>
-            <div className="flex items-center gap-1.5">
-              <span className="text-xl font-bold">{streak} days</span>
-              <span className="text-lg">{"\u{1F525}"}</span>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="text-muted-foreground text-sm font-semibold">Current Streak:</span>
+            <span className="text-base font-bold">{streak} days {"\u{1F525}"}</span>
           </div>
         </div>
       </div>
-
 
       {/* Form */}
         <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm overflow-hidden">
@@ -98,16 +100,16 @@ export default async function EmployeeEODPage() {
             </div>
             <div className="p-4 rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Hours Logged</span>
-              <div className="text-2xl font-bold text-foreground">{todayEOD ? formatWorkedTime(Math.round(Number(hoursLogged) * 60)) : "0h 00m"}</div>
+              <div className="text-2xl font-bold text-foreground">{todayEOD ? formatOfficeHoursAsHHMM(Number(hoursLogged)) : "0.00"}</div>
             </div>
             <div className="p-4 rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Today's Work Duration</span>
-              <div className="text-2xl font-bold text-foreground">{todayEOD ? formatWorkedTime(Math.round(Number(hoursLogged) * 60)) : "0h 00m"}</div>
+              <div className="text-2xl font-bold text-foreground">{todayEOD ? formatOfficeHoursAsHHMM(Number(hoursLogged)) : "0.00"}</div>
             </div>
             <div className="p-4 rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col justify-between">
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-1">Extra Hours</span>
               <div className="text-2xl font-bold text-foreground">
-                {todayEOD && Number(hoursLogged) > 8 ? formatWorkedTime(Math.round((Number(hoursLogged) - 8) * 60)) : "0h 00m"}
+                {todayEOD && Number(hoursLogged) > 8 ? formatMinutesAsHHMM(Math.round(Number(hoursLogged) * 60) - 480) : "0.00"}
               </div>
             </div>
           </div>

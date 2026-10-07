@@ -106,7 +106,7 @@ function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: 
       icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" />,
     },
     {
-      label: 'Request Leave / WFH',
+      label: userRole === 'Admin' ? 'Review Leave / WFH' : 'Request Leave / WFH',
       href: leaveHref,
       icon: <Calendar className="mr-3 h-5 w-5 shrink-0" />,
     },

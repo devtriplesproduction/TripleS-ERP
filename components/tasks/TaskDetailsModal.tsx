@@ -156,7 +156,7 @@ export function TaskDetailsModal({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-card border-border">
-                  {ALL_STATUSES.map((st) => (
+                  {ALL_STATUSES.filter(st => canManage || st !== 'DONE').map((st) => (
                     <SelectItem key={st} value={st}>
                       {st.replace('_', ' ')}
                     </SelectItem>

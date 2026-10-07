@@ -74,7 +74,7 @@ export function PageHeader({
           {renderPageHeaderIcon(title, PropIcon, iconClassName)}
         </div>
         <div className="min-w-0 flex-1">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold tracking-tight text-foreground leading-tight truncate">
+          <h1 className="text-[28px] font-bold tracking-tight text-foreground leading-tight truncate">
             {renderTitle()}
           </h1>
           {subtitle && (

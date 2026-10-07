@@ -62,6 +62,8 @@ export function ProjectDetailsView({
       {/* Project Header */}
       <ProjectHeader
         project={project}
+        tasks={tasks}
+        teamStats={teamStats}
         totalOperationalHours={totalOperationalHours}
         canEdit={canEdit}
         canManageTasks={canManageTasks}
@@ -70,64 +72,59 @@ export function ProjectDetailsView({
       />
 
       {/* Tabs Navigation */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="bg-card border border-border p-1 w-full justify-start overflow-x-auto flex-nowrap h-12">
-          <TabsTrigger
-            value="overview"
-            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs font-semibold px-4 h-9"
-          >
-            <LayoutGrid className="h-3.5 w-3.5" />
-            Overview
-          </TabsTrigger>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+        <div className="border-b border-border">
+          <TabsList className="bg-transparent border-0 p-0 w-full justify-start overflow-x-auto flex-nowrap h-auto space-x-6">
+            <TabsTrigger
+              value="overview"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:bg-transparent text-muted-foreground hover:text-foreground text-sm font-medium py-3 px-1 transition-none"
+            >
+              Overview
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="list"
-            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs font-semibold px-4 h-9"
-          >
-            <ListTodo className="h-3.5 w-3.5" />
-            List
-          </TabsTrigger>
+            <TabsTrigger
+              value="list"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:bg-transparent text-muted-foreground hover:text-foreground text-sm font-medium py-3 px-1 transition-none"
+            >
+              List
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="kanban"
-            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs font-semibold px-4 h-9"
-          >
-            <CheckSquare className="h-3.5 w-3.5" />
-            Kanban
-          </TabsTrigger>
+            <TabsTrigger
+              value="kanban"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:bg-transparent text-muted-foreground hover:text-foreground text-sm font-medium py-3 px-1 transition-none"
+            >
+              Kanban
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="timeline"
-            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs font-semibold px-4 h-9"
-          >
-            <Calendar className="h-3.5 w-3.5" />
-            Timeline
-          </TabsTrigger>
+            <TabsTrigger
+              value="timeline"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:bg-transparent text-muted-foreground hover:text-foreground text-sm font-medium py-3 px-1 transition-none"
+            >
+              Timeline
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="team"
-            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs font-semibold px-4 h-9"
-          >
-            <Users className="h-3.5 w-3.5" />
-            Team
-          </TabsTrigger>
+            <TabsTrigger
+              value="team"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:bg-transparent text-muted-foreground hover:text-foreground text-sm font-medium py-3 px-1 transition-none"
+            >
+              Team
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="files"
-            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs font-semibold px-4 h-9"
-          >
-            <FileText className="h-3.5 w-3.5" />
-            Files
-          </TabsTrigger>
+            <TabsTrigger
+              value="files"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:bg-transparent text-muted-foreground hover:text-foreground text-sm font-medium py-3 px-1 transition-none"
+            >
+              Files
+            </TabsTrigger>
 
-          <TabsTrigger
-            value="activity"
-            className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground text-xs font-semibold px-4 h-9"
-          >
-            <Activity className="h-3.5 w-3.5" />
-            Activity
-          </TabsTrigger>
-        </TabsList>
+            <TabsTrigger
+              value="activity"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:bg-transparent text-muted-foreground hover:text-foreground text-sm font-medium py-3 px-1 transition-none"
+            >
+              Activity
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
         {/* Tab 1: Overview */}
         <TabsContent value="overview">

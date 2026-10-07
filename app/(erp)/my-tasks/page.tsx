@@ -8,12 +8,14 @@ export const metadata = {
 }
 
 export default async function MyTasksPage() {
-  await requireRole('/my-tasks')
+  const user = await requireRole('/my-tasks')
   const { data } = await getMyTasks()
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       <MyTasksView
+        userRole={user.role}
+        isHod={user.is_hod || false}
         todayTasks={data?.todayTasks || []}
         pendingTasks={data?.pendingTasks || []}
         overdueTasks={data?.overdueTasks || []}

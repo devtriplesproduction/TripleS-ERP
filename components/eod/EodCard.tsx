@@ -1,8 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Clock, AlertTriangle, Edit2, XCircle, CheckCircle2, Loader2, Save, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatWorkedTime } from '@/lib/utils/time';
-import { Dropdown } from '@/components/ui/Dropdown';
+import { formatOfficeHoursAsHHMM, parseHHMM, validateHHMM } from '@/lib/utils/time';
 
 export function EodCard({
   eod,
@@ -25,8 +24,7 @@ export function EodCard({
   
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
-    hoursInput: '',
-    minutesInput: '',
+    workedHours: '',
     admin_note: ''
   });
 
@@ -37,7 +35,7 @@ export function EodCard({
   // Count non-empty task lines
   const tasks = (eod.tasks_accomplished || '').split('\n').filter((t: string) => t.trim().length > 0);
   const taskCount = tasks.length;
-  const hoursFormatted = formatWorkedTime(Math.round(Number(eod.office_hours) * 60));
+  const hoursFormatted = formatOfficeHoursAsHHMM(Number(eod.office_hours));
 
   const isOwnEod = currentUserId && eod.employee_id === currentUserId;
 
@@ -58,13 +56,8 @@ export function EodCard({
   };
 
   const startEditing = () => {
-    const totalMinutes = Math.round(Number(eod.office_hours || 0) * 60);
-    const h = Math.floor(totalMinutes / 60);
-    const m = totalMinutes % 60;
-    
     setEditForm({
-      hoursInput: h.toString(),
-      minutesInput: m.toString(),
+      workedHours: formatOfficeHoursAsHHMM(Number(eod.office_hours || 0)),
       admin_note: eod.rejection_reason || ''
     });
     setIsEditing(true);
@@ -75,19 +68,15 @@ export function EodCard({
     setIsEditing(false);
   };
 
-  const hVal = Number(editForm.hoursInput);
-  const mVal = Number(editForm.minutesInput);
-  
-  const isHoursValid = editForm.hoursInput !== '' && !isNaN(hVal) && hVal >= 0 && hVal <= 24 && Number.isInteger(hVal);
-  const isMinutesValid = editForm.minutesInput !== '' && !isNaN(mVal) && mVal >= 0 && mVal <= 59 && Number.isInteger(mVal);
-  const isValid = isHoursValid && isMinutesValid;
+  const workedHoursError = editForm.workedHours ? validateHHMM(editForm.workedHours) : null;
+  const isValid = editForm.workedHours !== '' && workedHoursError === null;
 
   const handleSave = async () => {
     if (!isValid) return;
     
-    const h = parseInt(editForm.hoursInput, 10);
-    const m = parseInt(editForm.minutesInput, 10);
-    const office_hours = parseFloat(((h * 60 + m) / 60).toFixed(6));
+    const totalMinutes = parseHHMM(editForm.workedHours);
+    if (totalMinutes === null) return;
+    const office_hours = totalMinutes / 60;
 
     if (onSaveEdit) {
       await onSaveEdit(eod.id, { office_hours, admin_note: editForm.admin_note });
@@ -145,7 +134,11 @@ export function EodCard({
 
           {/* Status and Expand Icon */}
           <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3 shrink-0">
-            <span className="px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md border">
+            <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md border ${
+              eod.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
+              eod.status === 'Rejected' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' :
+              'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+            }`}>
               {eod.status}
             </span>
             <button 
@@ -217,43 +210,18 @@ export function EodCard({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Office Hours</label>
-                    <div className="flex gap-2">
-                      <div className="flex-1 flex flex-col items-center space-y-1">
-                        <input
-                          type="number"
-                          placeholder="24"
-                          value={editForm.hoursInput}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, hoursInput: e.target.value }))}
-                          className="w-full h-11 bg-[#0B0B0C] text-[#FFFFFF] border border-[#2A2A2A] rounded-[10px] px-3 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all placeholder:text-[#71717A]"
-                          min="0"
-                          max="24"
-                          step="1"
-                        />
-                        <div className="text-[10px] text-muted-foreground">Hours</div>
-                      </div>
-                      <div className="flex-1 flex flex-col items-center space-y-1">
-                        <input
-                          type="number"
-                          placeholder="59"
-                          value={editForm.minutesInput}
-                          onChange={(e) => setEditForm(prev => ({ ...prev, minutesInput: e.target.value }))}
-                          className="w-full h-11 bg-[#0B0B0C] text-[#FFFFFF] border border-[#2A2A2A] rounded-[10px] px-3 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all placeholder:text-[#71717A]"
-                          min="0"
-                          max="59"
-                          step="1"
-                        />
-                        <div className="text-[10px] text-muted-foreground">Minutes</div>
-                      </div>
-                    </div>
-                    {editForm.hoursInput !== '' && !isHoursValid && (
-                      <p className="text-xs text-rose-500 mt-1">Hours must be between 0 and 24.</p>
-                    )}
-                    {editForm.minutesInput !== '' && !isMinutesValid && (
-                      <p className="text-xs text-rose-500 mt-1">Minutes must be between 0 and 59.</p>
-                    )}
-                    {(editForm.hoursInput === '' || editForm.minutesInput === '') && (
-                      <p className="text-xs text-rose-500 mt-1">Worked hours are required.</p>
+                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Worked Hours</label>
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      placeholder="8.19"
+                      value={editForm.workedHours}
+                      onChange={(e) => setEditForm(prev => ({ ...prev, workedHours: e.target.value }))}
+                      className="w-full h-11 bg-[#0B0B0C] text-[#FFFFFF] border border-[#2A2A2A] rounded-[10px] px-3 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all placeholder:text-[#71717A]"
+                    />
+                    <p className="text-[10px] text-muted-foreground">HH.MM format — e.g. 8.19 = 8h 19m</p>
+                    {editForm.workedHours !== '' && workedHoursError && (
+                      <p className="text-xs text-rose-500 mt-1">{workedHoursError}</p>
                     )}
                   </div>
                   

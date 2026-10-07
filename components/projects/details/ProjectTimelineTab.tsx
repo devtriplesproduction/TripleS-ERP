@@ -19,121 +19,109 @@ export function ProjectTimelineTab({ project, tasks }: ProjectTimelineTabProps) 
   })
 
   return (
-    <div className="space-y-6">
-      {/* Project Milestones Header Card */}
-      <Card className="border-border bg-card shadow-xs">
-        <CardContent className="p-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-secondary rounded-lg">
-                <Flag className="h-5 w-5 text-foreground" />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground font-medium">Project Lifecycle</p>
-                <h3 className="text-base font-bold text-foreground">
-                  {project.start_date ? dayjs(project.start_date).format('DD MMMM YYYY') : 'Start date unset'}{' '}
-                  →{' '}
-                  {project.deadline ? dayjs(project.deadline).format('DD MMMM YYYY') : 'Target deadline unset'}
-                </h3>
-              </div>
-            </div>
+    <div className="space-y-8">
+      {/* Project Milestones Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
+          Project Timeline
+        </h3>
 
-            {project.is_overdue && (
-              <Badge variant="outline" className="border-destructive text-destructive font-bold self-start sm:self-center">
-                <AlertCircle className="mr-1 h-3.5 w-3.5" />
-                Project Past Deadline
-              </Badge>
-            )}
+        <div className="flex items-center gap-4 bg-card border border-border/60 px-4 py-2.5 rounded-lg shadow-sm">
+          <div className="flex flex-col">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Start Date</span>
+            <span className="text-sm font-semibold">{project.start_date ? dayjs(project.start_date).format('DD MMM YYYY') : 'Unset'}</span>
           </div>
-        </CardContent>
-      </Card>
+          <div className="w-px h-8 bg-border/60" />
+          <div className="flex flex-col">
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">Deadline</span>
+            <span className="text-sm font-semibold flex items-center gap-2">
+              {project.deadline ? dayjs(project.deadline).format('DD MMM YYYY') : 'Unset'}
+              {project.is_overdue && <Badge variant="destructive" className="text-[9px] px-1 py-0 uppercase">Overdue</Badge>}
+            </span>
+          </div>
+        </div>
+      </div>
 
-      {/* Task Milestones List / Timeline */}
-      <div className="space-y-3">
-        <h4 className="text-sm font-semibold text-foreground">Task Delivery Milestones</h4>
-
+      {/* Task Milestones Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {sortedTasks.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground bg-card border border-border rounded-lg">
+          <div className="lg:col-span-2 p-12 text-center text-muted-foreground bg-card border border-border/60 rounded-xl shadow-sm">
             No scheduled tasks recorded for this project timeline yet.
           </div>
         ) : (
-          <div className="relative pl-6 sm:pl-8 space-y-4 before:absolute before:left-3 sm:before:left-4 before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
-            {sortedTasks.map((t) => {
-              const isCompleted = t.status === 'DONE'
-              const isOverdue = t.is_overdue
+          sortedTasks.map((t) => {
+            const isCompleted = t.status === 'DONE'
+            const isOverdue = t.is_overdue
 
-              return (
-                <div key={t.id} className="relative group">
-                  {/* Timeline Node Dot */}
-                  <div
-                    className={`absolute -left-6 sm:-left-8 top-3 h-6 w-6 rounded-full border-2 flex items-center justify-center transition-all bg-card ${
-                      isCompleted
-                        ? 'border-foreground text-foreground'
-                        : isOverdue
+            return (
+              <div
+                key={t.id}
+                className={`flex gap-3 border border-border/60 bg-card rounded-xl p-4 shadow-sm transition-colors hover:border-foreground/30 ${isOverdue ? 'border-destructive/30 bg-destructive/5' : ''
+                  }`}
+              >
+                {/* Status Dot */}
+                <div
+                  className={`mt-1 h-6 w-6 shrink-0 rounded-full border-2 flex items-center justify-center transition-all ${isCompleted
+                      ? 'border-primary text-primary bg-primary/5'
+                      : isOverdue
                         ? 'border-destructive text-destructive bg-destructive/10'
-                        : 'border-muted-foreground text-muted-foreground'
+                        : 'border-border text-muted-foreground bg-secondary/50'
                     }`}
-                  >
-                    {isCompleted ? (
-                      <CheckCircle2 className="h-3.5 w-3.5" />
-                    ) : isOverdue ? (
-                      <AlertCircle className="h-3.5 w-3.5" />
-                    ) : (
-                      <Clock className="h-3 w-3" />
-                    )}
+                >
+                  {isCompleted ? (
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  ) : isOverdue ? (
+                    <AlertCircle className="h-3.5 w-3.5" />
+                  ) : (
+                    <Clock className="h-3 w-3" />
+                  )}
+                </div>
+
+                {/* Task Details */}
+                <div className="flex-1 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                  <div className="space-y-1.5 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-[11px] font-semibold text-muted-foreground bg-secondary px-1.5 py-0.5 rounded-sm">
+                        {t.task_id_display}
+                      </span>
+                      <Badge variant="outline" className="text-[9px] py-0 px-1.5 border-border/60 bg-background uppercase">
+                        {t.status.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                    <h5 className="font-semibold text-[14px] text-foreground leading-snug truncate">{t.title}</h5>
                   </div>
 
-                  {/* Task Card */}
-                  <Card
-                    className={`border-border bg-card shadow-xs transition-colors hover:border-foreground/30 ${
-                      isOverdue ? 'border-destructive/30' : ''
-                    }`}
-                  >
-                    <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-mono text-xs text-muted-foreground">
-                            {t.task_id_display}
-                          </span>
-                          <Badge variant="outline" className="text-[10px] py-0 px-1.5 border-border">
-                            {t.status.replace('_', ' ')}
-                          </Badge>
-                          {isOverdue && (
-                            <Badge className="text-[10px] py-0 px-1.5 bg-destructive text-destructive-foreground">
-                              Overdue
-                            </Badge>
-                          )}
-                        </div>
-                        <h5 className="font-semibold text-sm text-foreground">{t.title}</h5>
+                  <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0 bg-secondary/30 px-3 py-2 rounded-lg border border-border/40">
+                    {t.start_date && (
+                      <div className="flex flex-col items-end">
+                        <span className="text-[9px] uppercase font-bold text-muted-foreground/70">Start</span>
+                        <span className="text-foreground font-medium whitespace-nowrap">{dayjs(t.start_date).format('DD MMM')}</span>
                       </div>
+                    )}
 
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground shrink-0 flex-wrap">
-                        {t.start_date && (
-                          <div className="flex items-center gap-1">
-                            <span className="text-[11px]">Start:</span>
-                            <span className="text-foreground">{dayjs(t.start_date).format('DD MMM')}</span>
-                          </div>
-                        )}
+                    {t.start_date && <div className="w-px h-6 bg-border/60" />}
 
-                        <div className="flex items-center gap-1">
-                          <span className="text-[11px]">Due:</span>
-                          <span className={isOverdue ? 'text-destructive font-bold' : 'text-foreground'}>
-                            {t.due_date ? dayjs(t.due_date).format('DD MMM YYYY') : 'No due date'}
-                          </span>
+                    <div className="flex flex-col items-end">
+                      <span className="text-[9px] uppercase font-bold text-muted-foreground/70">Due</span>
+                      <span className={`font-medium whitespace-nowrap ${isOverdue ? 'text-destructive font-bold' : 'text-foreground'}`}>
+                        {t.due_date ? dayjs(t.due_date).format('DD MMM YYYY') : 'Unset'}
+                      </span>
+                    </div>
+
+                    {t.worked_hours ? (
+                      <>
+                        <div className="w-px h-6 bg-border/60" />
+                        <div className="flex flex-col items-end">
+                          <span className="text-[9px] uppercase font-bold text-muted-foreground/70">Time</span>
+                          <span className="font-mono font-medium text-foreground">{t.worked_hours}h</span>
                         </div>
-
-                        {t.worked_hours ? (
-                          <div className="font-mono text-[11px] bg-secondary/50 px-2 py-0.5 rounded-sm">
-                            {t.worked_hours}h worked
-                          </div>
-                        ) : null}
-                      </div>
-                    </CardContent>
-                  </Card>
+                      </>
+                    ) : null}
+                  </div>
                 </div>
-              )
-            })}
-          </div>
+              </div>
+            )
+          })
         )}
       </div>
     </div>

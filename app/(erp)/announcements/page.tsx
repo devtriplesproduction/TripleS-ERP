@@ -1,5 +1,6 @@
-import { getAnnouncements } from '@/lib/actions/announcements'
+import { getAnnouncements, getDashboardAnnouncements } from '@/lib/actions/announcements'
 import { AnnouncementsClientPage } from '@/components/announcements/AnnouncementsClientPage'
+import { EmployeeAnnouncementsPage } from '@/components/announcements/EmployeeAnnouncementsPage'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { DEPARTMENTS } from '@/config/roles'
@@ -17,19 +18,18 @@ export default async function AnnouncementsPage() {
   const { data: profile } = await supabase.from('profiles').select('role').eq('id', userAuth.user.id).single()
   
   const roleUpper = profile?.role?.toUpperCase()
-  const hasAccess = roleUpper === 'ADMIN' || roleUpper === 'HR' || roleUpper === 'SUPER_ADMIN' || roleUpper === 'SUPER ADMIN'
-  if (!hasAccess) {
-    redirect('/dashboard')
+  const isAdminOrHR = roleUpper === 'ADMIN' || roleUpper === 'HR' || roleUpper === 'SUPER_ADMIN' || roleUpper === 'SUPER ADMIN'
+
+  // Admin / HR Management View
+  if (isAdminOrHR) {
+    const announcements = await getAnnouncements()
+    const depts = DEPARTMENTS.map(d => d.name)
+
+    return <AnnouncementsClientPage announcements={announcements || []} departments={depts} />
   }
 
-  const announcements = await getAnnouncements()
+  // Employee View
+  const { announcements } = await getDashboardAnnouncements()
   
-  // Get departments from config instead of distinct profiles query
-  const depts = DEPARTMENTS.map(d => d.name)
-
-  return (
-    <div className="p-8">
-      <AnnouncementsClientPage announcements={announcements || []} departments={depts} />
-    </div>
-  )
+  return <EmployeeAnnouncementsPage announcements={announcements || []} />
 }

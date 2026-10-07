@@ -34,10 +34,10 @@ export default async function RulebookPage() {
   const acks = await getAcknowledgments(employeeId)
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
+    <div className="max-w-7xl mx-auto space-y-8">
       <div className="flex justify-between items-end">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Company Rulebook</h1>
+          <h1 className="text-[28px] font-bold tracking-tight mb-2">Company Rulebook</h1>
           <p className="text-muted-foreground">
             View and acknowledge the latest company policies and rules.
           </p>

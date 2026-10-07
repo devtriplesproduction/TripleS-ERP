@@ -17,6 +17,8 @@ import {
   FolderGit2,
   ChevronRight,
   ListTodo,
+  LayoutGrid,
+  List,
 } from 'lucide-react'
 import dayjs from 'dayjs'
 import { toast } from 'sonner'
@@ -28,6 +30,8 @@ interface MyTasksViewProps {
   recentlyAssignedTasks: Task[]
   completedTasks: Task[]
   userProjects: Array<{ id: string; name: string; taskCount: number }>
+  userRole?: string
+  isHod?: boolean
 }
 
 type TabType = 'today' | 'upcoming' | 'overdue' | 'completed' | 'projects'
@@ -39,8 +43,11 @@ export function MyTasksView({
   recentlyAssignedTasks,
   completedTasks,
   userProjects,
+  userRole,
+  isHod,
 }: MyTasksViewProps) {
   const [activeTab, setActiveTab] = useState<TabType>('today')
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('grid')
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
 
@@ -88,7 +95,7 @@ export function MyTasksView({
     }
 
     return (
-      <div className="space-y-3">
+      <div className={viewMode === 'grid' ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" : "space-y-3"}>
         {tasks.map((task) => (
           <Card
             key={task.id}
@@ -97,7 +104,7 @@ export function MyTasksView({
             }`}
             onClick={() => handleTaskClick(task)}
           >
-            <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <CardContent className={`p-4 flex justify-between gap-3 ${viewMode === 'list' ? 'flex-col sm:flex-row sm:items-center' : 'flex-col h-full'}`}>
               <div className="space-y-1.5 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <span className="font-mono text-xs font-semibold text-muted-foreground">
@@ -129,10 +136,10 @@ export function MyTasksView({
 
               {/* Status and Action Buttons */}
               <div
-                className="flex items-center gap-3 shrink-0 self-start sm:self-center"
+                className={`flex gap-3 shrink-0 ${viewMode === 'list' ? 'items-center self-start sm:self-center' : 'items-center justify-between w-full mt-auto pt-2 border-t border-border/50'}`}
                 onClick={(e) => e.stopPropagation()}
               >
-                <div className="text-right text-xs space-y-0.5 hidden md:block">
+                <div className={`text-xs space-y-0.5 ${viewMode === 'list' ? 'text-right hidden md:block' : 'text-left'}`}>
                   <span className="text-muted-foreground block text-[11px]">Due Date</span>
                   <span className={task.is_overdue ? 'text-destructive font-bold' : 'text-foreground font-medium'}>
                     {task.due_date ? dayjs(task.due_date).format('DD MMM YYYY') : 'No due date'}
@@ -146,7 +153,7 @@ export function MyTasksView({
                     { value: 'TODO', label: 'To Do' },
                     { value: 'IN_PROGRESS', label: 'In Progress' },
                     { value: 'IN_REVIEW', label: 'In Review' },
-                    { value: 'DONE', label: 'Done' },
+                    ...(userRole === 'Admin' || isHod ? [{ value: 'DONE', label: 'Done' }] : []),
                     { value: 'ON_HOLD', label: 'On Hold' },
                   ]}
                   buttonClassName="h-8 text-xs bg-secondary/40 border-border min-w-[120px]"
@@ -172,14 +179,34 @@ export function MyTasksView({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
-          <ListTodo className="h-7 w-7 text-foreground" />
-          My Tasks & Daily View
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Review your personal task schedule, pending deliverables, and assigned project workflows.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
+            <ListTodo className="h-7 w-7 text-foreground" />
+            My Tasks & Daily View
+          </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Review your personal task schedule, pending deliverables, and assigned project workflows.
+          </p>
+        </div>
+        <div className="flex items-center bg-secondary/30 p-1 rounded-xl border border-border shrink-0">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              viewMode === 'grid' ? 'bg-white text-black shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            Grid
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+              viewMode === 'list' ? 'bg-white text-black shadow-sm' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            List
+          </button>
+        </div>
       </div>
 
       {/* Filter Tabs Header */}
