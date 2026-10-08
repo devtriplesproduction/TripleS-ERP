@@ -11,6 +11,7 @@ import { reviewEODAction, updateEODAction } from '@/actions/eod.actions';
 import { DatePicker } from '@/components/ui/date-picker';
 import { EodCard } from './EodCard';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 type Employee = { id: string; first_name: string; last_name: string; employee_id: string };
 type EnrichedEOD = EODReport & { profiles: Employee | null };
@@ -164,6 +165,8 @@ export function ReviewDashboard({
 
 
 
+  const filterInputStyles = "!h-11 w-full !bg-card !border !border-border !rounded-xl !text-sm transition-all focus:!ring-2 focus:!ring-orange-500/20 focus:!border-orange-400 !text-foreground !shadow-sm";
+
   return (
     <div className="space-y-6 w-full">
       {/* Filters Section */}
@@ -183,7 +186,7 @@ export function ReviewDashboard({
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 placeholder="Search..."
-                className="h-11 w-full pl-9 pr-4 py-2 bg-muted border border-border rounded-xl text-sm focus:ring-2 focus:ring-orange-500/20 focus:border-orange-400 transition-all outline-none"
+                className={cn(filterInputStyles, "!pl-9 !pr-4 !py-2")}
               />
             </div>
           </div>
@@ -192,7 +195,7 @@ export function ReviewDashboard({
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Employee</label>
             <Dropdown
               className="!space-y-0"
-              buttonClassName="w-full h-11 bg-muted border border-border rounded-xl"
+              buttonClassName={cn(filterInputStyles, "!px-3 !py-2")}
               value={selectedEmployee}
               onChange={val => setSelectedEmployee(val as string)}
               placeholder="All Employees"
@@ -214,8 +217,7 @@ export function ReviewDashboard({
               placeholder="Start Date"
               value={fromDate}
               onChange={(date) => setFromDate(date)}
-              triggerClassName="h-11 bg-muted border-border rounded-xl"
-              className="w-full"
+              className={cn(filterInputStyles, "!px-3 !py-2 !justify-between !flex !items-center")}
             />
           </div>
 
@@ -225,8 +227,7 @@ export function ReviewDashboard({
               placeholder="End Date"
               value={toDate}
               onChange={(date) => setToDate(date)}
-              triggerClassName="h-11 bg-muted border-border rounded-xl"
-              className="w-full"
+              className={cn(filterInputStyles, "!px-3 !py-2 !justify-between !flex !items-center")}
             />
           </div>
 

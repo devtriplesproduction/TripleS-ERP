@@ -101,8 +101,8 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
         subtitle="Track team attendance, leaves, holidays, and working-day status."
         actions={
           <div className="flex flex-wrap items-center gap-4">
-            <div className="flex items-center bg-[#0F0F10] border border-[#2A2A2A] rounded-lg p-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[#151516]" onClick={() => {
+            <div className="flex items-center bg-card border border-border rounded-lg p-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted" onClick={() => {
                 const d = new Date(currentDate); d.setMonth(d.getMonth() - 1); setCurrentDate(d);
               }}>
                 <ChevronLeft className="w-4 h-4" />
@@ -110,16 +110,13 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
               <div className="w-[140px] flex items-center justify-center text-sm font-medium">
                 {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[#151516]" onClick={() => {
+              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted" onClick={() => {
                 const d = new Date(currentDate); d.setMonth(d.getMonth() + 1); setCurrentDate(d);
               }}>
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
-            
-            <Button variant="outline" className="bg-white text-black hover:bg-gray-100 hover:text-black border-0">
-              <CalendarIcon className="mr-2 h-4 w-4" /> Manage Holidays
-            </Button>
+
           </div>
         }
       />
@@ -129,9 +126,9 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
         
         {/* Left Area - Calendar */}
         <div className="flex-1">
-          <div className="bg-[#0F0F10] border border-[#2A2A2A] rounded-[16px] overflow-hidden">
+          <div className="bg-card border border-border rounded-[16px] overflow-hidden">
             {/* Weekday Headers */}
-            <div className="grid grid-cols-7 border-b border-[#2A2A2A]">
+            <div className="grid grid-cols-7 border-b border-border">
               {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(day => (
                 <div key={day} className="py-4 text-center text-[12px] font-medium text-muted-foreground uppercase tracking-wider">
                   {day}
@@ -143,7 +140,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
             <div className="grid grid-cols-7">
               {calendarDays.map((dayNum, i) => {
                 if (!dayNum) {
-                  return <div key={`empty-${i}`} className="min-h-[120px] border-b border-r border-[#2A2A2A]/50 bg-[#0F0F10]/50" />
+                  return <div key={`empty-${i}`} className="min-h-[120px] border-b border-r border-border/50 bg-muted/20" />
                 }
                 
                 const dStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`
@@ -155,8 +152,8 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
                   <div 
                     key={dStr} 
                     onClick={() => setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum))}
-                    className={`min-h-[120px] p-3 border-b border-r border-[#2A2A2A] relative cursor-pointer transition-colors hover:bg-[#151516] flex flex-col items-center justify-between
-                      ${isSelected ? 'bg-[#151516] ring-1 ring-inset ring-purple-500/50' : 'bg-[#0F0F10]'}`}
+                    className={`min-h-[120px] p-3 border-b border-r border-border relative cursor-pointer transition-colors hover:bg-muted/50 flex flex-col items-center justify-between
+                      ${isSelected ? 'bg-muted/50 ring-1 ring-inset ring-primary/50' : 'bg-transparent'}`}
                   >
                     <span className="absolute top-3 left-3 text-[14px] font-medium text-muted-foreground">{dayNum}</span>
                     
@@ -179,7 +176,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
         <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-6">
           
           {/* Personnel Context Card */}
-          <Card className="bg-[#0F0F10] border-[#2A2A2A] rounded-[16px] p-5 shadow-none">
+          <Card className="bg-card border-border rounded-[16px] p-5 shadow-none">
             <div className="flex items-center gap-2 mb-5">
               <div className="p-1.5 bg-purple-500/10 text-purple-500 rounded-md">
                 <UserIcon className="w-4 h-4" />
@@ -192,9 +189,9 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
               
               {employee && (
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12 border border-[#2A2A2A]">
+                  <Avatar className="h-12 w-12 border border-border">
                     <AvatarImage src={employee.profile_photo || ''} />
-                    <AvatarFallback className="bg-[#151516] text-muted-foreground">{employee.first_name?.[0]}{employee.last_name?.[0]}</AvatarFallback>
+                    <AvatarFallback className="bg-muted text-muted-foreground">{employee.first_name?.[0]}{employee.last_name?.[0]}</AvatarFallback>
                   </Avatar>
                   <div>
                     <p className="text-sm font-semibold">{employee.first_name} {employee.last_name}</p>
@@ -218,36 +215,36 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
           </Card>
           
           {/* Monthly Insights Card */}
-          <Card className="bg-[#0F0F10] border-[#2A2A2A] rounded-[16px] p-5 shadow-none">
+          <Card className="bg-card border-border rounded-[16px] p-5 shadow-none">
             <div className="flex items-center gap-2 mb-5">
-              <div className="p-1.5 bg-[#2A2A2A]/50 text-muted-foreground rounded-md">
+              <div className="p-1.5 bg-muted text-muted-foreground rounded-md">
                 <BarChart3 className="w-4 h-4" />
               </div>
               <h3 className="font-semibold text-base">Monthly Insights</h3>
             </div>
             
-            <div className="grid grid-cols-2 gap-0 border border-[#2A2A2A] rounded-xl overflow-hidden">
-              <div className="p-4 border-b border-r border-[#2A2A2A] flex flex-col gap-1 relative">
+            <div className="grid grid-cols-2 gap-0 border border-border rounded-xl overflow-hidden">
+              <div className="p-4 border-b border-r border-border flex flex-col gap-1 relative">
                 <span className="text-[12px] text-muted-foreground">Present</span>
                 <span className="text-xl font-bold text-emerald-500">{summary.present}</span>
                 <CalendarIcon className="w-4 h-4 text-emerald-500/50 absolute right-4 top-4" />
               </div>
-              <div className="p-4 border-b border-[#2A2A2A] flex flex-col gap-1 relative">
+              <div className="p-4 border-b border-border flex flex-col gap-1 relative">
                 <span className="text-[12px] text-muted-foreground">WFH</span>
                 <span className="text-xl font-bold text-blue-500">{summary.wfh}</span>
                 <Home className="w-4 h-4 text-blue-500/50 absolute right-4 top-4" />
               </div>
-              <div className="p-4 border-b border-r border-[#2A2A2A] flex flex-col gap-1 relative">
+              <div className="p-4 border-b border-r border-border flex flex-col gap-1 relative">
                 <span className="text-[12px] text-muted-foreground">Leave</span>
                 <span className="text-xl font-bold text-orange-500">{summary.leave}</span>
                 <CalendarDays className="w-4 h-4 text-orange-500/50 absolute right-4 top-4" />
               </div>
-              <div className="p-4 border-b border-[#2A2A2A] flex flex-col gap-1 relative">
+              <div className="p-4 border-b border-border flex flex-col gap-1 relative">
                 <span className="text-[12px] text-muted-foreground">Half Days</span>
                 <span className="text-xl font-bold text-yellow-500">{summary.halfDay}</span>
                 <Clock className="w-4 h-4 text-yellow-500/50 absolute right-4 top-4" />
               </div>
-              <div className="p-4 border-r border-[#2A2A2A] flex flex-col gap-1 relative">
+              <div className="p-4 border-r border-border flex flex-col gap-1 relative">
                 <span className="text-[12px] text-muted-foreground">Absent</span>
                 <span className="text-xl font-bold text-red-500">{summary.absent}</span>
                 <UserX className="w-4 h-4 text-red-500/50 absolute right-4 top-4" />

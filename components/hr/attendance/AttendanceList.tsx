@@ -66,9 +66,9 @@ export function AttendanceList({ basePath = '/hr/attendance' }: { basePath?: str
             <Select value={month.toString()} onValueChange={v => setMonth(parseInt(v || "1"))}>
               <SelectTrigger className="flex-1 sm:w-[140px] min-h-[44px] sm:min-h-9">
                 <Calendar className="w-4 h-4 mr-2 shrink-0" />
-                <SelectValue />
+                <span className="truncate flex-1 text-left">{new Date(2000, month - 1, 1).toLocaleString('default', { month: 'long' })}</span>
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-[160px]">
                 {Array.from({ length: 12 }, (_, i) => (
                   <SelectItem key={i+1} value={(i+1).toString()}>
                     {new Date(2000, i, 1).toLocaleString('default', { month: 'long' })}

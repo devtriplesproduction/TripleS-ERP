@@ -47,6 +47,14 @@ export async function getAttendanceEmployees(month: number, year: number) {
     return [];
   }
 
+  // Filter out admin
+  const filteredProfiles = profiles.filter(p => p.first_name?.toLowerCase() !== 'admin');
+  
+  if (!profiles) {
+    console.error('getAttendanceEmployees profile returned no data');
+    return [];
+  }
+
   // Fetch departments and profile photos from employee_onboarding
   const { data: onboardingData } = await supabaseAdmin
     .from('employee_onboarding')
@@ -61,7 +69,9 @@ export async function getAttendanceEmployees(month: number, year: number) {
     });
   }
 
-  const data = profiles.map(p => {
+  const data = filteredProfiles
+    .filter(p => p.employee_id && onboardingMap.has(p.employee_id))
+    .map(p => {
     const ob = onboardingMap.get(p.employee_id) || {};
     return {
       ...p,
