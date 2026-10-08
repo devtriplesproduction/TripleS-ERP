@@ -117,7 +117,7 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
             placeholder="Joining Date"
             iconLeft={true}
             showChevron={true}
-            className="h-10 text-sm"
+            className="w-full h-10 bg-input/50 border-border text-sm shrink-0"
           />
           </div>
 

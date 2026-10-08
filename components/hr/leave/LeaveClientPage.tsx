@@ -157,7 +157,7 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
           </div>
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
-            {!isSuperAdmin && (
+            {!isSuperAdmin && activeTab === 'mine' && (
               <div className="bg-transparent text-muted-foreground border border-border px-3 sm:px-4 h-10 flex items-center rounded-lg text-xs sm:text-sm shrink-0 gap-2">
                 <Clock className="w-4 h-4 shrink-0" />
                 <span>Comp-Off: <span className="font-medium text-foreground">{formatCompOffBalance(compOffBalance * 60)}</span></span>

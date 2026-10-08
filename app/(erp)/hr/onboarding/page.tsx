@@ -34,7 +34,7 @@ export default async function OnboardingListPage() {
   const { count: adminsCount } = await supabase
     .from('profiles')
     .select('*', { count: 'exact', head: true })
-    .eq('role', 'Admin')
+    .in('role', ['Admin', 'HR'])
 
   const total = employees.length
   const activeAccounts = employees.filter(e => e.employment_status === 'Active' || e.employment_status === 'Probation').length
