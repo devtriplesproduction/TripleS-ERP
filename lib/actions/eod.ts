@@ -253,7 +253,7 @@ export async function getEODHistory(employeeId: string, roleContext: 'Employee' 
     
     const { data, error } = await supabase
       .from('eod_reports')
-      .select('id, employee_id, report_date, tasks_accomplished, office_hours, location, blockers, photo_url, status, submitted_by, approved_by, approved_at, rejection_reason, submitted_at')
+      .select('id, employee_id, report_date, tasks_accomplished, office_hours, location, blockers, photo_url, status, submitted_by, approved_by, approved_at, rejection_reason, submitted_at, tomorrows_plan')
       .eq('employee_id', employeeId)
       .ilike('role_context', roleContext)
       .order('report_date', { ascending: false });
@@ -571,7 +571,7 @@ export async function getEODByEmployeeAndDate(employeeId: string, reportDate: st
     
     const { data, error } = await supabase
       .from('eod_reports')
-      .select('id, employee_id, report_date, tasks_accomplished, office_hours, location, blockers, photo_url, status, submitted_by, approved_by, approved_at, rejection_reason, submitted_at')
+      .select('id, employee_id, report_date, tasks_accomplished, office_hours, location, blockers, photo_url, status, submitted_by, approved_by, approved_at, rejection_reason, submitted_at, tomorrows_plan')
       .eq('employee_id', employeeId)
       .eq('report_date', reportDate)
       .eq('role_context', roleContext)

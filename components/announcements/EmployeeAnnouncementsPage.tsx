@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import dayjs from 'dayjs'
 import { useRouter } from 'next/navigation'
+import { PageHeader } from '@/components/PageHeader'
 
 interface Announcement {
   id: string
@@ -69,10 +70,11 @@ export function EmployeeAnnouncementsPage({ announcements: initialAnnouncements 
     <div className="space-y-8 max-w-[1400px] mx-auto">
       {/* Header */}
       <div className="flex flex-col gap-6">
-        <div>
-          <h1 className="text-[28px] font-bold tracking-tight text-foreground">Announcements</h1>
-          <p className="text-sm text-muted-foreground mt-1">Stay updated with the latest company news and important updates.</p>
-        </div>
+        <PageHeader 
+          title="Announcements"
+          subtitle="Stay updated with the latest company news and important updates."
+          icon={Megaphone}
+        />
 
         {/* Filters */}
         <div className="flex flex-col sm:flex-row items-center gap-3">

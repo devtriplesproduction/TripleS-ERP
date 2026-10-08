@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { Plus, Search, FolderKanban, SlidersHorizontal, FolderGit2 } from 'lucide-react'
+import { PageHeader } from '@/components/PageHeader'
 
 interface ProjectGridProps {
   initialProjects: Project[]
@@ -58,27 +59,22 @@ export function ProjectGrid({
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <FolderKanban className="h-7 w-7 text-foreground" />
-            Projects
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Track operational milestones, client delivery pipelines, and team assignments.
-          </p>
-        </div>
-
-        {canCreate && (
-          <Button
-            onClick={() => setIsModalOpen(true)}
-            className="w-full sm:w-auto h-11 px-5 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            New Project
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Projects"
+        subtitle="Track operational milestones, client delivery pipelines, and team assignments."
+        icon={FolderKanban}
+        actions={
+          canCreate && (
+            <Button
+              onClick={() => setIsModalOpen(true)}
+              className="w-full sm:w-auto h-11 px-5 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              New Project
+            </Button>
+          )
+        }
+      />
 
       {/* Project Metrics Overview */}
       <ProjectStatsOverview stats={stats} />

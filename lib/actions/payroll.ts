@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { calculateMonthlyPayroll } from '@/lib/services/payroll.service'
 import { getCurrentUser } from '@/lib/auth'
+import { calculateMonthlyBasicSalary } from '@/lib/utils/salary'
 
 export async function addSalaryIncrementAction(employeeId: string, previousSalary: number, newSalary: number, incrementPercentage: number, effectiveDate: string, newPackage: number) {
   try {
@@ -28,7 +29,10 @@ export async function addSalaryIncrementAction(employeeId: string, previousSalar
 
     const { error: updateError } = await supabase
       .from('employee_onboarding')
-      .update({ salary: newPackage })
+      .update({ 
+        salary: newPackage,
+        basic_salary: calculateMonthlyBasicSalary(newPackage)
+      })
       .eq('id', employeeId)
 
     if (updateError) throw updateError

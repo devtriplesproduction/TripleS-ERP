@@ -9,6 +9,7 @@ import { useToast } from '@/hooks/use-toast'
 import { getMonthlyPayrollAction } from '@/lib/actions/payroll'
 import { PayrollDetailModal } from './PayrollDetailModal'
 import { PayrollResult } from '@/lib/services/payroll.service'
+import { PageHeader } from '@/components/PageHeader'
 
 interface PayrollData extends PayrollResult {
   isLocked?: boolean
@@ -67,32 +68,24 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
 
   return (
     <div className="space-y-6 w-full min-w-0">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3 sm:gap-4 min-w-0">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-card border border-border flex items-center justify-center shrink-0">
-            <FileSpreadsheet className="w-5 h-5 sm:w-6 sm:h-6 text-foreground" />
+      <PageHeader
+        title={title}
+        subtitle="Calculate and review employee monthly payroll."
+        actions={
+          <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-full border border-border shadow-sm shrink-0 self-start sm:self-auto">
+            <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 hover:bg-background hover:shadow-sm transition-all" onClick={handlePrevMonth} aria-label="Previous month">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <div className="font-semibold text-xs sm:text-sm px-2 text-center flex items-center justify-center gap-2 text-foreground tracking-tight whitespace-nowrap">
+              <Calendar className="h-4 w-4 text-muted-foreground/70" />
+              {months[month - 1]} {year}
+            </div>
+            <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 hover:bg-background hover:shadow-sm transition-all" onClick={handleNextMonth} aria-label="Next month">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
           </div>
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground truncate">{title}</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 truncate">
-              Calculate and review employee monthly payroll.
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-full border border-border shadow-sm shrink-0 self-start sm:self-auto">
-          <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 hover:bg-background hover:shadow-sm transition-all" onClick={handlePrevMonth} aria-label="Previous month">
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <div className="font-semibold text-xs sm:text-sm px-2 text-center flex items-center justify-center gap-2 text-foreground tracking-tight whitespace-nowrap">
-            <Calendar className="h-4 w-4 text-muted-foreground/70" />
-            {months[month - 1]} {year}
-          </div>
-          <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 hover:bg-background hover:shadow-sm transition-all" onClick={handleNextMonth} aria-label="Next month">
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card className="bg-card">

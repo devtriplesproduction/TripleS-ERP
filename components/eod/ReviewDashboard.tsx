@@ -4,7 +4,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/Dropdown';
-import { Search, SlidersHorizontal, CheckCircle2, Clock, XCircle, AlertCircle, FileSearch, FileText } from 'lucide-react';
+import { Search, SlidersHorizontal, CheckCircle2, Clock, XCircle, AlertCircle, FileSearch, FileText, Calendar } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { EODReport } from '@/lib/actions/eod';
 import { reviewEODAction, updateEODAction } from '@/actions/eod.actions';
@@ -173,7 +173,7 @@ export function ReviewDashboard({
           <h3 className="font-semibold">Filter Reports</h3>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-end">
           <div className="space-y-3">
             <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Search</label>
             <div className="relative">
@@ -314,18 +314,41 @@ export function ReviewDashboard({
           </div>
         ) : (
           <div className="space-y-4">
-            <div className="space-y-2">
-              {filteredEods.map((eod) => (
-                <EodCard 
-                  key={eod.id}
-                  eod={eod}
-                  isReview={true}
-                  isSubmitting={submittingIds.has(eod.id)}
-                  currentUserId={currentUserId}
-                  onAction={(id, action, reason) => handleAction(id, action, reason)}
-                  onSaveEdit={handleSaveEdit}
-                />
-              ))}
+            <div className="space-y-10">
+              {Object.entries(
+                filteredEods.reduce((acc, eod) => {
+                  if (!acc[eod.report_date]) acc[eod.report_date] = [];
+                  acc[eod.report_date].push(eod);
+                  return acc;
+                }, {} as Record<string, typeof filteredEods>)
+              )
+              .sort((a, b) => b[0].localeCompare(a[0]))
+              .map(([date, groupEods]) => {
+                const dateObj = new Date(date);
+                const dateString = dateObj.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
+                return (
+                  <div key={date} className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <Calendar className="w-4 h-4 text-muted-foreground" />
+                      <h3 className="text-sm font-semibold tracking-wider text-muted-foreground">{dateString}</h3>
+                      <div className="flex-1 h-px bg-border" />
+                    </div>
+                    <div className="space-y-2">
+                      {groupEods.map((eod) => (
+                        <EodCard 
+                          key={eod.id}
+                          eod={eod}
+                          isReview={true}
+                          isSubmitting={submittingIds.has(eod.id)}
+                          currentUserId={currentUserId}
+                          onAction={(id, action, reason) => handleAction(id, action, reason)}
+                          onSaveEdit={handleSaveEdit}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
             
             {hasMore && (

@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label'
 import { toast } from 'sonner'
 import dayjs from 'dayjs'
+import { PageHeader } from '@/components/PageHeader'
 
 interface Announcement {
   id: string
@@ -243,15 +244,16 @@ export function AnnouncementsClientPage({ announcements: initialAnnouncements, d
     <div className="space-y-8 max-w-[1400px] mx-auto">
       {/* Header & Stats */}
       <div className="flex flex-col gap-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-[28px] font-bold tracking-tight text-foreground">Announcements</h1>
-            <p className="text-sm text-muted-foreground mt-1">Create and manage important company updates.</p>
-          </div>
-          <Button onClick={() => { resetForm(); setIsOpen(true) }} className="min-h-[44px] sm:min-h-9 w-full sm:w-auto">
-            <Plus className="mr-2 h-4 w-4" /> New Announcement
-          </Button>
-        </div>
+        <PageHeader 
+          title="Announcements"
+          subtitle="Create and manage important company updates."
+          icon={Megaphone}
+          actions={
+            <Button onClick={() => { resetForm(); setIsOpen(true) }} className="min-h-[44px] sm:min-h-9 w-full sm:w-auto">
+              <Plus className="mr-2 h-4 w-4" /> New Announcement
+            </Button>
+          }
+        />
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <div className="border border-border bg-card p-4 rounded-xl flex flex-col gap-1">

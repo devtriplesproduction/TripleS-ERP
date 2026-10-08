@@ -57,21 +57,21 @@ export default async function EmployeeEODPage() {
         <div className="max-w-[1280px] mx-auto space-y-4">
       
       {/* Header Area */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex flex-col gap-1.5 md:gap-2">
-          <h1 className="text-[28px] font-bold text-foreground tracking-tight leading-none">Daily Status Report</h1>
-          <p className="text-sm md:text-base text-muted-foreground">Log your daily achievements and identify blockers.</p>
-        </div>
-        <div className="bg-card text-card-foreground px-4 py-2.5 rounded-xl border border-border shadow-sm flex items-center gap-3 self-start md:self-center md:mt-0">
-          <div className="w-8 h-8 rounded-full bg-muted/50 border border-border flex items-center justify-center">
-            <CalendarDays className="w-4 h-4 text-muted-foreground" />
+      <PageHeader 
+        title="Daily Status Report"
+        subtitle="Log your daily achievements and identify blockers."
+        actions={
+          <div className="bg-card text-card-foreground px-4 py-2.5 rounded-xl border border-border shadow-sm flex items-center gap-3 self-start md:self-center md:mt-0">
+            <div className="w-8 h-8 rounded-full bg-muted/50 border border-border flex items-center justify-center">
+              <CalendarDays className="w-4 h-4 text-muted-foreground" />
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-muted-foreground text-sm font-semibold">Current Streak:</span>
+              <span className="text-base font-bold">{streak} days {"\u{1F525}"}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-muted-foreground text-sm font-semibold">Current Streak:</span>
-            <span className="text-base font-bold">{streak} days {"\u{1F525}"}</span>
-          </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Form */}
         <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm overflow-hidden">
@@ -117,7 +117,6 @@ export default async function EmployeeEODPage() {
 
         {/* Recent EOD Reports */}
         <div>
-          <h3 className="text-lg font-bold text-foreground mb-4 pl-1">Recent EOD Reports</h3>
           <RecentEODLogs history={history} user={{ first_name: user.first_name, last_name: user.last_name, employee_id: user.employee_id_number || '' }} />
         </div>
       </div>

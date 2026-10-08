@@ -19,11 +19,13 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
+import { PageHeader } from "@/components/PageHeader"
 import { format } from "date-fns"
 import { useRouter } from "next/navigation"
 import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
 import { PDFDocument } from "pdf-lib"
+import { calculateMonthlyBasicSalary } from "@/lib/utils/salary"
 
 const formatExperience = (type?: string, years?: string | number, months?: string | number) => {
   if (type === 'Fresher' || !type) return 'Fresher';
@@ -131,6 +133,88 @@ const STEPS = [
   { id: 3, title: 'Documents', subtitle: 'Upload documents' },
   { id: 4, title: 'Review', subtitle: 'Review & create' }
 ]
+
+function EditableFileItem({ 
+  f, 
+  onDelete, 
+  onRename 
+}: { 
+  f: UploadedFile, 
+  onDelete: () => void, 
+  onRename: (newName: string) => void 
+}) {
+  const [isEditing, setIsEditing] = useState(false)
+  const [editValue, setEditValue] = useState("")
+  const { toast } = useToast()
+
+  const extension = f.name.includes('.') ? f.name.substring(f.name.lastIndexOf('.')) : ''
+  const nameWithoutExt = f.name.includes('.') ? f.name.substring(0, f.name.lastIndexOf('.')) : f.name
+
+  useEffect(() => {
+    if (isEditing) {
+      setEditValue(nameWithoutExt)
+    }
+  }, [isEditing, nameWithoutExt])
+
+  const handleSave = () => {
+    const trimmed = editValue.trim()
+    if (!trimmed) {
+      toast({ title: "Invalid Filename", description: "Filename cannot be empty.", variant: "destructive" })
+      return // keep edit mode active
+    }
+    onRename(trimmed + extension)
+    setIsEditing(false)
+    toast({ title: "Filename Updated", description: "The document has been renamed successfully." })
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSave()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      setIsEditing(false)
+      setEditValue(nameWithoutExt)
+    }
+  }
+
+  return (
+    <div className="p-3 border border-border rounded-lg flex justify-between items-center bg-card">
+      <div className="flex items-center gap-3 overflow-hidden flex-1">
+        <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+        <div className="min-w-0 flex-1">
+          {isEditing ? (
+            <Input 
+              autoFocus
+              type="text" 
+              value={editValue} 
+              onChange={e => setEditValue(e.target.value)}
+              onKeyDown={handleKeyDown}
+              className="h-7 text-sm px-2 w-full font-medium"
+            />
+          ) : (
+            <p className="text-sm font-medium text-foreground truncate">{nameWithoutExt}</p>
+          )}
+          <p className="text-xs text-muted-foreground mt-0.5">{(f.size / 1024).toFixed(1)} KB</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-1 shrink-0 ml-3">
+        {isEditing ? (
+          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10" onClick={handleSave} title="Save">
+            <Save className="w-4 h-4" />
+          </Button>
+        ) : (
+          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => setIsEditing(true)} title="Edit">
+            <Edit2 className="w-4 h-4" />
+          </Button>
+        )}
+        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={onDelete} title="Delete">
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
   const router = useRouter()
@@ -432,7 +516,6 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
         ["Status", vals.employment_status],
         ["Role", vals.role],
         ...(vals.employment_type !== 'Intern' ? [
-          ["HOD Status", vals.is_hod ? "True" : "False"] as [string, any],
         ] : []),
         ["Joining Date", vals.joining_date ? format(new Date(vals.joining_date as string), "dd MMM yyyy") : "-"],
         ...(vals.employment_type !== 'Intern' ? [
@@ -522,20 +605,20 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
     <div className="w-full h-full flex flex-col overflow-hidden">
 
       {/* Top Header */}
-      <div className="flex items-start justify-between shrink-0">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">Create Employee Profile</h1>
-          <p className="text-sm text-muted-foreground mt-1">Add a new employee to the organization.</p>
-        </div>
-        <div className="flex items-center gap-4 mr-2">
-          <Button onClick={saveAsDraft} className="bg-foreground text-background hover:bg-foreground/90 h-8 text-xs">
-            <Save className="w-4 h-4 mr-2" /> Save as Draft
-          </Button>
-          <Button variant="ghost" size="icon" onClick={() => onClose ? onClose() : router.push('/hr/onboarding')} className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full">
-            <X className="w-5 h-5" />
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Create Employee Profile"
+        subtitle="Add a new employee to the organization."
+        actions={
+          <>
+            <Button onClick={saveAsDraft} className="bg-foreground text-background hover:bg-foreground/90 h-8 text-xs">
+              <Save className="w-4 h-4 mr-2" /> Save as Draft
+            </Button>
+            <Button variant="ghost" size="icon" onClick={() => onClose ? onClose() : router.push('/hr/onboarding')} className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full">
+              <X className="w-5 h-5" />
+            </Button>
+          </>
+        }
+      />
 
       {/* Step Indicator */}
       <div className="flex items-center justify-between shrink-0 mt-2">
@@ -603,17 +686,17 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         {/* Fields */}
                         <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                           <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">First Name <span className="text-destructive">*</span></label>
+                            <label className="text-sm font-medium text-secondary-foreground">First Name <span className="text-destructive">*</span></label>
                             <Input {...register("first_name")} placeholder="Enter first name" />
                           </div>
 
                           <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">Last Name <span className="text-destructive">*</span></label>
+                            <label className="text-sm font-medium text-secondary-foreground">Last Name <span className="text-destructive">*</span></label>
                             <Input {...register("last_name")} placeholder="Enter last name" />
                           </div>
 
                           <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">Date of Birth <span className="text-destructive">*</span></label>
+                            <label className="text-sm font-medium text-secondary-foreground">Date of Birth <span className="text-destructive">*</span></label>
                             <Controller name="dob" control={control} render={({ field }) => (
                               <DatePicker
                                 value={field.value}
@@ -626,7 +709,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                           </div>
 
                           <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">Gender <span className="text-destructive">*</span></label>
+                            <label className="text-sm font-medium text-secondary-foreground">Gender <span className="text-destructive">*</span></label>
                             <Controller name="gender" control={control} render={({ field }) => (
                               <Select onValueChange={field.onChange} value={field.value || ""}>
                                 <SelectTrigger className="w-full capitalize"><SelectValue placeholder="Select gender" /></SelectTrigger>
@@ -640,7 +723,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                           </div>
 
                           <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">Personal Email</label>
+                            <label className="text-sm font-medium text-secondary-foreground">Personal Email</label>
                             <div className="relative">
                               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                               <Input type="email" {...register("personal_email")} placeholder="example@company.com" className="pl-9" />
@@ -648,7 +731,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                           </div>
 
                           <div className="space-y-1.5">
-                            <label className="text-xs font-bold text-foreground">Phone Number <span className="text-destructive">*</span></label>
+                            <label className="text-sm font-medium text-secondary-foreground">Phone Number <span className="text-destructive">*</span></label>
                             <div className="relative">
                               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                               <Input {...register("phone_number")} placeholder="+91 9876543210" className="pl-9" />
@@ -666,7 +749,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
 
                       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
                         <div className="space-y-1.5 sm:col-span-2">
-                          <label className="text-xs font-bold text-foreground">Address Line 1</label>
+                          <label className="text-sm font-medium text-secondary-foreground">Address Line 1</label>
                           <div className="relative">
                             <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                             <Input {...register("address")} placeholder="Flat No, 302, Sunshine Apartment" className="pl-9" />
@@ -674,12 +757,12 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-foreground">City</label>
+                          <label className="text-sm font-medium text-secondary-foreground">City</label>
                           <Input {...register("city")} placeholder="Pune" />
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-foreground">PIN Code</label>
+                          <label className="text-sm font-medium text-secondary-foreground">PIN Code</label>
                           <Input {...register("pincode")} placeholder="411057" />
                         </div>
                       </div>
@@ -693,17 +776,17 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-foreground">Contact Name</label>
+                          <label className="text-sm font-medium text-secondary-foreground">Contact Name</label>
                           <Input {...register("emergency_name")} placeholder="Enter contact name" />
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-foreground">Relation</label>
+                          <label className="text-sm font-medium text-secondary-foreground">Relation</label>
                           <Input {...register("emergency_relationship")} placeholder="e.g. Father, Spouse" />
                         </div>
 
                         <div className="space-y-1.5">
-                          <label className="text-xs font-bold text-foreground">Phone Number</label>
+                          <label className="text-sm font-medium text-secondary-foreground">Phone Number</label>
                           <Input {...register("emergency_phone")} placeholder="+91 98765 43210" />
                         </div>
                       </div>
@@ -723,7 +806,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div className="space-y-2">
-                        <label className="text-xs font-medium text-foreground">Department <span className="text-destructive">*</span></label>
+                        <label className="text-sm font-medium text-secondary-foreground">Department <span className="text-destructive">*</span></label>
                         <Controller name="department" control={control} render={({ field }) => (
                           <Select onValueChange={(v) => { field.onChange(v); setValue("division", ""); setValue("designation", ""); }} value={field.value}>
                             <SelectTrigger className="w-full"><SelectValue placeholder="Select Department" /></SelectTrigger>
@@ -733,7 +816,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-xs font-medium text-foreground">Division / Team <span className="text-destructive">*</span></label>
+                        <label className="text-sm font-medium text-secondary-foreground">Division / Team <span className="text-destructive">*</span></label>
                         <Controller name="division" control={control} render={({ field }) => (
                           <Select onValueChange={(v) => { field.onChange(v); setValue("designation", ""); }} value={field.value} disabled={!watchedDepartment}>
                             <SelectTrigger className="w-full"><SelectValue placeholder="Select Division" /></SelectTrigger>
@@ -745,7 +828,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-xs font-medium text-foreground">Designation <span className="text-destructive">*</span></label>
+                        <label className="text-sm font-medium text-secondary-foreground">Designation <span className="text-destructive">*</span></label>
                         <Controller name="designation" control={control} render={({ field }) => (
                           <Select onValueChange={field.onChange} value={field.value} disabled={!watchedDivision}>
                             <SelectTrigger className="w-full"><SelectValue placeholder="Select Designation" /></SelectTrigger>
@@ -757,7 +840,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-xs font-medium text-foreground">Employment Type <span className="text-destructive">*</span></label>
+                        <label className="text-sm font-medium text-secondary-foreground">Employment Type <span className="text-destructive">*</span></label>
                         <Controller name="employment_type" control={control} render={({ field }) => (
                           <Select onValueChange={(val) => {
                             field.onChange(val);
@@ -784,7 +867,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-xs font-medium text-foreground">Joining Date <span className="text-destructive">*</span></label>
+                        <label className="text-sm font-medium text-secondary-foreground">Joining Date <span className="text-destructive">*</span></label>
                         <Controller name="joining_date" control={control} render={({ field }) => (
                           <DatePicker
                             value={field.value}
@@ -798,7 +881,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
 
 
                       <div className="space-y-2">
-                        <label className="text-xs font-medium text-foreground">Role Assignment</label>
+                        <label className="text-sm font-medium text-secondary-foreground">Role Assignment</label>
                         <Controller name="role" control={control} render={({ field }) => (
                           <Select onValueChange={field.onChange} value={field.value || "Employee"}>
                             <SelectTrigger className="w-full"><SelectValue placeholder="Select Role" /></SelectTrigger>
@@ -809,23 +892,11 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         )} />
                       </div>
 
-                      {watchedEmploymentType !== 'Intern' && (
-                        <div className="space-y-2">
-                          <label className="text-xs font-medium text-foreground">HOD Status</label>
-                          <Controller name="is_hod" control={control} render={({ field }) => (
-                            <Select onValueChange={(val) => field.onChange(val === 'True')} value={field.value ? 'True' : 'False'}>
-                              <SelectTrigger className="w-full"><SelectValue placeholder="Is HOD?" /></SelectTrigger>
-                              <SelectContent>
-                                {HOD_STATUS.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                              </SelectContent>
-                            </Select>
-                          )} />
-                        </div>
-                      )}
+
 
                       {watchedEmploymentType !== 'Intern' && (
                         <div className="space-y-2">
-                          <label className="text-xs font-medium text-foreground">Experience Type <span className="text-destructive">*</span></label>
+                          <label className="text-sm font-medium text-secondary-foreground">Experience Type <span className="text-destructive">*</span></label>
                           <Controller name="experience_type" control={control} render={({ field }) => (
                             <Select onValueChange={(val) => {
                               field.onChange(val);
@@ -847,37 +918,37 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         </div>
                       )}
 
-                      {watchedExperienceType === 'Experienced' && (
-                        <div className="space-y-2 col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-5 p-4 rounded-md bg-muted border border-border">
-                          <div className="space-y-2">
-                            <label className="text-xs font-medium text-foreground">Years <span className="text-destructive">*</span></label>
-                            <Input type="number" min="0" max="50" {...register("experience_years")} placeholder="e.g. 5" className="bg-background" />
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-xs font-medium text-foreground">Months <span className="text-destructive">*</span></label>
-                            <Input type="number" min="0" max="11" {...register("experience_months")} placeholder="e.g. 2" className="bg-background" />
-                          </div>
-                        </div>
-                      )}
-
                       {watchedEmploymentType === 'Intern' ? (
                         <div className="space-y-2">
-                          <label className="text-xs font-medium text-foreground">Stipend (INR/Month) <span className="text-destructive">*</span></label>
+                          <label className="text-sm font-medium text-secondary-foreground">Stipend (INR/Month) <span className="text-destructive">*</span></label>
                           <Input type="number" {...register("stipend")} placeholder="₹ 15000" />
                         </div>
                       ) : (
                         <div className="space-y-2">
-                          <label className="text-xs font-medium text-foreground">Annual CTC (INR) <span className="text-destructive">*</span></label>
+                          <label className="text-sm font-medium text-secondary-foreground">Annual CTC (INR) <span className="text-destructive">*</span></label>
                           <Input type="number" {...register("salary", {
                             onChange: (e) => {
                               const val = parseFloat(e.target.value);
                               if (!isNaN(val)) {
-                                setValue("basic_salary", Math.round(val / 12).toString(), { shouldValidate: true });
+                                setValue("basic_salary", calculateMonthlyBasicSalary(val).toString(), { shouldValidate: true });
                               } else {
                                 setValue("basic_salary", "", { shouldValidate: true });
                               }
                             }
                           })} placeholder="₹ 1200000" />
+                        </div>
+                      )}
+
+                      {watchedExperienceType === 'Experienced' && (
+                        <div className="space-y-2 col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-5 p-4 rounded-md bg-muted border border-border">
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-secondary-foreground">Years <span className="text-destructive">*</span></label>
+                            <Input type="number" min="0" max="50" {...register("experience_years")} placeholder="e.g. 5" className="bg-background" />
+                          </div>
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-secondary-foreground">Months <span className="text-destructive">*</span></label>
+                            <Input type="number" min="0" max="11" {...register("experience_months")} placeholder="e.g. 2" className="bg-background" />
+                          </div>
                         </div>
                       )}
 
@@ -900,18 +971,14 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       {uploadedFiles.map(f => (
-                        <div key={f.id} className="p-3 border border-border rounded-lg flex justify-between items-center bg-card">
-                          <div className="flex items-center gap-3 overflow-hidden">
-                            <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
-                            <div className="min-w-0">
-                              <p className="text-sm font-medium text-foreground truncate">{f.name}</p>
-                              <p className="text-xs text-muted-foreground">{(f.size / 1024).toFixed(1)} KB</p>
-                            </div>
-                          </div>
-                          <Button type="button" variant="ghost" size="icon" className="shrink-0 ml-2" onClick={() => setUploadedFiles(prev => prev.filter(x => x.id !== f.id))}>
-                            <Trash2 className="w-4 h-4 text-muted-foreground hover:text-destructive" />
-                          </Button>
-                        </div>
+                        <EditableFileItem 
+                          key={f.id} 
+                          f={f} 
+                          onDelete={() => setUploadedFiles(prev => prev.filter(x => x.id !== f.id))}
+                          onRename={(newName) => {
+                            setUploadedFiles(prev => prev.map(x => x.id === f.id ? { ...x, name: newName } : x));
+                          }}
+                        />
                       ))}
                     </div>
                   </div>
@@ -936,7 +1003,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
 
                             <div className="w-full space-y-4 text-left">
                               <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-foreground">Work Email</label>
+                                <label className="text-sm font-medium text-secondary-foreground">Work Email</label>
                                 <div className="relative group">
                                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                                   <Input readOnly value={generatedCredentials.work_email} className="pl-9 bg-muted/30 font-medium h-9 text-xs border-border/60 hover:border-border transition-colors cursor-default focus-visible:ring-0" />
@@ -944,7 +1011,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                               </div>
 
                               <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-foreground">Password</label>
+                                <label className="text-sm font-medium text-secondary-foreground">Password</label>
                                 <div className="relative group">
                                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                                   <Input readOnly value={generatedCredentials.temp_password} className="pl-9 pr-10 bg-muted/30 font-mono h-9 text-xs border-border/60 hover:border-border transition-colors cursor-default focus-visible:ring-0" type="text" />
@@ -958,7 +1025,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                               </div>
 
                               <div className="space-y-1.5">
-                                <label className="text-xs font-bold text-foreground">Employee ID</label>
+                                <label className="text-sm font-medium text-secondary-foreground">Employee ID</label>
                                 <div className="relative group">
                                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                                   <Input readOnly value={generatedCredentials.employee_id} className="pl-9 bg-muted/30 font-mono h-9 text-xs border-border/60 hover:border-border transition-colors cursor-default focus-visible:ring-0" />
@@ -993,9 +1060,9 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       </div>
                       <p className="text-xs text-muted-foreground">Employee ID and password will be auto-generated upon creation.</p>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Employee ID</label><div className="text-sm font-medium text-muted-foreground">Auto-generated</div></div>
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Work Email</label><div className="text-sm font-medium truncate" title={watchedEmail}>{watchedEmail}</div></div>
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Password</label><div className="text-sm font-medium text-muted-foreground">Auto-generated</div></div>
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Employee ID</label><div className="text-sm font-medium text-muted-foreground break-words">Auto-generated</div></div>
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Work Email</label><div className="text-sm font-medium break-words">{watchedEmail}</div></div>
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Password</label><div className="text-sm font-medium text-muted-foreground break-words">Auto-generated</div></div>
                       </div>
                     </div>
 
@@ -1015,24 +1082,24 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       )}
 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">First Name</label><div className="text-sm font-medium">{getValues("first_name")}</div></div>
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Last Name</label><div className="text-sm font-medium">{getValues("last_name")}</div></div>
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Date of Birth</label><div className="text-sm font-medium">{getValues("dob") ? format(new Date(getValues("dob") as string), "dd MMM yyyy") : "-"}</div></div>
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Gender</label><div className="text-sm font-medium capitalize">{getValues("gender") || "-"}</div></div>
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Phone</label><div className="text-sm font-medium">{getValues("phone_number") || "-"}</div></div>
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Personal Email</label><div className="text-sm font-medium">{getValues("personal_email") || "-"}</div></div>
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">City</label><div className="text-sm font-medium">{getValues("city") || "-"}</div></div>
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Pincode</label><div className="text-sm font-medium">{getValues("pincode") || "-"}</div></div>
-                        <div className="space-y-1 col-span-2 sm:col-span-4"><label className="text-xs uppercase font-bold text-muted-foreground">Address</label><div className="text-sm font-medium">{getValues("address") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">First Name</label><div className="text-sm font-medium break-words">{getValues("first_name")}</div></div>
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Last Name</label><div className="text-sm font-medium break-words">{getValues("last_name")}</div></div>
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Date of Birth</label><div className="text-sm font-medium break-words">{getValues("dob") ? format(new Date(getValues("dob") as string), "dd MMM yyyy") : "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Gender</label><div className="text-sm font-medium capitalize break-words">{getValues("gender") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Phone</label><div className="text-sm font-medium break-words">{getValues("phone_number") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Personal Email</label><div className="text-sm font-medium break-words">{getValues("personal_email") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">City</label><div className="text-sm font-medium break-words">{getValues("city") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Pincode</label><div className="text-sm font-medium break-words">{getValues("pincode") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0 col-span-2 sm:col-span-4"><label className="text-xs uppercase font-bold text-muted-foreground">Address</label><div className="text-sm font-medium break-words">{getValues("address") || "-"}</div></div>
                       </div>
 
                       {(getValues("emergency_name") || getValues("emergency_relationship") || getValues("emergency_phone")) && (
                         <div className="mt-4 bg-muted/30 p-3 rounded-lg border border-border">
                           <h4 className="text-sm font-bold mb-3">Emergency Contact</h4>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Name</label><div className="text-sm font-medium">{getValues("emergency_name") || "-"}</div></div>
-                            <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Relationship</label><div className="text-sm font-medium">{getValues("emergency_relationship") || "-"}</div></div>
-                            <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Phone</label><div className="text-sm font-medium">{getValues("emergency_phone") || "-"}</div></div>
+                            <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Name</label><div className="text-sm font-medium break-words">{getValues("emergency_name") || "-"}</div></div>
+                            <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Relationship</label><div className="text-sm font-medium break-words">{getValues("emergency_relationship") || "-"}</div></div>
+                            <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Phone</label><div className="text-sm font-medium break-words">{getValues("emergency_phone") || "-"}</div></div>
                           </div>
                         </div>
                       )}
@@ -1044,24 +1111,22 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         {!generatedCredentials && <Button variant="outline" size="sm" onClick={() => setStep(2)} className="h-8 text-xs font-semibold px-3 rounded-md shadow-sm"><Edit2 className="w-3.5 h-3.5 mr-1.5" /> Edit</Button>}
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Department</label><div className="text-sm font-medium">{DEPARTMENTS.find(d => d.id === getValues("department"))?.name || getValues("department")}</div></div>
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Division</label><div className="text-sm font-medium">{getValues("division") || "-"}</div></div>
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Designation</label><div className="text-sm font-medium">{getValues("designation") || "-"}</div></div>
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Employment Type</label><div className="text-sm font-medium">{getValues("employment_type") || "-"}</div></div>
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Role</label><div className="text-sm font-medium">{getValues("role") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Department</label><div className="text-sm font-medium break-words">{DEPARTMENTS.find(d => d.id === getValues("department"))?.name || getValues("department")}</div></div>
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Division</label><div className="text-sm font-medium break-words">{getValues("division") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Designation</label><div className="text-sm font-medium break-words">{getValues("designation") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Employment Type</label><div className="text-sm font-medium break-words">{getValues("employment_type") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Role</label><div className="text-sm font-medium break-words">{getValues("role") || "-"}</div></div>
+
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Joining Date</label><div className="text-sm font-medium break-words">{getValues("joining_date") ? format(new Date(getValues("joining_date") as string), "dd MMM yyyy") : "-"}</div></div>
                         {getValues("employment_type") !== 'Intern' && (
-                          <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">HOD Status</label><div className="text-sm font-medium">{getValues("is_hod") ? "True" : "False"}</div></div>
-                        )}
-                        <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Joining Date</label><div className="text-sm font-medium">{getValues("joining_date") ? format(new Date(getValues("joining_date") as string), "dd MMM yyyy") : "-"}</div></div>
-                        {getValues("employment_type") !== 'Intern' && (
-                          <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Experience</label><div className="text-sm font-medium">{formatExperience(getValues("experience_type"), getValues("experience_years"), getValues("experience_months"))}</div></div>
+                          <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Experience</label><div className="text-sm font-medium break-words">{formatExperience(getValues("experience_type"), getValues("experience_years"), getValues("experience_months"))}</div></div>
                         )}
                         {getValues("employment_type") === 'Intern' ? (
-                          <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Stipend</label><div className="text-sm font-medium">₹ {getValues("stipend")?.toLocaleString() || "-"}</div></div>
+                          <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Stipend</label><div className="text-sm font-medium break-words">₹ {getValues("stipend")?.toLocaleString() || "-"}</div></div>
                         ) : (
                           <>
-                            <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Annual CTC</label><div className="text-sm font-medium">₹ {getValues("salary")?.toLocaleString() || "-"}</div></div>
-                            <div className="space-y-1"><label className="text-xs uppercase font-bold text-muted-foreground">Basic Salary</label><div className="text-sm font-medium">₹ {getValues("basic_salary")?.toLocaleString() || "-"}</div></div>
+                            <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Annual CTC</label><div className="text-sm font-medium break-words">₹ {getValues("salary")?.toLocaleString() || "-"}</div></div>
+                            <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Basic Salary</label><div className="text-sm font-medium break-words">₹ {getValues("basic_salary")?.toLocaleString() || "-"}</div></div>
                           </>
                         )}
                       </div>
@@ -1079,7 +1144,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                               <div className="flex items-center gap-3 overflow-hidden">
                                 <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
                                 <div className="min-w-0 flex flex-col">
-                                  <span className="text-sm font-medium truncate text-foreground">{f.name}</span>
+                                  <span className="text-sm font-medium truncate text-foreground">{f.name.includes('.') ? f.name.substring(0, f.name.lastIndexOf('.')) : f.name}</span>
                                   <span className="text-xs text-muted-foreground uppercase">{f.file?.type.split('/')[1] || 'Document'} • {(f.size / 1024).toFixed(1)} KB • Ready</span>
                                 </div>
                               </div>

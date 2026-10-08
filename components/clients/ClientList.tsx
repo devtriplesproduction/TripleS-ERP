@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Building2, MapPin, Phone, Mail, MessageSquare, Edit2, Search, Plus } from 'lucide-react'
 import { ClientModal } from './ClientModal'
 import dayjs from 'dayjs'
+import { PageHeader } from '@/components/PageHeader'
 
 interface ClientListProps {
   initialClients: Client[]
@@ -51,27 +52,22 @@ export function ClientList({ initialClients, canManage, canViewContact }: Client
   return (
     <div className="space-y-6">
       {/* Top action bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <Building2 className="h-7 w-7 text-foreground" />
-            Clients
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage your corporate clients, organizational accounts, and locations.
-          </p>
-        </div>
-
-        {canManage && (
-          <Button
-            onClick={handleOpenCreate}
-            className="w-full sm:w-auto h-11 px-5 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            New Client
-          </Button>
-        )}
-      </div>
+      <PageHeader 
+        title="Clients"
+        subtitle="Manage your corporate clients, organizational accounts, and locations."
+        icon={Building2}
+        actions={
+          canManage && (
+            <Button
+              onClick={handleOpenCreate}
+              className="w-full sm:w-auto h-11 px-5 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              New Client
+            </Button>
+          )
+        }
+      />
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">

@@ -17,9 +17,10 @@ import {
 } from "@/components/ui/dialog"
 
 import { LeaveForm } from "./LeaveForm"
-import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { formatCompOffBalance } from "@/lib/utils/time"
+import { PageHeader } from "@/components/PageHeader"
+import { createClient } from "@/lib/supabase/client"
 
 export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, canApprove, isSuperAdmin = false, currentEmployeeId, isHR = false }: any) {
   const supabase = createClient()
@@ -109,15 +110,11 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
       </Dialog>
 
       <div className="flex flex-col gap-4 sm:gap-6">
-        <div className="flex items-center gap-3 sm:gap-4">
-          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-card border border-border flex items-center justify-center shrink-0">
-            <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-foreground" />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">Leave & WFH Management</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">Manage your leaves and approvals from one place.</p>
-          </div>
-        </div>
+        <PageHeader 
+          title="Leave & WFH Management" 
+          subtitle="Manage your leaves and approvals from one place."
+          icon={Calendar}
+        />
 
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">

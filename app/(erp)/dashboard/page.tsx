@@ -4,6 +4,7 @@ import { getMyProjects } from '@/lib/actions/projects'
 import { DashboardAnnouncementReader } from '@/components/announcements/DashboardAnnouncementReader'
 import { DashboardMyTasks } from '@/components/dashboard/DashboardMyTasks'
 import { DashboardMyProjects } from '@/components/dashboard/DashboardMyProjects'
+import { PageHeader } from '@/components/PageHeader'
 
 export default async function DashboardPage() {
   const [announcementsRes, myTasksRes, myProjectsRes] = await Promise.all([
@@ -18,10 +19,10 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
-      <div>
-        <h1 className="text-[28px] font-bold tracking-tight text-foreground">Dashboard</h1>
-        <p className="text-sm text-muted-foreground mt-1">Welcome to TripleS ERP. Here is your overview.</p>
-      </div>
+      <PageHeader 
+        title="Dashboard"
+        subtitle="Welcome to TripleS ERP. Here is your overview."
+      />
 
       {/* Integrated My Projects Section */}
       <DashboardMyProjects projects={myProjects} />
@@ -29,6 +30,7 @@ export default async function DashboardPage() {
       {/* Integrated My Tasks Section */}
       <DashboardMyTasks
         todayTasks={taskData?.todayTasks || []}
+        upcomingTasks={taskData?.upcomingTasks || []}
         pendingTasks={taskData?.pendingTasks || []}
         overdueTasks={taskData?.overdueTasks || []}
         recentlyAssignedTasks={taskData?.recentlyAssignedTasks || []}

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronUp, Clock, AlertTriangle, Edit2, XCircle, CheckCircle2, Loader2, Save, X } from 'lucide-react';
+import { ChevronDown, ChevronUp, Clock, AlertTriangle, Edit2, XCircle, CheckCircle2, Loader2, Save, X, Smile } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatOfficeHoursAsHHMM, parseHHMM, validateHHMM } from '@/lib/utils/time';
+import { formatOfficeHoursAsHHMM, parseHHMM, validateHHMM, formatHoursMinutes } from '@/lib/utils/time';
 
 export function EodCard({
   eod,
@@ -90,64 +90,47 @@ export function EodCard({
     'bg-amber-500/10 text-amber-500 border-amber-500/20';
 
   return (
-    <div className="bg-card text-card-foreground border border-border rounded-2xl shadow-sm overflow-hidden transition-all duration-200">
+    <div className="bg-card text-card-foreground border border-border rounded-xl shadow-sm overflow-hidden transition-all duration-200">
       {/* Header - Always visible */}
       <div 
-        className="p-4 sm:p-5 flex items-start sm:items-center justify-between cursor-pointer hover:bg-muted/30"
+        className="px-4 py-3 sm:px-6 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between cursor-pointer hover:bg-muted/30"
         onClick={() => !rejectMode && !isEditing && setExpanded(!expanded)}
       >
-        <div className="flex gap-4 sm:gap-6 w-full items-center">
-          {/* Details Column */}
-          <div className="flex-1 min-w-0">
-            {/* Desktop Layout */}
-            <div className="hidden sm:flex items-start gap-6 mb-1">
-              <h3 className="font-bold text-foreground uppercase tracking-widest text-sm leading-tight pt-[2px]">
-                {dayStr}
-              </h3>
-              <div className="flex flex-col">
-                {eod.profiles && (
-                  <span className="text-sm font-medium text-muted-foreground">
-                    {eod.profiles.first_name} {eod.profiles.last_name} • {eod.profiles.employee_id || 'Employee'}
-                  </span>
-                )}
-                <div className="text-xs text-muted-foreground flex items-center gap-2 mt-1">
-                  <span>{taskCount} {taskCount === 1 ? 'task' : 'tasks'} completed</span>
-                </div>
-              </div>
-            </div>
-            
-            {/* Mobile Layout */}
-            <div className="flex sm:hidden flex-col gap-1 mb-1">
-              <h3 className="font-bold text-foreground uppercase tracking-widest text-sm leading-tight">
-                {dayStr}
-              </h3>
-              {eod.profiles && (
-                <div className="text-xs font-medium text-muted-foreground">
-                  {eod.profiles.first_name} {eod.profiles.last_name} • {eod.profiles.employee_id || 'Employee'}
-                </div>
-              )}
-              <div className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-                <span>{taskCount} {taskCount === 1 ? 'task' : 'tasks'} completed</span>
-              </div>
-            </div>
+        <div className="flex-1 flex items-center gap-4">
+          <div className="w-10 h-10 rounded-full bg-muted border border-border flex items-center justify-center text-muted-foreground font-semibold shrink-0 uppercase">
+            {eod.profiles?.first_name?.[0] || '?'}{eod.profiles?.last_name?.[0] || ''}
+          </div>
+          <div className="flex flex-col">
+            <span className="text-foreground font-semibold">{eod.profiles?.first_name || 'Unknown'} {eod.profiles?.last_name || 'Employee'}</span>
+            <span className="text-xs text-muted-foreground">{eod.profiles?.branch_id || 'Development'}</span>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4 sm:gap-6 shrink-0 mt-3 sm:mt-0 ml-14 sm:ml-0">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            <span>{taskCount} completed</span>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <span>{formatHoursMinutes(Number(eod.office_hours))} logged</span>
+          </div>
+          
+          <div className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border ${
+            eod.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
+            eod.status === 'Rejected' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' :
+            'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+          }`}>
+            {eod.status === 'Approved' && <Smile className="w-3 h-3" />}
+            {eod.status === 'Approved' ? 'GOOD' : eod.status}
           </div>
 
-          {/* Status and Expand Icon */}
-          <div className="flex flex-col sm:flex-row items-end sm:items-center gap-3 shrink-0">
-            <span className={`px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-md border ${
-              eod.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
-              eod.status === 'Rejected' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' :
-              'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-            }`}>
-              {eod.status}
-            </span>
-            <button 
-              className="p-1 text-muted-foreground hover:text-foreground hover:bg-muted rounded-md transition-colors"
-              onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
-            >
-              {expanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-            </button>
-          </div>
+          <button 
+            className="p-1 text-muted-foreground hover:text-foreground transition-colors ml-2"
+            onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
+          >
+            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          </button>
         </div>
       </div>
 
@@ -217,7 +200,7 @@ export function EodCard({
                       placeholder="8.19"
                       value={editForm.workedHours}
                       onChange={(e) => setEditForm(prev => ({ ...prev, workedHours: e.target.value }))}
-                      className="w-full h-11 bg-[#0B0B0C] text-[#FFFFFF] border border-[#2A2A2A] rounded-[10px] px-3 focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/20 transition-all placeholder:text-[#71717A]"
+                      className="w-full h-11 bg-background text-foreground border border-border rounded-[10px] px-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-muted-foreground"
                     />
                     <p className="text-[10px] text-muted-foreground">HH.MM format — e.g. 8.19 = 8h 19m</p>
                     {editForm.workedHours !== '' && workedHoursError && (
@@ -320,7 +303,7 @@ export function EodCard({
                       <Button variant="ghost" className="h-10 px-4 rounded-lg flex-1 sm:flex-none" onClick={() => setRejectMode(false)} disabled={isSubmitting}>
                         Cancel
                       </Button>
-                      <Button variant="destructive" className="h-10 px-4 rounded-lg bg-rose-600 hover:bg-rose-700 text-white flex-1 sm:flex-none" onClick={handleReject} disabled={isSubmitting || !rejectReason.trim()}>
+                      <Button variant="destructive" className="h-10 px-4 rounded-lg flex-1 sm:flex-none" onClick={handleReject} disabled={isSubmitting || !rejectReason.trim()}>
                         {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm Reject'}
                       </Button>
                     </div>
@@ -330,7 +313,7 @@ export function EodCard({
                     <Button variant="ghost" className="h-10 px-6 rounded-lg flex-1 sm:flex-none" onClick={cancelEditing} disabled={isSubmitting}>
                       Cancel
                     </Button>
-                    <Button className="h-10 px-6 rounded-lg bg-blue-600 hover:bg-blue-700 text-white flex-1 sm:flex-none shadow-sm" onClick={handleSave} disabled={isSubmitting || !isValid}>
+                    <Button className="h-10 px-6 rounded-lg flex-1 sm:flex-none shadow-sm bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleSave} disabled={isSubmitting || !isValid}>
                       {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} Save Update
                     </Button>
                   </div>
@@ -344,7 +327,7 @@ export function EodCard({
                         <Button variant="outline" className="h-10 px-6 rounded-lg flex-1 sm:flex-none border-border hover:text-rose-500" onClick={handleReject} disabled={isSubmitting}>
                            Reject
                         </Button>
-                        <Button className="h-10 px-6 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white flex-1 sm:flex-none shadow-sm" onClick={handleApprove} disabled={isSubmitting}>
+                        <Button className="h-10 px-6 rounded-lg flex-1 sm:flex-none shadow-sm bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleApprove} disabled={isSubmitting}>
                           {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Approve
                         </Button>
                       </>

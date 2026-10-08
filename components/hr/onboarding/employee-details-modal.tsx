@@ -148,6 +148,32 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
     }
   }
 
+  const handleViewDocument = (e: React.MouseEvent, doc: any) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    let urlToOpen = '#'
+    if (typeof doc === 'string') {
+      if (doc.startsWith('http')) {
+        urlToOpen = doc
+      } else {
+        const { data } = supabase.storage.from('employee-documents').getPublicUrl(doc)
+        urlToOpen = data.publicUrl
+      }
+    } else if (doc?.url) {
+      urlToOpen = doc.url
+    } else if (doc?.path) {
+      const { data } = supabase.storage.from('employee-documents').getPublicUrl(doc.path)
+      urlToOpen = data.publicUrl
+    }
+    
+    if (urlToOpen && urlToOpen !== '#') {
+      window.open(urlToOpen, '_blank')
+    } else {
+      toast({ title: 'Error', description: 'Could not find document URL', variant: 'destructive' })
+    }
+  }
+
   const handleDeleteDocument = async (idx: number) => {
     try {
       const currentDocs = Array.isArray(employee.documents) ? [...employee.documents] : []
@@ -727,7 +753,7 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={() => window.open(doc.url || '#', '_blank')} title="View Document">
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={(e) => handleViewDocument(e, doc)} title="View Document">
                         <Eye className="w-4 h-4" />
                       </Button>
                       <ConfirmModal
@@ -736,7 +762,7 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
                         onConfirm={() => handleDeleteDocument(idx)}
                         confirmText="Delete"
                       >
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10" title="Delete Document">
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10" title="Delete Document" onClick={(e) => e.stopPropagation()}>
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </ConfirmModal>

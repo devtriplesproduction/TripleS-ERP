@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowLeft, Building2, Calendar, AlertCircle, Edit, Clock, CheckCircle2, Users } from 'lucide-react'
 import dayjs from 'dayjs'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { PageHeader } from '@/components/PageHeader'
 
 interface ProjectHeaderProps {
   project: Project
@@ -76,18 +77,17 @@ export function ProjectHeader({
 
       {/* Title & Metadata */}
       <div className="flex flex-col gap-5">
-        <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-5">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground">
-                {project.name}
-              </h1>
-              <span className="font-mono text-xs font-semibold text-muted-foreground bg-secondary/60 border border-border/50 px-2.5 py-1 rounded-md">
+        <PageHeader
+          title={
+            <div className="flex items-center gap-3">
+              <span>{project.name}</span>
+              <span className="font-mono text-xs font-semibold text-muted-foreground bg-secondary/60 border border-border/50 px-2.5 py-1 rounded-md mb-1">
                 {project.project_id_display}
               </span>
             </div>
-            
-            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-3 bg-secondary/20 px-4 py-2.5 rounded-lg border border-border/30 w-fit">
+          }
+          subtitle={
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2 mt-2 bg-secondary/20 px-4 py-2.5 rounded-lg border border-border/30 w-fit">
               {/* Client */}
               <div className="flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
@@ -119,31 +119,32 @@ export function ProjectHeader({
                 </span>
               </div>
             </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 self-start md:self-auto shrink-0 mt-2 md:mt-0">
-            {canEdit && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={onEdit}
-                className="h-10 px-4 text-xs font-semibold bg-card border-border hover:bg-secondary/80 hover:text-foreground shadow-xs"
-              >
-                <Edit className="mr-1.5 h-3.5 w-3.5" />
-                Edit Project
-              </Button>
-            )}
-            {canManageTasks && onAddTask && (
-              <Button
-                size="sm"
-                onClick={onAddTask}
-                className="h-10 px-4 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs"
-              >
-                + Add Task
-              </Button>
-            )}
-          </div>
-        </div>
+          }
+          actions={
+            <div className="flex flex-wrap items-center gap-2 self-start md:self-auto shrink-0 mt-2 md:mt-0">
+              {canEdit && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onEdit}
+                  className="h-10 px-4 text-xs font-semibold bg-card border-border hover:bg-secondary/80 hover:text-foreground shadow-xs"
+                >
+                  <Edit className="mr-1.5 h-3.5 w-3.5" />
+                  Edit Project
+                </Button>
+              )}
+              {canManageTasks && onAddTask && (
+                <Button
+                  size="sm"
+                  onClick={onAddTask}
+                  className="h-10 px-4 text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 shadow-xs"
+                >
+                  + Add Task
+                </Button>
+              )}
+            </div>
+          }
+        />
       </div>
 
       <hr className="border-border/60 my-2" />

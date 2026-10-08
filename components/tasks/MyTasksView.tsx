@@ -22,9 +22,11 @@ import {
 } from 'lucide-react'
 import dayjs from 'dayjs'
 import { toast } from 'sonner'
+import { PageHeader } from '@/components/PageHeader'
 
 interface MyTasksViewProps {
   todayTasks: Task[]
+  upcomingTasks: Task[]
   pendingTasks: Task[]
   overdueTasks: Task[]
   recentlyAssignedTasks: Task[]
@@ -34,10 +36,11 @@ interface MyTasksViewProps {
   isHod?: boolean
 }
 
-type TabType = 'today' | 'upcoming' | 'overdue' | 'completed' | 'projects'
+type TabType = 'today' | 'upcoming' | 'pending' | 'overdue' | 'completed' | 'projects'
 
 export function MyTasksView({
   todayTasks,
+  upcomingTasks,
   pendingTasks,
   overdueTasks,
   recentlyAssignedTasks,
@@ -179,35 +182,31 @@ export function MyTasksView({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-2">
-            <ListTodo className="h-7 w-7 text-foreground" />
-            My Tasks & Daily View
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Review your personal task schedule, pending deliverables, and assigned project workflows.
-          </p>
-        </div>
-        <div className="flex items-center bg-secondary/30 p-1 rounded-xl border border-border shrink-0">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              viewMode === 'grid' ? 'bg-white text-black shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            Grid
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              viewMode === 'list' ? 'bg-white text-black shadow-sm' : 'text-muted-foreground hover:text-foreground'
-            }`}
-          >
-            List
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="My Tasks & Daily View"
+        subtitle="Review your personal task schedule, pending deliverables, and assigned project workflows."
+        icon={ListTodo}
+        actions={
+          <div className="flex items-center bg-secondary/30 p-1 rounded-xl border border-border shrink-0">
+            <button
+              onClick={() => setViewMode('grid')}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                viewMode === 'grid' ? 'bg-white text-black shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Grid
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                viewMode === 'list' ? 'bg-white text-black shadow-sm' : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              List
+            </button>
+          </div>
+        }
+      />
 
       {/* Filter Tabs Header */}
       <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-border">
@@ -232,7 +231,19 @@ export function MyTasksView({
           }`}
         >
           <Clock className="h-3.5 w-3.5" />
-          Upcoming / Pending ({pendingTasks.length})
+          Upcoming ({upcomingTasks.length})
+        </button>
+
+        <button
+          onClick={() => setActiveTab('pending')}
+          className={`h-10 px-4 text-xs font-semibold rounded-t-md border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap ${
+            activeTab === 'pending'
+              ? 'border-primary text-foreground bg-accent/40'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Layers className="h-3.5 w-3.5" />
+          Pending ({pendingTasks.length})
         </button>
 
         <button
@@ -275,7 +286,8 @@ export function MyTasksView({
       {/* Tab Contents */}
       <div>
         {activeTab === 'today' && renderTaskList(todayTasks, 'All clear for today!')}
-        {activeTab === 'upcoming' && renderTaskList(pendingTasks, 'No pending tasks scheduled.')}
+        {activeTab === 'upcoming' && renderTaskList(upcomingTasks, 'No upcoming tasks scheduled.')}
+        {activeTab === 'pending' && renderTaskList(pendingTasks, 'No pending tasks without deadlines.')}
         {activeTab === 'overdue' && renderTaskList(overdueTasks, 'Great job! Zero overdue tasks.')}
         {activeTab === 'completed' && renderTaskList(completedTasks, 'No completed tasks yet.')}
         {activeTab === 'projects' && (

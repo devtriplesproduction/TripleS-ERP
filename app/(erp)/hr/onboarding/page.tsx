@@ -1,4 +1,5 @@
 import { getEmployees } from '@/lib/actions/onboarding'
+import { createClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -11,12 +12,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import Link from 'next/link'
+import { PageHeader } from '@/components/PageHeader'
 import { AddEmployeeModal } from '@/components/hr/onboarding/add-employee-modal'
 import { OnboardingTable } from '@/components/hr/onboarding/onboarding-table'
 import { 
   Plus, Users, Clock, CheckCircle2, XCircle, 
   Search, Filter, Calendar as CalendarIcon,
-  Eye, Edit2, MoreHorizontal, ChevronLeft, ChevronRight
+  Eye, Edit2, MoreHorizontal, ChevronLeft, ChevronRight,
+  ShieldCheck, Shield
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { requireRole } from '@/lib/auth'
@@ -27,71 +30,59 @@ export default async function OnboardingListPage() {
   await requireRole('/hr/onboarding')
   const employees = await getEmployees()
   
+  const supabase = await createClient()
+  const { count: adminsCount } = await supabase
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+    .eq('role', 'Admin')
+
   const total = employees.length
-  const inProgress = employees.filter(e => e.status === 'In Progress').length
-  const completed = employees.filter(e => e.status === 'Completed').length
-  const notStarted = employees.filter(e => e.status === 'Not Started').length
+  const activeAccounts = employees.filter(e => e.employment_status === 'Active' || e.employment_status === 'Probation').length
+  const admins = adminsCount || 0
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-[28px] font-bold tracking-tight text-foreground">Employees</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage and track new employee onboarding process.</p>
-        </div>
-        <AddEmployeeModal />
-      </div>
+      <PageHeader 
+        title="Employees"
+        subtitle="Manage and track new employee onboarding process."
+        actions={<AddEmployeeModal />}
+      />
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         
-        <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
+        {/* TOTAL STAFF */}
+        <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4 shadow-sm">
           <div className="w-12 h-12 rounded-full bg-input flex items-center justify-center shrink-0">
             <Users className="w-6 h-6 text-foreground" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">{total}</p>
-            <p className="text-sm font-medium text-foreground">Total Onboardings</p>
-            <p className="text-xs text-muted-foreground">All time</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Total Staff</p>
+            <p className="text-2xl font-bold text-foreground leading-none">{total}</p>
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
+        {/* ACTIVE ACCOUNTS */}
+        <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4 shadow-sm">
           <div className="w-12 h-12 rounded-full bg-input flex items-center justify-center shrink-0">
-            <Clock className="w-6 h-6 text-foreground" />
+            <ShieldCheck className="w-6 h-6 text-foreground" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">{inProgress}</p>
-            <p className="text-sm font-medium text-foreground">In Progress</p>
-            <p className="text-xs text-muted-foreground">Currently active</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Active Accounts</p>
+            <p className="text-2xl font-bold text-foreground leading-none">{activeAccounts}</p>
           </div>
         </div>
 
-        <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-background border border-border flex items-center justify-center shrink-0">
-            <div className="bg-foreground text-background rounded-full p-0.5">
-              <CheckCircle2 className="w-5 h-5" />
-            </div>
+        {/* ADMINS */}
+        <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4 shadow-sm">
+          <div className="w-12 h-12 rounded-full bg-input flex items-center justify-center shrink-0">
+            <Shield className="w-6 h-6 text-foreground" />
           </div>
           <div>
-            <p className="text-2xl font-bold text-foreground">{completed}</p>
-            <p className="text-sm font-medium text-foreground">Completed</p>
-            <p className="text-xs text-muted-foreground">Successfully onboarded</p>
-          </div>
-        </div>
-
-        <div className="bg-card border border-border rounded-xl p-5 flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-background border border-border flex items-center justify-center shrink-0">
-             <div className="bg-foreground text-background rounded-full p-0.5">
-              <XCircle className="w-5 h-5" />
-            </div>
-          </div>
-          <div>
-            <p className="text-2xl font-bold text-foreground">{notStarted}</p>
-            <p className="text-sm font-medium text-foreground">Not Started</p>
-            <p className="text-xs text-muted-foreground">Yet to begin</p>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Admins</p>
+            <p className="text-2xl font-bold text-foreground leading-none">{admins}</p>
           </div>
         </div>
 

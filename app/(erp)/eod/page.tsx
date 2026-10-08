@@ -188,7 +188,6 @@ export default async function EODPage({ searchParams }: PageProps) {
 
           {/* Recent EOD Reports */}
           <div>
-            <h3 className="text-lg font-bold text-foreground mb-4 pl-1">Recent EOD Reports</h3>
             <RecentEODLogs history={history} user={{ first_name: user.first_name, last_name: user.last_name, employee_id: user.employee_id_number || '' }} />
           </div>
         </div>

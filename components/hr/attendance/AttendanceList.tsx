@@ -10,6 +10,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Search, ChevronRight, Loader2, Calendar } from "lucide-react"
 import { getAttendanceEmployees, DerivedAttendance, AttendanceStatus } from "@/lib/actions/attendance"
+import { PageHeader } from "@/components/PageHeader"
 
 export function AttendanceList({ basePath = '/hr/attendance' }: { basePath?: string }) {
   const [employees, setEmployees] = useState<any[]>([])
@@ -57,38 +58,37 @@ export function AttendanceList({ basePath = '/hr/attendance' }: { basePath?: str
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Employee Attendance</h1>
-          <p className="text-xs sm:text-sm text-muted-foreground">Monitor attendance across the organization</p>
-        </div>
-        
-        <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
-          <Select value={month.toString()} onValueChange={v => setMonth(parseInt(v || "1"))}>
-            <SelectTrigger className="flex-1 sm:w-[140px] min-h-[44px] sm:min-h-9">
-              <Calendar className="w-4 h-4 mr-2 shrink-0" />
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Array.from({ length: 12 }, (_, i) => (
-                <SelectItem key={i+1} value={(i+1).toString()}>
-                  {new Date(2000, i, 1).toLocaleString('default', { month: 'long' })}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={year.toString()} onValueChange={v => setYear(parseInt(v || "2000"))}>
-            <SelectTrigger className="w-[100px] min-h-[44px] sm:min-h-9">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {Array.from({ length: 4 }, (_, i) => new Date().getFullYear() - 2 + i).map(y => (
-                <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      <PageHeader
+        title="Employee Attendance"
+        subtitle="Monitor attendance across the organization"
+        actions={
+          <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+            <Select value={month.toString()} onValueChange={v => setMonth(parseInt(v || "1"))}>
+              <SelectTrigger className="flex-1 sm:w-[140px] min-h-[44px] sm:min-h-9">
+                <Calendar className="w-4 h-4 mr-2 shrink-0" />
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 12 }, (_, i) => (
+                  <SelectItem key={i+1} value={(i+1).toString()}>
+                    {new Date(2000, i, 1).toLocaleString('default', { month: 'long' })}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={year.toString()} onValueChange={v => setYear(parseInt(v || "2000"))}>
+              <SelectTrigger className="w-[100px] min-h-[44px] sm:min-h-9">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 4 }, (_, i) => new Date().getFullYear() - 2 + i).map(y => (
+                  <SelectItem key={y} value={y.toString()}>{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        }
+      />
 
       <Card className="p-3 sm:p-4 bg-background/50 backdrop-blur-sm border-border">
         <div className="flex flex-col md:flex-row gap-3 sm:gap-4">

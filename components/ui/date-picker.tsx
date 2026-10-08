@@ -54,7 +54,7 @@ export function DatePicker({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger className={cn(
-        "flex h-9 w-full items-center justify-between rounded-md border border-border bg-input/50 px-3 py-1 text-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50",
+        "flex h-9 w-full items-center justify-between rounded-md border border-input bg-input-bg hover:border-input-hover dark:hover:border-input-hover px-3 py-1 text-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50",
         !dateValue && "text-muted-foreground",
         className
       )}>

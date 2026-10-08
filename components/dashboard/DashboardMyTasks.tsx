@@ -10,6 +10,7 @@ import dayjs from 'dayjs'
 
 interface DashboardMyTasksProps {
   todayTasks: Task[]
+  upcomingTasks: Task[]
   pendingTasks: Task[]
   overdueTasks: Task[]
   recentlyAssignedTasks: Task[]
@@ -18,6 +19,7 @@ interface DashboardMyTasksProps {
 
 export function DashboardMyTasks({
   todayTasks,
+  upcomingTasks,
   pendingTasks,
   overdueTasks,
   recentlyAssignedTasks,
@@ -52,7 +54,7 @@ export function DashboardMyTasks({
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         {/* Card 1: Today's Tasks */}
         <Card className="border-border bg-card shadow-xs flex flex-col justify-between">
           <CardHeader className="pb-2">
@@ -95,12 +97,53 @@ export function DashboardMyTasks({
           </CardContent>
         </Card>
 
-        {/* Card 2: Pending Tasks */}
+        {/* Card 2: Upcoming Tasks */}
         <Card className="border-border bg-card shadow-xs flex flex-col justify-between">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-semibold flex items-center gap-1.5 text-foreground">
                 <Clock className="h-4 w-4 text-foreground" />
+                Upcoming Tasks
+              </CardTitle>
+              <Badge variant="outline" className="text-xs font-mono">
+                {upcomingTasks.length}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="flex-1 flex flex-col justify-between pt-1">
+            {upcomingTasks.length === 0 ? (
+              <p className="text-xs text-muted-foreground italic my-auto py-3">No upcoming tasks.</p>
+            ) : (
+              <div className="space-y-2">
+                {upcomingTasks.slice(0, 2).map((t) => (
+                  <div key={t.id} className="p-2.5 bg-secondary/30 rounded-md border border-border/60 text-xs space-y-1">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="font-semibold text-foreground truncate">{t.title}</span>
+                      <Badge variant="outline" className="text-[9px] px-1 py-0 border-border">
+                        {t.status.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Due: {t.due_date ? dayjs(t.due_date).format('DD MMM') : 'Unset'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <Link href="/my-tasks" className="block pt-3">
+              <Button variant="outline" size="sm" className="w-full text-xs h-8">
+                Manage Queue
+              </Button>
+            </Link>
+          </CardContent>
+        </Card>
+
+        {/* Card 3: Pending Tasks */}
+        <Card className="border-border bg-card shadow-xs flex flex-col justify-between">
+          <CardHeader className="pb-2">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-semibold flex items-center gap-1.5 text-foreground">
+                <FolderGit2 className="h-4 w-4 text-foreground" />
                 Pending Tasks
               </CardTitle>
               <Badge variant="outline" className="text-xs font-mono">
@@ -122,7 +165,7 @@ export function DashboardMyTasks({
                       </Badge>
                     </div>
                     <div className="text-[11px] text-muted-foreground">
-                      Due: {t.due_date ? dayjs(t.due_date).format('DD MMM') : 'Unset'}
+                      No Deadline
                     </div>
                   </div>
                 ))}

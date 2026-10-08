@@ -5,6 +5,7 @@ import { Employee, OnboardingTask, EmployeeStatus } from '@/lib/supabase/types'
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { guardServerAction } from '@/lib/auth'
+import { calculateMonthlyBasicSalary } from '@/lib/utils/salary'
 
 const DEFAULT_TASKS = [
   { task_name: 'Collect Identity Documents', is_required: true },
@@ -254,7 +255,7 @@ export async function onboardEmployeeAction(data: any) {
     probation_end_date: data.probation_end_date || null,
     probation_period: data.probation_period || null,
     salary: data.employment_type === 'Intern' ? null : data.salary || null,
-    basic_salary: data.employment_type === 'Intern' ? null : data.basic_salary || null,
+    basic_salary: data.employment_type === 'Intern' ? null : (data.salary ? calculateMonthlyBasicSalary(Number(data.salary)) : null),
     stipend: data.employment_type === 'Intern' ? data.stipend || null : null,
     experience_type: data.employment_type === 'Intern' ? null : data.experience_type || null,
     experience_years: data.employment_type === 'Intern' ? null : data.experience_years || null,

@@ -17,6 +17,7 @@ export default async function MyTasksPage() {
         userRole={user.role}
         isHod={user.is_hod || false}
         todayTasks={data?.todayTasks || []}
+        upcomingTasks={data?.upcomingTasks || []}
         pendingTasks={data?.pendingTasks || []}
         overdueTasks={data?.overdueTasks || []}
         recentlyAssignedTasks={data?.recentlyAssignedTasks || []}

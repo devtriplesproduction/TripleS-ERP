@@ -19,6 +19,7 @@ import { DatePicker } from "@/components/ui/date-picker";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { getISTDateString } from "@/lib/utils/time";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageHeader } from "@/components/PageHeader";
 
 export interface Holiday {
   id: string;
@@ -112,56 +113,53 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-            Holiday <span className="text-primary">Calendar</span>
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            {totalHolidays} public {totalHolidays === 1 ? "holiday" : "holidays"} in {currentYear}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
-          <div className="flex items-center bg-card rounded-xl ring-1 ring-border p-1">
-            <Button variant="ghost" size="icon" onClick={() => setCurrentYear(y => y - 1)} className="h-8 w-8 rounded-lg">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="px-2 sm:px-3 font-bold text-sm sm:text-base w-14 sm:w-16 text-center">{currentYear}</span>
-            <Button variant="ghost" size="icon" onClick={() => setCurrentYear(y => y + 1)} className="h-8 w-8 rounded-lg">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+      <PageHeader 
+        title={<>Holiday <span className="text-primary">Calendar</span></>}
+        subtitle={`${totalHolidays} public ${totalHolidays === 1 ? "holiday" : "holidays"} in ${currentYear}`}
+        icon={CalendarIcon}
+        actions={
+          <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-between sm:justify-end">
+            <div className="flex items-center bg-card rounded-xl ring-1 ring-border p-1">
+              <Button variant="ghost" size="icon" onClick={() => setCurrentYear(y => y - 1)} className="h-8 w-8 rounded-lg">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="px-2 sm:px-3 font-bold text-sm sm:text-base w-14 sm:w-16 text-center">{currentYear}</span>
+              <Button variant="ghost" size="icon" onClick={() => setCurrentYear(y => y + 1)} className="h-8 w-8 rounded-lg">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
 
-          <div className="flex items-center bg-card rounded-xl ring-1 ring-border p-1 gap-0.5">
-            <button
-              onClick={() => setView("list")}
-              className={cn(
-                "h-8 w-8 rounded-lg flex items-center justify-center transition-all",
-                view === "list" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              )}
-              title="List view"
-            >
-              <LayoutList className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setView("grid")}
-              className={cn(
-                "h-8 w-8 rounded-lg flex items-center justify-center transition-all",
-                view === "grid" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-              )}
-              title="Grid view"
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </button>
-          </div>
+            <div className="flex items-center bg-card rounded-xl ring-1 ring-border p-1 gap-0.5">
+              <button
+                onClick={() => setView("list")}
+                className={cn(
+                  "h-8 w-8 rounded-lg flex items-center justify-center transition-all",
+                  view === "list" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+                title="List view"
+              >
+                <LayoutList className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => setView("grid")}
+                className={cn(
+                  "h-8 w-8 rounded-lg flex items-center justify-center transition-all",
+                  view === "grid" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                )}
+                title="Grid view"
+              >
+                <LayoutGrid className="h-4 w-4" />
+              </button>
+            </div>
 
-          {isAdmin && (
-            <Button onClick={handleOpenNew} variant="default" className="min-h-[44px] sm:min-h-9 h-9 sm:h-10 rounded-xl gap-2 px-3 sm:px-4 text-xs sm:text-sm">
-              <Plus className="w-4 h-4" /> Add Holiday
-            </Button>
-          )}
-        </div>
-      </div>
+            {isAdmin && (
+              <Button onClick={handleOpenNew} variant="default" className="min-h-[44px] sm:min-h-9 h-9 sm:h-10 rounded-xl gap-2 px-3 sm:px-4 text-xs sm:text-sm">
+                <Plus className="w-4 h-4" /> Add Holiday
+              </Button>
+            )}
+          </div>
+        }
+      />
 
       {view === "list" && (
         months.length > 0 ? (

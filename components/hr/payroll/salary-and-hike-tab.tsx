@@ -8,6 +8,7 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { IndianRupee, TrendingUp, Calendar, X, Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { addSalaryIncrementAction, getSalaryHistoryAction } from '@/lib/actions/payroll'
+import { calculateMonthlyBasicSalary } from '@/lib/utils/salary'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
@@ -39,7 +40,7 @@ export function SalaryAndHikeTab({ employee }: { employee: any }) {
   }, [employee.id])
 
   const currentPackage = employee.salary || 0
-  const currentSalary = Math.round(currentPackage / 12)
+  const currentSalary = calculateMonthlyBasicSalary(currentPackage)
   const lastIncrement = salaryHistory[0]
 
   const baseDate = lastIncrement ? new Date(lastIncrement.effective_date) : (employee.joining_date ? new Date(employee.joining_date) : null)

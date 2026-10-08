@@ -2,6 +2,7 @@ import React from 'react'
 import { createClient } from '@/lib/supabase/server'
 import { getRules, getAcknowledgments } from '@/lib/actions/rulebook'
 import { RulebookClient } from '@/components/rulebook/RulebookClient'
+import { PageHeader } from '@/components/PageHeader'
 
 export const metadata = {
   title: 'Company Rulebook | TripleS ERP',
@@ -35,14 +36,10 @@ export default async function RulebookPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8">
-      <div className="flex justify-between items-end">
-        <div>
-          <h1 className="text-[28px] font-bold tracking-tight mb-2">Company Rulebook</h1>
-          <p className="text-muted-foreground">
-            View and acknowledge the latest company policies and rules.
-          </p>
-        </div>
-      </div>
+      <PageHeader 
+        title="Company Rulebook"
+        subtitle="View and acknowledge the latest company policies and rules."
+      />
 
       <RulebookClient 
         initialRules={rules || []} 

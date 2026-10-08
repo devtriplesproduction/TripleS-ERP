@@ -13,6 +13,7 @@ import { Dropdown } from '@/components/ui/Dropdown'
 import { updateTaskStatusAction } from '@/lib/actions/tasks'
 import { Plus, Search, Kanban, Filter } from 'lucide-react'
 import { toast } from 'sonner'
+import { PageHeader } from '@/components/PageHeader'
 
 interface KanbanBoardProps {
   initialTasks: Task[]
@@ -110,33 +111,26 @@ export function KanbanBoard({
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground flex items-center gap-3 font-sans">
-            <div className="flex items-center justify-center bg-card border border-border p-1.5 rounded-md shadow-xs">
-              <Kanban className="h-6 w-6 text-foreground" />
-            </div>
-            Tasks & Kanban Board
-          </h1>
-          <p className="text-sm text-muted-foreground mt-2">
-            Manage and track project tasks with a visual workflow.
-          </p>
-        </div>
-
-        {canManage && (
-          <Button
-            onClick={() => {
-              setTaskToEdit(null)
-              setDefaultStatusForNew(undefined)
-              setIsCreateOpen(true)
-            }}
-            className="w-full sm:w-auto h-11 px-5 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
-          >
-            <Plus className="mr-2 h-4 w-4" />
-            New Task
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Tasks & Kanban Board"
+        subtitle="Manage and track project tasks with a visual workflow."
+        icon={Kanban}
+        actions={
+          canManage && (
+            <Button
+              onClick={() => {
+                setTaskToEdit(null)
+                setDefaultStatusForNew(undefined)
+                setIsCreateOpen(true)
+              }}
+              className="w-full sm:w-auto h-11 px-5 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              New Task
+            </Button>
+          )
+        }
+      />
 
       {/* Filter Bar */}
       <div className="flex flex-col xl:flex-row gap-3 items-stretch xl:items-center bg-card border border-border p-3 rounded-lg shadow-xs">

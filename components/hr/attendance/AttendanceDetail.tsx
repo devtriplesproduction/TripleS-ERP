@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { Progress } from "@/components/ui/progress"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { PageHeader } from "@/components/PageHeader"
 
 export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { employeeId: string, basePath?: string }) {
   const [employee, setEmployee] = useState<any>(null)
@@ -94,34 +95,34 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
   return (
     <div className="flex flex-col h-full space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-[28px] font-bold text-foreground">Attendance & Leaves</h1>
-          <p className="text-[14px] text-muted-foreground mt-1">Track team attendance, leaves, holidays, and working-day status.</p>
-        </div>
-        
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center bg-[#0F0F10] border border-[#2A2A2A] rounded-lg p-1">
-            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[#151516]" onClick={() => {
-              const d = new Date(currentDate); d.setMonth(d.getMonth() - 1); setCurrentDate(d);
-            }}>
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <div className="w-[140px] flex items-center justify-center text-sm font-medium">
-              {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+      {/* Header */}
+      <PageHeader
+        title="Attendance & Leaves"
+        subtitle="Track team attendance, leaves, holidays, and working-day status."
+        actions={
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center bg-[#0F0F10] border border-[#2A2A2A] rounded-lg p-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[#151516]" onClick={() => {
+                const d = new Date(currentDate); d.setMonth(d.getMonth() - 1); setCurrentDate(d);
+              }}>
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <div className="w-[140px] flex items-center justify-center text-sm font-medium">
+                {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
+              </div>
+              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[#151516]" onClick={() => {
+                const d = new Date(currentDate); d.setMonth(d.getMonth() + 1); setCurrentDate(d);
+              }}>
+                <ChevronRight className="w-4 h-4" />
+              </Button>
             </div>
-            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-[#151516]" onClick={() => {
-              const d = new Date(currentDate); d.setMonth(d.getMonth() + 1); setCurrentDate(d);
-            }}>
-              <ChevronRight className="w-4 h-4" />
+            
+            <Button variant="outline" className="bg-white text-black hover:bg-gray-100 hover:text-black border-0">
+              <CalendarIcon className="mr-2 h-4 w-4" /> Manage Holidays
             </Button>
           </div>
-          
-          <Button variant="outline" className="bg-white text-black hover:bg-gray-100 hover:text-black border-0">
-            <CalendarIcon className="mr-2 h-4 w-4" /> Manage Holidays
-          </Button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Main Grid */}
       <div className="flex flex-col lg:flex-row gap-6">

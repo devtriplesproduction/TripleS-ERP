@@ -170,6 +170,7 @@ export async function getMyTasks(): Promise<{
   success: boolean
   data?: {
     todayTasks: Task[]
+    upcomingTasks: Task[]
     pendingTasks: Task[]
     overdueTasks: Task[]
     recentlyAssignedTasks: Task[]
@@ -199,6 +200,7 @@ export async function getMyTasks(): Promise<{
           success: true,
           data: {
             todayTasks: [],
+            upcomingTasks: [],
             pendingTasks: [],
             overdueTasks: [],
             recentlyAssignedTasks: [],
@@ -218,6 +220,7 @@ export async function getMyTasks(): Promise<{
         success: true,
         data: {
           todayTasks: [],
+          upcomingTasks: [],
           pendingTasks: [],
           overdueTasks: [],
           recentlyAssignedTasks: [],
@@ -283,8 +286,9 @@ export async function getMyTasks(): Promise<{
     })
 
     const todayTasks = allAssignedTasks.filter(t => t.due_date === todayStr && t.status !== 'DONE')
+    const upcomingTasks = allAssignedTasks.filter(t => t.due_date && t.due_date > todayStr && t.status !== 'DONE')
+    const pendingTasks = allAssignedTasks.filter(t => !t.due_date && t.status !== 'DONE')
     const overdueTasks = allAssignedTasks.filter(t => t.due_date && t.due_date < todayStr && t.status !== 'DONE')
-    const pendingTasks = allAssignedTasks.filter(t => t.status !== 'DONE' && (!t.due_date || t.due_date >= todayStr))
     const completedTasks = allAssignedTasks.filter(t => t.status === 'DONE')
 
     const assignmentDateMap = new Map<string, Date>()
@@ -315,6 +319,7 @@ export async function getMyTasks(): Promise<{
       success: true,
       data: {
         todayTasks,
+        upcomingTasks,
         pendingTasks,
         overdueTasks,
         recentlyAssignedTasks,
