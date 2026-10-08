@@ -9,6 +9,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import { logoutAction } from '@/actions/auth.actions'
 import { type AuthUser } from '@/lib/auth'
 import { useSidebar } from './sidebar-context'
+import { GlobalSearch } from '@/components/global-search/global-search'
 
 interface HeaderProps {
   user: AuthUser
@@ -41,18 +42,7 @@ export function Header({ user }: HeaderProps) {
           <Menu className="h-5 w-5" />
         </button>
 
-        <div className="hidden md:flex relative w-60 lg:w-80 max-w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search employees, tasks, documents..." 
-            className="w-full bg-input/50 border-border pl-10 pr-12 rounded-lg h-9 text-sm"
-          />
-          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-            <kbd className="inline-flex items-center rounded border border-border px-1.5 font-mono text-[10px] font-medium text-muted-foreground opacity-100">
-              <span className="text-xs">⌘</span>K
-            </kbd>
-          </div>
-        </div>
+        <GlobalSearch />
       </div>
       
       {/* Right side: Theme toggle, Notifications, Profile, Signout */}

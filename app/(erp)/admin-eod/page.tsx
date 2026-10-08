@@ -37,9 +37,9 @@ export default async function AdminEODPage() {
         subtitle="Review employee and HR end-of-day reports."
         actions={
           <div className="flex items-center gap-3">
-            <div className="bg-card text-card-foreground border-border text-zinc-900 dark:text-zinc-100 px-4 py-2.5 rounded-xl font-semibold border border-zinc-200 dark:border-zinc-800 flex items-center gap-2 shadow-sm">
-              <BarChart2 className="w-4 h-4 text-black dark:text-white" />
-              <span>{todayReportsCount}</span> <span className="text-zinc-900 dark:text-zinc-100 font-medium">Reports Today</span>
+            <div className="bg-card text-card-foreground border-border text-foreground px-4 py-2.5 rounded-xl font-semibold border flex items-center gap-2 shadow-sm">
+              <BarChart2 className="w-4 h-4 text-foreground" />
+              <span>{todayReportsCount}</span> <span className="text-foreground font-medium">Reports Today</span>
             </div>
           </div>
         }

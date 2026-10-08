@@ -42,6 +42,14 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
   const [isSavingPersonal, setIsSavingPersonal] = useState(false)
   const { toast } = useToast()
 
+  let initialEc = { name: '', relationship: '', phone: '', address: '' };
+  if (employee.emergency_contact) {
+    try {
+      const parsed = JSON.parse(employee.emergency_contact);
+      if (parsed.name || parsed.relationship || parsed.phone) initialEc = parsed;
+    } catch (e) { }
+  }
+
   const [personalForm, setPersonalForm] = useState({
     first_name: employee.first_name || '',
     last_name: employee.last_name || '',
@@ -49,13 +57,52 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
     gender: employee.gender || '',
     phone: employee.phone || '',
     personal_email: employee.personal_email || '',
-    address: employee.address || ''
+    address: employee.address || '',
+    city: employee.city || '',
+    pincode: employee.pincode || '',
+    emergency_name: initialEc.name || '',
+    emergency_relationship: initialEc.relationship || '',
+    emergency_phone: initialEc.phone || ''
   })
+
+  const handleCancelPersonal = () => {
+    setPersonalForm({
+      first_name: employee.first_name || '',
+      last_name: employee.last_name || '',
+      dob: employee.dob || '',
+      gender: employee.gender || '',
+      phone: employee.phone || '',
+      personal_email: employee.personal_email || '',
+      address: employee.address || '',
+      city: employee.city || '',
+      pincode: employee.pincode || '',
+      emergency_name: initialEc.name || '',
+      emergency_relationship: initialEc.relationship || '',
+      emergency_phone: initialEc.phone || ''
+    })
+    setIsEditingPersonal(false)
+  }
 
   const handleSavePersonal = async () => {
     setIsSavingPersonal(true)
     try {
-      await updateEmployeeData(employee.id, personalForm)
+      const dataToSave = {
+        first_name: personalForm.first_name,
+        last_name: personalForm.last_name,
+        dob: personalForm.dob,
+        gender: personalForm.gender,
+        phone: personalForm.phone,
+        personal_email: personalForm.personal_email,
+        address: personalForm.address,
+        city: personalForm.city,
+        pincode: personalForm.pincode,
+        emergency_contact: JSON.stringify({
+          name: personalForm.emergency_name,
+          relationship: personalForm.emergency_relationship,
+          phone: personalForm.emergency_phone
+        })
+      }
+      await updateEmployeeData(employee.id, dataToSave)
       setIsEditingPersonal(false)
       toast({ title: 'Success', description: 'Personal information updated!' })
       router.refresh()
@@ -241,13 +288,7 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
   const joinedDate = new Date(employee.joining_date)
   const formattedJoined = joinedDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
   
-  let ec = { name: '-', relationship: '-', phone: '-', address: '-' };
-  if (employee.emergency_contact) {
-    try {
-      const parsed = JSON.parse(employee.emergency_contact);
-      if (parsed.name || parsed.relationship || parsed.phone) ec = parsed;
-    } catch (e) { }
-  }
+  // ec is now parsed at the top using initialEc, but we can reuse it here for any other purposes if needed, though it's already in personalForm.
 
   // --- Field renderers ---
   const iconThemeMap: Record<string, string> = {
@@ -306,18 +347,6 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
         </div>
         <h3 className="font-bold text-base text-foreground">{title}</h3>
       </div>
-      {isEditing ? (
-        <div className="flex gap-2">
-          <Button variant="ghost" size="sm" onClick={onCancel} className="h-8 text-xs">Cancel</Button>
-          <Button size="sm" className="bg-foreground text-background h-8 text-xs" onClick={onSave} disabled={isSaving}>
-            {isSaving ? <Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> : null} Save
-          </Button>
-        </div>
-      ) : (
-        <Button variant="outline" size="sm" className="h-8 px-3 text-xs bg-transparent border-border/60 hover:bg-muted/60 gap-1.5" onClick={onEdit}>
-          <Edit2 className="w-3 h-3" /> Edit
-        </Button>
-      )}
     </div>
   )
 
@@ -326,12 +355,7 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
     <div className="w-full lg:w-[320px] shrink-0 space-y-4">
       {/* Profile Card */}
       <div className="bg-card border border-border/40 rounded-2xl p-5 shadow-sm">
-        {/* Edit Profile button */}
-        <div className="flex justify-end mb-2">
-          <Button variant="outline" size="sm" className="h-7 px-3 text-[11px] bg-transparent border-border/60 hover:bg-muted/60 gap-1.5" onClick={() => setIsEditingPersonal(true)}>
-            <Edit2 className="w-3 h-3" /> Edit Profile
-          </Button>
-        </div>
+        {/* Edit Profile button removed */}
 
         {/* Photo */}
         <div className="flex flex-col items-center">
@@ -427,9 +451,23 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
           <h4 className="font-bold text-sm text-foreground">Quick Actions</h4>
         </div>
         <div className="space-y-1.5">
-          <button className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors" onClick={() => setIsEditingPersonal(true)}>
-            <Edit2 className="w-3.5 h-3.5" /> Edit Employee
-          </button>
+          {isEditingPersonal ? (
+            <button 
+              className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-sm bg-foreground text-background hover:bg-foreground/90 transition-colors" 
+              onClick={handleSavePersonal}
+              disabled={isSavingPersonal}
+            >
+              {isSavingPersonal ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+              {isSavingPersonal ? 'Saving...' : 'Save Employee'}
+            </button>
+          ) : (
+            <button 
+              className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors" 
+              onClick={() => setIsEditingPersonal(true)}
+            >
+              <Edit2 className="w-3.5 h-3.5" /> Edit Employee
+            </button>
+          )}
           <button className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
             <Download className="w-3.5 h-3.5" /> Download Profile PDF
           </button>
@@ -511,7 +549,7 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
                     {renderEditableCard(<CalendarIcon className="w-4 h-4" />, 'Date of Birth', personalForm.dob, isEditingPersonal, 'dob', personalForm, setPersonalForm, 'date', 'blue')}
                   </div>
                   <div className="flex-1 min-w-0">
-                    {renderEditableCard(<Users className="w-4 h-4" />, 'Gender', personalForm.gender, isEditingPersonal, 'gender', personalForm, setPersonalForm, 'text', 'blue')}
+                    {renderEditableCard(<Users className="w-4 h-4" />, 'Gender', personalForm.gender ? personalForm.gender.charAt(0).toUpperCase() + personalForm.gender.slice(1).toLowerCase() : '', isEditingPersonal, 'gender', personalForm, setPersonalForm, 'text', 'blue')}
                   </div>
                 </div>
               </div>
@@ -554,23 +592,11 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
                   <div className="w-[55%] min-w-0">
                     {renderEditableCard(<MapPin className="w-4 h-4" />, 'Address', personalForm.address, isEditingPersonal, 'address', personalForm, setPersonalForm, 'text', 'amber')}
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border/40 bg-card/60 hover:bg-card transition-colors flex-1">
-                    <div className="w-5 h-5 rounded bg-amber-500/10 text-amber-500 dark:text-amber-400 flex items-center justify-center shrink-0">
-                      <Building2 className="w-3 h-3" />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider leading-none">City</span>
-                      <span className="text-xs font-semibold text-foreground">{employee.city || '-'}</span>
-                    </div>
+                  <div className="flex-1 min-w-0">
+                    {renderEditableCard(<Building2 className="w-4 h-4" />, 'City', personalForm.city, isEditingPersonal, 'city', personalForm, setPersonalForm, 'text', 'amber')}
                   </div>
-                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg border border-border/40 bg-card/60 hover:bg-card transition-colors flex-1">
-                    <div className="w-5 h-5 rounded bg-amber-500/10 text-amber-500 dark:text-amber-400 flex items-center justify-center shrink-0">
-                      <Hash className="w-3 h-3" />
-                    </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-[9px] text-muted-foreground font-medium uppercase tracking-wider leading-none">PIN Code</span>
-                      <span className="text-xs font-semibold text-foreground">{employee.pincode || '-'}</span>
-                    </div>
+                  <div className="flex-1 min-w-0">
+                    {renderEditableCard(<Hash className="w-4 h-4" />, 'PIN Code', personalForm.pincode, isEditingPersonal, 'pincode', personalForm, setPersonalForm, 'text', 'amber')}
                   </div>
                 </div>
               </div>
@@ -588,9 +614,9 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
                   'rose'
                 )}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {renderInfoCard(<User className="w-4 h-4" />, 'Contact Name', ec.name, 'rose')}
-                  {renderInfoCard(<Users className="w-4 h-4" />, 'Relationship', ec.relationship, 'rose')}
-                  {renderInfoCard(<Phone className="w-4 h-4" />, 'Phone Number', ec.phone, 'rose')}
+                  {renderEditableCard(<User className="w-4 h-4" />, 'Contact Name', personalForm.emergency_name, isEditingPersonal, 'emergency_name', personalForm, setPersonalForm, 'text', 'rose')}
+                  {renderEditableCard(<Users className="w-4 h-4" />, 'Relationship', personalForm.emergency_relationship, isEditingPersonal, 'emergency_relationship', personalForm, setPersonalForm, 'text', 'rose')}
+                  {renderEditableCard(<Phone className="w-4 h-4" />, 'Phone Number', personalForm.emergency_phone, isEditingPersonal, 'emergency_phone', personalForm, setPersonalForm, 'tel', 'rose')}
                 </div>
               </div>
             </div>
@@ -608,17 +634,13 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
                 <p className="text-xs text-muted-foreground">Work related details and assignments.</p>
               </div>
             </div>
-            {isEditingProfessional ? (
+            {isEditingProfessional && (
               <div className="flex gap-2">
                 <Button variant="ghost" size="sm" onClick={() => setIsEditingProfessional(false)}>Cancel</Button>
                 <Button size="sm" className="bg-foreground text-background" onClick={handleSaveProfessional} disabled={isSavingProfessional}>
                   {isSavingProfessional ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Save
                 </Button>
               </div>
-            ) : (
-              <Button variant="outline" size="sm" className="bg-transparent border-border hover:bg-muted/60 h-8 px-3 text-xs gap-1.5" onClick={() => setIsEditingProfessional(true)}>
-                <Edit2 className="w-3 h-3" /> Edit
-              </Button>
             )}
           </div>
 
@@ -747,9 +769,8 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
                       </div>
                       <div className="overflow-hidden">
                         <div className="text-sm font-medium truncate" title={doc.name || (typeof doc === 'string' ? doc : 'Document')}>
-                          {doc.name || (typeof doc === 'string' ? doc : 'Document')}
+                          {(doc.name || (typeof doc === 'string' ? doc : 'Document')).replace(/\.[^/.]+$/, "")}
                         </div>
-                        {doc.size && <div className="text-xs text-muted-foreground">{(doc.size / 1024).toFixed(1)} KB</div>}
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">

@@ -233,25 +233,25 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
       {canManage && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            <label className="text-sm font-semibold text-foreground">
               Employee ID *
             </label>
             <input
               type="text"
               disabled
               value={canManage && employees ? (employees.find(e => e.id === selectedEmployeeId)?.employee_id || employeeStringId) : employeeStringId}
-              className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 text-zinc-500 cursor-not-allowed focus:outline-none"
+              className="w-full px-4 py-2.5 rounded-xl border border-border bg-input-bg text-muted-foreground cursor-not-allowed focus:outline-none"
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+            <label className="text-sm font-semibold text-foreground">
               Employee Name *
             </label>
             <input
               type="text"
               disabled
               value={canManage && employees ? (employees.find(e => e.id === selectedEmployeeId) ? `${employees.find(e => e.id === selectedEmployeeId)?.first_name} ${employees.find(e => e.id === selectedEmployeeId)?.last_name}` : employeeName) : employeeName}
-              className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50 text-zinc-500 cursor-not-allowed focus:outline-none"
+              className="w-full px-4 py-2.5 rounded-xl border border-border bg-input-bg text-muted-foreground cursor-not-allowed focus:outline-none"
             />
           </div>
         </div>

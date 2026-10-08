@@ -315,7 +315,7 @@ export async function getPendingEODs() {
       .from('eod_reports')
       .select(`
         id, employee_id, report_date, tasks_accomplished, office_hours, location, blockers, photo_url, status, submitted_by, approved_by, approved_at, rejection_reason, submitted_at, tomorrows_plan,
-        profiles!eod_reports_employee_id_fkey(first_name, last_name, employee_id)
+        profiles!eod_reports_employee_id_fkey(first_name, last_name, employee_id, department)
       `)
       .eq('status', 'Pending')
       .order('report_date', { ascending: true });
@@ -468,7 +468,7 @@ export async function getAllEODs(filters?: { employeeId?: string; startDate?: st
       .from('eod_reports')
       .select(`
         id, employee_id, report_date, tasks_accomplished, office_hours, location, blockers, photo_url, status, submitted_by, approved_by, approved_at, rejection_reason, submitted_at, tomorrows_plan, role_context,
-        profiles!eod_reports_employee_id_fkey(first_name, last_name, employee_id, branch_id)
+        profiles!eod_reports_employee_id_fkey(first_name, last_name, employee_id, branch_id, department)
       `, { count: 'exact' });
 
     // Filter by role_context: HR review page only sees Employee EODs, Admin sees all
@@ -509,9 +509,9 @@ export async function getAllEODs(filters?: { employeeId?: string; startDate?: st
 
     // If any EOD is missing its profile (because of mock user), patch it!
     data = data.map(eod => {
-      let fallbackProfile = { first_name: 'Omkar', last_name: 'Sawant', employee_id: 'EMP-001', branch_id: 'branch-1' };
+      let fallbackProfile = { first_name: 'Omkar', last_name: 'Sawant', employee_id: 'EMP-001', branch_id: 'branch-1', department: 'Development' };
       if (eod.employee_id === 'a0ef8d37-d4fd-49c7-b20d-b8ed9a512379') {
-        fallbackProfile = { first_name: 'Michael', last_name: 'Smith', employee_id: 'EMP-002', branch_id: 'branch-1' };
+        fallbackProfile = { first_name: 'Michael', last_name: 'Smith', employee_id: 'EMP-002', branch_id: 'branch-1', department: 'Content' };
       }
       return {
         ...eod,

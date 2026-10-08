@@ -21,7 +21,7 @@ export function EodCard({
   const [expanded, setExpanded] = useState(false);
   const [rejectMode, setRejectMode] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
-  
+
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState({
     workedHours: '',
@@ -73,7 +73,7 @@ export function EodCard({
 
   const handleSave = async () => {
     if (!isValid) return;
-    
+
     const totalMinutes = parseHHMM(editForm.workedHours);
     if (totalMinutes === null) return;
     const office_hours = totalMinutes / 60;
@@ -86,13 +86,13 @@ export function EodCard({
 
   const statusColor =
     eod.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' :
-    eod.status === 'Rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
-    'bg-amber-500/10 text-amber-500 border-amber-500/20';
+      eod.status === 'Rejected' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' :
+        'bg-amber-500/10 text-amber-500 border-amber-500/20';
 
   return (
     <div className="bg-card text-card-foreground border border-border rounded-xl shadow-sm overflow-hidden transition-all duration-200">
       {/* Header - Always visible */}
-      <div 
+      <div
         className="px-4 py-3 sm:px-6 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between cursor-pointer hover:bg-muted/30"
         onClick={() => !rejectMode && !isEditing && setExpanded(!expanded)}
       >
@@ -102,7 +102,7 @@ export function EodCard({
           </div>
           <div className="flex flex-col">
             <span className="text-foreground font-semibold">{eod.profiles?.first_name || 'Unknown'} {eod.profiles?.last_name || 'Employee'}</span>
-            <span className="text-xs text-muted-foreground">{eod.profiles?.branch_id || 'Development'}</span>
+            <span className="text-xs text-muted-foreground">{eod.profiles?.department || 'Department not assigned'}</span>
           </div>
         </div>
 
@@ -115,17 +115,16 @@ export function EodCard({
             <Clock className="w-4 h-4 text-muted-foreground" />
             <span>{formatHoursMinutes(Number(eod.office_hours))} logged</span>
           </div>
-          
-          <div className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border ${
-            eod.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
-            eod.status === 'Rejected' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' :
-            'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
-          }`}>
+
+          <div className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border ${eod.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :
+              eod.status === 'Rejected' ? 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20' :
+                'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+            }`}>
             {eod.status === 'Approved' && <Smile className="w-3 h-3" />}
             {eod.status === 'Approved' ? 'GOOD' : eod.status}
           </div>
 
-          <button 
+          <button
             className="p-1 text-muted-foreground hover:text-foreground transition-colors ml-2"
             onClick={(e) => { e.stopPropagation(); setExpanded(!expanded); }}
           >
@@ -138,7 +137,7 @@ export function EodCard({
       {expanded && (
         <div className="border-t border-border bg-muted/5">
           <div className="p-4 sm:p-5 space-y-6">
-            
+
             {isEditing ? (
               <div className="space-y-6 animate-in fade-in duration-200">
                 {/* View Mode equivalent for read-only fields */}
@@ -159,7 +158,7 @@ export function EodCard({
                       })}
                     </div>
                   </div>
-                  
+
                   <div>
                     <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Blockers</div>
                     <div className="text-sm text-foreground whitespace-pre-wrap">
@@ -202,19 +201,18 @@ export function EodCard({
                       onChange={(e) => setEditForm(prev => ({ ...prev, workedHours: e.target.value }))}
                       className="w-full h-11 bg-background text-foreground border border-border rounded-[10px] px-3 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all placeholder:text-muted-foreground"
                     />
-                    <p className="text-[10px] text-muted-foreground">HH.MM format — e.g. 8.19 = 8h 19m</p>
                     {editForm.workedHours !== '' && workedHoursError && (
                       <p className="text-xs text-rose-500 mt-1">{workedHoursError}</p>
                     )}
                   </div>
-                  
+
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Admin / HR Note</label>
-                    <textarea 
-                      value={editForm.admin_note} 
+                    <textarea
+                      value={editForm.admin_note}
                       onChange={e => setEditForm(prev => ({ ...prev, admin_note: e.target.value }))}
                       placeholder="Add review comment..."
-                      className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary shadow-sm min-h-[44px]" 
+                      className="w-full rounded-xl border border-border bg-card px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary shadow-sm min-h-[44px]"
                     />
                   </div>
                 </div>
@@ -239,7 +237,7 @@ export function EodCard({
                       })}
                     </div>
                   </div>
-                  
+
                   <div>
                     <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-3">Blockers</div>
                     <div className="text-sm text-foreground whitespace-pre-wrap">
@@ -278,7 +276,7 @@ export function EodCard({
                     <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Office Hours</div>
                     <div className="text-sm font-medium text-foreground">{hoursFormatted}</div>
                   </div>
-                  
+
                   <div>
                     <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Admin / HR Note</div>
                     <div className="text-sm text-foreground whitespace-pre-wrap">{eod.rejection_reason || '[................]'}</div>
@@ -292,9 +290,9 @@ export function EodCard({
               <div className="pt-6 border-t border-border flex justify-end">
                 {rejectMode ? (
                   <div className="w-full flex flex-col sm:flex-row items-end gap-3 animate-in slide-in-from-top-2 duration-200">
-                    <input 
-                      type="text" 
-                      placeholder="Please provide more details..." 
+                    <input
+                      type="text"
+                      placeholder="Please provide more details..."
                       className="w-full h-10 px-3 text-sm bg-card border border-border rounded-lg focus:outline-none focus:border-rose-500"
                       value={rejectReason}
                       onChange={(e) => setRejectReason(e.target.value)}
@@ -325,7 +323,7 @@ export function EodCard({
                     {eod.status === 'Pending' && (
                       <>
                         <Button variant="outline" className="h-10 px-6 rounded-lg flex-1 sm:flex-none border-border hover:text-rose-500" onClick={handleReject} disabled={isSubmitting}>
-                           Reject
+                          Reject
                         </Button>
                         <Button className="h-10 px-6 rounded-lg flex-1 sm:flex-none shadow-sm bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleApprove} disabled={isSubmitting}>
                           {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Approve
@@ -336,12 +334,12 @@ export function EodCard({
                 )}
               </div>
             )}
-            
+
             {/* Display message if it's their own pending EOD */}
             {isReview && eod.status === 'Pending' && isOwnEod && (
-               <div className="pt-4 border-t border-border flex justify-end">
-                 <span className="text-xs text-muted-foreground italic">You cannot review your own EOD report.</span>
-               </div>
+              <div className="pt-4 border-t border-border flex justify-end">
+                <span className="text-xs text-muted-foreground italic">You cannot review your own EOD report.</span>
+              </div>
             )}
           </div>
         </div>

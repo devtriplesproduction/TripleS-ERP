@@ -81,7 +81,7 @@ export function EODReviewTable({ eods }: { eods: (EODReport & { profiles: { firs
                 <Button 
                   onClick={() => handleReview(eod.id, 'Reject')}
                   disabled={loading === eod.id}
-                  className="text-zinc-900 dark:text-zinc-100 hover:text-zinc-900 dark:text-zinc-100 disabled:opacity-50"
+                  className="text-foreground hover:text-foreground disabled:opacity-50"
                 >
                   Reject
                 </Button>

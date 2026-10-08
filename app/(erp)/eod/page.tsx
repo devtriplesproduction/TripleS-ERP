@@ -124,13 +124,13 @@ export default async function EODPage({ searchParams }: PageProps) {
               isSuperAdmin ? (
                 <BranchSelectorClient branches={activeBranches} />
               ) : (
-                <div className="bg-card text-card-foreground border-border text-zinc-900 dark:text-zinc-100 px-4 py-2.5 rounded-xl font-semibold border border-zinc-200 dark:border-zinc-800 flex items-center gap-2 shadow-sm">
-                  <BarChart2 className="w-4 h-4 text-black dark:text-white" />
-                  <span>{todayReportsCount}</span> <span className="text-zinc-900 dark:text-zinc-100 font-medium">Reports Today</span>
+                <div className="bg-card text-card-foreground border-border text-foreground px-4 py-2.5 rounded-xl font-semibold border flex items-center gap-2 shadow-sm">
+                  <BarChart2 className="w-4 h-4 text-foreground" />
+                  <span>{todayReportsCount}</span> <span className="text-foreground font-medium">Reports Today</span>
                 </div>
               )
             ) : (
-              <div className="bg-black dark:bg-zinc-800 text-white dark:text-zinc-100 px-4 py-2 rounded-xl font-semibold border border-black dark:border-white flex items-center gap-2 whitespace-nowrap">
+              <div className="bg-primary text-primary-foreground px-4 py-2 rounded-xl font-semibold border border-border flex items-center gap-2 whitespace-nowrap">
                 Current Streak: {streak} days 🔥
               </div>
             )}
