@@ -167,9 +167,9 @@ export function ProjectOverviewTab({ project, totalOperationalHours, tasks, team
                 <div className="text-center text-sm text-muted-foreground py-2">No team assigned.</div>
               ) : (
                 teamStats.map((member: any) => (
-                  <div key={member.user_id} className="flex items-center gap-3">
+                  <div key={member.userId} className="flex items-center gap-3">
                     <Avatar className="h-8 w-8 border border-border">
-                      {member.profile_photo && <AvatarImage src={member.profile_photo} />}
+                      {member.profilePhoto && <AvatarImage src={member.profilePhoto} />}
                       <AvatarFallback className="text-[10px]">{member.name.substring(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1 overflow-hidden">

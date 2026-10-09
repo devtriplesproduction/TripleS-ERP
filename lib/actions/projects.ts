@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { canCreateProjects, canEditProject, canViewRestrictedClientInfo } from '@/lib/permissions/project-management'
 import { Project, ProjectStatus, ProjectPriority, ProjectDashboardStats, ProjectTeamMemberStats, ProjectActivity } from '@/types/project-management'
 import { revalidatePath } from 'next/cache'
+import { attachProfilePhotos } from '@/lib/utils/profile-photos'
 
 export interface CreateProjectInput {
   name: string
@@ -166,6 +167,16 @@ export async function getProjects(filters?: {
       }
     }
 
+    // Collect all profiles to fetch photos
+    const allProfiles: any[] = []
+    ;(data || []).forEach((row: any) => {
+      if (row.project_manager) allProfiles.push(row.project_manager)
+      ;(row.members || []).forEach((m: any) => {
+        if (m.profile) allProfiles.push(m.profile)
+      })
+    })
+    await attachProfilePhotos(admin, allProfiles)
+
     const now = new Date()
 
     const projects: Project[] = (data || []).map((row: any) => {
@@ -319,6 +330,16 @@ export async function getMyProjects(): Promise<{ success: boolean; data: Project
       }
       return { success: false, data: [], error: error.message }
     }
+
+    // Collect all profiles to fetch photos
+    const allProfiles: any[] = []
+    ;(data || []).forEach((row: any) => {
+      if (row.project_manager) allProfiles.push(row.project_manager)
+      ;(row.members || []).forEach((m: any) => {
+        if (m.profile) allProfiles.push(m.profile)
+      })
+    })
+    await attachProfilePhotos(admin, allProfiles)
 
     const now = new Date()
     const projects: Project[] = (data || []).map((row: any) => {
@@ -488,6 +509,32 @@ export async function getProjectById(projectId: string): Promise<{
 
     const projectTasks = tasks || []
 
+    // Collect all profiles to fetch photos
+    const allProfiles: any[] = []
+    if (proj.project_manager) {
+      if (Array.isArray(proj.project_manager)) allProfiles.push(...proj.project_manager)
+      else allProfiles.push(proj.project_manager)
+    }
+    ;(proj.members || []).forEach((m: any) => {
+      if (m.profile) {
+        if (Array.isArray(m.profile)) allProfiles.push(...m.profile)
+        else allProfiles.push(m.profile)
+      }
+    })
+    projectTasks.forEach((t: any) => {
+      ;(t.assignees || []).forEach((a: any) => {
+        if (a.profile) {
+          if (Array.isArray(a.profile)) allProfiles.push(...a.profile)
+          else allProfiles.push(a.profile)
+        }
+      })
+    })
+    await attachProfilePhotos(admin, allProfiles)
+
+    // Ensure teamStatsMap receives the updated profile photos
+    // Note: teamStatsMap is built after this, but we will pass the mutated profiles directly into the map builder below.
+
+
     // 3. Fetch project activities
     const { data: activitiesData } = await admin
       .from('project_activity')
@@ -526,6 +573,7 @@ export async function getProjectById(projectId: string): Promise<{
         assignedTasks: 0,
         completedTasks: 0,
         operationalHours: 0,
+        profilePhoto: pm.profile_photo || null,
       })
     }
 
@@ -542,6 +590,7 @@ export async function getProjectById(projectId: string): Promise<{
             assignedTasks: 0,
             completedTasks: 0,
             operationalHours: 0,
+            profilePhoto: mProf.profile_photo || null,
           })
         }
       }
@@ -565,6 +614,7 @@ export async function getProjectById(projectId: string): Promise<{
             assignedTasks: 0,
             completedTasks: 0,
             operationalHours: 0,
+            profilePhoto: (aProf as any)?.profile_photo || null,
           }
           teamStatsMap.set(a.user_id, memberStat)
         }
@@ -576,10 +626,17 @@ export async function getProjectById(projectId: string): Promise<{
       }
     }
 
-    const teamStats = Array.from(teamStatsMap.values()).map(s => ({
-      ...s,
-      operationalHours: Math.round(s.operationalHours * 10) / 10,
-    }))
+    const teamStats = Array.from(teamStatsMap.values()).map(s => {
+      // Find updated profile from allProfiles
+      const p = allProfiles.find(ap => ap.id === s.userId)
+      if (p && p.profile_photo) {
+        s.profilePhoto = p.profile_photo
+      }
+      return {
+        ...s,
+        operationalHours: Math.round(s.operationalHours * 10) / 10,
+      }
+    })
 
     const project: Project = {
       id: proj.id,
@@ -839,6 +896,20 @@ export async function checkEmployeeProjectAccess(userId: string): Promise<boolea
     return false
   } catch (err) {
     console.error('Error checking project access:', err)
+    return false
+  }
+}
+
+/**
+ * Check if the user has any tasks assigned to them.
+ */
+export async function checkEmployeeHasTasks(userId: string): Promise<boolean> {
+  try {
+    const admin = await createAdminClient()
+    const { data: taCheck } = await admin.from('task_assignees').select('id').eq('user_id', userId).limit(1)
+    return !!(taCheck && taCheck.length > 0)
+  } catch (err) {
+    console.error('Error checking task assignment:', err)
     return false
   }
 }

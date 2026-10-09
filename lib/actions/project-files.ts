@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
+import { attachProfilePhotos } from '@/lib/utils/profile-photos'
 
 export interface ProjectFileMetadata {
   id: string
@@ -148,6 +149,12 @@ export async function getProjectFilesAction(projectId: string): Promise<{ succes
       if (error.code === 'PGRST205') return { success: true, data: [] }
       return { success: false, error: error.message }
     }
+
+    const allProfiles: any[] = []
+    ;(data || []).forEach((row: any) => {
+      if (row.profile) allProfiles.push(row.profile)
+    })
+    await attachProfilePhotos(admin, allProfiles)
 
     return { success: true, data }
   } catch (err: any) {

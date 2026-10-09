@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { canManageTasks, canUpdateTaskStatus } from '@/lib/permissions/project-management'
 import { Task, TaskStatus, TaskPriority, TaskComment } from '@/types/project-management'
 import { revalidatePath } from 'next/cache'
+import { attachProfilePhotos } from '@/lib/utils/profile-photos'
 
 export interface CreateTaskInput {
   title: string
@@ -125,6 +126,18 @@ export async function getTasks(filters?: {
       }
       return { success: false, data: [], error: error.message }
     }
+
+    // Collect all profiles to fetch photos
+    const allProfiles: any[] = []
+    ;(data || []).forEach((row: any) => {
+      ;(row.assignees || []).forEach((a: any) => {
+        if (a.profile) allProfiles.push(a.profile)
+      })
+      ;(row.comments || []).forEach((c: any) => {
+        if (c.user_profile) allProfiles.push(c.user_profile)
+      })
+    })
+    await attachProfilePhotos(admin, allProfiles)
 
     const now = new Date()
 
@@ -252,6 +265,18 @@ export async function getMyTasks(): Promise<{
     if (tasksErr) {
       return { success: false, error: tasksErr.message }
     }
+
+    // Collect all profiles to fetch photos
+    const allProfiles: any[] = []
+    ;(tasksData || []).forEach((row: any) => {
+      ;(row.assignees || []).forEach((a: any) => {
+        if (a.profile) allProfiles.push(a.profile)
+      })
+      ;(row.comments || []).forEach((c: any) => {
+        if (c.user_profile) allProfiles.push(c.user_profile)
+      })
+    })
+    await attachProfilePhotos(admin, allProfiles)
 
     const now = new Date()
     const todayStr = now.toISOString().split('T')[0]

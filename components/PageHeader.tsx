@@ -78,9 +78,9 @@ export function PageHeader({
             {renderTitle()}
           </h1>
           {subtitle && (
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5 font-medium line-clamp-1 sm:line-clamp-none">
+            <div className="text-xs sm:text-sm text-muted-foreground mt-0.5 font-medium line-clamp-1 sm:line-clamp-none">
               {subtitle}
-            </p>
+            </div>
           )}
         </div>
       </div>

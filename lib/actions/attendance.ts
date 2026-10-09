@@ -147,25 +147,25 @@ async function _calculateAttendance(employeeId: string, month: number, year: num
   const endDate = new Date(year, month, 0); // last day of the month
   const endDateStr = `${year}-${String(month).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
 
-  // Map employee_onboarding ID to auth user ID for EOD lookups
-  let authUserId = employeeId;
-  const empOnboarding = await supabase.from('employee_onboarding').select('employee_id_number').eq('id', employeeId).single();
-  if (empOnboarding.data && empOnboarding.data.employee_id_number) {
-    const prof = await supabase.from('profiles').select('id').eq('employee_id', empOnboarding.data.employee_id_number).single();
-    if (prof.data) authUserId = prof.data.id;
-  }
+  const authUserPromise = supabase.from('employee_onboarding').select('employee_id_number').eq('id', employeeId).single()
+    .then(async (empOnboarding: any) => {
+      let authId = employeeId;
+      if (empOnboarding.data && empOnboarding.data.employee_id_number) {
+        const prof = await supabase.from('profiles').select('id').eq('employee_id', empOnboarding.data.employee_id_number).single();
+        if (prof.data) authId = prof.data.id;
+      }
+      return authId;
+    });
 
-
-  // Fetch ALL EODs (Approved, Pending, Rejected) to derive correct status
-  const { data: eods } = await supabase
+  const eodsPromise = authUserPromise.then((authUserId: any) => supabase
     .from('eod_reports')
     .select('*')
     .eq('employee_id', authUserId)
     .gte('report_date', startDateStr)
-    .lte('report_date', endDateStr);
+    .lte('report_date', endDateStr)
+  );
 
-  // Fetch approved Leaves and WFH
-  const { data: leaveRequests } = await supabase
+  const leaveRequestsPromise = supabase
     .from('leave_requests')
     .select('*')
     .eq('employee_id', employeeId)
@@ -174,13 +174,22 @@ async function _calculateAttendance(employeeId: string, month: number, year: num
     .lte('start_date', endDateStr)
     .gte('end_date', startDateStr);
     
-  // Fetch Holidays
-  const { data: holidays } = await supabase
+  const holidaysPromise = supabase
     .from('holidays')
     .select('*')
     .eq('is_active', true)
     .gte('date', startDateStr)
     .lte('date', endDateStr);
+
+  const [
+    { data: eods },
+    { data: leaveRequests },
+    { data: holidays }
+  ] = await Promise.all([
+    eodsPromise,
+    leaveRequestsPromise,
+    holidaysPromise
+  ]);
 
   const eodMap = new Map(eods?.map((e: any) => [e.report_date, e]) || []);
   const holidayMap = new Map(holidays?.map((h: any) => [h.date, h]) || []);

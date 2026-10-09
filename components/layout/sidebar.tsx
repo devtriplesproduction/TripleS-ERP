@@ -27,6 +27,7 @@ interface SidebarProps {
   userRole: AppRole
   isHod?: boolean
   hasProjectAccess?: boolean
+  hasTasks?: boolean
 }
 
 /**
@@ -54,148 +55,61 @@ interface NavItem {
  * 6. Payroll
  * Followed by other modules (Project Management, Rulebook, Announcements) per RBAC.
  */
-function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: boolean): NavItem[] {
-  // 1. Employees destination (same route /hr/onboarding, guarded by existing RBAC)
+function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: boolean, hasTasks?: boolean): NavItem[] {
   const employeesHref = '/hr/onboarding'
-
-  // 2. EOD Reports role-specific route
-  const eodHref =
-    userRole === 'Admin'
-      ? '/admin-eod'
-      : userRole === 'Employee' || userRole === 'Manager'
-      ? '/employee-eod'
-      : '/eod'
-
-  // 3. Request Leave / WFH role-specific route
-  const leaveHref =
-    userRole === 'Admin'
-      ? '/super-admin/leave'
-      : userRole === 'Employee' || userRole === 'Manager'
-      ? '/hr/employee-leave'
-      : '/hr/leave'
-
-  // 4. Attendance role-specific route
-  const attendanceHref =
-    userRole === 'Admin'
-      ? '/super-admin/attendance'
-      : userRole === 'Employee' || userRole === 'Manager'
-      ? '/attendance'
-      : '/hr/attendance'
-
-  // 5. Holiday role-specific route
-  const holidayHref =
-    userRole === 'Admin'
-      ? '/admin-holiday'
-      : userRole === 'Employee' || userRole === 'Manager'
-      ? '/employee-holiday'
-      : '/hr/holidays'
-
-  // 6. Payroll role-specific route
+  const eodHref = userRole === 'Admin' ? '/admin-eod' : userRole === 'Employee' || userRole === 'Manager' ? '/employee-eod' : '/eod'
+  const leaveHref = userRole === 'Admin' ? '/super-admin/leave' : userRole === 'Employee' || userRole === 'Manager' ? '/hr/employee-leave' : '/hr/leave'
+  const attendanceHref = userRole === 'Admin' ? '/super-admin/attendance' : userRole === 'Employee' || userRole === 'Manager' ? '/attendance' : '/hr/attendance'
+  const holidayHref = userRole === 'Admin' ? '/admin-holiday' : userRole === 'Employee' || userRole === 'Manager' ? '/employee-holiday' : '/hr/holidays'
   const payrollHref = userRole === 'Admin' ? '/admin-payroll' : '/hr/payroll'
+  
+  const allItems: NavItem[] = []
 
-  // Standardized first 6 modules (always in this exact sequence for all roles)
-  const standardModules: NavItem[] = [
-    {
-      label: 'Employees',
-      href: employeesHref,
-      icon: <Users className="mr-3 h-5 w-5 shrink-0" />,
-    },
-    {
-      label: eodHref === '/employee-eod' ? 'EOD Reports' : 'Review EOD',
-      href: eodHref,
-      icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" />,
-    },
-    {
-      label: userRole === 'Admin' ? 'Review Leave / WFH' : 'Request Leave / WFH',
-      href: leaveHref,
-      icon: <Calendar className="mr-3 h-5 w-5 shrink-0" />,
-    },
-    {
-      label: 'Attendance',
-      href: attendanceHref,
-      icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" />,
-    },
-    {
-      label: 'Holiday',
-      href: holidayHref,
-      icon: <Calendar className="mr-3 h-5 w-5 shrink-0" />,
-    },
-    {
-      label: 'Payroll',
-      href: payrollHref,
-      icon: <CreditCard className="mr-3 h-5 w-5 shrink-0" />,
-    },
-  ]
-
-  // Filter standard modules based on role (Employees and Payroll are removed for Employee role)
-  const visibleStandard = standardModules.filter((item) => {
-    if ((userRole === 'Employee' || userRole === 'Manager') && (item.label === 'Employees' || item.label === 'Payroll')) {
-      return false
+  if (userRole === 'Employee' || userRole === 'Manager') {
+    if (hasTasks) {
+      allItems.push({ label: 'My Tasks', href: '/my-tasks', icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
     }
-    return hasRouteAccess(userRole, item.href, isHod)
-  })
-
-  // Other modules (Project Management, Rulebook, Announcements) filtered by existing RBAC
-  const otherModules: NavItem[] = [
-    {
-      label: 'Rulebook',
-      href: '/rulebook',
-      icon: <Book className="mr-3 h-5 w-5 shrink-0" />,
-    },
-    {
-      label: 'Announcements',
-      href: '/announcements',
-      icon: <Megaphone className="mr-3 h-5 w-5 shrink-0" />,
-    },
-  ]
-
-  if (canAccessProjectManagement(userRole, isHod)) {
-    const pmModules: NavItem[] = [
-      { label: 'Projects', href: '/projects', icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" /> },
-      { label: 'Tasks & Kanban', href: '/tasks', icon: <CheckSquare className="mr-3 h-5 w-5 shrink-0" /> },
-      ...(userRole !== 'Admin' ? [{ label: 'My Tasks', href: '/my-tasks', icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> }] : []),
-      { label: 'Clients', href: '/clients', icon: <Briefcase className="mr-3 h-5 w-5 shrink-0" /> },
-    ]
-    otherModules.unshift(...pmModules)
-  } else if (hasProjectAccess) {
-    // If they have explicit project access (assigned task/membership), show My Projects
-    const pmModules: NavItem[] = [
-      { label: 'Projects', href: '/projects', icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" /> },
-      ...(hasRouteAccess(userRole, '/my-tasks') ? [{ label: 'My Tasks', href: '/my-tasks', icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> }] : [])
-    ]
-    otherModules.unshift(...pmModules)
-  } else {
-    // If they can't access project management, they still might have "My Tasks"
-    // Let's add My Tasks standalone if allowed by RBAC
-    if (hasRouteAccess(userRole, '/my-tasks')) {
-      otherModules.unshift({
-        label: 'My Tasks',
-        href: '/my-tasks',
-        icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" />,
-      })
+    if (hasTasks) {
+      allItems.push({ label: 'Projects', href: '/projects', icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" /> })
     }
+    if (isHod) {
+      allItems.push({ label: 'Tasks & Kanban', href: '/tasks', icon: <CheckSquare className="mr-3 h-5 w-5 shrink-0" /> })
+      allItems.push({ label: 'Clients', href: '/clients', icon: <Briefcase className="mr-3 h-5 w-5 shrink-0" /> })
+    }
+    allItems.push({ label: 'EOD Reports', href: eodHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Request Leave / WFH', href: leaveHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Attendance', href: attendanceHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Holiday', href: holidayHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Rulebook', href: '/rulebook', icon: <Book className="mr-3 h-5 w-5 shrink-0" /> })
+  } else if (userRole === 'HR') {
+    allItems.push({ label: 'Employees', href: employeesHref, icon: <Users className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Projects', href: '/projects', icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'My Tasks', href: '/my-tasks', icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Payroll', href: payrollHref, icon: <CreditCard className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Review EOD', href: eodHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Review Leave / WFH', href: leaveHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Attendance', href: attendanceHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Holiday', href: holidayHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Announcements', href: '/announcements', icon: <Megaphone className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Rulebook', href: '/rulebook', icon: <Book className="mr-3 h-5 w-5 shrink-0" /> })
+  } else if (userRole === 'Admin') {
+    allItems.push({ label: 'Employees', href: employeesHref, icon: <Users className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Projects', href: '/projects', icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Tasks & Kanban', href: '/tasks', icon: <CheckSquare className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Clients', href: '/clients', icon: <Briefcase className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Payroll', href: payrollHref, icon: <CreditCard className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Review EOD', href: eodHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Review Leave / WFH', href: leaveHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Attendance', href: attendanceHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Holiday', href: holidayHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Announcements', href: '/announcements', icon: <Megaphone className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Rulebook', href: '/rulebook', icon: <Book className="mr-3 h-5 w-5 shrink-0" /> })
   }
 
-  const visibleOther = otherModules.reduce<NavItem[]>((acc, item) => {
-    if (item.children) {
-      const visibleChildren = item.children.filter((child) =>
-        hasRouteAccess(userRole, child.href, isHod)
-      )
-      if (visibleChildren.length > 0) {
-        acc.push({ ...item, children: visibleChildren })
-      }
-    } else {
-      if (hasRouteAccess(userRole, item.href, isHod)) {
-        acc.push(item)
-      }
-    }
-    return acc
-  }, [])
-
-  return [...visibleStandard, ...visibleOther]
+  return allItems.filter(item => hasRouteAccess(userRole, item.href, isHod))
 }
 
-export function Sidebar({ userRole, isHod, hasProjectAccess }: SidebarProps) {
+export function Sidebar({ userRole, isHod, hasProjectAccess, hasTasks }: SidebarProps) {
   const pathname = usePathname()
   const { isOpen, closeSidebar } = useSidebar()
   const [openModule, setOpenModule] = useState<string | null>(() => {
@@ -214,7 +128,7 @@ export function Sidebar({ userRole, isHod, hasProjectAccess }: SidebarProps) {
     setOpenModule(openModule === moduleName ? null : moduleName)
   }
 
-  const visibleItems = getRoleNavItems(userRole, isHod, hasProjectAccess)
+  const visibleItems = getRoleNavItems(userRole, isHod, hasProjectAccess, hasTasks)
 
   const isItemActive = (href: string) => {
     if (!href) return false
@@ -245,13 +159,7 @@ export function Sidebar({ userRole, isHod, hasProjectAccess }: SidebarProps) {
             Dashboard
           </Link>
 
-          {visibleItems.length > 0 && (
-            <div className="pt-5 pb-2">
-              <p className="px-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground/70">
-                Modules
-              </p>
-            </div>
-          )}
+
 
           {visibleItems.map((item) => {
             // Group/expandable module (e.g., Project Management)
