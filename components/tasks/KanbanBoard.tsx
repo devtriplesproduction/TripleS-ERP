@@ -6,7 +6,7 @@ import { AssignableEmployee } from '@/lib/actions/team'
 import { KanbanColumn } from './KanbanColumn'
 import { TaskCard } from './TaskCard'
 import { TaskDetailsModal } from './TaskDetailsModal'
-import { TaskModal } from './TaskModal'
+import { TaskFormModal } from './TaskFormModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dropdown } from '@/components/ui/Dropdown'
@@ -275,7 +275,7 @@ export function KanbanBoard({
 
       {/* Task Create / Edit Modal */}
       {isCreateOpen && (
-        <TaskModal
+        <TaskFormModal
           isOpen={isCreateOpen}
           onClose={() => {
             setIsCreateOpen(false)

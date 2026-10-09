@@ -13,7 +13,7 @@ import { toast } from 'sonner'
 import { Loader2, Check } from 'lucide-react'
 import { DatePicker } from '@/components/ui/date-picker'
 
-interface TaskModalProps {
+interface TaskFormModalProps {
   isOpen: boolean
   onClose: () => void
   onSuccess: () => void
@@ -25,9 +25,23 @@ interface TaskModalProps {
 }
 
 const ALL_STATUSES: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'IN_REVIEW', 'DONE', 'ON_HOLD']
-const ALL_PRIORITIES: TaskPriority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
+const statusLabels: Record<TaskStatus, string> = {
+  TODO: 'To Do',
+  IN_PROGRESS: 'In Progress',
+  IN_REVIEW: 'In Review',
+  DONE: 'Done',
+  ON_HOLD: 'On Hold',
+}
 
-export function TaskModal({
+const ALL_PRIORITIES: TaskPriority[] = ['LOW', 'MEDIUM', 'HIGH', 'URGENT']
+const priorityLabels: Record<TaskPriority, string> = {
+  LOW: 'Low',
+  MEDIUM: 'Medium',
+  HIGH: 'High',
+  URGENT: 'Urgent',
+}
+
+export function TaskFormModal({
   isOpen,
   onClose,
   onSuccess,
@@ -36,7 +50,7 @@ export function TaskModal({
   defaultProjectId,
   defaultStatus,
   taskToEdit,
-}: TaskModalProps) {
+}: TaskFormModalProps) {
   const isEditing = !!taskToEdit
 
   const [title, setTitle] = useState(taskToEdit?.title || '')
@@ -135,20 +149,23 @@ export function TaskModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-xl w-full max-h-[90vh] overflow-y-auto bg-card border-border text-foreground p-5 sm:p-6">
-        <DialogHeader>
+      <DialogContent 
+        className="!max-w-[1020px] w-[90vw] max-h-[90dvh] flex flex-col gap-0 bg-card border-border text-foreground p-0"
+      >
+        <DialogHeader className="px-5 sm:px-6 pt-5 sm:pt-6 pb-2">
           <DialogTitle className="text-xl font-bold">
             {isEditing ? 'Edit Task' : 'Create New Task'}
           </DialogTitle>
         </DialogHeader>
 
         {errorMsg && (
-          <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm p-3 rounded-md">
+          <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm p-3 mx-5 sm:mx-6 mt-2 rounded-md shrink-0">
             {errorMsg}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-5">
           {/* Task Title */}
           <div className="space-y-1.5">
             <Label htmlFor="task-title" className="text-sm font-medium">
@@ -165,7 +182,7 @@ export function TaskModal({
           </div>
 
           {/* Project & Priority */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <Dropdown
               id="task-project"
               label="Project"
@@ -183,13 +200,13 @@ export function TaskModal({
               label="Priority"
               value={priority}
               onChange={(val) => setPriority(val as TaskPriority)}
-              options={ALL_PRIORITIES.map((pr) => ({ value: pr, label: pr }))}
+              options={ALL_PRIORITIES.map((pr) => ({ value: pr, label: priorityLabels[pr] }))}
               buttonClassName="bg-input border-border w-full"
             />
           </div>
 
           {/* Status & Estimated Hours */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <Dropdown
               id="task-status"
               label="Status"
@@ -197,7 +214,7 @@ export function TaskModal({
               onChange={(val) => setStatus(val as TaskStatus)}
               options={ALL_STATUSES.map((st) => ({
                 value: st,
-                label: st.replace('_', ' '),
+                label: statusLabels[st],
               }))}
               buttonClassName="bg-input border-border w-full"
             />
@@ -220,7 +237,7 @@ export function TaskModal({
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <div className="space-y-1.5">
               <Label htmlFor="task-start" className="text-sm font-medium">
                 Start Date
@@ -251,24 +268,34 @@ export function TaskModal({
             <Label className="text-sm font-medium">
               Assign Team Members ({selectedAssignees.length} selected)
             </Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 bg-secondary/20 border border-border rounded-md">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-48 overflow-y-auto p-3 bg-card border border-border rounded-md">
               {employees.map((emp) => {
                 const isSelected = selectedAssignees.includes(emp.id)
+                const initials = emp.name.substring(0, 2).toUpperCase()
                 return (
                   <div
                     key={emp.id}
                     onClick={() => toggleAssignee(emp.id)}
-                    className={`flex items-center justify-between p-2 rounded-md text-xs cursor-pointer border transition-colors ${
+                    className={`flex items-start gap-3 p-2.5 rounded-md cursor-pointer border transition-colors ${
                       isSelected
-                        ? 'bg-accent border-foreground/40 text-foreground font-medium'
-                        : 'border-transparent hover:bg-secondary/60 text-muted-foreground'
+                        ? 'border-foreground/20 bg-accent/30'
+                        : 'border-transparent hover:bg-secondary/60'
                     }`}
                   >
-                    <div className="truncate pr-2">
-                      <p className="font-semibold text-foreground truncate">{emp.name}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{emp.designation || 'Team Member'}</p>
+                    <div className="flex items-center h-full pt-1">
+                      <div className={`w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/50'}`}>
+                        {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                      </div>
                     </div>
-                    {isSelected && <Check className="h-4 w-4 text-foreground shrink-0" />}
+                    <div className="flex items-center gap-2">
+                      <div className="h-8 w-8 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-xs font-medium shrink-0">
+                        {initials}
+                      </div>
+                      <div>
+                        <p className="font-semibold text-foreground text-[13px]">{emp.name}</p>
+                        <p className="text-[10px] text-muted-foreground whitespace-normal">{emp.designation || 'Team Member'}</p>
+                      </div>
+                    </div>
                   </div>
                 )
               })}
@@ -289,21 +316,22 @@ export function TaskModal({
               className="w-full text-sm bg-input border border-border rounded-md p-2.5 outline-hidden focus:border-foreground/50 transition-colors"
             />
           </div>
+          </div>
 
-          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-4 border-t border-border">
+          <DialogFooter className="flex flex-col sm:flex-row justify-center items-center gap-4 px-5 sm:px-6 py-4 border-t border-border/50 bg-card shrink-0">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={loading}
-              className="w-full sm:w-auto"
+              className="w-full sm:w-[128px] h-[44px] bg-transparent text-foreground border-border hover:bg-secondary/50 rounded-full"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90"
+              className="w-full sm:w-[128px] h-[44px] bg-foreground text-background hover:bg-foreground/90 rounded-full font-medium"
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isEditing ? 'Save Changes' : 'Create Task'}

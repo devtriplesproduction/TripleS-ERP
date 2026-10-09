@@ -233,8 +233,7 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
         <Button variant="outline" className="w-full sm:w-auto h-11 sm:h-10 text-xs sm:text-sm bg-transparent border-border text-foreground hover:bg-muted" onClick={onCancel} disabled={loading}>
           Cancel
         </Button>
-        <Button className="w-full sm:w-auto h-11 sm:h-10 text-xs sm:text-sm bg-foreground text-background hover:bg-foreground/90 font-semibold" onClick={handleSubmit} disabled={loading}>
-          {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+        <Button className="w-full sm:w-auto h-11 sm:h-10 text-xs sm:text-sm bg-foreground text-background hover:bg-foreground/90 font-semibold" onClick={handleSubmit} disabled={loading} isLoading={loading}>
           Submit Application
         </Button>
       </div>

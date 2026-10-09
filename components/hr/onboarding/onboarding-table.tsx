@@ -178,7 +178,7 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
                           )}
                         </div>
                         <div>
-                          <div className="font-medium text-foreground group-hover:underline transition-all">{emp.first_name} {emp.last_name}</div>
+                          <div className="font-medium text-foreground transition-all">{emp.first_name} {emp.last_name}</div>
                           <div className="text-xs text-muted-foreground">{emp.email}</div>
                         </div>
                       </Link>
@@ -238,7 +238,7 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
                       )}
                     </div>
                     <div className="min-w-0">
-                      <Link href={`/hr/onboarding/${emp.id}`} className="font-semibold text-foreground text-sm hover:underline truncate block">
+                      <Link href={`/hr/onboarding/${emp.id}`} className="font-semibold text-foreground text-sm truncate block">
                         {emp.first_name} {emp.last_name}
                       </Link>
                       <p className="text-xs text-muted-foreground truncate">{emp.email}</p>

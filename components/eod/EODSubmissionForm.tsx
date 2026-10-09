@@ -273,133 +273,139 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
           <input type="hidden" name="report_date" value={todayDate} />
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-foreground">What did you accomplish today? *</label>
-            <textarea
-              name="tasks_accomplished"
-              required
-              rows={6}
-              value={tasksAccomplished}
-              onChange={(e) => setTasksAccomplished(e.target.value)}
-              className="flex w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
-              placeholder={"Write the tasks you completed Today\nenter one task per line"}
-            ></textarea>
-          </div>
-          <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-foreground">Pending Work / Blockers *</label>
-            <textarea
-              name="blockers"
-              rows={6}
-              value={blockers}
-              required
-              onChange={(e) => setBlockers(e.target.value)}
-              className="flex w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
-              placeholder='Any issues blocking your work? Write "None" if there are no blockers.'
-            ></textarea>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-foreground">Worked Hours <span className="text-error">*</span></label>
-              {(() => {
-                const totalMins = parseHHMM(workedHoursInput);
-                if (totalMins === null || totalMins === 0) return null;
-
-                if (totalMins < 240) { // < 4 hours
-                  return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">Unpaid Leave (&lt;4h)</span>;
-                } else if (totalMins < 480) { // < 8 hours
-                  return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">Half Day</span>;
-                } else {
-                  return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">Full Day</span>;
-                }
-              })()}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* LEFT COLUMN */}
+          <div className="flex flex-col gap-6">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-foreground">What did you accomplish today? *</label>
+              <textarea
+                name="tasks_accomplished"
+                required
+                rows={6}
+                value={tasksAccomplished}
+                onChange={(e) => setTasksAccomplished(e.target.value)}
+                className="w-full rounded-lg border border-border bg-surface px-3 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                placeholder={"Write the tasks you completed Today\nenter one task per line"}
+              ></textarea>
             </div>
-            <input
-              type="text"
-              inputMode="decimal"
-              placeholder="8.19"
-              value={workedHoursInput}
-              onChange={(e) => setWorkedHoursInput(e.target.value)}
-              className="flex w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
-            />
-            {workedHoursInput && validateHHMM(workedHoursInput) && (
-              <p className="text-xs text-rose-500">{validateHHMM(workedHoursInput)}</p>
-            )}
-            <input type="hidden" name="office_hours" value={(() => {
-              const totalMins = parseHHMM(workedHoursInput);
-              return totalMins !== null ? (totalMins / 60).toFixed(6) : '0';
-            })()} />
+            
+            <div className="space-y-1.5 flex-1 flex flex-col">
+              <label className="block text-sm font-medium text-foreground">Pending Work / Blockers *</label>
+              <textarea
+                name="blockers"
+                rows={3}
+                value={blockers}
+                required
+                onChange={(e) => setBlockers(e.target.value)}
+                className="flex-1 w-full rounded-lg border border-border bg-surface px-3 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                placeholder='Any issues blocking your work? Write "None" if there are no blockers.'
+              ></textarea>
+            </div>
           </div>
 
-          <Dropdown
-            label="Location"
-            buttonClassName="!w-full"
-            name="location"
-            required
-            value={location}
-            onChange={(val) => setLocation(val as 'Office' | 'Field' | 'Work From Home')}
-            options={[
-              { label: "Office", value: "Office" },
-              { label: "Work From Home", value: "Work From Home" }
-            ]}
-          />
-        </div>
-
-        {location === 'Field' && (
-          <div className="space-y-2 p-4 border border-dashed rounded-lg bg-surface relative">
-            <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-semibold text-foreground">
-                Field Photo <span className="text-error">*</span>
-              </label>
-              {file && (
-                <Button type="button" variant="ghost" size="sm" onClick={removePhoto} className="text-error hover:text-error hover:bg-error/10 h-8 px-2">
-                  <X className="w-4 h-4 mr-1" /> Remove
-                </Button>
-              )}
+          {/* RIGHT COLUMN */}
+          <div className="flex flex-col gap-6">
+            <div className="space-y-1.5">
+              <label className="block text-sm font-medium text-foreground">Tomorrow&apos;s Plan *</label>
+              <textarea
+                name="tomorrows_plan"
+                rows={6}
+                value={tomorrowsPlan}
+                required
+                onChange={(e) => setTomorrowsPlan(e.target.value)}
+                className="w-full rounded-lg border border-border bg-surface px-3 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
+                placeholder="What is your plan for tomorrow?"
+              ></textarea>
             </div>
 
-            {!file ? (
-              <div className="flex justify-center items-center w-full">
-                <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-border border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors">
-                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <ImagePlus className="w-8 h-8 mb-3 text-muted-foreground" />
-                    <p className="mb-1 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span> or drag and drop</p>
-                    <p className="text-xs text-muted-foreground">PNG, JPG up to 5MB</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-medium text-foreground">Worked Hours <span className="text-error">*</span></label>
+                  {(() => {
+                    const totalMins = parseHHMM(workedHoursInput);
+                    if (totalMins === null || totalMins === 0) return null;
+
+                    if (totalMins < 240) { // < 4 hours
+                      return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-destructive/10 text-destructive">Unpaid Leave (&lt;4h)</span>;
+                    } else if (totalMins < 480) { // < 8 hours
+                      return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">Half Day</span>;
+                    } else {
+                      return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">Full Day</span>;
+                    }
+                  })()}
+                </div>
+                <input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="8.19"
+                  value={workedHoursInput}
+                  onChange={(e) => setWorkedHoursInput(e.target.value)}
+                  className="flex w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+                />
+                {workedHoursInput && validateHHMM(workedHoursInput) && (
+                  <p className="text-xs text-rose-500">{validateHHMM(workedHoursInput)}</p>
+                )}
+                <input type="hidden" name="office_hours" value={(() => {
+                  const totalMins = parseHHMM(workedHoursInput);
+                  return totalMins !== null ? (totalMins / 60).toFixed(6) : '0';
+                })()} />
+              </div>
+
+              <div className="space-y-1.5">
+                <Dropdown
+                  label="Location *"
+                  buttonClassName="!w-full !h-10 !bg-surface"
+                  name="location"
+                  required
+                  value={location}
+                  onChange={(val) => setLocation(val as 'Office' | 'Field' | 'Work From Home')}
+                  options={[
+                    { label: "Office", value: "Office" },
+                    { label: "Work From Home", value: "Work From Home" }
+                  ]}
+                />
+              </div>
+            </div>
+
+            {location === 'Field' && (
+              <div className="space-y-2 p-4 border border-dashed rounded-lg bg-surface relative">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-semibold text-foreground">
+                    Field Photo <span className="text-error">*</span>
+                  </label>
+                  {file && (
+                    <Button type="button" variant="ghost" size="sm" onClick={removePhoto} className="text-error hover:text-error hover:bg-error/10 h-8 px-2">
+                      <X className="w-4 h-4 mr-1" /> Remove
+                    </Button>
+                  )}
+                </div>
+
+                {!file ? (
+                  <div className="flex justify-center items-center w-full">
+                    <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-border border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors">
+                      <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                        <ImagePlus className="w-8 h-8 mb-3 text-muted-foreground" />
+                        <p className="mb-1 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span> or drag and drop</p>
+                        <p className="text-xs text-muted-foreground">PNG, JPG up to 5MB</p>
+                      </div>
+                      <input id="dropzone-file" type="file" accept="image/*" onChange={handleFileChange} className="hidden" required={location === 'Field' && !existingPhotoUrl} />
+                    </label>
                   </div>
-                  <input id="dropzone-file" type="file" accept="image/*" onChange={handleFileChange} className="hidden" required={location === 'Field' && !existingPhotoUrl} />
-                </label>
-              </div>
-            ) : (
-              <div className="relative w-full h-48 rounded-lg overflow-hidden border">
-                {fileUrl && <Image src={fileUrl} alt="Preview" fill className="object-cover" />}
+                ) : (
+                  <div className="relative w-full h-48 rounded-lg overflow-hidden border">
+                    {fileUrl && <Image src={fileUrl} alt="Preview" fill className="object-cover" />}
+                  </div>
+                )}
               </div>
             )}
+
+            <Button type="submit" className="w-full mt-2" disabled={loading || fetching} isLoading={loading}>
+              {isUpdate ? 'Update EOD' : 'Submit EOD'}
+            </Button>
           </div>
-        )}
-
-
-
-        <div className="space-y-1.5">
-          <label className="block text-sm font-medium text-foreground">Tomorrow&apos;s Plan <span className="text-error ml-1">*</span></label>
-          <textarea
-            name="tomorrows_plan"
-            rows={6}
-            value={tomorrowsPlan}
-            required
-            onChange={(e) => setTomorrowsPlan(e.target.value)}
-            className="flex w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
-            placeholder="What is your plan for tomorrow?"
-          ></textarea>
         </div>
       </div>
-
-      <Button type="submit" className="w-full" disabled={loading || fetching}>
-        {loading ? (isUpdate ? 'Updating...' : 'Submitting...') : (isUpdate ? 'Update EOD' : 'Submit EOD')}
-      </Button>
     </form>
   );
 }

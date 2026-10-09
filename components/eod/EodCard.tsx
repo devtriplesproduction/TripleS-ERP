@@ -301,8 +301,8 @@ export function EodCard({
                       <Button variant="ghost" className="h-10 px-4 rounded-lg flex-1 sm:flex-none" onClick={() => setRejectMode(false)} disabled={isSubmitting}>
                         Cancel
                       </Button>
-                      <Button variant="destructive" className="h-10 px-4 rounded-lg flex-1 sm:flex-none" onClick={handleReject} disabled={isSubmitting || !rejectReason.trim()}>
-                        {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm Reject'}
+                      <Button variant="destructive" className="h-10 px-4 rounded-lg flex-1 sm:flex-none" onClick={handleReject} disabled={isSubmitting || !rejectReason.trim()} isLoading={isSubmitting}>
+                        Confirm Reject
                       </Button>
                     </div>
                   </div>
@@ -311,8 +311,8 @@ export function EodCard({
                     <Button variant="ghost" className="h-10 px-6 rounded-lg flex-1 sm:flex-none" onClick={cancelEditing} disabled={isSubmitting}>
                       Cancel
                     </Button>
-                    <Button className="h-10 px-6 rounded-lg flex-1 sm:flex-none shadow-sm bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleSave} disabled={isSubmitting || !isValid}>
-                      {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />} Save Update
+                    <Button className="h-10 px-6 rounded-lg flex-1 sm:flex-none shadow-sm bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleSave} disabled={isSubmitting || !isValid} isLoading={isSubmitting}>
+                      <Save className="w-4 h-4 mr-2" /> Save Update
                     </Button>
                   </div>
                 ) : (
@@ -325,8 +325,8 @@ export function EodCard({
                         <Button variant="outline" className="h-10 px-6 rounded-lg flex-1 sm:flex-none border-border hover:text-rose-500" onClick={handleReject} disabled={isSubmitting}>
                           Reject
                         </Button>
-                        <Button className="h-10 px-6 rounded-lg flex-1 sm:flex-none shadow-sm bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleApprove} disabled={isSubmitting}>
-                          {isSubmitting ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Approve
+                        <Button className="h-10 px-6 rounded-lg flex-1 sm:flex-none shadow-sm bg-primary text-primary-foreground hover:bg-primary/90" onClick={handleApprove} disabled={isSubmitting} isLoading={isSubmitting}>
+                          Approve
                         </Button>
                       </>
                     )}

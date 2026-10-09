@@ -621,7 +621,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
       />
 
       {/* Step Indicator */}
-      <div className="flex items-center justify-between shrink-0 mt-2">
+      <div className="flex items-center justify-between shrink-0 mt-8">
         {STEPS.map((s, i) => (
           <React.Fragment key={s.id}>
             <div className="flex items-center gap-3">
@@ -644,14 +644,14 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
         ))}
       </div>
 
-      <div className="flex-1 min-h-0 flex flex-col mt-3 overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col mt-6 overflow-hidden">
         {/* Left Column - Form */}
         <div className="flex-1 min-h-0 w-full flex flex-col">
 
           {/* Form Container */}
-          <div className="bg-card border border-border rounded-xl p-6 flex-1 min-h-0 flex flex-col overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             <form onSubmit={handleSubmit(onSubmit)} className="flex-1 min-h-0 flex flex-col overflow-hidden">
-              <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar space-y-5 mb-4">
+              <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar space-y-5 mb-6">
 
                 {/* Step 1: Personal */}
                 {step === 1 && (
@@ -685,17 +685,17 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
 
                         {/* Fields */}
                         <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <div className="space-y-1.5">
+                          <div className="flex flex-col gap-2">
                             <label className="text-sm font-medium text-secondary-foreground">First Name <span className="text-destructive">*</span></label>
                             <Input {...register("first_name")} placeholder="Enter first name" />
                           </div>
 
-                          <div className="space-y-1.5">
+                          <div className="flex flex-col gap-2">
                             <label className="text-sm font-medium text-secondary-foreground">Last Name <span className="text-destructive">*</span></label>
                             <Input {...register("last_name")} placeholder="Enter last name" />
                           </div>
 
-                          <div className="space-y-1.5">
+                          <div className="flex flex-col gap-2">
                             <label className="text-sm font-medium text-secondary-foreground">Date of Birth <span className="text-destructive">*</span></label>
                             <Controller name="dob" control={control} render={({ field }) => (
                               <DatePicker
@@ -708,7 +708,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                             )} />
                           </div>
 
-                          <div className="space-y-1.5">
+                          <div className="flex flex-col gap-2">
                             <label className="text-sm font-medium text-secondary-foreground">Gender <span className="text-destructive">*</span></label>
                             <Controller name="gender" control={control} render={({ field }) => (
                               <Select onValueChange={field.onChange} value={field.value || ""}>
@@ -722,7 +722,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                             )} />
                           </div>
 
-                          <div className="space-y-1.5">
+                          <div className="flex flex-col gap-2">
                             <label className="text-sm font-medium text-secondary-foreground">Personal Email</label>
                             <div className="relative">
                               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -730,7 +730,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                             </div>
                           </div>
 
-                          <div className="space-y-1.5">
+                          <div className="flex flex-col gap-2">
                             <label className="text-sm font-medium text-secondary-foreground">Phone Number <span className="text-destructive">*</span></label>
                             <div className="relative">
                               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -756,12 +756,12 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                           </div>
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div className="flex flex-col gap-2">
                           <label className="text-sm font-medium text-secondary-foreground">City</label>
                           <Input {...register("city")} placeholder="Pune" />
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div className="flex flex-col gap-2">
                           <label className="text-sm font-medium text-secondary-foreground">PIN Code</label>
                           <Input {...register("pincode")} placeholder="411057" />
                         </div>
@@ -775,17 +775,17 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div className="space-y-1.5">
+                        <div className="flex flex-col gap-2">
                           <label className="text-sm font-medium text-secondary-foreground">Contact Name</label>
                           <Input {...register("emergency_name")} placeholder="Enter contact name" />
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div className="flex flex-col gap-2">
                           <label className="text-sm font-medium text-secondary-foreground">Relation</label>
                           <Input {...register("emergency_relationship")} placeholder="e.g. Father, Spouse" />
                         </div>
 
-                        <div className="space-y-1.5">
+                        <div className="flex flex-col gap-2">
                           <label className="text-sm font-medium text-secondary-foreground">Phone Number</label>
                           <Input {...register("emergency_phone")} placeholder="+91 98765 43210" />
                         </div>
@@ -1002,7 +1002,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                             <p className="text-xs text-muted-foreground mb-6 text-center leading-tight">Employee account created<br />successfully</p>
 
                             <div className="w-full space-y-4 text-left">
-                              <div className="space-y-1.5">
+                              <div className="flex flex-col gap-2">
                                 <label className="text-sm font-medium text-secondary-foreground">Work Email</label>
                                 <div className="relative group">
                                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
@@ -1010,7 +1010,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                                 </div>
                               </div>
 
-                              <div className="space-y-1.5">
+                              <div className="flex flex-col gap-2">
                                 <label className="text-sm font-medium text-secondary-foreground">Password</label>
                                 <div className="relative group">
                                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
@@ -1024,7 +1024,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                                 </div>
                               </div>
 
-                              <div className="space-y-1.5">
+                              <div className="flex flex-col gap-2">
                                 <label className="text-sm font-medium text-secondary-foreground">Employee ID</label>
                                 <div className="relative group">
                                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
@@ -1169,7 +1169,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
               </div>
 
               {/* Navigation Buttons */}
-              <div className="mt-auto flex justify-end items-center pt-3 border-t border-border shrink-0">
+              <div className="mt-auto flex justify-end items-center pt-6 border-t border-border shrink-0">
                 <div className="flex gap-3">
                   {step > 1 && !generatedCredentials && <Button key="back-btn" type="button" variant="outline" onClick={prevStep} className="rounded-md bg-transparent border-border h-9 w-28 text-foreground text-xs">Back</Button>}
                   {step === 4 && (
@@ -1207,3 +1207,4 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
     </div>
   )
 }
+

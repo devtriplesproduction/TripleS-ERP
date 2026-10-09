@@ -18,7 +18,7 @@ import { KanbanBoard } from '@/components/tasks/KanbanBoard'
 import { ProjectListTab } from './ProjectListTab'
 import { ProjectFilesTab } from './ProjectFilesTab'
 import { ProjectModal } from '../ProjectModal'
-import { TaskModal } from '@/components/tasks/TaskModal'
+import { TaskFormModal } from '@/components/tasks/TaskFormModal'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { LayoutGrid, CheckSquare, Users, Calendar, Activity, ListTodo, FileText } from 'lucide-react'
 
@@ -184,7 +184,7 @@ export function ProjectDetailsView({
 
       {/* Add Task Modal */}
       {isTaskModalOpen && (
-        <TaskModal
+        <TaskFormModal
           isOpen={isTaskModalOpen}
           onClose={() => setIsTaskModalOpen(false)}
           onSuccess={handleSuccess}

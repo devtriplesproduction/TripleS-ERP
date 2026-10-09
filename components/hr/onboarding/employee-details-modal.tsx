@@ -450,7 +450,7 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
           <Zap className="w-4 h-4 text-foreground" />
           <h4 className="font-bold text-sm text-foreground">Quick Actions</h4>
         </div>
-        <div className="space-y-1.5">
+        <div className="flex flex-col gap-2">
           {isEditingPersonal ? (
             <button 
               className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-sm bg-foreground text-background hover:bg-foreground/90 transition-colors" 
@@ -888,3 +888,4 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
     </div>
   )
 }
+
