@@ -64,7 +64,7 @@ export function AttendanceList({ basePath = '/hr/attendance' }: { basePath?: str
         actions={
           <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <Select value={month.toString()} onValueChange={v => setMonth(parseInt(v || "1"))}>
-              <SelectTrigger className="flex-1 sm:w-[140px] min-h-[44px] sm:min-h-9">
+              <SelectTrigger className="flex-1 sm:w-[140px] filter-control">
                 <Calendar className="w-4 h-4 mr-2 shrink-0" />
                 <span className="truncate flex-1 text-left">{new Date(2000, month - 1, 1).toLocaleString('default', { month: 'long' })}</span>
               </SelectTrigger>
@@ -77,7 +77,7 @@ export function AttendanceList({ basePath = '/hr/attendance' }: { basePath?: str
               </SelectContent>
             </Select>
             <Select value={year.toString()} onValueChange={v => setYear(parseInt(v || "2000"))}>
-              <SelectTrigger className="w-[100px] min-h-[44px] sm:min-h-9">
+              <SelectTrigger className="w-[100px] filter-control">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -98,11 +98,11 @@ export function AttendanceList({ basePath = '/hr/attendance' }: { basePath?: str
               placeholder="Search by name or ID..." 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
-              className="pl-9 min-h-[44px] md:min-h-9"
+              className="pl-9 filter-control"
             />
           </div>
           <Select value={department} onValueChange={v => setDepartment(v || "All")}>
-            <SelectTrigger className="w-full md:w-[200px] min-h-[44px] md:min-h-9">
+            <SelectTrigger className="w-full md:w-[200px] filter-control">
               <SelectValue placeholder="Department" />
             </SelectTrigger>
             <SelectContent>

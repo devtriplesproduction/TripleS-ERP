@@ -165,7 +165,7 @@ export function ReviewDashboard({
 
 
 
-  const filterInputStyles = "!h-11 w-full !bg-card !border !border-border !rounded-xl !text-sm transition-all focus:!ring-2 focus:!ring-orange-500/20 focus:!border-orange-400 !text-foreground !shadow-sm";
+  const filterInputStyles = "!h-11 filter-control w-full !bg-card !border !border-border !rounded-xl !text-sm transition-all focus:!ring-2 focus:!ring-orange-500/20 focus:!border-orange-400 !text-foreground !shadow-sm";
 
   return (
     <div className="space-y-6 w-full">

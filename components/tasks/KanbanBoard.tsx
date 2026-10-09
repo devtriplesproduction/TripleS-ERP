@@ -140,7 +140,7 @@ export function KanbanBoard({
             placeholder="Search tasks by title, ID, or keyword..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-background border-border h-10"
+            className="pl-9 bg-background border-border filter-control"
           />
         </div>
 
@@ -152,7 +152,7 @@ export function KanbanBoard({
               { value: 'ALL', label: 'All Projects' },
               ...projects.map((p) => ({ value: p.id, label: p.name })),
             ]}
-            buttonClassName="bg-background border-border h-10 text-xs min-w-[140px]"
+            buttonClassName="bg-background border-border filter-control text-xs min-w-[140px]"
           />
           <Dropdown
             value={selectedAssignee}
@@ -161,7 +161,7 @@ export function KanbanBoard({
               { value: 'ALL', label: 'All Assignees' },
               ...employees.map((e) => ({ value: e.id, label: e.name })),
             ]}
-            buttonClassName="bg-background border-border h-10 text-xs min-w-[140px]"
+            buttonClassName="bg-background border-border filter-control text-xs min-w-[140px]"
           />
           <Dropdown
             value={selectedPriority}
@@ -173,7 +173,7 @@ export function KanbanBoard({
               { value: 'HIGH', label: 'High' },
               { value: 'URGENT', label: 'Urgent' },
             ]}
-            buttonClassName="bg-background border-border h-10 text-xs min-w-[120px]"
+            buttonClassName="bg-background border-border filter-control text-xs min-w-[120px]"
           />
           <Dropdown
             value={selectedStatus}
@@ -186,13 +186,13 @@ export function KanbanBoard({
               { value: 'DONE', label: 'Done' },
               { value: 'ON_HOLD', label: 'On Hold' },
             ]}
-            buttonClassName="bg-background border-border h-10 text-xs min-w-[120px]"
+            buttonClassName="bg-background border-border filter-control text-xs min-w-[120px]"
           />
 
-          <div className="flex items-center bg-background border border-border rounded-md p-1 shrink-0">
+          <div className="flex items-center bg-background border border-border rounded-md shrink-0 filter-toggle-container">
             <button
               onClick={() => setViewMode('board')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-sm transition-colors ${
+              className={`px-3 text-xs font-medium rounded-sm transition-colors filter-toggle-btn ${
                 viewMode === 'board' ? 'bg-secondary text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -200,7 +200,7 @@ export function KanbanBoard({
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-sm transition-colors ${
+              className={`px-3 text-xs font-medium rounded-sm transition-colors filter-toggle-btn ${
                 viewMode === 'list' ? 'bg-secondary text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
               }`}
             >

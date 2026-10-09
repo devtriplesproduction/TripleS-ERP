@@ -318,20 +318,20 @@ export function TaskFormModal({
           </div>
           </div>
 
-          <DialogFooter className="flex flex-col sm:flex-row justify-center items-center gap-4 px-5 sm:px-6 py-4 border-t border-border/50 bg-card shrink-0">
+          <DialogFooter className="flex flex-col sm:flex-row sm:justify-center justify-center items-center gap-4 px-5 sm:px-6 py-4 border-t border-border/50 bg-card shrink-0">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={loading}
-              className="w-full sm:w-[128px] h-[44px] bg-transparent text-foreground border-border hover:bg-secondary/50 rounded-full"
+              className="w-full sm:w-[128px] h-[44px] bg-transparent text-foreground border-border hover:bg-secondary/50 rounded-md"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="w-full sm:w-[128px] h-[44px] bg-foreground text-background hover:bg-foreground/90 rounded-full font-medium"
+              className="w-full sm:w-[128px] h-[44px] bg-foreground text-background hover:bg-foreground/90 rounded-md font-medium"
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isEditing ? 'Save Changes' : 'Create Task'}

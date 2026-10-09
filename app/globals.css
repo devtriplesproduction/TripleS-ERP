@@ -107,6 +107,10 @@
   --navbar: #FFFFFF;
   --caption: #71717A;
   --disabled: #A1A1AA;
+
+  --scrollbar-track: #F4F4F5;
+  --scrollbar-thumb: #A1A1AA;
+  --scrollbar-thumb-hover: #71717A;
 }
 
 .dark {
@@ -155,6 +159,10 @@
   --navbar: #0A0A0A;
   --caption: #71717A;
   --disabled: #52525B;
+
+  --scrollbar-track: #151516;
+  --scrollbar-thumb: #3F3F46;
+  --scrollbar-thumb-hover: #52525B;
   
   color-scheme: dark;
 }
@@ -163,13 +171,26 @@
   * {
     @apply border-border outline-ring/50;
     -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+    scrollbar-width: thin; /* Firefox */
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   }
   *::-webkit-scrollbar {
-    display: none; /* Chrome, Safari and Opera */
+    width: 6px;
+    height: 6px;
+  }
+  *::-webkit-scrollbar-track {
+    background: var(--scrollbar-track);
+    border-radius: 4px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 4px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground overflow-x-hidden;
   }
   html {
     @apply font-sans;
@@ -193,4 +214,26 @@
     background-color: #0F0F10 !important;
     color: #FFFFFF !important;
   }
+}
+
+/* Shared Reusable Filter Control Styles */
+@utility filter-control {
+  height: 44px !important;
+  min-height: 44px !important;
+  box-sizing: border-box !important;
+}
+
+@utility filter-toggle-container {
+  height: 44px !important;
+  box-sizing: border-box !important;
+  display: flex !important;
+  align-items: center !important;
+  padding: 4px !important;
+}
+
+@utility filter-toggle-btn {
+  height: 100% !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
 }

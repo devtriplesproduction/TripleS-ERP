@@ -84,11 +84,11 @@ export function EmployeeAnnouncementsPage({ announcements: initialAnnouncements 
               placeholder="Search announcements..." 
               value={search} 
               onChange={(e) => setSearch(e.target.value)} 
-              className="pl-9 bg-background min-h-[44px] sm:min-h-10"
+              className="pl-9 bg-background filter-control"
             />
           </div>
           <Select value={filter} onValueChange={(v) => setFilter(v ?? 'all')}>
-            <SelectTrigger className="w-full sm:w-[160px] bg-background min-h-[44px] sm:min-h-10 capitalize"><SelectValue placeholder="Filter" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[160px] bg-background filter-control capitalize"><SelectValue placeholder="Filter" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All</SelectItem>
               <SelectItem value="urgent">Urgent</SelectItem>

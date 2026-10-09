@@ -514,7 +514,6 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
         ["Designation", vals.designation],
         ["Employment Type", vals.employment_type],
         ["Status", vals.employment_status],
-        ["Role", vals.role],
         ...(vals.employment_type !== 'Intern' ? [
         ] : []),
         ["Joining Date", vals.joining_date ? format(new Date(vals.joining_date as string), "dd MMM yyyy") : "-"],
@@ -656,7 +655,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                 {/* Step 1: Personal */}
                 {step === 1 && (
                   <>
-                    <div className="space-y-2">
+                    <div className="flex flex-col gap-2">
                       {/* Section Header */}
                       <div className="flex items-center gap-2 mb-6">
                         <User className="w-4 h-4 text-foreground" />
@@ -684,7 +683,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         </div>
 
                         {/* Fields */}
-                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-4">
                           <div className="flex flex-col gap-2">
                             <label className="text-sm font-medium text-secondary-foreground">First Name <span className="text-destructive">*</span></label>
                             <Input {...register("first_name")} placeholder="Enter first name" />
@@ -747,7 +746,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         <h3 className="text-base font-bold text-foreground">Address Information</h3>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-x-2 gap-y-4">
                         <div className="space-y-1.5 sm:col-span-2">
                           <label className="text-sm font-medium text-secondary-foreground">Address Line 1</label>
                           <div className="relative">
@@ -774,7 +773,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         <h3 className="text-base font-bold text-foreground">Emergency Contact</h3>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-2 gap-y-4">
                         <div className="flex flex-col gap-2">
                           <label className="text-sm font-medium text-secondary-foreground">Contact Name</label>
                           <Input {...register("emergency_name")} placeholder="Enter contact name" />
@@ -804,8 +803,8 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         <h3 className="text-base font-bold text-foreground">Professional Information</h3>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      <div className="space-y-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-4">
+                      <div className="flex flex-col gap-2">
                         <label className="text-sm font-medium text-secondary-foreground">Department <span className="text-destructive">*</span></label>
                         <Controller name="department" control={control} render={({ field }) => (
                           <Select onValueChange={(v) => { field.onChange(v); setValue("division", ""); setValue("designation", ""); }} value={field.value}>
@@ -815,7 +814,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         )} />
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="flex flex-col gap-2">
                         <label className="text-sm font-medium text-secondary-foreground">Division / Team <span className="text-destructive">*</span></label>
                         <Controller name="division" control={control} render={({ field }) => (
                           <Select onValueChange={(v) => { field.onChange(v); setValue("designation", ""); }} value={field.value} disabled={!watchedDepartment}>
@@ -827,7 +826,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         )} />
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="flex flex-col gap-2">
                         <label className="text-sm font-medium text-secondary-foreground">Designation <span className="text-destructive">*</span></label>
                         <Controller name="designation" control={control} render={({ field }) => (
                           <Select onValueChange={field.onChange} value={field.value} disabled={!watchedDivision}>
@@ -839,7 +838,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         )} />
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="flex flex-col gap-2">
                         <label className="text-sm font-medium text-secondary-foreground">Employment Type <span className="text-destructive">*</span></label>
                         <Controller name="employment_type" control={control} render={({ field }) => (
                           <Select onValueChange={(val) => {
@@ -866,7 +865,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         )} />
                       </div>
 
-                      <div className="space-y-2">
+                      <div className="flex flex-col gap-2">
                         <label className="text-sm font-medium text-secondary-foreground">Joining Date <span className="text-destructive">*</span></label>
                         <Controller name="joining_date" control={control} render={({ field }) => (
                           <DatePicker
@@ -880,22 +879,12 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
 
 
 
-                      <div className="space-y-2">
-                        <label className="text-sm font-medium text-secondary-foreground">Role Assignment</label>
-                        <Controller name="role" control={control} render={({ field }) => (
-                          <Select onValueChange={field.onChange} value={field.value || "Employee"}>
-                            <SelectTrigger className="w-full"><SelectValue placeholder="Select Role" /></SelectTrigger>
-                            <SelectContent>
-                              {ROLES.map(r => <SelectItem key={r.id} value={r.id}>{r.name}</SelectItem>)}
-                            </SelectContent>
-                          </Select>
-                        )} />
-                      </div>
+                      
 
 
 
                       {watchedEmploymentType !== 'Intern' && (
-                        <div className="space-y-2">
+                        <div className="flex flex-col gap-2">
                           <label className="text-sm font-medium text-secondary-foreground">Experience Type <span className="text-destructive">*</span></label>
                           <Controller name="experience_type" control={control} render={({ field }) => (
                             <Select onValueChange={(val) => {
@@ -919,12 +908,12 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       )}
 
                       {watchedEmploymentType === 'Intern' ? (
-                        <div className="space-y-2">
+                        <div className="flex flex-col gap-2">
                           <label className="text-sm font-medium text-secondary-foreground">Stipend (INR/Month) <span className="text-destructive">*</span></label>
                           <Input type="number" {...register("stipend")} placeholder="₹ 15000" />
                         </div>
                       ) : (
-                        <div className="space-y-2">
+                        <div className="flex flex-col gap-2">
                           <label className="text-sm font-medium text-secondary-foreground">Annual CTC (INR) <span className="text-destructive">*</span></label>
                           <Input type="number" {...register("salary", {
                             onChange: (e) => {
@@ -941,11 +930,11 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
 
                       {watchedExperienceType === 'Experienced' && (
                         <div className="space-y-2 col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-5 p-4 rounded-md bg-muted border border-border">
-                          <div className="space-y-2">
+                          <div className="flex flex-col gap-2">
                             <label className="text-sm font-medium text-secondary-foreground">Years <span className="text-destructive">*</span></label>
                             <Input type="number" min="0" max="50" {...register("experience_years")} placeholder="e.g. 5" className="bg-background" />
                           </div>
-                          <div className="space-y-2">
+                          <div className="flex flex-col gap-2">
                             <label className="text-sm font-medium text-secondary-foreground">Months <span className="text-destructive">*</span></label>
                             <Input type="number" min="0" max="11" {...register("experience_months")} placeholder="e.g. 2" className="bg-background" />
                           </div>
@@ -969,7 +958,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       <p className="text-sm font-medium text-foreground">Click to upload documents</p>
                       <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, PNG, JPG up to 10MB</p>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-4">
                       {uploadedFiles.map(f => (
                         <EditableFileItem 
                           key={f.id} 
@@ -1115,7 +1104,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Division</label><div className="text-sm font-medium break-words">{getValues("division") || "-"}</div></div>
                         <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Designation</label><div className="text-sm font-medium break-words">{getValues("designation") || "-"}</div></div>
                         <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Employment Type</label><div className="text-sm font-medium break-words">{getValues("employment_type") || "-"}</div></div>
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Role</label><div className="text-sm font-medium break-words">{getValues("role") || "-"}</div></div>
+                        
 
                         <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Joining Date</label><div className="text-sm font-medium break-words">{getValues("joining_date") ? format(new Date(getValues("joining_date") as string), "dd MMM yyyy") : "-"}</div></div>
                         {getValues("employment_type") !== 'Intern' && (
@@ -1169,7 +1158,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
               </div>
 
               {/* Navigation Buttons */}
-              <div className="mt-auto flex justify-end items-center pt-6 border-t border-border shrink-0">
+              <div className="mt-auto flex justify-center items-center pt-6 border-t border-border shrink-0">
                 <div className="flex gap-3">
                   {step > 1 && !generatedCredentials && <Button key="back-btn" type="button" variant="outline" onClick={prevStep} className="rounded-md bg-transparent border-border h-9 w-28 text-foreground text-xs">Back</Button>}
                   {step === 4 && (
@@ -1207,4 +1196,5 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
     </div>
   )
 }
+
 

@@ -58,7 +58,7 @@ export function ProjectListTab({ tasks }: ProjectListTabProps) {
               placeholder="Search tasks..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 h-9 text-xs bg-card border-border shadow-xs"
+              className="pl-9 filter-control text-xs bg-card border-border shadow-xs"
             />
           </div>
           <div className="flex items-center gap-2">
@@ -73,7 +73,7 @@ export function ProjectListTab({ tasks }: ProjectListTabProps) {
                 { value: 'DONE', label: 'Done' },
                 { value: 'ON_HOLD', label: 'On Hold' },
               ]}
-              buttonClassName="h-9 text-xs border-border bg-card w-[130px] shadow-xs"
+              buttonClassName="filter-control text-xs border-border bg-card w-[130px] shadow-xs"
             />
             <Dropdown
               value={priorityFilter}
@@ -85,7 +85,7 @@ export function ProjectListTab({ tasks }: ProjectListTabProps) {
                 { value: 'HIGH', label: 'High' },
                 { value: 'URGENT', label: 'Urgent' },
               ]}
-              buttonClassName="h-9 text-xs border-border bg-card w-[130px] shadow-xs"
+              buttonClassName="filter-control text-xs border-border bg-card w-[130px] shadow-xs"
             />
           </div>
         </div>

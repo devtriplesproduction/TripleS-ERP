@@ -119,7 +119,7 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <Select value={statusFilter} onValueChange={(val) => val && setStatusFilter(val)}>
-              <SelectTrigger className="h-10 border-border bg-transparent min-w-[130px] sm:min-w-[140px] text-foreground text-xs sm:text-sm">
+              <SelectTrigger className="filter-control border-border bg-transparent min-w-[130px] sm:min-w-[140px] text-foreground text-xs sm:text-sm">
                 <SelectValue placeholder="All Statuses" />
               </SelectTrigger>
               <SelectContent>
@@ -132,17 +132,17 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
             </Select>
 
             {canApprove && (
-              <div className="flex p-1 space-x-1 bg-background rounded-lg border border-border shrink-0">
+              <div className="flex bg-background rounded-lg border border-border shrink-0 filter-toggle-container">
                 {!isSuperAdmin && (
                   <button
-                    className={`py-1.5 px-3 sm:px-4 text-xs sm:text-sm font-medium rounded-md transition-all ${activeTab === 'mine' ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                    className={`px-3 sm:px-4 text-xs sm:text-sm font-medium rounded-md transition-all filter-toggle-btn ${activeTab === 'mine' ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                     onClick={() => setActiveTab('mine')}
                   >
                     My Leaves
                   </button>
                 )}
                 <button
-                  className={`py-1.5 px-3 sm:px-4 text-xs sm:text-sm font-medium rounded-md transition-all flex items-center gap-1.5 sm:gap-2 ${activeTab === 'approve' ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                  className={`px-3 sm:px-4 text-xs sm:text-sm font-medium rounded-md transition-all flex items-center gap-1.5 sm:gap-2 filter-toggle-btn ${activeTab === 'approve' ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
                   onClick={() => setActiveTab('approve')}
                 >
                   Approvals
@@ -158,7 +158,7 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
 
           <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
             {!isSuperAdmin && activeTab === 'mine' && (
-              <div className="bg-transparent text-muted-foreground border border-border px-3 sm:px-4 h-10 flex items-center rounded-lg text-xs sm:text-sm shrink-0 gap-2">
+              <div className="bg-transparent text-muted-foreground border border-border px-3 sm:px-4 flex items-center rounded-lg text-xs sm:text-sm shrink-0 gap-2 filter-control">
                 <Clock className="w-4 h-4 shrink-0" />
                 <span>Comp-Off: <span className="font-medium text-foreground">{formatCompOffBalance(compOffBalance * 60)}</span></span>
               </div>
@@ -166,7 +166,7 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
 
             {activeTab === 'mine' && !isSuperAdmin && (
               <Button 
-                className="h-10 w-full sm:w-auto rounded-lg bg-foreground text-background hover:bg-foreground/90 font-medium gap-2 shrink-0 text-xs sm:text-sm"
+                className="w-full sm:w-auto rounded-lg bg-foreground text-background hover:bg-foreground/90 font-medium gap-2 shrink-0 text-xs sm:text-sm filter-control"
                 onClick={() => setShowForm(true)}
               >
                 <Plus className="w-4 h-4" /> Apply Leave / WFH

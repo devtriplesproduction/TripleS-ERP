@@ -249,7 +249,7 @@ export function AnnouncementsClientPage({ announcements: initialAnnouncements, d
           subtitle="Create and manage important company updates."
           icon={Megaphone}
           actions={
-            <Button onClick={() => { resetForm(); setIsOpen(true) }} className="min-h-[44px] sm:min-h-9 w-full sm:w-auto">
+            <Button onClick={() => { resetForm(); setIsOpen(true) }} className="filter-control w-full sm:w-auto">
               <Plus className="mr-2 h-4 w-4" /> New Announcement
             </Button>
           }
@@ -282,11 +282,11 @@ export function AnnouncementsClientPage({ announcements: initialAnnouncements, d
               placeholder="Search announcements..." 
               value={search} 
               onChange={(e) => setSearch(e.target.value)} 
-              className="pl-9 bg-background min-h-[44px] sm:min-h-10"
+              className="pl-9 bg-background filter-control"
             />
           </div>
           <Select value={priorityFilter} onValueChange={(v) => setPriorityFilter(v ?? 'all')}>
-            <SelectTrigger className="w-full sm:w-[140px] bg-background min-h-[44px] sm:min-h-10 capitalize"><SelectValue placeholder="Priority" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[140px] bg-background filter-control capitalize"><SelectValue placeholder="Priority" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Priorities</SelectItem>
               <SelectItem value="urgent">Urgent</SelectItem>
@@ -296,7 +296,7 @@ export function AnnouncementsClientPage({ announcements: initialAnnouncements, d
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v ?? 'all')}>
-            <SelectTrigger className="w-full sm:w-[140px] bg-background min-h-[44px] sm:min-h-10 capitalize"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectTrigger className="w-full sm:w-[140px] bg-background filter-control capitalize"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="active">Active</SelectItem>

@@ -82,14 +82,14 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input 
             placeholder="Search by name, email, department..." 
-            className="w-full bg-input/50 border-border pl-9 h-10 text-sm"
+            className="w-full bg-input/50 border-border pl-9 filter-control text-sm"
             value={searchQuery}
             onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
           />
         </div>
         
         <Select value={departmentFilter} onValueChange={(val) => { setDepartmentFilter(val ?? ""); setCurrentPage(1); }}>
-          <SelectTrigger className="w-full h-10 bg-input/50 border-border text-sm shrink-0">
+          <SelectTrigger className="w-full filter-control bg-input/50 border-border text-sm shrink-0">
             <SelectValue placeholder="All Departments" />
           </SelectTrigger>
           <SelectContent>
@@ -100,7 +100,7 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
         </Select>
 
         <Select value={jobTitleFilter} onValueChange={(val) => { setJobTitleFilter(val ?? ""); setCurrentPage(1); }}>
-          <SelectTrigger className="w-full h-10 bg-input/50 border-border text-sm shrink-0">
+          <SelectTrigger className="w-full filter-control bg-input/50 border-border text-sm shrink-0">
             <SelectValue placeholder="All Job Titles" />
           </SelectTrigger>
           <SelectContent>
@@ -117,13 +117,13 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
             placeholder="Joining Date"
             iconLeft={true}
             showChevron={true}
-            className="w-full h-10 bg-input/50 border-border text-sm shrink-0"
+            className="w-full filter-control bg-input/50 border-border text-sm shrink-0"
           />
           </div>
 
           <Button 
             variant="outline" 
-            className="w-full h-10 text-sm shrink-0 bg-secondary hover:bg-accent border-border text-muted-foreground hover:text-foreground"
+            className="w-full filter-control text-sm shrink-0 bg-secondary hover:bg-accent border-border text-muted-foreground hover:text-foreground"
             onClick={() => {
               setSearchQuery('')
               setDepartmentFilter('')

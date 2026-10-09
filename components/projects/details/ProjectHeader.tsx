@@ -40,8 +40,10 @@ export function ProjectHeader({
         return 'border-border text-muted-foreground'
       case 'CANCELLED':
         return 'bg-destructive/10 text-destructive border-destructive/30'
+      case 'PLANNED':
+        return 'bg-secondary text-secondary-foreground border border-border'
       default:
-        return 'border-border text-muted-foreground'
+        return 'bg-secondary text-secondary-foreground border border-border'
     }
   }
 
@@ -60,7 +62,6 @@ export function ProjectHeader({
 
   return (
     <div className="relative overflow-hidden space-y-5 rounded-2xl border border-border/40 bg-card p-6 shadow-sm">
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-blue-500 to-emerald-500 opacity-80" />
       <div className="absolute inset-0 bg-gradient-to-b from-secondary/10 to-transparent pointer-events-none" />
       
       <div className="relative z-10">
@@ -98,14 +99,14 @@ export function ProjectHeader({
 
               {/* Status */}
               <Badge className={`px-2.5 py-0.5 text-xs font-semibold rounded-md shadow-xs ${getStatusVariant(project.status)}`}>
-                {project.status.replace('_', ' ')}
+                {project.status.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}
               </Badge>
 
               <div className="w-px h-4 bg-border hidden sm:block" />
 
               {/* Priority */}
               <Badge variant="outline" className={`px-2.5 py-0.5 text-xs bg-background shadow-xs ${getPriorityVariant(project.priority)}`}>
-                {project.priority}
+                {project.priority.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ')}
               </Badge>
 
               <div className="w-px h-4 bg-border hidden sm:block" />

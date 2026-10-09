@@ -19,7 +19,7 @@ export function AddEmployeeModal() {
         <Plus className="mr-2 h-4 w-4" /> Onboard Employee
       </DialogTrigger>
       <DialogContent showCloseButton={false} className="w-[calc(100vw-1rem)] sm:max-w-[90vw] lg:max-w-[1000px] h-[92vh] max-h-[calc(100dvh-1rem)] overflow-hidden p-0 border-border bg-background">
-        <div className="h-full flex flex-col overflow-hidden p-3 sm:p-6 xl:p-8">
+        <div className="h-full flex flex-col overflow-hidden p-4 sm:p-5">
           <OnboardWizard onClose={() => setOpen(false)} />
         </div>
       </DialogContent>

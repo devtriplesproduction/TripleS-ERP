@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { Project, ProjectDashboardStats, Client } from '@/types/project-management'
 import { AssignableEmployee } from '@/lib/actions/team'
 import { ProjectCard } from './ProjectCard'
-import { ProjectStatsOverview } from './ProjectDashboardStats'
 import { ProjectModal } from './ProjectModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -76,8 +75,6 @@ export function ProjectGrid({
         }
       />
 
-      {/* Project Metrics Overview */}
-      <ProjectStatsOverview stats={stats} />
 
       {/* Filter and Search Bar */}
       <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
@@ -87,7 +84,7 @@ export function ProjectGrid({
             placeholder="Search projects by name, client, or ID..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-card border-border h-11"
+            className="pl-9 bg-card border-border filter-control"
           />
         </div>
 
@@ -104,7 +101,7 @@ export function ProjectGrid({
                 { value: 'COMPLETED', label: 'Completed' },
                 { value: 'CANCELLED', label: 'Cancelled' },
               ]}
-              buttonClassName="bg-card border-border h-11 text-xs"
+              buttonClassName="bg-card border-border filter-control text-xs"
               className="w-full"
             />
           </div>
@@ -117,7 +114,7 @@ export function ProjectGrid({
                 { value: 'ALL', label: 'All Clients' },
                 ...clients.map(c => ({ value: c.id, label: c.name }))
               ]}
-              buttonClassName="bg-card border-border h-11 text-xs"
+              buttonClassName="bg-card border-border filter-control text-xs"
               className="w-full"
             />
           </div>
@@ -133,16 +130,16 @@ export function ProjectGrid({
                 { value: 'HIGH', label: 'High' },
                 { value: 'URGENT', label: 'Urgent' },
               ]}
-              buttonClassName="bg-card border-border h-11 text-xs"
+              buttonClassName="bg-card border-border filter-control text-xs"
               className="w-full"
             />
           </div>
 
           {/* Grid / List Toggle */}
-          <div className="flex bg-card border border-border p-1 rounded-md shrink-0">
+          <div className="flex bg-card border border-border rounded-md shrink-0 filter-toggle-container">
             <button
               onClick={() => setViewMode('GRID')}
-              className={`px-4 py-1.5 text-xs font-medium rounded-sm transition-colors ${
+              className={`px-4 text-xs font-medium rounded-sm transition-colors filter-toggle-btn ${
                 viewMode === 'GRID' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
@@ -150,7 +147,7 @@ export function ProjectGrid({
             </button>
             <button
               onClick={() => setViewMode('LIST')}
-              className={`px-4 py-1.5 text-xs font-medium rounded-sm transition-colors ${
+              className={`px-4 text-xs font-medium rounded-sm transition-colors filter-toggle-btn ${
                 viewMode === 'LIST' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
               }`}
             >

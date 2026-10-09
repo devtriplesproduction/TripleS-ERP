@@ -44,18 +44,19 @@ export function EODReviewTable({ eods }: { eods: (EODReport & { profiles: { firs
   }
 
   return (
-    <div className="bg-card text-card-foreground border-border rounded-lg border shadow-sm overflow-hidden">
-      <table className="min-w-full divide-y divide-gray-200">
-        <thead className="bg-gray-50">
-          <tr>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hours</th>
-            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
-          </tr>
-        </thead>
-        <tbody className="bg-card text-card-foreground border-border divide-y divide-gray-200">
+    <div className="bg-card text-card-foreground border-border rounded-lg border shadow-sm overflow-hidden flex flex-col">
+      <div className="overflow-auto custom-scrollbar">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50 sticky top-0 z-10 shadow-sm">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hours</th>
+              <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+            </tr>
+          </thead>
+          <tbody className="bg-card text-card-foreground border-border divide-y divide-gray-200">
           {eods.map((eod) => (
             <tr key={eod.id}>
               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
@@ -90,6 +91,7 @@ export function EODReviewTable({ eods }: { eods: (EODReport & { profiles: { firs
           ))}
         </tbody>
       </table>
+      </div>
       {PromptComponent}
     </div>
   );
