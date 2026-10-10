@@ -122,7 +122,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
       />
 
       {/* Main Grid */}
-      <div className="flex flex-col lg:flex-row gap-6">
+      <div className="flex flex-col lg:flex-row gap-3">
         
         {/* Left Area - Calendar */}
         <div className="flex-1">
@@ -130,7 +130,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
             {/* Weekday Headers */}
             <div className="grid grid-cols-7 border-b border-border">
               {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(day => (
-                <div key={day} className="py-4 text-center text-[12px] font-medium text-muted-foreground uppercase tracking-wider">
+                <div key={day} className="py-2.5 text-center text-[12px] font-medium text-muted-foreground uppercase tracking-wider">
                   {day}
                 </div>
               ))}
@@ -140,7 +140,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
             <div className="grid grid-cols-7">
               {calendarDays.map((dayNum, i) => {
                 if (!dayNum) {
-                  return <div key={`empty-${i}`} className="min-h-[120px] border-b border-r border-border/50 bg-muted/20" />
+                  return <div key={`empty-${i}`} className="min-h-[90px] border-b border-r border-border/50 bg-muted/20" />
                 }
                 
                 const dStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`
@@ -152,10 +152,10 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
                   <div 
                     key={dStr} 
                     onClick={() => setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum))}
-                    className={`min-h-[120px] p-3 border-b border-r border-border relative cursor-pointer transition-colors hover:bg-muted/50 flex flex-col items-center justify-between
+                    className={`min-h-[90px] p-2 sm:p-3 border-b border-r border-border relative cursor-pointer transition-colors hover:bg-muted/50 flex flex-col items-center justify-between
                       ${isSelected ? 'bg-muted/50 ring-1 ring-inset ring-primary/50' : 'bg-transparent'}`}
                   >
-                    <span className="absolute top-3 left-3 text-[14px] font-medium text-muted-foreground">{dayNum}</span>
+                    <span className="absolute top-2 left-2.5 text-[13px] font-medium text-muted-foreground">{dayNum}</span>
                     
                     {att && att.status !== 'Weekend' && att.status !== 'Not Marked' && (
                       <div className="mt-auto w-full flex justify-center">
@@ -173,23 +173,23 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
         </div>
 
         {/* Right Area - Context & Insights */}
-        <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-6">
+        <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-3">
           
           {/* Personnel Context Card */}
-          <Card className="bg-card border-border rounded-[16px] p-5 shadow-none">
-            <div className="flex items-center gap-2 mb-5">
+          <Card className="bg-card border-border rounded-[16px] p-3 shadow-none">
+            <div className="flex items-center gap-2 mb-3">
               <div className="p-1.5 bg-purple-500/10 text-purple-500 rounded-md">
                 <UserIcon className="w-4 h-4" />
               </div>
               <h3 className="font-semibold text-base">Personnel Context</h3>
             </div>
             
-            <div className="space-y-5">
+            <div className="space-y-3">
 
               
               {employee && (
                 <div className="flex items-center gap-3">
-                  <Avatar className="h-12 w-12 border border-border">
+                  <Avatar className="h-10 w-10 border border-border">
                     <AvatarImage src={employee.profile_photo || ''} />
                     <AvatarFallback className="bg-muted text-muted-foreground">{employee.first_name?.[0]}{employee.last_name?.[0]}</AvatarFallback>
                   </Avatar>
@@ -215,44 +215,44 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
           </Card>
           
           {/* Monthly Insights Card */}
-          <Card className="bg-card border-border rounded-[16px] p-5 shadow-none">
-            <div className="flex items-center gap-2 mb-5">
+          <Card className="bg-card border-border rounded-[16px] p-3 shadow-none flex-1 flex flex-col">
+            <div className="flex items-center gap-2 mb-3">
               <div className="p-1.5 bg-muted text-muted-foreground rounded-md">
                 <BarChart3 className="w-4 h-4" />
               </div>
               <h3 className="font-semibold text-base">Monthly Insights</h3>
             </div>
             
-            <div className="grid grid-cols-2 gap-0 border border-border rounded-xl overflow-hidden">
-              <div className="p-4 border-b border-r border-border flex flex-col gap-1 relative">
+            <div className="grid grid-cols-2 gap-0 border border-border rounded-xl overflow-hidden flex-1">
+              <div className="p-2 sm:p-2.5 border-b border-r border-border flex flex-col gap-0.5 relative justify-center">
                 <span className="text-[12px] text-muted-foreground">Present</span>
                 <span className="text-xl font-bold text-emerald-500">{summary.present}</span>
-                <CalendarIcon className="w-4 h-4 text-emerald-500/50 absolute right-4 top-4" />
+                <CalendarIcon className="w-4 h-4 text-emerald-500/50 absolute right-3 top-3" />
               </div>
-              <div className="p-4 border-b border-border flex flex-col gap-1 relative">
+              <div className="p-2 sm:p-2.5 border-b border-border flex flex-col gap-0.5 relative justify-center">
                 <span className="text-[12px] text-muted-foreground">WFH</span>
                 <span className="text-xl font-bold text-blue-500">{summary.wfh}</span>
-                <Home className="w-4 h-4 text-blue-500/50 absolute right-4 top-4" />
+                <Home className="w-4 h-4 text-blue-500/50 absolute right-3 top-3" />
               </div>
-              <div className="p-4 border-b border-r border-border flex flex-col gap-1 relative">
+              <div className="p-2 sm:p-2.5 border-b border-r border-border flex flex-col gap-0.5 relative justify-center">
                 <span className="text-[12px] text-muted-foreground">Leave</span>
                 <span className="text-xl font-bold text-orange-500">{summary.leave}</span>
-                <CalendarDays className="w-4 h-4 text-orange-500/50 absolute right-4 top-4" />
+                <CalendarDays className="w-4 h-4 text-orange-500/50 absolute right-3 top-3" />
               </div>
-              <div className="p-4 border-b border-border flex flex-col gap-1 relative">
+              <div className="p-2 sm:p-2.5 border-b border-border flex flex-col gap-0.5 relative justify-center">
                 <span className="text-[12px] text-muted-foreground">Half Days</span>
                 <span className="text-xl font-bold text-yellow-500">{summary.halfDay}</span>
-                <Clock className="w-4 h-4 text-yellow-500/50 absolute right-4 top-4" />
+                <Clock className="w-4 h-4 text-yellow-500/50 absolute right-3 top-3" />
               </div>
-              <div className="p-4 border-r border-border flex flex-col gap-1 relative">
+              <div className="p-2 sm:p-2.5 border-r border-border flex flex-col gap-0.5 relative justify-center">
                 <span className="text-[12px] text-muted-foreground">Absent</span>
                 <span className="text-xl font-bold text-red-500">{summary.absent}</span>
-                <UserX className="w-4 h-4 text-red-500/50 absolute right-4 top-4" />
+                <UserX className="w-4 h-4 text-red-500/50 absolute right-3 top-3" />
               </div>
-              <div className="p-4 flex flex-col gap-1 relative">
+              <div className="p-2 sm:p-2.5 flex flex-col gap-0.5 relative justify-center">
                 <span className="text-[12px] text-muted-foreground">Pending</span>
                 <span className="text-xl font-bold text-amber-500">{summary.pending}</span>
-                <Clock className="w-4 h-4 text-amber-500/50 absolute right-4 top-4" />
+                <Clock className="w-4 h-4 text-amber-500/50 absolute right-3 top-3" />
               </div>
             </div>
           </Card>

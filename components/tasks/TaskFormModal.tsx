@@ -10,7 +10,7 @@ import { Task, TaskStatus, TaskPriority, Project } from '@/types/project-managem
 import { AssignableEmployee } from '@/lib/actions/team'
 import { createTaskAction, updateTaskAction } from '@/lib/actions/tasks'
 import { toast } from 'sonner'
-import { Loader2, Check } from 'lucide-react'
+import { Loader2, Check, Eye, EyeOff } from 'lucide-react'
 import { DatePicker } from '@/components/ui/date-picker'
 
 interface TaskFormModalProps {
@@ -54,6 +54,7 @@ export function TaskFormModal({
   const isEditing = !!taskToEdit
 
   const [title, setTitle] = useState(taskToEdit?.title || '')
+  const [showMembers, setShowMembers] = useState(false)
   const [description, setDescription] = useState(taskToEdit?.description || '')
   const [projectId, setProjectId] = useState(taskToEdit?.project_id || defaultProjectId || '')
   const [priority, setPriority] = useState<TaskPriority>(taskToEdit?.priority || 'MEDIUM')
@@ -205,6 +206,21 @@ export function TaskFormModal({
             />
           </div>
 
+          {/* Description */}
+          <div className="space-y-1.5">
+            <Label htmlFor="task-desc" className="text-sm font-medium">
+              Description & Specifications
+            </Label>
+            <textarea
+              id="task-desc"
+              rows={3}
+              placeholder="Task details, requirements, acceptance criteria..."
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full text-sm bg-input border border-border rounded-md p-2.5 outline-hidden focus:border-foreground/50 transition-colors"
+            />
+          </div>
+
           {/* Status & Estimated Hours */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
             <Dropdown
@@ -265,57 +281,66 @@ export function TaskFormModal({
 
           {/* Multi-Assignee Selection */}
           <div className="space-y-2">
-            <Label className="text-sm font-medium">
-              Assign Team Members ({selectedAssignees.length} selected)
-            </Label>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-48 overflow-y-auto p-3 bg-card border border-border rounded-md">
-              {employees.map((emp) => {
-                const isSelected = selectedAssignees.includes(emp.id)
-                const initials = emp.name.substring(0, 2).toUpperCase()
-                return (
-                  <div
-                    key={emp.id}
-                    onClick={() => toggleAssignee(emp.id)}
-                    className={`flex items-start gap-3 p-2.5 rounded-md cursor-pointer border transition-colors ${
-                      isSelected
-                        ? 'border-foreground/20 bg-accent/30'
-                        : 'border-transparent hover:bg-secondary/60'
-                    }`}
-                  >
-                    <div className="flex items-center h-full pt-1">
-                      <div className={`w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/50'}`}>
-                        {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-xs font-medium shrink-0">
-                        {initials}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-foreground text-[13px]">{emp.name}</p>
-                        <p className="text-[10px] text-muted-foreground whitespace-normal">{emp.designation || 'Team Member'}</p>
-                      </div>
-                    </div>
-                  </div>
-                )
-              })}
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium">
+                Assign Team Members ({selectedAssignees.length} selected)
+              </Label>
+              <button
+                type="button"
+                onClick={() => setShowMembers(!showMembers)}
+                className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-sm hover:bg-secondary"
+                aria-expanded={showMembers}
+              >
+                {showMembers ? (
+                  <>
+                    <EyeOff className="h-3.5 w-3.5" />
+                    Hide Members
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-3.5 w-3.5" />
+                    Show Members
+                  </>
+                )}
+              </button>
             </div>
+            
+            {showMembers && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 max-h-48 overflow-y-auto p-3 bg-card border border-border rounded-md animate-in slide-in-from-top-2 duration-200">
+                {employees.map((emp) => {
+                  const isSelected = selectedAssignees.includes(emp.id)
+                  const initials = emp.name.substring(0, 2).toUpperCase()
+                  return (
+                    <div
+                      key={emp.id}
+                      onClick={() => toggleAssignee(emp.id)}
+                      className={`flex items-start gap-3 p-2.5 rounded-md cursor-pointer border transition-colors ${
+                        isSelected
+                          ? 'border-foreground/20 bg-accent/30'
+                          : 'border-transparent hover:bg-secondary/60'
+                      }`}
+                    >
+                      <div className="flex items-center h-full pt-1">
+                        <div className={`w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/50'}`}>
+                          {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="h-8 w-8 rounded-full bg-secondary text-secondary-foreground flex items-center justify-center text-xs font-medium shrink-0">
+                          {initials}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground text-[13px]">{emp.name}</p>
+                          <p className="text-[10px] text-muted-foreground whitespace-normal">{emp.designation || 'Team Member'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
-          {/* Description */}
-          <div className="space-y-1.5">
-            <Label htmlFor="task-desc" className="text-sm font-medium">
-              Description & Specifications
-            </Label>
-            <textarea
-              id="task-desc"
-              rows={3}
-              placeholder="Task details, requirements, acceptance criteria..."
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="w-full text-sm bg-input border border-border rounded-md p-2.5 outline-hidden focus:border-foreground/50 transition-colors"
-            />
-          </div>
           </div>
 
           <DialogFooter className="flex flex-col sm:flex-row sm:justify-center justify-center items-center gap-4 px-5 sm:px-6 py-4 border-t border-border/50 bg-card shrink-0">

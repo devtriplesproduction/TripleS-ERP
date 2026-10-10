@@ -35,12 +35,12 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
     setApprovalLeaves(prev =>
       prev.map(leave => (leave.id === id ? { ...leave, status: newStatus } : leave))
     )
-    
+
     const { error } = await supabase
       .from('leave_requests')
       .update({ status: newStatus })
       .eq('id', id)
-      
+
     if (error) {
       toast.error(`Failed to update status to ${newStatus}`)
       // Revert optimistic update (simplistic approach)
@@ -55,12 +55,12 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
     setMyLeavesList(prev =>
       prev.map(leave => (leave.id === id ? { ...leave, status: 'Cancelled' } : leave))
     )
-    
+
     const { error } = await supabase
       .from('leave_requests')
       .update({ status: 'Cancelled' })
       .eq('id', id)
-      
+
     if (error) {
       toast.error("Failed to cancel leave")
       setMyLeavesList(myLeaves || [])
@@ -96,8 +96,8 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
     <div className="space-y-6 w-full min-w-0">
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="w-[calc(100vw-1.5rem)] sm:max-w-3xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto p-0 border-none bg-transparent shadow-none" showCloseButton={false}>
-          <LeaveForm 
-            onCancel={() => setShowForm(false)} 
+          <LeaveForm
+            onCancel={() => setShowForm(false)}
             currentEmployeeId={currentEmployeeId}
             compOffBalance={compOffBalance}
             initialStatus={isHR ? "Pending Admin" : "Pending HR"}
@@ -110,74 +110,71 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
       </Dialog>
 
       <div className="flex flex-col gap-4 sm:gap-6">
-        <PageHeader 
-          title="Leave & WFH Management" 
+        <PageHeader
+          title="Leave & WFH Request"
           subtitle="Manage your leaves and approvals from one place."
           icon={Calendar}
-        />
+          actions={
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <Select value={statusFilter} onValueChange={(val) => val && setStatusFilter(val)}>
+                <SelectTrigger className="filter-control border-border bg-transparent min-w-[130px] sm:min-w-[140px] text-foreground text-xs sm:text-sm">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="All Statuses">All Statuses</SelectItem>
+                  <SelectItem value="Approved">Approved</SelectItem>
+                  <SelectItem value="Rejected">Rejected</SelectItem>
+                  <SelectItem value="Pending">Pending</SelectItem>
+                  <SelectItem value="Cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
-            <Select value={statusFilter} onValueChange={(val) => val && setStatusFilter(val)}>
-              <SelectTrigger className="filter-control border-border bg-transparent min-w-[130px] sm:min-w-[140px] text-foreground text-xs sm:text-sm">
-                <SelectValue placeholder="All Statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="All Statuses">All Statuses</SelectItem>
-                <SelectItem value="Approved">Approved</SelectItem>
-                <SelectItem value="Rejected">Rejected</SelectItem>
-                <SelectItem value="Pending">Pending</SelectItem>
-                <SelectItem value="Cancelled">Cancelled</SelectItem>
-              </SelectContent>
-            </Select>
-
-            {canApprove && (
-              <div className="flex bg-background rounded-lg border border-border shrink-0 filter-toggle-container">
-                {!isSuperAdmin && (
-                  <button
-                    className={`px-3 sm:px-4 text-xs sm:text-sm font-medium rounded-md transition-all filter-toggle-btn ${activeTab === 'mine' ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                    onClick={() => setActiveTab('mine')}
-                  >
-                    My Leaves
-                  </button>
-                )}
-                <button
-                  className={`px-3 sm:px-4 text-xs sm:text-sm font-medium rounded-md transition-all flex items-center gap-1.5 sm:gap-2 filter-toggle-btn ${activeTab === 'approve' ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                  onClick={() => setActiveTab('approve')}
-                >
-                  Approvals
-                  {pendingCount > 0 && (
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full min-w-[18px] text-center font-bold ${activeTab === 'approve' ? 'bg-background text-foreground' : 'bg-foreground text-background'}`}>
-                      {pendingCount}
-                    </span>
+              {canApprove && (
+                <div className="flex bg-background rounded-lg border border-border shrink-0 filter-toggle-container">
+                  {!isSuperAdmin && (
+                    <button
+                      className={`px-3 sm:px-4 text-xs sm:text-sm font-medium rounded-md transition-all filter-toggle-btn ${activeTab === 'mine' ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                      onClick={() => setActiveTab('mine')}
+                    >
+                      My Leaves
+                    </button>
                   )}
-                </button>
-              </div>
-            )}
-          </div>
+                  <button
+                    className={`px-3 sm:px-4 text-xs sm:text-sm font-medium rounded-md transition-all flex items-center gap-1.5 sm:gap-2 filter-toggle-btn ${activeTab === 'approve' ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
+                    onClick={() => setActiveTab('approve')}
+                  >
+                    Approvals
+                    {pendingCount > 0 && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full min-w-[18px] text-center font-bold ${activeTab === 'approve' ? 'bg-background text-foreground' : 'bg-foreground text-background'}`}>
+                        {pendingCount}
+                      </span>
+                    )}
+                  </button>
+                </div>
+              )}
 
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto">
-            {!isSuperAdmin && activeTab === 'mine' && (
-              <div className="bg-transparent text-muted-foreground border border-border px-3 sm:px-4 flex items-center rounded-lg text-xs sm:text-sm shrink-0 gap-2 filter-control">
-                <Clock className="w-4 h-4 shrink-0" />
-                <span>Comp-Off: <span className="font-medium text-foreground">{formatCompOffBalance(compOffBalance * 60)}</span></span>
-              </div>
-            )}
+              {!isSuperAdmin && activeTab === 'mine' && (
+                <div className="bg-transparent text-muted-foreground border border-border px-3 sm:px-4 flex items-center rounded-lg text-xs sm:text-sm shrink-0 gap-2 filter-control h-10">
+                  <Clock className="w-4 h-4 shrink-0" />
+                  <span>Comp-Off: <span className="font-medium text-foreground">{formatCompOffBalance(compOffBalance * 60)}</span></span>
+                </div>
+              )}
 
-            {activeTab === 'mine' && !isSuperAdmin && (
-              <Button 
-                className="w-full sm:w-auto rounded-lg bg-foreground text-background hover:bg-foreground/90 font-medium gap-2 shrink-0 text-xs sm:text-sm filter-control"
-                onClick={() => setShowForm(true)}
-              >
-                <Plus className="w-4 h-4" /> Apply Leave / WFH
-              </Button>
-            )}
-          </div>
-        </div>
+              {activeTab === 'mine' && !isSuperAdmin && (
+                <Button
+                  className="rounded-lg bg-foreground text-background hover:bg-foreground/90 font-medium gap-2 shrink-0 text-xs sm:text-sm filter-control h-10"
+                  onClick={() => setShowForm(true)}
+                >
+                  <Plus className="w-4 h-4" /> Apply Leave / WFH
+                </Button>
+              )}
+            </div>
+          }
+        />
       </div>
 
       {activeTab === 'mine' ? (
-        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden min-h-[300px] flex flex-col">
+        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
           {filteredMyLeaves.length === 0 ? (
             <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
               <div className="w-16 h-16 rounded-full border border-border bg-background/50 flex items-center justify-center mb-6">
@@ -196,8 +193,8 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                 const canCancel = leave.status === 'Pending HR' || leave.status === 'Pending Admin' || leave.status === 'Pending Level' || leave.status === 'Approved'
 
                 return (
-                  <div 
-                    key={leave.id} 
+                  <div
+                    key={leave.id}
                     className="bg-card border border-border/80 hover:border-foreground/20 rounded-xl p-4 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group"
                   >
                     <div>
@@ -205,20 +202,19 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                       <div className="flex items-start justify-between gap-3 mb-3">
                         <div className="flex flex-col gap-0.5">
                           <h3 className="font-bold text-foreground text-sm leading-tight flex items-center gap-1.5 group-hover:text-primary transition-colors">
-                            {leave.request_type === "WFH" ? "Work From Home" : leave.leave_type} 
+                            {leave.request_type === "WFH" ? "Work From Home" : leave.leave_type}
                             {leave.is_half_day && (
                               <span className="px-1.5 py-0.5 rounded-md bg-muted text-[9px] font-semibold tracking-wider uppercase text-muted-foreground">Half Day</span>
                             )}
                           </h3>
                         </div>
 
-                        <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium shrink-0 ${
-                          isApproved 
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                            : isRejected 
-                            ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' 
-                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                        }`}>
+                        <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium shrink-0 ${isApproved
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                            : isRejected
+                              ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                              : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                          }`}>
                           {getStatusIcon(leave.status)}
                           <span>{leave.status}</span>
                         </div>
@@ -254,8 +250,8 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                     {/* Card Action Buttons at the Bottom */}
                     {canCancel && (
                       <div className="pt-2.5 border-t border-border/60 flex items-center gap-2 mt-auto">
-                        <Button 
-                          variant="outline" 
+                        <Button
+                          variant="outline"
                           className="w-full border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 font-medium h-8 rounded-md gap-1.5 text-xs transition-colors"
                           onClick={() => handleCancelMyLeave(leave.id)}
                         >
@@ -290,8 +286,8 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
             const isRejected = leave.status === 'Rejected' || leave.status === 'Cancelled'
 
             return (
-              <div 
-                key={leave.id} 
+              <div
+                key={leave.id}
                 className="bg-card border border-border/80 hover:border-foreground/20 rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 flex flex-col sm:flex-row group overflow-hidden"
               >
                 {/* Left Column - Details */}
@@ -311,13 +307,12 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                             <h3 className="font-bold text-foreground text-base sm:text-lg leading-none group-hover:text-primary transition-colors truncate">
                               {firstName} {lastName}
                             </h3>
-                            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-medium shrink-0 ${
-                              isApproved 
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                                : isRejected 
-                                ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' 
-                                : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                            }`}>
+                            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-medium shrink-0 ${isApproved
+                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                : isRejected
+                                  ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+                                  : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                              }`}>
                               {getStatusIcon(leave.status)}
                               <span>{leave.status}</span>
                             </div>
@@ -340,10 +335,10 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                           <div className="truncate">{format(new Date(leave.end_date), 'MMM d, yyyy')}</div>
                         </div>
                       </div>
-                      
+
                       {/* Inner Vertical Divider */}
                       <div className="w-px bg-border/60 my-1" />
-                      
+
                       <div className="flex-1 min-w-0 pl-1">
                         <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
                           <FileText className="w-3.5 h-3.5 shrink-0" /> Type
@@ -361,9 +356,9 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                           <FileText className="w-3.5 h-3.5" /> Reason
                         </div>
                         {leave.medical_certificate_url && (
-                          <a 
-                            href={leave.medical_certificate_url} 
-                            target="_blank" 
+                          <a
+                            href={leave.medical_certificate_url}
+                            target="_blank"
                             rel="noopener noreferrer"
                             className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-muted/40 hover:bg-muted border border-border/60 text-[10px] sm:text-[11px] font-bold text-foreground transition-all shadow-xs hover:shadow-sm"
                           >
@@ -392,14 +387,14 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                     </div>
                   ) : (
                     <>
-                      <Button 
+                      <Button
                         className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold h-10 sm:h-11 rounded-xl gap-2 text-xs sm:text-sm shadow-sm transition-all"
                         onClick={() => handleUpdateStatus(leave.id, 'Approved')}
                       >
                         <Check className="w-4 h-4" /> Approve
                       </Button>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         className="w-full border-border/80 text-rose-500 hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-400 font-bold h-10 sm:h-11 rounded-xl gap-2 text-xs sm:text-sm transition-all bg-transparent"
                         onClick={() => handleUpdateStatus(leave.id, 'Rejected')}
                       >

@@ -38,7 +38,7 @@ export function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex w-full font-sans overflow-hidden relative bg-[#050505]">
+    <div className="h-screen flex w-full font-sans overflow-hidden relative bg-[#050505]">
       {/* Full-screen Background Visuals */}
       <div className="absolute inset-0 z-0 overflow-hidden pointer-events-none">
         {/* Base overlay gradient to ensure text readability */}
@@ -59,7 +59,7 @@ export function LoginForm() {
         <div className="absolute top-[20%] -left-[30%] w-[140%] h-[140%] rounded-full border border-white/[0.02] z-0" />
       </div>
 
-      <div className="relative z-10 flex flex-col lg:flex-row w-full h-full min-h-screen">
+      <div className="relative z-10 flex flex-col lg:flex-row w-full h-full h-screen">
         {/* Left Branding Section (Hidden on Mobile) */}
         <div className="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 xl:p-24 text-white">
           

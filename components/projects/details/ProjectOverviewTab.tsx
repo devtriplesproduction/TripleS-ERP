@@ -21,11 +21,11 @@ export function ProjectOverviewTab({ project, totalOperationalHours, tasks, team
   const recentActivities = activities.slice(0, 5)
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <div className="space-y-3">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
         
         {/* LEFT / MAIN COLUMN */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2 space-y-3">
           
           {/* Description & Scope */}
           <Card className="border-border bg-card shadow-xs">
@@ -124,7 +124,7 @@ export function ProjectOverviewTab({ project, totalOperationalHours, tasks, team
         </div>
 
         {/* RIGHT COLUMN */}
-        <div className="space-y-6">
+        <div className="space-y-3">
           <Card className="border-border bg-card shadow-xs">
             <CardHeader className="pb-3 border-b border-border/50">
               <CardTitle className="text-sm font-bold flex items-center gap-2">

@@ -55,6 +55,8 @@ export function ProjectGrid({
     window.location.reload()
   }
 
+  const filterInputStyles = "!h-11 filter-control w-full !bg-card !border !border-border !rounded-xl !text-sm transition-all focus:!ring-2 focus:!ring-orange-500/20 focus:!border-orange-400 !text-foreground !shadow-sm";
+
   return (
     <div className="space-y-6">
       {/* Top Header */}
@@ -76,21 +78,32 @@ export function ProjectGrid({
       />
 
 
-      {/* Filter and Search Bar */}
-      <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search projects by name, client, or ID..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-card border-border filter-control"
-          />
+      {/* Filters Section */}
+      <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm p-6">
+        <div className="flex items-center gap-2 mb-4 text-foreground">
+          <SlidersHorizontal className="w-5 h-5 text-foreground" />
+          <h3 className="font-semibold">Filter Projects</h3>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-          <div className="w-full sm:w-32">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 sm:gap-4 items-end">
+          <div className="space-y-3">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Search</label>
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search projects by name, client, or ID..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className={`${filterInputStyles} !pl-9 !pr-4 !py-2`}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</label>
             <Dropdown
+              className="!space-y-0"
+              buttonClassName={`${filterInputStyles} !px-3 !py-2`}
               value={statusFilter}
               onChange={(val) => setStatusFilter(val || 'ALL')}
               options={[
@@ -101,26 +114,28 @@ export function ProjectGrid({
                 { value: 'COMPLETED', label: 'Completed' },
                 { value: 'CANCELLED', label: 'Cancelled' },
               ]}
-              buttonClassName="bg-card border-border filter-control text-xs"
-              className="w-full"
             />
           </div>
 
-          <div className="w-full sm:w-32">
+          <div className="space-y-3">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Client</label>
             <Dropdown
+              className="!space-y-0"
+              buttonClassName={`${filterInputStyles} !px-3 !py-2`}
               value={clientFilter}
               onChange={(val) => setClientFilter(val || 'ALL')}
               options={[
                 { value: 'ALL', label: 'All Clients' },
                 ...clients.map(c => ({ value: c.id, label: c.name }))
               ]}
-              buttonClassName="bg-card border-border filter-control text-xs"
-              className="w-full"
             />
           </div>
 
-          <div className="w-full sm:w-32">
+          <div className="space-y-3">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Priority</label>
             <Dropdown
+              className="!space-y-0"
+              buttonClassName={`${filterInputStyles} !px-3 !py-2`}
               value={priorityFilter}
               onChange={(val) => setPriorityFilter(val || 'ALL')}
               options={[
@@ -130,29 +145,30 @@ export function ProjectGrid({
                 { value: 'HIGH', label: 'High' },
                 { value: 'URGENT', label: 'Urgent' },
               ]}
-              buttonClassName="bg-card border-border filter-control text-xs"
-              className="w-full"
             />
           </div>
 
           {/* Grid / List Toggle */}
-          <div className="flex bg-card border border-border rounded-md shrink-0 filter-toggle-container">
-            <button
-              onClick={() => setViewMode('GRID')}
-              className={`px-4 text-xs font-medium rounded-sm transition-colors filter-toggle-btn ${
-                viewMode === 'GRID' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Grid
-            </button>
-            <button
-              onClick={() => setViewMode('LIST')}
-              className={`px-4 text-xs font-medium rounded-sm transition-colors filter-toggle-btn ${
-                viewMode === 'LIST' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              List
-            </button>
+          <div className="space-y-3">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider invisible hidden lg:block">View</label>
+            <div className="flex bg-card border border-border rounded-xl shrink-0 filter-toggle-container h-11 p-1 shadow-sm">
+              <button
+                onClick={() => setViewMode('GRID')}
+                className={`px-4 text-sm font-medium rounded-lg transition-colors filter-toggle-btn w-full ${
+                  viewMode === 'GRID' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Grid
+              </button>
+              <button
+                onClick={() => setViewMode('LIST')}
+                className={`px-4 text-sm font-medium rounded-lg transition-colors filter-toggle-btn w-full ${
+                  viewMode === 'LIST' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                List
+              </button>
+            </div>
           </div>
         </div>
       </div>

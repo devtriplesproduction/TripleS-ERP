@@ -57,74 +57,27 @@ export function ProjectDetailsView({
     window.location.reload()
   }
 
+  const handleDelete = () => {
+    if (window.confirm('Are you sure you want to delete this project?')) {
+      // TODO: Call API to delete project
+      alert('Delete functionality needs to be wired to the API backend.')
+    }
+  }
+
   return (
     <div className="space-y-6">
-      {/* Project Header */}
-      <ProjectHeader
-        project={project}
-        tasks={tasks}
-        teamStats={teamStats}
-        totalOperationalHours={totalOperationalHours}
-        canEdit={canEdit}
-        canManageTasks={canManageTasks}
-        onEdit={() => setIsEditModalOpen(true)}
-        onAddTask={() => setIsTaskModalOpen(true)}
-      />
-
-      {/* Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <div className="border-b border-border">
-          <TabsList className="bg-transparent border-0 p-0 w-full justify-start overflow-x-auto flex-nowrap h-auto space-x-6">
-            <TabsTrigger
-              value="overview"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:bg-transparent text-muted-foreground hover:text-foreground text-sm font-medium py-3 px-1 transition-none"
-            >
-              Overview
-            </TabsTrigger>
-
-            <TabsTrigger
-              value="list"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:bg-transparent text-muted-foreground hover:text-foreground text-sm font-medium py-3 px-1 transition-none"
-            >
-              List
-            </TabsTrigger>
-
-            <TabsTrigger
-              value="kanban"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:bg-transparent text-muted-foreground hover:text-foreground text-sm font-medium py-3 px-1 transition-none"
-            >
-              Kanban
-            </TabsTrigger>
-
-            <TabsTrigger
-              value="timeline"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:bg-transparent text-muted-foreground hover:text-foreground text-sm font-medium py-3 px-1 transition-none"
-            >
-              Timeline
-            </TabsTrigger>
-
-            <TabsTrigger
-              value="team"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:bg-transparent text-muted-foreground hover:text-foreground text-sm font-medium py-3 px-1 transition-none"
-            >
-              Team
-            </TabsTrigger>
-
-            <TabsTrigger
-              value="files"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:bg-transparent text-muted-foreground hover:text-foreground text-sm font-medium py-3 px-1 transition-none"
-            >
-              Files
-            </TabsTrigger>
-
-            <TabsTrigger
-              value="activity"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-foreground data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:bg-transparent text-muted-foreground hover:text-foreground text-sm font-medium py-3 px-1 transition-none"
-            >
-              Activity
-            </TabsTrigger>
-          </TabsList>
-        </div>
+        <ProjectHeader
+          project={project}
+          tasks={tasks}
+          teamStats={teamStats}
+          totalOperationalHours={totalOperationalHours}
+          canEdit={canEdit}
+          canManageTasks={canManageTasks}
+          onEdit={() => setIsEditModalOpen(true)}
+          onAddTask={() => setIsTaskModalOpen(true)}
+          onDelete={handleDelete}
+        />
 
         {/* Tab 1: Overview */}
         <TabsContent value="overview">

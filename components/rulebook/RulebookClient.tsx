@@ -126,17 +126,17 @@ export function RulebookClient({ initialRules, userRole, employeeId, acknowledge
   return (
     <div className="space-y-6">
       {/* Category Tags & Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-border">
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 max-w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-1 border-b border-border">
+        <div className="flex items-center gap-2 overflow-x-auto pb-0 sm:pb-0 max-w-full">
           {CATEGORIES.map(cat => (
             <button
               key={cat}
               onClick={() => setActiveCategory(cat)}
               className={cn(
-                "px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full text-xs sm:text-sm font-medium transition-colors border shrink-0 min-h-[38px] sm:min-h-9 flex items-center",
+                "h-10 px-4 text-xs font-semibold rounded-t-md border-b-2 transition-colors flex items-center gap-1.5 whitespace-nowrap",
                 activeCategory === cat 
-                  ? "bg-foreground text-background border-foreground" 
-                  : "bg-background text-muted-foreground border-border hover:bg-muted"
+                  ? "border-primary text-foreground bg-accent/40" 
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               )}
             >
               {cat}
@@ -217,8 +217,8 @@ export function RulebookClient({ initialRules, userRole, employeeId, acknowledge
                   </div>
                 </CardHeader>
                 <CardContent className="p-4 sm:p-6 pt-0">
-                  <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground whitespace-pre-wrap text-xs sm:text-sm">
-                    {rule.description}
+                  <div className="text-muted-foreground whitespace-pre-wrap text-xs sm:text-sm">
+                    {rule.description?.trim()}
                   </div>
                 </CardContent>
                 {needsAck && (

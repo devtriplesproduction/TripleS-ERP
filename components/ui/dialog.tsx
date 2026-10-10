@@ -65,7 +65,7 @@ function DialogContent({
             render={
               <Button
                 variant="ghost"
-                className="absolute top-3 right-3 text-muted-foreground hover:bg-input hover:text-foreground h-8 w-8 rounded-lg"
+                className="absolute top-4 right-4 z-50 flex items-center justify-center h-8 w-8 rounded-md bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground border border-border/40 backdrop-blur-sm transition-all"
                 size="icon"
                 aria-label="Close dialog"
               />
