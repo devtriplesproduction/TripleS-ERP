@@ -4,10 +4,10 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/Dropdown';
-import { Search, SlidersHorizontal, CheckCircle2, Clock, XCircle, AlertCircle, FileSearch, FileText, Calendar } from 'lucide-react';
+import { Search, SlidersHorizontal, CheckCircle2, Clock, XCircle, AlertCircle, FileSearch, FileText, Calendar, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { EODReport } from '@/lib/actions/eod';
-import { reviewEODAction, updateEODAction } from '@/actions/eod.actions';
+import { reviewEODAction, batchReviewEODAction, updateEODAction } from '@/actions/eod.actions';
 import { DatePicker } from '@/components/ui/date-picker';
 import { EodCard } from './EodCard';
 import { toast } from 'sonner';
@@ -34,6 +34,7 @@ export function ReviewDashboard({
   const [daysLimit, setDaysLimit] = useState(7);
 
   const [submittingIds, setSubmittingIds] = useState<Set<string>>(new Set());
+  const [batchProcessing, setBatchProcessing] = useState(false);
 
   const handleSaveEdit = async (eodId: string, formDataFields: any) => {
     setSubmittingIds(prev => new Set(prev).add(eodId));
@@ -113,6 +114,43 @@ export function ReviewDashboard({
         next.delete(eodId);
         return next;
       });
+    }
+  };
+
+  const handleBatchApprovePending = async () => {
+    const pendingIds = filteredEods.filter(e => e.status === 'Pending').map(e => e.id);
+    if (pendingIds.length === 0) {
+      toast.info('No pending reports to approve in current view');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to approve all ${pendingIds.length} pending EOD reports in this view?`)) {
+      return;
+    }
+
+    setBatchProcessing(true);
+    const idempotencyKey = `dashboard-batch-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    try {
+      const res = await batchReviewEODAction({
+        eod_ids: pendingIds,
+        action: 'Approve',
+        idempotency_key: idempotencyKey,
+      });
+
+      if (res.success || (res.succeeded && res.succeeded.length > 0)) {
+        const approvedSet = new Set(res.succeeded);
+        setEods(prev => prev.map(e => approvedSet.has(e.id) ? { ...e, status: 'Approved' } : e));
+        toast.success(`Successfully approved ${res.succeeded.length} reports!`);
+        if (res.failed && res.failed.length > 0) {
+          toast.error(`${res.failed.length} reports failed: ${res.failed[0].error}`);
+        }
+      } else {
+        toast.error(res.error || "Batch approval failed");
+      }
+    } catch {
+      toast.error("Unexpected error in batch approval");
+    } finally {
+      setBatchProcessing(false);
     }
   };
 
@@ -284,6 +322,24 @@ export function ReviewDashboard({
           </div>
 
         </div>
+
+        {pending > 0 && (
+          <div className="mt-4 pt-4 border-t border-border flex flex-wrap items-center justify-between gap-3">
+            <div className="text-xs text-muted-foreground">
+              There are <span className="font-semibold text-foreground">{pending}</span> pending reports in the current filter.
+            </div>
+            <Button
+              size="sm"
+              variant="default"
+              className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm rounded-xl"
+              disabled={batchProcessing}
+              onClick={handleBatchApprovePending}
+            >
+              {batchProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
+              {batchProcessing ? "Batch Approving..." : `Approve All ${pending} Pending Reports`}
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Data Section */}

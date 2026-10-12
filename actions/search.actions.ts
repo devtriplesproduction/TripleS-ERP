@@ -34,8 +34,7 @@ export async function globalSearchAction(query: string): Promise<SearchResult[]>
   const isAdminOrHR = user.role === 'Admin' || user.role === 'HR'
   const isManager = user.role === 'Manager'
 
-  // 1. Employees
-  // Employees can only see basic details, Admin/HR see more. We just return a standard format.
+  // Build queries for parallel execution
   let employeeQuery = supabase
     .from('employee_onboarding')
     .select('id, employee_id_number, first_name, last_name, email, department, designation, job_title, profile_photo')
@@ -46,10 +45,97 @@ export async function globalSearchAction(query: string): Promise<SearchResult[]>
     employeeQuery = employeeQuery.eq('email', user.email)
   }
 
-  const { data: employees } = await employeeQuery
-  
-  if (employees) {
-    employees.forEach((emp: any) => {
+  const projectQuery = supabase
+    .from('projects')
+    .select('id, project_id_display, name, status')
+    .or(`name.ilike."${searchTerm}",project_id_display.ilike."${searchTerm}",status.ilike."${searchTerm}"`)
+    .limit(5)
+
+  const taskQuery = supabase
+    .from('tasks')
+    .select('id, task_id_display, title, status')
+    .or(`title.ilike."${searchTerm}",task_id_display.ilike."${searchTerm}"`)
+    .limit(5)
+
+  const clientQuery = (isAdminOrHR || isManager)
+    ? supabase
+        .from('clients')
+        .select('id, name, client_id_display')
+        .or(`name.ilike."${searchTerm}"`)
+        .limit(5)
+    : Promise.resolve({ data: [] })
+
+  let eodQuery = supabase
+    .from('eod_reports')
+    .select('id, report_date, tasks_accomplished, employee_id, profiles!inner(first_name, last_name, employee_id)')
+    .ilike('tasks_accomplished', searchTerm)
+    .limit(5)
+
+  if (!isAdminOrHR) {
+    eodQuery = eodQuery.eq('employee_id', user.id)
+  }
+
+  let leaveQuery = supabase
+    .from('leave_requests')
+    .select('id, leave_type, status, start_date, employee_id, profiles!inner(first_name, last_name)')
+    .or(`leave_type.ilike."${searchTerm}",status.ilike."${searchTerm}"`)
+    .limit(5)
+    
+  if (!isAdminOrHR) {
+    leaveQuery = leaveQuery.eq('employee_id', user.id)
+  }
+
+  const announcementQuery = supabase
+    .from('announcements')
+    .select('id, title, message')
+    .or(`title.ilike."${searchTerm}",message.ilike."${searchTerm}"`)
+    .limit(5)
+
+  const rulebookQuery = supabase
+    .from('company_rules')
+    .select('id, title, category, description')
+    .or(`title.ilike."${searchTerm}",description.ilike."${searchTerm}"`)
+    .limit(5)
+
+  const documentQuery = isAdminOrHR
+    ? supabase
+        .from('employee_documents')
+        .select('id, document_type, file_name, employee_id_number, employee_onboarding!inner(employee_name)')
+        .or(`document_type.ilike."${searchTerm}",file_name.ilike."${searchTerm}"`)
+        .limit(5)
+    : supabase
+        .from('employee_documents')
+        .select('id, document_type, file_name')
+        .eq('employee_id_number', user.employee_id || '')
+        .or(`document_type.ilike."${searchTerm}",file_name.ilike."${searchTerm}"`)
+        .limit(5)
+
+  // Execute all 9 independent category queries concurrently
+  const [
+    employeesRes,
+    projectsRes,
+    tasksRes,
+    clientsRes,
+    eodsRes,
+    leavesRes,
+    announcementsRes,
+    rulesRes,
+    docsRes
+  ] = await Promise.all([
+    employeeQuery,
+    projectQuery,
+    taskQuery,
+    clientQuery,
+    eodQuery,
+    leaveQuery,
+    announcementQuery,
+    rulebookQuery,
+    documentQuery
+  ])
+
+  // 1. Employees
+  if (employeesRes.data) {
+    employeesRes.data.forEach((emp: any) => {
       const fullName = `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || 'Unknown'
       results.push({
         id: `emp-${emp.id}`,
@@ -63,17 +149,8 @@ export async function globalSearchAction(query: string): Promise<SearchResult[]>
   }
 
   // 2. Projects
-  // Assuming 'projects' table
-  let projectQuery = supabase
-    .from('projects')
-    .select('id, project_id_display, name, status')
-    .or(`name.ilike."${searchTerm}",project_id_display.ilike."${searchTerm}",status.ilike."${searchTerm}"`)
-    .limit(5)
-  
-  const { data: projects } = await projectQuery
-  
-  if (projects) {
-    projects.forEach((proj: any) => {
+  if (projectsRes.data) {
+    projectsRes.data.forEach((proj: any) => {
       results.push({
         id: `proj-${proj.id}`,
         title: proj.name,
@@ -85,66 +162,34 @@ export async function globalSearchAction(query: string): Promise<SearchResult[]>
   }
 
   // 3. Tasks
-  let taskQuery = supabase
-    .from('tasks')
-    .select('id, task_id_display, title, status')
-    .or(`title.ilike."${searchTerm}",task_id_display.ilike."${searchTerm}"`)
-    .limit(5)
-    
-  // If not admin/hr, only show tasks they are assigned to or created
-  // In a real app we'd do a join or check project membership, keeping it simple for now based on RBAC instructions.
-  
-  const { data: tasks } = await taskQuery
-  
-  if (tasks) {
-    tasks.forEach((task: any) => {
+  if (tasksRes.data) {
+    tasksRes.data.forEach((task: any) => {
       results.push({
         id: `task-${task.id}`,
         title: task.title,
         subtitle: `${task.task_id_display || task.id} · Status: ${task.status}`,
         category: 'TASKS',
-        url: `/tasks/details/${task.id}` // Placeholder route
+        url: `/tasks/details/${task.id}`
       })
     })
   }
 
   // 4. Clients
-  if (isAdminOrHR || isManager) {
-    const { data: clients } = await supabase
-      .from('clients')
-      .select('id, name, client_id_display')
-      .or(`name.ilike."${searchTerm}"`)
-      .limit(5)
-      
-    if (clients) {
-      clients.forEach((client: any) => {
-        results.push({
-          id: `client-${client.id}`,
-          title: client.name,
-          subtitle: `Client ID: ${client.client_id_display || client.id}`,
-          category: 'CLIENTS',
-          url: `/clients/${client.id}`
-        })
+  if (clientsRes.data) {
+    clientsRes.data.forEach((client: any) => {
+      results.push({
+        id: `client-${client.id}`,
+        title: client.name,
+        subtitle: `Client ID: ${client.client_id_display || client.id}`,
+        category: 'CLIENTS',
+        url: `/clients/${client.id}`
       })
-    }
+    })
   }
 
   // 5. EOD Reports
-  let eodQuery = supabase
-    .from('eod_reports')
-    .select('id, report_date, tasks_accomplished, employee_id, profiles!inner(first_name, last_name, employee_id)')
-    .or(`tasks_accomplished.ilike."${searchTerm}",report_date.ilike."${searchTerm}"`)
-    .limit(5)
-
-  if (!isAdminOrHR) {
-    // Only see own EOD
-    eodQuery = eodQuery.eq('employee_id', user.id)
-  }
-  
-  const { data: eods } = await eodQuery
-  
-  if (eods) {
-    eods.forEach((eod: any) => {
+  if (eodsRes.data) {
+    eodsRes.data.forEach((eod: any) => {
       const name = `${eod.profiles?.first_name || ''} ${eod.profiles?.last_name || ''}`.trim() || 'Unknown'
       results.push({
         id: `eod-${eod.id}`,
@@ -157,21 +202,8 @@ export async function globalSearchAction(query: string): Promise<SearchResult[]>
   }
 
   // 6. Leave
-  let leaveQuery = supabase
-    .from('leave_requests')
-    .select('id, leave_type, status, start_date, employee_id, profiles!inner(first_name, last_name)')
-    .or(`leave_type.ilike."${searchTerm}",status.ilike."${searchTerm}"`)
-    .limit(5)
-    
-  if (!isAdminOrHR) {
-    // Only see own leave
-    leaveQuery = leaveQuery.eq('employee_id', user.id)
-  }
-  
-  const { data: leaves } = await leaveQuery
-  
-  if (leaves) {
-    leaves.forEach((leave: any) => {
+  if (leavesRes.data) {
+    leavesRes.data.forEach((leave: any) => {
       const name = `${leave.profiles?.first_name || ''} ${leave.profiles?.last_name || ''}`.trim() || 'Unknown'
       results.push({
         id: `leave-${leave.id}`,
@@ -184,14 +216,8 @@ export async function globalSearchAction(query: string): Promise<SearchResult[]>
   }
 
   // 7. Announcements
-  const { data: announcements } = await supabase
-    .from('announcements')
-    .select('id, title, message')
-    .or(`title.ilike."${searchTerm}",message.ilike."${searchTerm}"`)
-    .limit(5)
-    
-  if (announcements) {
-    announcements.forEach((ann: any) => {
+  if (announcementsRes.data) {
+    announcementsRes.data.forEach((ann: any) => {
       results.push({
         id: `ann-${ann.id}`,
         title: ann.title,
@@ -203,14 +229,8 @@ export async function globalSearchAction(query: string): Promise<SearchResult[]>
   }
 
   // 8. Rulebook
-  const { data: rules } = await supabase
-    .from('company_rules')
-    .select('id, title, category, description')
-    .or(`title.ilike."${searchTerm}",description.ilike."${searchTerm}"`)
-    .limit(5)
-    
-  if (rules) {
-    rules.forEach((rule: any) => {
+  if (rulesRes.data) {
+    rulesRes.data.forEach((rule: any) => {
       results.push({
         id: `rule-${rule.id}`,
         title: rule.title,
@@ -220,48 +240,25 @@ export async function globalSearchAction(query: string): Promise<SearchResult[]>
       })
     })
   }
-  
+
   // 9. Documents
-  // Simple document mock/query if there's a table
-  if (isAdminOrHR) {
-    const { data: docs } = await supabase
-      .from('employee_documents')
-      .select('id, document_type, file_name, employee_id_number, employee_onboarding!inner(employee_name)')
-      .or(`document_type.ilike."${searchTerm}",file_name.ilike."${searchTerm}"`)
-      .limit(5)
-      
-    if (docs) {
-      docs.forEach((doc: any) => {
-        results.push({
-          id: `doc-${doc.id}`,
-          title: doc.file_name || doc.document_type,
-          subtitle: `${doc.employee_onboarding?.employee_name || 'Unknown'} · ${doc.document_type}`,
-          category: 'DOCUMENTS',
-          url: `/hr/directory/${doc.employee_id_number}?tab=documents`
-        })
+  if (docsRes.data) {
+    docsRes.data.forEach((doc: any) => {
+      const isDocAdmin = isAdminOrHR
+      results.push({
+        id: `doc-${doc.id}`,
+        title: doc.file_name || doc.document_type,
+        subtitle: isDocAdmin
+          ? `${doc.employee_onboarding?.employee_name || 'Unknown'} · ${doc.document_type}`
+          : doc.document_type,
+        category: 'DOCUMENTS',
+        url: isDocAdmin
+          ? `/hr/directory/${doc.employee_id_number}?tab=documents`
+          : `/employee-profile`
       })
-    }
-  } else {
-    // Employee viewing own docs
-    const { data: docs } = await supabase
-      .from('employee_documents')
-      .select('id, document_type, file_name')
-      .eq('employee_id_number', user.employee_id || '')
-      .or(`document_type.ilike."${searchTerm}",file_name.ilike."${searchTerm}"`)
-      .limit(5)
-      
-    if (docs) {
-      docs.forEach((doc: any) => {
-        results.push({
-          id: `doc-${doc.id}`,
-          title: doc.file_name || doc.document_type,
-          subtitle: doc.document_type,
-          category: 'DOCUMENTS',
-          url: `/employee-profile`
-        })
-      })
-    }
+    })
   }
 
   return results
 }
+

@@ -6,6 +6,8 @@ import { canCreateProjects, canEditProject, canViewRestrictedClientInfo } from '
 import { Project, ProjectStatus, ProjectPriority, ProjectDashboardStats, ProjectTeamMemberStats, ProjectActivity } from '@/types/project-management'
 import { revalidatePath } from 'next/cache'
 import { attachProfilePhotos } from '@/lib/utils/profile-photos'
+import { cache } from 'react'
+
 
 export interface CreateProjectInput {
   name: string
@@ -95,17 +97,11 @@ export async function getProjects(filters?: {
     let allowedTaskIds: string[] = []
 
     if (isEmployee) {
-      // First find projects where the user is a member
-      const { data: memberProjects } = await admin
-        .from('project_members')
-        .select('project_id')
-        .eq('user_id', user.id)
-
-      // Second find tasks where the user is assigned, then get those project IDs
-      const { data: userTasks } = await admin
-        .from('task_assignees')
-        .select('task_id')
-        .eq('user_id', user.id)
+      // Find projects where the user is a member and tasks where the user is assigned in parallel
+      const [{ data: memberProjects }, { data: userTasks }] = await Promise.all([
+        admin.from('project_members').select('project_id').eq('user_id', user.id),
+        admin.from('task_assignees').select('task_id').eq('user_id', user.id)
+      ])
         
       allowedTaskIds = (userTasks || []).map((t: any) => t.task_id)
       let taskProjectIds: string[] = []
@@ -875,35 +871,10 @@ export async function updateProjectAction(input: UpdateProjectInput): Promise<{ 
 }
 
 /**
- * Check if the user has access to any projects via membership or task assignments.
- */
-export async function checkEmployeeProjectAccess(userId: string): Promise<boolean> {
-  try {
-    const admin = await createAdminClient()
-
-    // Check project manager
-    const { data: pCheck } = await admin.from('projects').select('id').eq('project_manager_id', userId).limit(1)
-    if (pCheck && pCheck.length > 0) return true
-
-    // Check membership
-    const { data: mCheck } = await admin.from('project_members').select('id').eq('user_id', userId).limit(1)
-    if (mCheck && mCheck.length > 0) return true
-
-    // Check task assignment
-    const { data: taCheck } = await admin.from('task_assignees').select('id').eq('user_id', userId).limit(1)
-    if (taCheck && taCheck.length > 0) return true
-
-    return false
-  } catch (err) {
-    console.error('Error checking project access:', err)
-    return false
-  }
-}
-
-/**
  * Check if the user has any tasks assigned to them.
+ * Cached per-request to prevent duplicate queries on layout and component renders.
  */
-export async function checkEmployeeHasTasks(userId: string): Promise<boolean> {
+export const checkEmployeeHasTasks = cache(async (userId: string): Promise<boolean> => {
   try {
     const admin = await createAdminClient()
     const { data: taCheck } = await admin.from('task_assignees').select('id').eq('user_id', userId).limit(1)
@@ -912,4 +883,32 @@ export async function checkEmployeeHasTasks(userId: string): Promise<boolean> {
     console.error('Error checking task assignment:', err)
     return false
   }
-}
+})
+
+/**
+ * Check if the user has access to any projects via membership or task assignments.
+ * Executes project manager, project member, and task assignment checks concurrently in parallel,
+ * and caches results per-request.
+ */
+export const checkEmployeeProjectAccess = cache(async (userId: string): Promise<boolean> => {
+  try {
+    const admin = await createAdminClient()
+
+    // Parallel check across project manager, project members, and task assignees
+    const [pCheck, mCheck, hasTasks] = await Promise.all([
+      admin.from('projects').select('id').eq('project_manager_id', userId).limit(1),
+      admin.from('project_members').select('id').eq('user_id', userId).limit(1),
+      checkEmployeeHasTasks(userId)
+    ])
+
+    if (pCheck.data && pCheck.data.length > 0) return true
+    if (mCheck.data && mCheck.data.length > 0) return true
+    if (hasTasks) return true
+
+    return false
+  } catch (err) {
+    console.error('Error checking project access:', err)
+    return false
+  }
+})
+

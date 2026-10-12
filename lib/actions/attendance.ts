@@ -1,8 +1,8 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
-import { createClient as createSupabaseClient } from '@supabase/supabase-js'
+import { createAdminClient } from "@/lib/supabase/server"
 import { guardServerAction } from "@/lib/auth"
+
 
 export type AttendanceStatus = 'Present' | 'Leave' | 'WFH' | 'Half Day + Present' | 'Half Day + WFH' | 'Half Day' | 'Unpaid Leave' | 'Absent' | 'Pending' | 'Holiday' | 'Weekend' | 'Not Marked';
 
@@ -26,68 +26,102 @@ export async function getAttendanceEmployees(month: number, year: number) {
   // Enforce role-based access for this action
   await guardServerAction(['HR', 'Admin', 'Super Admin'] as any);
   
-  // Use admin client to bypass RLS for fetching all profiles
-  const supabaseAdmin = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY! || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const supabaseAdmin = await createAdminClient();
   
-  const { data: profiles, error } = await supabaseAdmin
-    .from('profiles')
-    .select('id, first_name, last_name, employee_id')
-    .order('first_name');
+  // Parallel fetch: profiles and employee_onboarding
+  const [profilesRes, onboardingRes] = await Promise.all([
+    supabaseAdmin.from('profiles').select('id, first_name, last_name, employee_id').order('first_name'),
+    supabaseAdmin.from('employee_onboarding').select('id, employee_id_number, department, profile_photo, designation, employment_type')
+  ]);
 
-  if (error) {
-    console.error('getAttendanceEmployees profile error:', error);
-    return [];
-  }
-  
-  if (!profiles) {
-    console.error('getAttendanceEmployees profile returned no data');
-    return [];
-  }
+  const profiles = profilesRes.data || [];
+  const onboardingData = onboardingRes.data || [];
+
+  const onboardingMap = new Map();
+  const onboardingByEmpNumMap = new Map();
+  onboardingData.forEach(o => {
+    if (o.employee_id_number) {
+      onboardingByEmpNumMap.set(o.employee_id_number, o);
+    }
+    if (o.id) {
+      onboardingMap.set(o.id, o);
+    }
+  });
 
   // Filter out admin
   const filteredProfiles = profiles.filter(p => p.first_name?.toLowerCase() !== 'admin');
-  
-  if (!profiles) {
-    console.error('getAttendanceEmployees profile returned no data');
-    return [];
-  }
-
-  // Fetch departments and profile photos from employee_onboarding
-  const { data: onboardingData } = await supabaseAdmin
-    .from('employee_onboarding')
-    .select('employee_id_number, department, profile_photo, designation, employment_type');
-
-  const onboardingMap = new Map();
-  if (onboardingData) {
-    onboardingData.forEach(o => {
-      if (o.employee_id_number) {
-        onboardingMap.set(o.employee_id_number, o);
-      }
-    });
-  }
 
   const data = filteredProfiles
-    .filter(p => p.employee_id && onboardingMap.has(p.employee_id))
+    .filter(p => p.employee_id && onboardingByEmpNumMap.has(p.employee_id))
     .map(p => {
-    const ob = onboardingMap.get(p.employee_id) || {};
-    return {
-      ...p,
-      department: ob.department || 'General',
-      designation: ob.designation || '',
-      profile_photo: ob.profile_photo || null,
-      employment_type: ob.employment_type || ''
-    };
+      const ob = onboardingByEmpNumMap.get(p.employee_id) || {};
+      return {
+        ...p,
+        onboarding_id: ob.id || p.id,
+        department: ob.department || 'General',
+        designation: ob.designation || '',
+        profile_photo: ob.profile_photo || null,
+        employment_type: ob.employment_type || ''
+      };
+    });
+
+  if (data.length === 0) return [];
+
+  const startDateStr = `${year}-${String(month).padStart(2, '0')}-01`;
+  const endDate = new Date(year, month, 0);
+  const endDateStr = `${year}-${String(month).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
+
+  const allAuthIds = data.map(d => d.id);
+  const allEmpIds = Array.from(new Set(data.map(d => d.onboarding_id)));
+
+  // Batch fetch all month EODs, leaves, and holidays in ONE parallel wave (3 queries total)
+  const [eodsRes, leavesRes, holidaysRes] = await Promise.all([
+    supabaseAdmin
+      .from('eod_reports')
+      .select('id, employee_id, report_date, office_hours, status')
+      .in('employee_id', allAuthIds)
+      .gte('report_date', startDateStr)
+      .lte('report_date', endDateStr),
+    supabaseAdmin
+      .from('leave_requests')
+      .select('id, employee_id, start_date, end_date, status, request_type, is_half_day')
+      .in('employee_id', allEmpIds)
+      .in('status', ['Approved', 'Approved HR', 'Approved (Auto)'])
+      .lte('start_date', endDateStr)
+      .gte('end_date', startDateStr),
+    supabaseAdmin
+      .from('holidays')
+      .select('id, date, name, holiday_type, is_active')
+      .eq('is_active', true)
+      .gte('date', startDateStr)
+      .lte('date', endDateStr)
+  ]);
+
+  // Group EODs by employee (authId)
+  const eodsByAuthId = new Map<string, any[]>();
+  (eodsRes.data || []).forEach(e => {
+    const list = eodsByAuthId.get(e.employee_id) || [];
+    list.push(e);
+    eodsByAuthId.set(e.employee_id, list);
   });
 
+  // Group leaves by onboarding_id
+  const leavesByEmpId = new Map<string, any[]>();
+  (leavesRes.data || []).forEach(l => {
+    const list = leavesByEmpId.get(l.employee_id) || [];
+    list.push(l);
+    leavesByEmpId.set(l.employee_id, list);
+  });
+
+  const holidays = holidaysRes.data || [];
+
   try {
-    const empsWithSummary = await Promise.all(data.map(async (emp) => {
-      const attendance = await _calculateAttendance(emp.id, month, year, supabaseAdmin);
+    const empsWithSummary = data.map(emp => {
+      const empEods = eodsByAuthId.get(emp.id) || [];
+      const empLeaves = leavesByEmpId.get(emp.onboarding_id) || [];
+      const attendance = _buildAttendanceRecords(year, month, empEods, empLeaves, holidays);
       const summary = calculateAttendanceSummary(attendance);
-      // Check if employee has any actual attendance activity for this month/year
-      // (i.e., at least one day that is not Absent/Weekend/Holiday/Not Marked)
+
       const hasActivity = attendance.some(a =>
         a.status === 'Present' ||
         a.status === 'WFH' ||
@@ -97,9 +131,8 @@ export async function getAttendanceEmployees(month: number, year: number) {
         a.status === 'Half Day + WFH'
       );
       return { ...emp, summary, hasActivity };
-    }));
+    });
 
-    // Only return employees who have at least one attendance record for this month/year
     return empsWithSummary.filter(emp => emp.hasActivity);
   } catch (err) {
     console.error("Error calculating attendance summaries:", err);
@@ -108,11 +141,8 @@ export async function getAttendanceEmployees(month: number, year: number) {
 }
 
 export async function getAttendanceEmployeeProfile(employeeId: string) {
-  await guardServerAction(['HR', 'Admin', 'Super Admin', 'Employee'] as any); // Employee can see their own
-  const supabaseAdmin = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY! || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  await guardServerAction(['HR', 'Admin', 'Super Admin', 'Employee'] as any);
+  const supabaseAdmin = await createAdminClient();
   
   const { data: profile } = await supabaseAdmin.from('profiles').select('id, first_name, last_name, employee_id').eq('id', employeeId).single();
   if (!profile) return null;
@@ -130,21 +160,14 @@ export async function getAttendanceEmployeeProfile(employeeId: string) {
 
 export async function getEmployeeAttendance(employeeId: string, month: number, year: number): Promise<DerivedAttendance[]> {
   await guardServerAction(['HR', 'Admin', 'Super Admin', 'Employee'] as any);
-
-  const supabaseAdmin = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY! || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-  
+  const supabaseAdmin = await createAdminClient();
   return _calculateAttendance(employeeId, month, year, supabaseAdmin);
 }
 
-/** Internal calculation — no auth, caller must have already authenticated. */
+/** Internal calculation for a single employee */
 async function _calculateAttendance(employeeId: string, month: number, year: number, supabase: any): Promise<DerivedAttendance[]> {
-  
-  
   const startDateStr = `${year}-${String(month).padStart(2, '0')}-01`;
-  const endDate = new Date(year, month, 0); // last day of the month
+  const endDate = new Date(year, month, 0);
   const endDateStr = `${year}-${String(month).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
 
   const authUserPromise = supabase.from('employee_onboarding').select('employee_id_number').eq('id', employeeId).single()
@@ -157,40 +180,31 @@ async function _calculateAttendance(employeeId: string, month: number, year: num
       return authId;
     });
 
-  const eodsPromise = authUserPromise.then((authUserId: any) => supabase
-    .from('eod_reports')
-    .select('*')
-    .eq('employee_id', authUserId)
-    .gte('report_date', startDateStr)
-    .lte('report_date', endDateStr)
-  );
-
-  const leaveRequestsPromise = supabase
-    .from('leave_requests')
-    .select('*')
-    .eq('employee_id', employeeId)
-    .in('status', ['Approved', 'Approved HR', 'Approved (Auto)']) // Considering possible statuses, usually 'Approved'
-    // Overlapping dates
-    .lte('start_date', endDateStr)
-    .gte('end_date', startDateStr);
-    
-  const holidaysPromise = supabase
-    .from('holidays')
-    .select('*')
-    .eq('is_active', true)
-    .gte('date', startDateStr)
-    .lte('date', endDateStr);
-
-  const [
-    { data: eods },
-    { data: leaveRequests },
-    { data: holidays }
-  ] = await Promise.all([
-    eodsPromise,
-    leaveRequestsPromise,
-    holidaysPromise
+  const [authUserId, holidaysRes, leaveRequestsRes] = await Promise.all([
+    authUserPromise,
+    supabase.from('holidays').select('id, date, name, holiday_type, is_active').eq('is_active', true).gte('date', startDateStr).lte('date', endDateStr),
+    supabase.from('leave_requests').select('id, employee_id, start_date, end_date, status, request_type, is_half_day').eq('employee_id', employeeId).in('status', ['Approved', 'Approved HR', 'Approved (Auto)']).lte('start_date', endDateStr).gte('end_date', startDateStr)
   ]);
 
+  const { data: eods } = await supabase
+    .from('eod_reports')
+    .select('id, employee_id, report_date, office_hours, status')
+    .eq('employee_id', authUserId)
+    .gte('report_date', startDateStr)
+    .lte('report_date', endDateStr);
+
+  return _buildAttendanceRecords(year, month, eods || [], leaveRequestsRes.data || [], holidaysRes.data || []);
+}
+
+/** Pure in-memory attendance record builder */
+function _buildAttendanceRecords(
+  year: number,
+  month: number,
+  eods: any[],
+  leaveRequests: any[],
+  holidays: any[]
+): DerivedAttendance[] {
+  const endDate = new Date(year, month, 0);
   const eodMap = new Map(eods?.map((e: any) => [e.report_date, e]) || []);
   const holidayMap = new Map(holidays?.map((h: any) => [h.date, h]) || []);
   
@@ -199,10 +213,6 @@ async function _calculateAttendance(employeeId: string, month: number, year: num
   
   if (leaveRequests) {
     for (const req of leaveRequests) {
-      if (req.status !== 'Approved' && req.status !== 'Approved HR') {
-         // Assuming Approved HR is final
-      }
-      // Generate dates between start and end
       const start = new Date(req.start_date);
       const end = new Date(req.end_date);
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
@@ -218,7 +228,6 @@ async function _calculateAttendance(employeeId: string, month: number, year: num
 
   const attendance: DerivedAttendance[] = [];
   
-  // Build today's date string in local time (Asia/Kolkata) for comparison
   const formatter = new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Asia/Kolkata',
     year: 'numeric',
@@ -226,6 +235,7 @@ async function _calculateAttendance(employeeId: string, month: number, year: num
     day: '2-digit'
   });
   const todayStr = formatter.format(new Date());
+
 
   for (let d = 1; d <= endDate.getDate(); d++) {
     const currentDate = new Date(year, month - 1, d); // local date

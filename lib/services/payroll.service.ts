@@ -5,6 +5,7 @@ import {
   FULL_DAY_MINUTES,
   isWorkingDay,
   isSunday,
+  calculateCompOffMinutes,
 } from '@/lib/utils/time';
 import { processEODCompOff } from '@/lib/actions/compoff';
 
@@ -136,9 +137,11 @@ export async function calculateMonthlyPayroll(
   const { data: employees } = await query;
   if (!employees || employees.length === 0) return [];
 
-  // 3. Fetch profiles to map employee_onboarding → eod_reports
-  // Relationship: eod_reports.employee_id → profiles.id → profiles.employee_id → employee_onboarding.employee_id_number
-  const { data: profiles } = await supabase.from('profiles').select('id, employee_id');
+  // 3. Fetch profiles to map employee_onboarding → eod_reports (filtered by employee_id_number)
+  const empNumbers = employees.map(e => e.employee_id_number).filter(Boolean);
+  const { data: profiles } = empNumbers.length > 0
+    ? await supabase.from('profiles').select('id, employee_id').in('employee_id', empNumbers)
+    : { data: [] };
 
   const authIds: string[] = [];
   const empToAuthIdMap = new Map<string, string>();
@@ -152,36 +155,36 @@ export async function calculateMonthlyPayroll(
 
   if (authIds.length === 0) return [];
 
-  // 4. Fetch APPROVED EOD reports for the selected month
-  const { data: eods } = await supabase
-    .from('eod_reports')
-    .select('id, employee_id, office_hours, report_date, status')
-    .eq('status', 'Approved')
-    .gte('report_date', startDate)
-    .lte('report_date', endDate)
-    .in('employee_id', authIds);
+  // 4, 5, 6. Concurrently fetch EOD reports, Holidays, and Leaves in ONE parallel wave
+  const [eodsRes, holidaysRes, leavesRes] = await Promise.all([
+    supabase
+      .from('eod_reports')
+      .select('id, employee_id, office_hours, report_date, status')
+      .eq('status', 'Approved')
+      .gte('report_date', startDate)
+      .lte('report_date', endDate)
+      .in('employee_id', authIds),
+    supabase
+      .from('holidays')
+      .select('id, name, date, is_optional, holiday_type')
+      .gte('date', startDate)
+      .lte('date', endDate),
+    supabase
+      .from('leave_requests')
+      .select('id, employee_id, start_date, end_date, is_half_day, request_type, leave_type, status')
+      .in('status', ['Approved', 'Approved HR'])
+      .gte('start_date', startDate)
+      .lte('start_date', endDate)
+      .in('employee_id', authIds)
+  ]);
 
-  // 5. Fetch Holidays for the month
-  // IMPORTANT: The holidays table has NO holiday_type column.
-  // ALL holidays created by HR/Admin are PAID holidays.
-  const { data: holidays } = await supabase
-    .from('holidays')
-    .select('id, name, date, is_optional, holiday_type')
-    .gte('date', startDate)
-    .lte('date', endDate);
-
-  // 6. Fetch Approved Leaves (for leave tracking, not directly used for pay calc here)
-  const { data: leaves } = await supabase
-    .from('leave_requests')
-    .select('*')
-    .in('status', ['Approved', 'Approved HR'])
-    .gte('start_date', startDate)
-    .lte('start_date', endDate)
-    .in('employee_id', authIds);
+  const eods = eodsRes.data || [];
+  const holidays = holidaysRes.data || [];
+  const leaves = leavesRes.data || [];
 
   // 7. Build paid holiday date set — ALL holidays are paid
   const paidHolidayDates = new Set<string>();
-  holidays?.forEach(h => {
+  holidays.forEach(h => {
     if (h.holiday_type === 'PAID') {
       paidHolidayDates.add(h.date);
     }
@@ -196,11 +199,71 @@ export async function calculateMonthlyPayroll(
     }
   }
 
-  // To match the formula: Payable Days = Normal Working Days + Paid Holidays
+  // Payable Days = Normal Working Days + Paid Holidays
   const payableDaysInMonth = standardWorkingDays + paidHolidayDates.size;
   const standardHours = standardWorkingDays * 8;
 
-  // 9. Process each employee independently
+  // 9. Batch check existing Comp-Off credits for all EODs to avoid repeated individual queries
+  const allEodIds = eods.map(e => e.id);
+  const creditedEodIds = new Set<string>();
+  if (allEodIds.length > 0) {
+    const { data: existingCredits } = await supabase
+      .from('comp_off_ledger')
+      .select('reference_id')
+      .in('reference_id', allEodIds)
+      .eq('transaction_type', 'CREDIT');
+    existingCredits?.forEach(c => creditedEodIds.add(c.reference_id));
+  }
+
+  // Batch insert any uncredited EOD comp off credits in a single atomic insert
+  const uncreditedEods = eods.filter(e => !creditedEodIds.has(e.id));
+  if (uncreditedEods.length > 0) {
+    const authToOnboardingId = new Map<string, string>();
+    for (const [onboardingId, authId] of empToAuthIdMap.entries()) {
+      authToOnboardingId.set(authId, onboardingId);
+    }
+
+    const newCredits: { employee_id: string; transaction_type: 'CREDIT'; hours: number; reference_id: string }[] = [];
+    for (const eod of uncreditedEods) {
+      const resolvedOnboardingId = authToOnboardingId.get(eod.employee_id) || eod.employee_id;
+      const workedMins = Math.round(Number(eod.office_hours) * 60);
+
+      let context: 'normal' | 'sunday' | 'paid_holiday' | 'approved_leave' = 'normal';
+      if (isSunday(eod.report_date)) {
+        context = 'sunday';
+      } else if (paidHolidayDates.has(eod.report_date)) {
+        context = 'paid_holiday';
+      } else {
+        const empLeave = leaves.find(l =>
+          l.employee_id === eod.employee_id &&
+          l.start_date <= eod.report_date &&
+          l.end_date >= eod.report_date &&
+          !l.is_half_day
+        );
+        if (empLeave) context = 'approved_leave';
+      }
+
+      const compOffMinutes = calculateCompOffMinutes(workedMins, context, 'Approved');
+      if (compOffMinutes > 0) {
+        const creditHours = Math.round((compOffMinutes / 60) * 100) / 100;
+        newCredits.push({
+          employee_id: resolvedOnboardingId,
+          transaction_type: 'CREDIT',
+          hours: creditHours,
+          reference_id: eod.id
+        });
+      }
+    }
+
+    if (newCredits.length > 0) {
+      const { error: insertErr } = await supabase.from('comp_off_ledger').insert(newCredits);
+      if (insertErr && !(insertErr.code === '23505' || insertErr.message?.includes('unique'))) {
+        console.error("[PAYROLL] Comp-Off ledger insert error:", insertErr);
+      }
+    }
+  }
+
+  // 10. Process each employee independently
   const results: PayrollResult[] = [];
 
   for (const emp of employees) {
@@ -209,10 +272,6 @@ export async function calculateMonthlyPayroll(
     // Filter EODs for THIS employee only
     const empEods = eods?.filter(e => e.employee_id === authId) || [];
 
-    // Trigger existing Comp-Off ledger engine for each approved EOD idempotently
-    await Promise.all(empEods.map(eod => 
-      processEODCompOff(eod.id, eod.employee_id, Number(eod.office_hours), eod.status)
-    ));
 
     // Filter leaves for THIS employee only
     const empLeaves = leaves?.filter(l => l.employee_id === authId) || [];

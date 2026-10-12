@@ -27,20 +27,19 @@ export async function getAssignableEmployees(): Promise<{ success: boolean; data
 
     const admin = await createAdminClient()
 
-    // 1. Fetch profiles
-    const { data: profiles, error: profileErr } = await admin
-      .from('profiles')
-      .select('id, first_name, last_name, employee_id')
-      .order('first_name', { ascending: true })
+    // 1. Fetch profiles and employee_onboarding concurrently
+    const [profilesRes, onboardingRes] = await Promise.all([
+      admin.from('profiles').select('id, first_name, last_name, employee_id').order('first_name', { ascending: true }),
+      admin.from('employee_onboarding').select('employee_id_number, department, designation, profile_photo')
+    ])
 
-    if (profileErr || !profiles) {
+    const profiles = profilesRes.data
+    const onboarding = onboardingRes.data
+
+    if (profilesRes.error || !profiles) {
       return { success: true, data: [] }
     }
 
-    // 2. Fetch employee_onboarding non-sensitive details only
-    const { data: onboarding } = await admin
-      .from('employee_onboarding')
-      .select('employee_id_number, department, designation, profile_photo')
 
     const onboardingMap = new Map<string, any>()
     if (onboarding) {

@@ -7,7 +7,11 @@ async function check() {
   // List tables using PostgREST reflection / RPC, but usually not possible directly.
   // Instead, let's query information_schema or just fetch a known table to see if it works.
   
-  const { data, error } = await supabase.from('projects').select('id').limit(1);
-  console.log('projects table:', { data, error });
+  const { data: nData, error: nErr } = await supabase.from('notifications').select('id').limit(1);
+  console.log('notifications table:', { nData, nErr });
+  const { data: aData, error: aErr } = await supabase.from('activity_logs').select('id').limit(1);
+  console.log('activity_logs table:', { aData, aErr });
+  const { data: annData, error: annErr } = await supabase.from('announcements').select('id').limit(1);
+  console.log('announcements table:', { annData, annErr });
 }
 check();

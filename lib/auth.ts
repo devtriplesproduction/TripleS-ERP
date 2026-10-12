@@ -7,6 +7,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { hasRouteAccess, type AppRole } from '@/config/rbac'
+import { cache } from 'react'
 
 export interface AuthUser {
   id: string
@@ -22,9 +23,10 @@ export interface AuthUser {
 
 /**
  * Get the currently authenticated user and their profile.
+ * Cached per-request using React cache to eliminate duplicate Supabase round-trips.
  * Returns null if not authenticated.
  */
-export async function getCurrentUser(): Promise<AuthUser | null> {
+export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
   const supabase = await createClient()
   const { data: { user }, error } = await supabase.auth.getUser()
 
@@ -73,7 +75,7 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
     designation,
     division,
   }
-}
+})
 
 /**
  * Require authentication. Redirects to /login if not authenticated.

@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, CheckCircle2, XCircle, Plus, FileText, Trash2, Paperclip, Check, X } from "lucide-react"
+import { Calendar, Clock, CheckCircle2, XCircle, Plus, FileText, Trash2, Paperclip, Check, X, Loader2 } from "lucide-react"
 import { format } from "date-fns"
 import {
   Select,
@@ -21,6 +21,7 @@ import { toast } from "sonner"
 import { formatCompOffBalance } from "@/lib/utils/time"
 import { PageHeader } from "@/components/PageHeader"
 import { createClient } from "@/lib/supabase/client"
+import { reviewLeaveAction } from "@/actions/leave.actions"
 
 export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, canApprove, isSuperAdmin = false, currentEmployeeId, isHR = false }: any) {
   const supabase = createClient()
@@ -29,45 +30,66 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
   const [showForm, setShowForm] = useState(false)
   const [approvalLeaves, setApprovalLeaves] = useState<any[]>(leavesToApprove || [])
   const [myLeavesList, setMyLeavesList] = useState<any[]>(myLeaves || [])
+  const [submittingId, setSubmittingId] = useState<string | null>(null)
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
+    if (submittingId) return // Prevent duplicate submissions while in-flight
+    setSubmittingId(id)
+
+    const previousLeaves = [...approvalLeaves]
+
     // Optimistic update
     setApprovalLeaves(prev =>
       prev.map(leave => (leave.id === id ? { ...leave, status: newStatus } : leave))
     )
 
-    const { error } = await supabase
-      .from('leave_requests')
-      .update({ status: newStatus })
-      .eq('id', id)
-
-    if (error) {
+    try {
+      const result = await reviewLeaveAction(id, newStatus)
+      if (!result.success) {
+        toast.error(result.error || `Failed to update status to ${newStatus}`)
+        setApprovalLeaves(previousLeaves)
+      } else {
+        toast.success(`Leave request ${newStatus}`)
+      }
+    } catch {
       toast.error(`Failed to update status to ${newStatus}`)
-      // Revert optimistic update (simplistic approach)
-      setApprovalLeaves(leavesToApprove || [])
-    } else {
-      toast.success(`Leave request ${newStatus}`)
+      setApprovalLeaves(previousLeaves)
+    } finally {
+      setSubmittingId(null)
     }
   }
 
   const handleCancelMyLeave = async (id: string) => {
+    if (submittingId) return
+    setSubmittingId(id)
+
+    const previousMyLeaves = [...myLeavesList]
+
     // Optimistic update
     setMyLeavesList(prev =>
       prev.map(leave => (leave.id === id ? { ...leave, status: 'Cancelled' } : leave))
     )
 
-    const { error } = await supabase
-      .from('leave_requests')
-      .update({ status: 'Cancelled' })
-      .eq('id', id)
+    try {
+      const { error } = await supabase
+        .from('leave_requests')
+        .update({ status: 'Cancelled' })
+        .eq('id', id)
 
-    if (error) {
+      if (error) {
+        toast.error("Failed to cancel leave")
+        setMyLeavesList(previousMyLeaves)
+      } else {
+        toast.success("Leave cancelled successfully")
+      }
+    } catch {
       toast.error("Failed to cancel leave")
-      setMyLeavesList(myLeaves || [])
-    } else {
-      toast.success("Leave cancelled successfully")
+      setMyLeavesList(previousMyLeaves)
+    } finally {
+      setSubmittingId(null)
     }
   }
+
 
   const filteredMyLeaves = myLeavesList.filter((leave: any) => {
     if (statusFilter === "All Statuses") return true
@@ -254,8 +276,9 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                           variant="outline"
                           className="w-full border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 font-medium h-8 rounded-md gap-1.5 text-xs transition-colors"
                           onClick={() => handleCancelMyLeave(leave.id)}
+                          disabled={submittingId === leave.id}
                         >
-                          <Trash2 className="w-3 h-3" /> Cancel
+                          {submittingId === leave.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Cancel
                         </Button>
                       </div>
                     )}
@@ -390,15 +413,17 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
                       <Button
                         className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold h-10 sm:h-11 rounded-xl gap-2 text-xs sm:text-sm shadow-sm transition-all"
                         onClick={() => handleUpdateStatus(leave.id, 'Approved')}
+                        disabled={submittingId === leave.id}
                       >
-                        <Check className="w-4 h-4" /> Approve
+                        {submittingId === leave.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Approve
                       </Button>
                       <Button
                         variant="outline"
                         className="w-full border-border/80 text-rose-500 hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-400 font-bold h-10 sm:h-11 rounded-xl gap-2 text-xs sm:text-sm transition-all bg-transparent"
                         onClick={() => handleUpdateStatus(leave.id, 'Rejected')}
+                        disabled={submittingId === leave.id}
                       >
-                        <X className="w-4 h-4" /> Reject
+                        {submittingId === leave.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />} Reject
                       </Button>
                     </>
                   )}

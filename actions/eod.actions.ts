@@ -2,7 +2,7 @@
 'use server';
 
 import { z } from 'zod';
-import { submitEOD, reviewEOD, updateEOD, getEODByEmployeeAndDate } from '@/lib/actions/eod';
+import { submitEOD, reviewEOD, batchReviewEODs, updateEOD, getEODByEmployeeAndDate } from '@/lib/actions/eod';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 
@@ -51,20 +51,8 @@ export async function submitEODAction(formData: FormData) {
 
     
 
-    const supabase = await createClient();
-    const existing = await supabase
-      .from("eod_reports")
-      .select("id")
-      .eq("employee_id", validatedData.employee_id)
-      .eq("report_date", validatedData.report_date)
-      .eq("role_context", validatedData.role_context)
-      .maybeSingle();
-
-    if (existing.data) {
-      return { success: false, error: "Frontend Action Block: An EOD report already exists for this date and role." };
-    }
-
     const result = await submitEOD(validatedData);
+
 
     if (result.success) {
       revalidatePath('/eod');
@@ -120,6 +108,59 @@ export async function reviewEODAction(formData: FormData) {
       return { success: false, error: (error.errors || error.issues || [])[0]?.message || "Validation failed" };
     }
     return { success: false, error: "An unexpected error occurred" };
+  }
+}
+
+const batchEodReviewSchema = z.object({
+  eod_ids: z.array(z.string().uuid()).min(1, "At least one EOD report must be selected"),
+  action: z.enum(['Approve', 'Reject']),
+  rejection_reason: z.string().optional(),
+  idempotency_key: z.string().optional()
+}).refine(data => data.action === 'Approve' || (data.action === 'Reject' && data.rejection_reason && data.rejection_reason.trim().length > 0), {
+  message: "Rejection reason is required",
+  path: ['rejection_reason']
+});
+
+export async function batchReviewEODAction(payload: {
+  eod_ids: string[];
+  action: 'Approve' | 'Reject';
+  rejection_reason?: string;
+  idempotency_key?: string;
+}) {
+  try {
+    const validated = batchEodReviewSchema.parse(payload);
+    const result = await batchReviewEODs(
+      validated.eod_ids,
+      validated.action,
+      validated.rejection_reason,
+      { idempotencyKey: validated.idempotency_key }
+    );
+
+    if (result.succeeded.length > 0) {
+      revalidatePath('/eod');
+      revalidatePath('/admin-eod');
+      revalidatePath('/employee-eod');
+    }
+
+    return result;
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const errs = error.errors || error.issues || [];
+      return {
+        success: false,
+        total: payload?.eod_ids?.length || 0,
+        succeeded: [],
+        failed: [],
+        error: errs[0]?.message || "Validation failed"
+      };
+    }
+    return {
+      success: false,
+      total: payload?.eod_ids?.length || 0,
+      succeeded: [],
+      failed: [],
+      error: "An unexpected error occurred"
+    };
   }
 }
 

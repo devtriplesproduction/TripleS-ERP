@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Loader2, IndianRupee, Clock, FileSpreadsheet, ChevronLeft, ChevronRight, Calendar, User } from 'lucide-react'
+import { Loader2, IndianRupee, Clock, FileSpreadsheet, ChevronLeft, ChevronRight, Calendar, User, Download } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { getMonthlyPayrollAction } from '@/lib/actions/payroll'
 import { PayrollDetailModal } from './PayrollDetailModal'
@@ -19,6 +19,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
   const [employees, setEmployees] = useState<any[]>(initialEmployees)
   const [loading, setLoading] = useState(false)
   const [calculating, setCalculating] = useState(false)
+  const [calculationTime, setCalculationTime] = useState<number | null>(null)
   const [payrollResults, setPayrollResults] = useState<PayrollData[]>([])
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [year, setYear] = useState(new Date().getFullYear())
@@ -33,11 +34,17 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
 
   const calculatePayroll = async () => {
     setCalculating(true)
+    const start = performance.now()
     try {
       const result = await getMonthlyPayrollAction(year, month);
+      const duration = Math.round(performance.now() - start);
+      setCalculationTime(duration);
       if (result.success && result.data) {
         setPayrollResults(result.data.map((d: any) => ({ ...d, isLocked: false })));
-        toast({ title: 'Success', description: `Calculated payroll for ${months[month-1]} ${year}` });
+        toast({
+          title: 'Calculation Completed',
+          description: `Processed ${result.data.length} employees in ${duration}ms for ${months[month-1]} ${year}`
+        });
       } else {
         throw new Error(result.error || 'Unknown error');
       }
@@ -47,6 +54,45 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
       setCalculating(false)
     }
   }
+
+  const handleExportCSV = () => {
+    if (payrollResults.length === 0) return;
+    const headers = [
+      'Employee Name', 'Department', 'Monthly Base (₹)', 'Standard Hrs',
+      'Worked Hrs', 'Half Days', 'Unpaid Days (<4h)', 'Comp-Off Earned (mins)',
+      'Overtime (₹)', 'Unpaid Deduction (₹)', 'Short Hrs Deduction (₹)',
+      'Total Deductions (₹)', 'Gross Pay (₹)', 'Net Payable (₹)'
+    ];
+
+    const rows = payrollResults.map(r => [
+      `"${r.name || ''}"`,
+      `"${r.department || ''}"`,
+      r.salary || 0,
+      r.standardHours || 0,
+      r.actualWorkedHours || 0,
+      r.daysHalfDay || 0,
+      r.daysUnpaidLeaveEod || 0,
+      r.compOffMinutesEarned || 0,
+      r.overtimePay || 0,
+      r.unpaidLeaveDeduction || 0,
+      r.shortHoursDeduction || 0,
+      r.totalDeductions || 0,
+      r.grossPay || 0,
+      r.netPayable || 0
+    ]);
+
+    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `payroll-report-${months[month-1]}-${year}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    toast({ title: 'Report Exported', description: `Saved payroll-report-${months[month-1]}-${year}.csv` });
+  };
 
   const handlePrevMonth = () => {
     let newM = month - 1
@@ -117,8 +163,26 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
       </div>
 
       <Card className="w-full min-w-0 overflow-hidden">
-        <CardHeader>
-          <CardTitle className="text-lg">Payroll Overview</CardTitle>
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <CardTitle className="text-lg">Payroll Overview</CardTitle>
+            {calculationTime !== null && (
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Batch calculated in {calculationTime}ms
+              </p>
+            )}
+          </div>
+          {payrollResults.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportCSV}
+              className="h-8 gap-1.5 text-xs font-medium self-start sm:self-auto"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Export Report (CSV)
+            </Button>
+          )}
         </CardHeader>
         <CardContent className="p-0 sm:p-6">
           {loading ? (

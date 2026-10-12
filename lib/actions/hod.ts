@@ -25,12 +25,14 @@ export async function assignHod(authUserId: string, employeeIdNumber: string, de
   try {
     const adminClient = await createAdminClient()
 
-    // 1. Update profiles table if is_hod exists
-    const { data: updatedProfile, error: profileError } = await (adminClient as any)
-      .from('profiles')
-      .update({ is_hod: true })
-      .eq('id', authUserId)
-      .select()
+    // 1. Update profiles and employee_onboarding tables concurrently
+    const [profileRes, empRes] = await Promise.all([
+      (adminClient as any).from('profiles').update({ is_hod: true }).eq('id', authUserId).select(),
+      (adminClient as any).from('employee_onboarding').update({ is_hod: true }).eq('employee_id_number', employeeIdNumber).select()
+    ])
+
+    const { data: updatedProfile, error: profileError } = profileRes
+    const { data: updatedEmp, error: empError } = empRes
 
     if (profileError) {
       if (!profileError.message.includes('column "is_hod" of relation "profiles" does not exist')) {
@@ -40,13 +42,6 @@ export async function assignHod(authUserId: string, employeeIdNumber: string, de
       throw new Error(`No profile found or updated for user ${authUserId}`)
     }
 
-    // 2. Update employee_onboarding table if is_hod exists
-    const { data: updatedEmp, error: empError } = await (adminClient as any)
-      .from('employee_onboarding')
-      .update({ is_hod: true })
-      .eq('employee_id_number', employeeIdNumber)
-      .select()
-
     if (empError) {
       if (!empError.message.includes('column "is_hod" of relation "employee_onboarding" does not exist')) {
         throw empError
@@ -54,6 +49,7 @@ export async function assignHod(authUserId: string, employeeIdNumber: string, de
     } else if (!updatedEmp || updatedEmp.length === 0) {
       throw new Error(`No onboarding record found or updated for EMP ID ${employeeIdNumber}`)
     }
+
 
     // In case there is still a department_hod_assignments table, update it as additive history
     // We ignore errors if the table doesn't exist (like in the case of missing migration)
@@ -100,12 +96,14 @@ export async function removeHod(authUserId: string, employeeIdNumber: string, de
   try {
     const adminClient = await createAdminClient()
 
-    // 1. Update profiles table
-    const { data: updatedProfile, error: profileError } = await (adminClient as any)
-      .from('profiles')
-      .update({ is_hod: false })
-      .eq('id', authUserId)
-      .select()
+    // 1. Update profiles and employee_onboarding tables concurrently
+    const [profileRes, empRes] = await Promise.all([
+      (adminClient as any).from('profiles').update({ is_hod: false }).eq('id', authUserId).select(),
+      (adminClient as any).from('employee_onboarding').update({ is_hod: false }).eq('employee_id_number', employeeIdNumber).select()
+    ])
+
+    const { data: updatedProfile, error: profileError } = profileRes
+    const { data: updatedEmp, error: empError } = empRes
 
     if (profileError) {
       if (!profileError.message.includes('does not exist')) throw profileError
@@ -113,18 +111,12 @@ export async function removeHod(authUserId: string, employeeIdNumber: string, de
       throw new Error(`No profile found or updated for user ${authUserId}`)
     }
 
-    // 2. Update employee_onboarding table
-    const { data: updatedEmp, error: empError } = await (adminClient as any)
-      .from('employee_onboarding')
-      .update({ is_hod: false })
-      .eq('employee_id_number', employeeIdNumber)
-      .select()
-
     if (empError) {
       if (!empError.message.includes('does not exist')) throw empError
     } else if (!updatedEmp || updatedEmp.length === 0) {
       throw new Error(`No onboarding record found or updated for EMP ID ${employeeIdNumber}`)
     }
+
 
     // 3. Mark inactive in history table if it exists
     const { error: historyError } = await (adminClient as any)

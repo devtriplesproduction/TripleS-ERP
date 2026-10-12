@@ -491,11 +491,11 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
       {/* Tabs */}
       <Tabs defaultValue="personal-info" className="w-full max-w-full min-w-0" style={{ maxWidth: '100%' }}>
         <div 
-          className="mb-6 w-full max-w-full min-w-0 pb-2 overflow-x-auto scroll-smooth" 
+          className="mb-6 w-full max-w-full min-w-0 pb-1 overflow-x-auto overflow-y-hidden no-scrollbar scroll-smooth" 
           style={{ width: '100%', maxWidth: '100%' }}
         >
           <TabsList 
-            className="bg-card/40 h-10 p-1 border border-border/20 flex items-center justify-start flex-nowrap rounded-xl w-max"
+            className="bg-card/40 h-auto min-h-10 p-1 border border-border/20 flex items-center justify-start flex-nowrap rounded-xl w-max overflow-x-visible overflow-y-hidden no-scrollbar"
           >
             {[
               { value: 'personal-info', label: 'Personal Info' },

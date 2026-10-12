@@ -10,7 +10,7 @@ export default async function AdminPayrollPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
-      <PayrollClientPage title="Admin Payroll" initialEmployees={employees} />
+      <PayrollClientPage title="Payroll" initialEmployees={employees} />
     </div>
   )
 }

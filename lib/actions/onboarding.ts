@@ -15,11 +15,11 @@ const DEFAULT_TASKS = [
   { task_name: 'Office Tour & Introduction', is_required: false },
 ]
 
-export async function getEmployees(): Promise<Employee[]> {
+export async function getEmployees(columns = 'id, first_name, last_name, email, phone, job_title, department, designation, division, joining_date, status, employee_id_number, employment_type, employment_status, probation_end_date, salary, stipend, profile_photo, created_at'): Promise<Employee[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('employee_onboarding')
-    .select('*')
+    .select(columns)
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -27,7 +27,7 @@ export async function getEmployees(): Promise<Employee[]> {
     return []
   }
 
-  return data as Employee[]
+  return (data || []) as unknown as Employee[]
 }
 
 export async function getEmployeeById(id: string): Promise<{ employee: Employee | null, tasks: OnboardingTask[] }> {

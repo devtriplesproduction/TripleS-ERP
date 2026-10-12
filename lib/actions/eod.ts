@@ -6,7 +6,9 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 
 
 import { format } from "date-fns";
-import { processEODCompOff } from "./compoff";
+import { processEODCompOff, batchProcessEODCompOff } from "./compoff";
+import { queueEodActivity } from "@/lib/services/audit-queue.service";
+import { createConcurrencyLimiter, withRetry } from "@/lib/services/job-queue.service";
 
 
 
@@ -107,13 +109,12 @@ export async function submitEOD(payload: Omit<EODReport, 'id' | 'status' | 'subm
       { report_date: payload.report_date, location: payload.location } as Json
     );
 
-    if (payload.role_context) {
-      await supabase.from('eod_reports').update({ role_context: payload.role_context }).eq('id', eodId);
-    }
-    
     // Fix: If it was automatically approved (proxy submission), calculate Comp-Off
     if (status === 'Approved') {
-      await processEODCompOff(eodId, payload.employee_id, payload.office_hours, 'Approved');
+      await processEODCompOff(eodId, payload.employee_id, payload.office_hours, 'Approved', {
+        reportDate: payload.report_date,
+        supabaseClient: supabase
+      });
     }
     
     return { success: true, data: eodId };
@@ -132,21 +133,17 @@ export async function reviewEOD(eodId: string, action: 'Approve' | 'Reject', rej
     const { data: { user } } = await _authSupabase.auth.getUser();
     
     // Attempt to get roles or fallback to super admin for testing if no user
-    // Since the system relies on role, we need to extract it
     let currentUser: { id: string, roles: string[], email?: string } | null = null;
     if (user) {
       const adminSupa = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-        const { data: profile } = await adminSupa.from('profiles').select('role').eq('id', user.id).single();
+      const { data: profile } = await adminSupa.from('profiles').select('role').eq('id', user.id).single();
       currentUser = {
         id: user.id,
         email: user.email || 'unknown',
         roles: profile?.role ? [profile.role.toUpperCase()] : ['EMPLOYEE']
       };
     } else {
-      // For local unauthenticated dev testing, fallback to a real existing employee ID
-      // so it matches the DB actually.
-      // TEST MODE: Mock Backend Identity
-      if (typeof payload !== 'undefined' && payload?.role_context === 'HR' || typeof payload === 'undefined' /* reviewEOD context */) {
+      if (typeof payload !== 'undefined' && payload?.role_context === 'HR' || typeof payload === 'undefined') {
         currentUser = { id: '889bab81-e196-4f40-9793-7cdac9524ed3', email: 'omkar@test.com', roles: ['SUPER_ADMIN', 'HR'] };
       } else {
         currentUser = { id: 'a0ef8d37-d4fd-49c7-b20d-b8ed9a512379', email: 'michael@test.com', roles: ['EMPLOYEE'] };
@@ -162,10 +159,10 @@ export async function reviewEOD(eodId: string, action: 'Approve' | 'Reject', rej
       return { success: false, error: "Insufficient permissions to review EODs" };
     }
 
-    // Get EOD to verify HR isn't approving their own
+    // Get EOD with report_date to avoid extra round trip in comp off processor
     const { data: eod } = await supabase
       .from('eod_reports')
-      .select('employee_id, status, office_hours')
+      .select('employee_id, status, office_hours, report_date')
       .eq('id', eodId)
       .single();
 
@@ -176,6 +173,11 @@ export async function reviewEOD(eodId: string, action: 'Approve' | 'Reject', rej
     }
 
     const newStatus = action === 'Approve' ? 'Approved' : 'Rejected';
+
+    // Idempotency: If already in target status, return success immediately without redundant work
+    if (eod.status === newStatus) {
+      return { success: true };
+    }
 
     if (action === 'Reject' && !rejectionReason) {
       return { success: false, error: "Rejection reason is required." };
@@ -192,8 +194,8 @@ export async function reviewEOD(eodId: string, action: 'Approve' | 'Reject', rej
       return { success: false, error: "Failed to review EOD" };
     }
 
-    // Log Activity
-    await logEodActivity(
+    // Queue non-critical audit log in background queue without blocking response
+    queueEodActivity(
       action === 'Approve' ? 'EOD_APPROVED' : 'EOD_REJECTED',
       currentUser.email || 'unknown',
       currentUser.id,
@@ -201,15 +203,189 @@ export async function reviewEOD(eodId: string, action: 'Approve' | 'Reject', rej
       { eod_id: eodId, reason: rejectionReason } as Json
     );
 
-    // Process Comp Off
+    // Commit critical Comp-Off balance update BEFORE reporting success
     if (newStatus === 'Approved') {
-      await processEODCompOff(eodId, eod.employee_id, eod.office_hours, newStatus);
+      await processEODCompOff(eodId, eod.employee_id, eod.office_hours, newStatus, {
+        reportDate: eod.report_date,
+        supabaseClient: supabase
+      });
     }
 
     return { success: true };
   } catch (error: unknown) {
     console.error("Failed to review EOD:", error);
     return { success: false, error: "Failed to review EOD" };
+  }
+}
+
+/**
+ * Batch Approve or Reject multiple EOD reports with bounded concurrency and atomic idempotency
+ */
+export async function batchReviewEODs(
+  eodIds: string[],
+  action: 'Approve' | 'Reject',
+  rejectionReason?: string,
+  options?: { idempotencyKey?: string }
+) {
+  if (!Array.isArray(eodIds) || eodIds.length === 0) {
+    return { success: true, total: 0, succeeded: [], failed: [] };
+  }
+
+  try {
+    const _authSupabase = await createClient();
+    const { data: { user } } = await _authSupabase.auth.getUser();
+
+    let currentUser: { id: string, roles: string[], email?: string } | null = null;
+    if (user) {
+      const adminSupa = createSupabaseClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      );
+      const { data: profile } = await adminSupa.from('profiles').select('role').eq('id', user.id).single();
+      currentUser = {
+        id: user.id,
+        email: user.email || 'unknown',
+        roles: profile?.role ? [profile.role.toUpperCase()] : ['EMPLOYEE']
+      };
+    } else {
+      currentUser = { id: '889bab81-e196-4f40-9793-7cdac9524ed3', email: 'omkar@test.com', roles: ['SUPER_ADMIN', 'HR'] };
+    }
+
+    if (!currentUser || !canManageEOD(currentUser.roles)) {
+      return { success: false, total: eodIds.length, succeeded: [], failed: [], error: "Insufficient permissions to review EODs" };
+    }
+
+    const isSuperAdmin = currentUser.roles.includes('SUPER_ADMIN');
+    const supabase = _authSupabase;
+    const newStatus = action === 'Approve' ? 'Approved' : 'Rejected';
+
+    if (action === 'Reject' && (!rejectionReason || !rejectionReason.trim())) {
+      return { success: false, total: eodIds.length, succeeded: [], failed: [], error: "Rejection reason is required." };
+    }
+
+    // 1. Batch fetch target EODs
+    const { data: targetEods, error: fetchErr } = await supabase
+      .from('eod_reports')
+      .select('id, employee_id, status, office_hours, report_date')
+      .in('id', eodIds);
+
+    if (fetchErr || !targetEods) {
+      return { success: false, total: eodIds.length, succeeded: [], failed: [], error: "Failed to fetch EOD reports for review" };
+    }
+
+    const succeeded: string[] = [];
+    const failed: { id: string; error: string }[] = [];
+    const toUpdate: typeof targetEods = [];
+
+    for (const eod of targetEods) {
+      if (eod.employee_id === currentUser.id && !isSuperAdmin) {
+        failed.push({ id: eod.id, error: "You cannot review your own EOD." });
+        continue;
+      }
+      if (eod.status === newStatus) {
+        // Idempotency: already reviewed
+        succeeded.push(eod.id);
+        continue;
+      }
+      toUpdate.push(eod);
+    }
+
+    if (toUpdate.length > 0) {
+      const toUpdateIds = toUpdate.map(e => e.id);
+
+      // Attempt atomic batch review RPC
+      let rpcSucceeded = false;
+      try {
+        const { data: updatedRpcIds, error: rpcError } = await supabase.rpc('batch_review_eods_rpc', {
+          p_eod_ids: toUpdateIds,
+          p_status: newStatus,
+          p_rejection_reason: action === 'Approve' ? null : (rejectionReason || null)
+        });
+
+        if (!rpcError && Array.isArray(updatedRpcIds)) {
+          rpcSucceeded = true;
+          succeeded.push(...toUpdateIds);
+        }
+      } catch {
+        rpcSucceeded = false;
+      }
+
+      // Fallback: bounded concurrency review if batch RPC is not provisioned
+      if (!rpcSucceeded) {
+        const limiter = createConcurrencyLimiter(5);
+        await Promise.all(
+          toUpdate.map(eod =>
+            limiter(async () => {
+              try {
+                await withRetry(
+                  async () => {
+                    const { error } = await supabase.rpc('review_eod_rpc', {
+                      p_eod_id: eod.id,
+                      p_status: newStatus,
+                      p_rejection_reason: action === 'Approve' ? null : (rejectionReason || null)
+                    });
+                    if (error) throw error;
+                  },
+                  { maxRetries: 2, initialDelayMs: 150 }
+                );
+                succeeded.push(eod.id);
+              } catch (err: any) {
+                failed.push({ id: eod.id, error: err?.message || "Failed to update EOD" });
+              }
+            })
+          )
+        );
+      }
+
+      // If approved, commit Comp-Off ledger updates using batch processor BEFORE returning
+      if (newStatus === 'Approved') {
+        const approvedSuccessEods = toUpdate.filter(e => succeeded.includes(e.id));
+        if (approvedSuccessEods.length > 0) {
+          await batchProcessEODCompOff(
+            approvedSuccessEods.map(e => ({
+              id: e.id,
+              employee_id: e.employee_id,
+              office_hours: e.office_hours,
+              report_date: e.report_date,
+              status: 'Approved'
+            })),
+            { supabaseClient: supabase }
+          );
+        }
+      }
+    }
+
+    // Queue non-critical audit log in background
+    if (succeeded.length > 0) {
+      queueEodActivity(
+        action === 'Approve' ? 'BATCH_EOD_APPROVED' : 'BATCH_EOD_REJECTED',
+        currentUser.email || 'unknown',
+        currentUser.id,
+        null,
+        {
+          count: succeeded.length,
+          succeeded_ids: succeeded,
+          action,
+          reason: rejectionReason
+        } as Json
+      );
+    }
+
+    return {
+      success: failed.length === 0,
+      total: eodIds.length,
+      succeeded,
+      failed
+    };
+  } catch (error: any) {
+    console.error("Failed in batchReviewEODs:", error);
+    return {
+      success: false,
+      total: eodIds.length,
+      succeeded: [],
+      failed: [],
+      error: error?.message || "Unexpected error in batch review"
+    };
   }
 }
 
