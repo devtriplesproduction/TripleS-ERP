@@ -49,6 +49,7 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/attendance',
     '/dashboard',
     '/rulebook',
+    '/announcements',
     '/my-tasks',
     '/projects',
   ],

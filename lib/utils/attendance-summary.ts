@@ -2,6 +2,8 @@ import type { DerivedAttendance } from "@/lib/actions/attendance"
 
 export interface AttendanceSummary {
   present: number;
+  holidayWork: number;
+  holiday: number;
   wfh: number;
   leave: number;
   halfDay: number;
@@ -17,6 +19,8 @@ export interface AttendanceSummary {
 export function calculateAttendanceSummary(attendance: DerivedAttendance[]): AttendanceSummary {
   return attendance.reduce((acc, curr) => {
     if (curr.status === 'Present' || curr.status === 'Half Day + Present') acc.present += 1;
+    if (curr.status === 'Holiday Work') acc.holidayWork += 1;
+    if (curr.status === 'Holiday') acc.holiday += 1;
     if (curr.status === 'WFH' || curr.status === 'Half Day + WFH') acc.wfh += 1;
     if (curr.status === 'Leave') acc.leave += 1;
     if (curr.status.includes('Half Day')) acc.halfDay += 1;
@@ -27,5 +31,5 @@ export function calculateAttendanceSummary(attendance: DerivedAttendance[]): Att
     acc.extraHours += curr.extraHours;
     acc.compOffMinutes += (curr.compOffMinutes || 0);
     return acc;
-  }, { present: 0, wfh: 0, leave: 0, halfDay: 0, unpaidLeave: 0, absent: 0, pending: 0, workedHours: 0, extraHours: 0, compOffMinutes: 0 });
+  }, { present: 0, holidayWork: 0, holiday: 0, wfh: 0, leave: 0, halfDay: 0, unpaidLeave: 0, absent: 0, pending: 0, workedHours: 0, extraHours: 0, compOffMinutes: 0 });
 }

@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { guardServerAction } from "@/lib/auth"
 
 
-export type AttendanceStatus = 'Present' | 'Leave' | 'WFH' | 'Half Day + Present' | 'Half Day + WFH' | 'Half Day' | 'Unpaid Leave' | 'Absent' | 'Pending' | 'Holiday' | 'Weekend' | 'Not Marked';
+export type AttendanceStatus = 'Present' | 'Leave' | 'WFH' | 'Half Day + Present' | 'Half Day + WFH' | 'Half Day' | 'Unpaid Leave' | 'Absent' | 'Pending' | 'Holiday' | 'Weekend' | 'Not Marked' | 'Holiday Work';
 
 export interface DerivedAttendance {
   date: string;
@@ -20,7 +20,7 @@ export interface DerivedAttendance {
 }
 
 import { calculateAttendanceSummary } from "@/lib/utils/attendance-summary"
-import { getDayOfWeek, STANDARD_WORK_MINUTES, HALF_DAY_THRESHOLD, calculateExtraMinutes, classifyWorkDay, determineWorkDayContext, formatWorkedTime } from "@/lib/utils/time"
+import { buildAttendanceRecords } from "@/lib/utils/attendance-builder"
 
 export async function getAttendanceEmployees(month: number, year: number) {
   // Enforce role-based access for this action
@@ -91,8 +91,7 @@ export async function getAttendanceEmployees(month: number, year: number) {
       .gte('end_date', startDateStr),
     supabaseAdmin
       .from('holidays')
-      .select('id, date, name, holiday_type, is_active')
-      .eq('is_active', true)
+      .select('id, date, name, holiday_type')
       .gte('date', startDateStr)
       .lte('date', endDateStr)
   ]);
@@ -124,6 +123,7 @@ export async function getAttendanceEmployees(month: number, year: number) {
 
       const hasActivity = attendance.some(a =>
         a.status === 'Present' ||
+        a.status === 'Holiday Work' ||
         a.status === 'WFH' ||
         a.status === 'Leave' ||
         a.status === 'Pending' ||
@@ -182,7 +182,7 @@ async function _calculateAttendance(employeeId: string, month: number, year: num
 
   const [authUserId, holidaysRes, leaveRequestsRes] = await Promise.all([
     authUserPromise,
-    supabase.from('holidays').select('id, date, name, holiday_type, is_active').eq('is_active', true).gte('date', startDateStr).lte('date', endDateStr),
+    supabase.from('holidays').select('id, date, name, holiday_type').gte('date', startDateStr).lte('date', endDateStr),
     supabase.from('leave_requests').select('id, employee_id, start_date, end_date, status, request_type, is_half_day').eq('employee_id', employeeId).in('status', ['Approved', 'Approved HR', 'Approved (Auto)']).lte('start_date', endDateStr).gte('end_date', startDateStr)
   ]);
 
@@ -196,133 +196,4 @@ async function _calculateAttendance(employeeId: string, month: number, year: num
   return _buildAttendanceRecords(year, month, eods || [], leaveRequestsRes.data || [], holidaysRes.data || []);
 }
 
-/** Pure in-memory attendance record builder */
-function _buildAttendanceRecords(
-  year: number,
-  month: number,
-  eods: any[],
-  leaveRequests: any[],
-  holidays: any[]
-): DerivedAttendance[] {
-  const endDate = new Date(year, month, 0);
-  const eodMap = new Map(eods?.map((e: any) => [e.report_date, e]) || []);
-  const holidayMap = new Map(holidays?.map((h: any) => [h.date, h]) || []);
-  
-  const leavesMap = new Map();
-  const wfhMap = new Map();
-  
-  if (leaveRequests) {
-    for (const req of leaveRequests) {
-      const start = new Date(req.start_date);
-      const end = new Date(req.end_date);
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        if (req.request_type === 'WFH') {
-          wfhMap.set(dateStr, req);
-        } else {
-          leavesMap.set(dateStr, req);
-        }
-      }
-    }
-  }
-
-  const attendance: DerivedAttendance[] = [];
-  
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Kolkata',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-  const todayStr = formatter.format(new Date());
-
-
-  for (let d = 1; d <= endDate.getDate(); d++) {
-    const currentDate = new Date(year, month - 1, d); // local date
-    const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-    
-    const eod = eodMap.get(dateStr);
-    const leave = leavesMap.get(dateStr);
-    const wfh = wfhMap.get(dateStr);
-    const holiday = holidayMap.get(dateStr);
-    const isWeekend = getDayOfWeek(dateStr) === 0; // Sunday only
-    
-    let status: AttendanceStatus = 'Absent';
-    let workedHours = 0;
-    
-    const eodStatus = eod ? (eod as any).status : null;
-    const isApprovedEod = eodStatus === 'Approved';
-    const isPendingEod = eodStatus === 'Pending';
-    // Rejected EOD = treat as no EOD (Absent)
-    
-    let workedMinutes = 0;
-    if (isApprovedEod) {
-      workedMinutes = Math.round(Number((eod as any).office_hours || 0) * 60);
-      workedHours = Number((eod as any).office_hours || 0); // Keep for backwards compat
-    }
-
-    // Determine extra hours context
-    let context: 'normal' | 'sunday' | 'paid_holiday' | 'approved_leave' = 'normal';
-    if (isWeekend) context = 'sunday';
-    else if (holiday && (holiday as any).holiday_type === 'PAID') context = 'paid_holiday';
-    else if (leave && !leave.is_half_day) context = 'approved_leave';
-
-    // Use centralized classification for approved EODs
-    const classification = isApprovedEod ? classifyWorkDay(workedMinutes, context) : null;
-    const compOffMinutes = classification ? classification.compOffMinutes : 0;
-    const payrollStatus = classification ? classification.payrollStatus : '';
-
-    // Priority: Approved Leave/WFH → Approved EOD (with new classification) → Pending EOD → Absent
-    if (leave && leave.is_half_day && isApprovedEod) {
-      status = 'Half Day + Present';
-    } else if (wfh && wfh.is_half_day && isApprovedEod) {
-      status = 'Half Day + WFH';
-    } else if (leave && !leave.is_half_day) {
-      status = 'Leave';
-    } else if (wfh && !wfh.is_half_day) {
-      status = 'WFH';
-    } else if (isApprovedEod) {
-      // Use new classification for approved EODs on normal days
-      if (context === 'normal') {
-        if (workedMinutes < HALF_DAY_THRESHOLD) {
-          status = 'Unpaid Leave';
-        } else if (workedMinutes < STANDARD_WORK_MINUTES) {
-          status = 'Half Day';
-        } else {
-          status = 'Present';
-        }
-      } else {
-        // Sunday/Holiday/Leave context - still Present
-        status = 'Present';
-      }
-    } else if (isPendingEod) {
-      status = 'Pending';
-    } else if (holiday) {
-      status = 'Holiday';
-    } else if (isWeekend) {
-      status = 'Weekend';
-    } else if (dateStr > todayStr) {
-      status = 'Not Marked'; // Future dates
-    } else if (dateStr === todayStr && !eod) {
-      status = 'Pending'; // Current day without EOD is Pending, not Absent.
-    }
-
-    const extraMinutes = calculateExtraMinutes(workedMinutes, context);
-    const extraHours = extraMinutes / 60;
-    
-    attendance.push({
-      date: dateStr,
-      status,
-      workedHours,
-      extraHours,
-      compOffMinutes,
-      payrollStatus,
-      eod,
-      leave,
-      wfh,
-      holiday
-    });
-  }
-
-  return attendance;
-}
+const _buildAttendanceRecords = buildAttendanceRecords;

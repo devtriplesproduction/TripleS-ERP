@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { invalidateNotificationCache } from '@/actions/notifications.actions';
 
 export type ActionResponse = {
   success: boolean;
@@ -32,22 +33,26 @@ export async function createHolidayAction(payload: {
 }): Promise<ActionResponse> {
   try {
     const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
     const { data, error } = await supabase
       .from('holidays')
       .insert({
         date: payload.date,
         name: payload.name,
         is_optional: payload.is_optional,
-        holiday_type: 'PAID'
+        holiday_type: 'PAID',
+        created_by: user?.id || null,
       })
       .select()
       .single();
 
     if (error) throw error;
     
+    await invalidateNotificationCache();
     revalidatePath('/hr/holidays');
     revalidatePath('/admin-holiday');
     revalidatePath('/employee-holiday');
+    revalidatePath('/', 'layout');
     return { success: true, data };
   } catch (err: any) {
     if (err.message?.includes('unique constraint')) {
@@ -67,9 +72,11 @@ export async function deleteHolidayAction(id: string): Promise<ActionResponse> {
 
     if (error) throw error;
 
+    await invalidateNotificationCache();
     revalidatePath('/hr/holidays');
     revalidatePath('/admin-holiday');
     revalidatePath('/employee-holiday');
+    revalidatePath('/', 'layout');
     return { success: true };
   } catch (err: any) {
     return { success: false, error: err.message };
@@ -101,9 +108,11 @@ export async function updateHolidayAction(
 
     if (error) throw error;
 
+    await invalidateNotificationCache();
     revalidatePath('/hr/holidays');
     revalidatePath('/admin-holiday');
     revalidatePath('/employee-holiday');
+    revalidatePath('/', 'layout');
     return { success: true, data };
   } catch (err: any) {
     if (err.message?.includes('unique constraint')) {

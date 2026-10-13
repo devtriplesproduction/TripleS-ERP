@@ -80,6 +80,7 @@ function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: 
     allItems.push({ label: 'Request Leave / WFH', href: leaveHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Attendance', href: attendanceHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Holiday', href: holidayHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Announcements', href: '/announcements', icon: <Megaphone className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Rulebook', href: '/rulebook', icon: <Book className="mr-3 h-5 w-5 shrink-0" /> })
   } else if (userRole === 'HR') {
     allItems.push({ label: 'Employees', href: employeesHref, icon: <Users className="mr-3 h-5 w-5 shrink-0" /> })

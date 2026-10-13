@@ -2,7 +2,23 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, CheckCircle2, XCircle, Plus, FileText, Trash2, Paperclip, Check, X, Loader2 } from "lucide-react"
+import {
+  Calendar,
+  Clock,
+  CheckCircle2,
+  XCircle,
+  Plus,
+  FileText,
+  Trash2,
+  Paperclip,
+  Check,
+  X,
+  Loader2,
+  Home,
+  Plane,
+  MoreVertical,
+  Briefcase
+} from "lucide-react"
 import { format } from "date-fns"
 import {
   Select,
@@ -14,20 +30,116 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 
 import { LeaveForm } from "./LeaveForm"
 import { toast } from "sonner"
 import { formatCompOffBalance } from "@/lib/utils/time"
-import { PageHeader } from "@/components/PageHeader"
 import { createClient } from "@/lib/supabase/client"
 import { reviewLeaveAction } from "@/actions/leave.actions"
+import { cn } from "@/lib/utils"
+
+function SickLeaveIcon({ className = "w-5 h-5 text-foreground" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <path d="M12 8v8" strokeWidth="2.5" />
+      <path d="M8 12h8" strokeWidth="2.5" />
+    </svg>
+  )
+}
+
+function getRequestTypeIcon(leave: any) {
+  const reqType = (leave.request_type || '').toLowerCase()
+  const leaveType = (leave.leave_type || '').toLowerCase()
+
+  if (reqType.includes('wfh') || leaveType.includes('wfh') || leaveType.includes('home')) {
+    return <Home className="w-5 h-5 text-foreground" />
+  }
+  if (leaveType.includes('sick') || leaveType.includes('medical')) {
+    return <SickLeaveIcon className="w-5 h-5 text-foreground" />
+  }
+  if (leaveType.includes('casual') || leaveType.includes('vacation')) {
+    return <Plane className="w-5 h-5 text-foreground" />
+  }
+  if (leaveType.includes('comp') || leaveType.includes('off')) {
+    return <Clock className="w-5 h-5 text-foreground" />
+  }
+  return <Briefcase className="w-5 h-5 text-foreground" />
+}
+
+function calculateDuration(startDate: string, endDate: string, isHalfDay?: boolean): string {
+  if (isHalfDay) return "0.5 day"
+  try {
+    const s = new Date(startDate)
+    const e = new Date(endDate)
+    const diffTime = Math.abs(e.getTime() - s.getTime())
+    const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1
+    return diffDays === 1 ? "1 day" : `${diffDays} days`
+  } catch {
+    return "1 day"
+  }
+}
+
+function formatDateRange(startDate: string, endDate: string): string {
+  try {
+    const s = format(new Date(startDate), 'MMM d, yyyy')
+    const e = format(new Date(endDate), 'MMM d, yyyy')
+    return `${s} — ${e}`
+  } catch {
+    return `${startDate} — ${endDate}`
+  }
+}
+
+function getStatusBadge(status: string) {
+  if (status === 'Approved') {
+    return (
+      <div className="h-10 px-4 rounded-xl border border-emerald-500/40 bg-emerald-500/10 flex items-center gap-2 text-emerald-400 text-xs sm:text-sm font-medium shrink-0">
+        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+        <span>Approved</span>
+      </div>
+    )
+  }
+  if (status === 'Rejected') {
+    return (
+      <div className="h-10 px-4 rounded-xl border border-rose-500/40 bg-rose-500/10 flex items-center gap-2 text-rose-400 text-xs sm:text-sm font-medium shrink-0">
+        <XCircle className="w-4 h-4 text-rose-400 shrink-0" />
+        <span>Rejected</span>
+      </div>
+    )
+  }
+  if (status === 'Cancelled') {
+    return (
+      <div className="h-10 px-4 rounded-xl border border-slate-500/40 bg-slate-500/10 flex items-center gap-2 text-slate-400 text-xs sm:text-sm font-medium shrink-0">
+        <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+        <span>Cancelled</span>
+      </div>
+    )
+  }
+  // Pending HR, Pending Admin, Pending Level, Pending
+  return (
+    <div className="h-10 px-4 rounded-xl border border-amber-500/40 bg-amber-500/10 flex items-center gap-2 text-amber-400 text-xs sm:text-sm font-medium shrink-0">
+      <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+      <span>Pending</span>
+    </div>
+  )
+}
 
 export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, canApprove, isSuperAdmin = false, currentEmployeeId, isHR = false }: any) {
   const supabase = createClient()
   const [activeTab, setActiveTab] = useState<"mine" | "approve">(canApprove ? "approve" : "mine")
   const [statusFilter, setStatusFilter] = useState<string>("All Statuses")
   const [showForm, setShowForm] = useState(false)
+  const [selectedLeave, setSelectedLeave] = useState<any | null>(null)
   const [approvalLeaves, setApprovalLeaves] = useState<any[]>(leavesToApprove || [])
   const [myLeavesList, setMyLeavesList] = useState<any[]>(myLeaves || [])
   const [submittingId, setSubmittingId] = useState<string | null>(null)
@@ -90,7 +202,6 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
     }
   }
 
-
   const filteredMyLeaves = myLeavesList.filter((leave: any) => {
     if (statusFilter === "All Statuses") return true
     if (statusFilter === "Pending") return leave.status?.includes("Pending")
@@ -105,17 +216,9 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
 
   const pendingCount = approvalLeaves.filter((l: any) => l.status?.includes("Pending")).length
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'Approved': return <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
-      case 'Rejected':
-      case 'Cancelled': return <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
-      default: return <Clock className="w-4 h-4 text-amber-500 shrink-0" />
-    }
-  }
-
   return (
-    <div className="space-y-6 w-full min-w-0">
+    <div className="space-y-4 sm:space-y-5 w-full min-w-0">
+      {/* Apply Leave / WFH Modal */}
       <Dialog open={showForm} onOpenChange={setShowForm}>
         <DialogContent className="w-[calc(100vw-1.5rem)] sm:max-w-3xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto p-0 border-none bg-transparent shadow-none" showCloseButton={false}>
           <LeaveForm
@@ -131,306 +234,506 @@ export function LeaveClientPage({ myLeaves, leavesToApprove, compOffBalance, can
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-col gap-4 sm:gap-6">
-        <PageHeader
-          title="Leave & WFH Request"
-          subtitle="Manage your leaves and approvals from one place."
-          icon={Calendar}
-          actions={
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <Select value={statusFilter} onValueChange={(val) => val && setStatusFilter(val)}>
-                <SelectTrigger className="filter-control border-border bg-transparent min-w-[130px] sm:min-w-[140px] text-foreground text-xs sm:text-sm">
-                  <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="All Statuses">All Statuses</SelectItem>
-                  <SelectItem value="Approved">Approved</SelectItem>
-                  <SelectItem value="Rejected">Rejected</SelectItem>
-                  <SelectItem value="Pending">Pending</SelectItem>
-                  <SelectItem value="Cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
+      {/* Leave Details Modal */}
+      <Dialog open={!!selectedLeave} onOpenChange={(open) => !open && setSelectedLeave(null)}>
+        <DialogContent className="w-[calc(100vw-2rem)] sm:max-w-lg bg-card border-border text-foreground">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold flex items-center gap-2 text-foreground">
+              {selectedLeave && getRequestTypeIcon(selectedLeave)}
+              <span>{selectedLeave?.request_type === 'WFH' ? 'Work From Home' : selectedLeave?.leave_type}</span>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Detailed request information and status
+            </DialogDescription>
+          </DialogHeader>
+          {selectedLeave && (
+            <div className="space-y-4 py-2">
+              <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-secondary/30 border border-border text-xs">
+                <div>
+                  <span className="text-muted-foreground block text-[11px]">Dates</span>
+                  <span className="font-semibold text-foreground">
+                    {formatDateRange(selectedLeave.start_date, selectedLeave.end_date)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[11px]">Duration</span>
+                  <span className="font-semibold text-foreground">
+                    {calculateDuration(selectedLeave.start_date, selectedLeave.end_date, selectedLeave.is_half_day)}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-muted-foreground block text-[11px]">Status</span>
+                  <span className="font-semibold text-foreground">{selectedLeave.status}</span>
+                </div>
+                {selectedLeave.employee && (
+                  <div>
+                    <span className="text-muted-foreground block text-[11px]">Employee</span>
+                    <span className="font-semibold text-foreground">
+                      {selectedLeave.employee.first_name} {selectedLeave.employee.last_name}
+                    </span>
+                  </div>
+                )}
+              </div>
 
-              {canApprove && (
-                <div className="flex bg-background rounded-lg border border-border shrink-0 filter-toggle-container">
-                  {!isSuperAdmin && (
-                    <button
-                      className={`px-3 sm:px-4 text-xs sm:text-sm font-medium rounded-md transition-all filter-toggle-btn ${activeTab === 'mine' ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                      onClick={() => setActiveTab('mine')}
-                    >
-                      My Leaves
-                    </button>
-                  )}
-                  <button
-                    className={`px-3 sm:px-4 text-xs sm:text-sm font-medium rounded-md transition-all flex items-center gap-1.5 sm:gap-2 filter-toggle-btn ${activeTab === 'approve' ? 'bg-foreground text-background shadow-sm' : 'text-muted-foreground hover:text-foreground'}`}
-                    onClick={() => setActiveTab('approve')}
+              <div>
+                <span className="text-xs font-semibold text-foreground block mb-1.5">Reason</span>
+                <div className="p-3.5 rounded-xl bg-secondary/20 border border-border text-xs sm:text-sm text-foreground/90 whitespace-pre-wrap leading-relaxed">
+                  {selectedLeave.reason || 'No reason provided.'}
+                </div>
+              </div>
+
+              {selectedLeave.medical_certificate_url && (
+                <div className="flex items-center justify-between p-3 rounded-xl border border-border bg-secondary/20">
+                  <div className="flex items-center gap-2 text-xs text-foreground font-medium">
+                    <Paperclip className="w-4 h-4 text-muted-foreground" />
+                    <span>Medical Certificate</span>
+                  </div>
+                  <a
+                    href={selectedLeave.medical_certificate_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-primary hover:underline"
                   >
-                    Approvals
-                    {pendingCount > 0 && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded-full min-w-[18px] text-center font-bold ${activeTab === 'approve' ? 'bg-background text-foreground' : 'bg-foreground text-background'}`}>
-                        {pendingCount}
-                      </span>
-                    )}
-                  </button>
+                    View Document ↗
+                  </a>
                 </div>
-              )}
-
-              {!isSuperAdmin && activeTab === 'mine' && (
-                <div className="bg-transparent text-muted-foreground border border-border px-3 sm:px-4 flex items-center rounded-lg text-xs sm:text-sm shrink-0 gap-2 filter-control h-10">
-                  <Clock className="w-4 h-4 shrink-0" />
-                  <span>Comp-Off: <span className="font-medium text-foreground">{formatCompOffBalance(compOffBalance * 60)}</span></span>
-                </div>
-              )}
-
-              {activeTab === 'mine' && !isSuperAdmin && (
-                <Button
-                  className="rounded-lg bg-foreground text-background hover:bg-foreground/90 font-medium gap-2 shrink-0 text-xs sm:text-sm filter-control h-10"
-                  onClick={() => setShowForm(true)}
-                >
-                  <Plus className="w-4 h-4" /> Apply Leave / WFH
-                </Button>
               )}
             </div>
-          }
-        />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Header Panel */}
+      <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          {/* Left: Calendar Icon, Title, Subtitle */}
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-12 h-12 rounded-xl bg-secondary/50 dark:bg-zinc-900/80 border border-border flex items-center justify-center shrink-0 shadow-xs">
+              <Calendar className="w-5 h-5 text-foreground" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+                Leave & WFH Request
+              </h1>
+              <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
+                Manage your leaves and approvals from one place.
+              </p>
+            </div>
+          </div>
+
+          {/* Right: Controls aligned in row */}
+          <div className="flex flex-wrap items-center gap-2.5 sm:gap-3 shrink-0">
+            {/* Status Filter */}
+            <Select value={statusFilter} onValueChange={(val) => val && setStatusFilter(val)}>
+              <SelectTrigger className="w-[140px] h-10 px-3.5 rounded-xl bg-background border border-border text-foreground text-xs sm:text-sm font-medium gap-2 hover:bg-secondary/40 transition-colors">
+                <SelectValue placeholder="All Statuses" />
+              </SelectTrigger>
+              <SelectContent className="bg-popover border border-border text-popover-foreground">
+                <SelectItem value="All Statuses">All Statuses</SelectItem>
+                <SelectItem value="Approved">Approved</SelectItem>
+                <SelectItem value="Pending">Pending</SelectItem>
+                <SelectItem value="Rejected">Rejected</SelectItem>
+                <SelectItem value="Cancelled">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+
+            {/* Tab Switcher for Admins/HR */}
+            {canApprove && (
+              <div className="flex p-1 bg-secondary/40 dark:bg-zinc-900/60 rounded-xl border border-border shrink-0">
+                {!isSuperAdmin && (
+                  <button
+                    className={cn(
+                      "px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all",
+                      activeTab === 'mine'
+                        ? "bg-foreground text-background shadow-xs font-semibold"
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => setActiveTab('mine')}
+                  >
+                    My Leaves
+                  </button>
+                )}
+                <button
+                  className={cn(
+                    "px-3 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all flex items-center gap-1.5",
+                    activeTab === 'approve'
+                      ? "bg-foreground text-background shadow-xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => setActiveTab('approve')}
+                >
+                  <span>Approvals</span>
+                  {pendingCount > 0 && (
+                    <span
+                      className={cn(
+                        "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
+                        activeTab === 'approve'
+                          ? "bg-background text-foreground"
+                          : "bg-foreground text-background"
+                      )}
+                    >
+                      {pendingCount}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+
+            {/* Comp-Off Balance Pill */}
+            {!isSuperAdmin && activeTab === 'mine' && (
+              <div className="h-10 px-3.5 sm:px-4 rounded-xl border border-border bg-card flex items-center gap-2 text-xs sm:text-sm text-muted-foreground shrink-0 shadow-xs">
+                <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
+                <span>
+                  Comp-Off: <strong className="font-semibold text-foreground">{formatCompOffBalance(compOffBalance * 60)}</strong>
+                </span>
+              </div>
+            )}
+
+            {/* Apply Leave / WFH Button */}
+            {activeTab === 'mine' && !isSuperAdmin && (
+              <Button
+                className="h-10 px-4 rounded-xl bg-foreground text-background hover:bg-foreground/90 font-medium text-xs sm:text-sm gap-2 shrink-0 shadow-xs transition-colors"
+                onClick={() => setShowForm(true)}
+              >
+                <Plus className="w-4 h-4" /> Apply Leave / WFH
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
 
+      {/* Main Requests List */}
       {activeTab === 'mine' ? (
-        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
+        <div className="space-y-3 sm:space-y-3.5">
           {filteredMyLeaves.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
-              <div className="w-16 h-16 rounded-full border border-border bg-background/50 flex items-center justify-center mb-6">
-                <FileText className="w-8 h-8 text-foreground" />
-              </div>
-              <h3 className="text-xl font-bold text-foreground mb-2">No Leave History</h3>
-              <p className="text-muted-foreground text-sm max-w-sm">
-                You haven&apos;t applied for any leaves yet. Click the Apply Leave button to create your first request.
+            <div className="text-center py-16 px-4 border border-dashed border-border rounded-2xl bg-card">
+              <Calendar className="w-10 h-10 text-muted-foreground/60 mx-auto mb-3" />
+              <h3 className="text-base font-bold text-foreground mb-1">No Leave History</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground max-w-sm mx-auto">
+                {statusFilter !== "All Statuses"
+                  ? `No requests match the "${statusFilter}" filter.`
+                  : "You haven't applied for any leaves yet. Click Apply Leave / WFH to create your first request."}
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5 p-4 sm:p-5">
-              {filteredMyLeaves.map((leave: any) => {
-                const isApproved = leave.status === 'Approved'
-                const isRejected = leave.status === 'Rejected' || leave.status === 'Cancelled'
-                const canCancel = leave.status === 'Pending HR' || leave.status === 'Pending Admin' || leave.status === 'Pending Level' || leave.status === 'Approved'
+            filteredMyLeaves.map((leave: any) => {
+              const isApproved = leave.status === 'Approved'
+              const isPending = leave.status?.includes('Pending')
+              const canCancel = isPending || isApproved
 
-                return (
-                  <div
-                    key={leave.id}
-                    className="bg-card border border-border/80 hover:border-foreground/20 rounded-xl p-4 shadow-xs hover:shadow-md transition-all duration-200 flex flex-col justify-between group"
-                  >
-                    <div>
-                      {/* Card Header: Status Badge & Type */}
-                      <div className="flex items-start justify-between gap-3 mb-3">
-                        <div className="flex flex-col gap-0.5">
-                          <h3 className="font-bold text-foreground text-sm leading-tight flex items-center gap-1.5 group-hover:text-primary transition-colors">
+              return (
+                <div
+                  key={leave.id}
+                  className="rounded-2xl border border-border bg-card hover:border-border/80 transition-all p-4 sm:p-5 shadow-xs"
+                >
+                  <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                    {/* ZONE 1: Left - Request Type & Dates */}
+                    <div className="flex items-center gap-3.5 min-w-0 xl:w-[320px] 2xl:w-[360px] shrink-0">
+                      {/* Icon Box */}
+                      <div className="w-12 h-12 rounded-xl bg-secondary/50 dark:bg-zinc-900/80 border border-border flex items-center justify-center shrink-0">
+                        {getRequestTypeIcon(leave)}
+                      </div>
+                      {/* Details */}
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm sm:text-base font-bold text-foreground tracking-tight truncate">
                             {leave.request_type === "WFH" ? "Work From Home" : leave.leave_type}
-                            {leave.is_half_day && (
-                              <span className="px-1.5 py-0.5 rounded-md bg-muted text-[9px] font-semibold tracking-wider uppercase text-muted-foreground">Half Day</span>
-                            )}
                           </h3>
+                          {leave.is_half_day && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-secondary text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0 border border-border">
+                              Half Day
+                            </span>
+                          )}
                         </div>
-
-                        <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium shrink-0 ${isApproved
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                            : isRejected
-                              ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                              : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                          }`}>
-                          {getStatusIcon(leave.status)}
-                          <span>{leave.status}</span>
-                        </div>
-                      </div>
-
-                      {/* Date Details Box */}
-                      <div className="bg-muted/30 border border-border/60 rounded-lg p-2.5 mb-3">
-                        <div className="flex items-center gap-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                          <Calendar className="w-3 h-3" /> Duration
-                        </div>
-                        <div className="text-xs font-medium text-foreground flex items-center gap-1.5 flex-wrap">
-                          <span className="bg-background px-1.5 py-0.5 rounded-md border border-border/80">
-                            {format(new Date(leave.start_date), 'MMM d, yyyy')}
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <span className="truncate">{formatDateRange(leave.start_date, leave.end_date)}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-secondary/60 dark:bg-zinc-800/80 border border-border text-foreground shrink-0">
+                            {calculateDuration(leave.start_date, leave.end_date, leave.is_half_day)}
                           </span>
-                          <span className="text-muted-foreground/50">—</span>
-                          <span className="bg-background px-1.5 py-0.5 rounded-md border border-border/80">
-                            {format(new Date(leave.end_date), 'MMM d, yyyy')}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Reason Section */}
-                      <div className="mb-4">
-                        <div className="flex items-center gap-1.5 text-[9px] font-semibold text-muted-foreground uppercase tracking-wider mb-1">
-                          <FileText className="w-3 h-3" /> Reason
-                        </div>
-                        <div className="text-xs text-muted-foreground leading-relaxed bg-muted/20 border border-border/40 rounded-lg p-2.5 min-h-[40px] break-words">
-                          {leave.reason || <span className="italic opacity-50">No reason provided</span>}
                         </div>
                       </div>
                     </div>
 
-                    {/* Card Action Buttons at the Bottom */}
-                    {canCancel && (
-                      <div className="pt-2.5 border-t border-border/60 flex items-center gap-2 mt-auto">
-                        <Button
-                          variant="outline"
-                          className="w-full border-rose-500/30 text-rose-400 hover:bg-rose-500/10 hover:text-rose-300 font-medium h-8 rounded-md gap-1.5 text-xs transition-colors"
-                          onClick={() => handleCancelMyLeave(leave.id)}
-                          disabled={submittingId === leave.id}
-                        >
-                          {submittingId === leave.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} Cancel
-                        </Button>
+                    {/* Vertical Divider 1 */}
+                    <div className="hidden xl:block w-px h-10 bg-border/60 shrink-0" />
+
+                    {/* ZONE 2: Center - Reason */}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 rounded-xl bg-secondary/30 dark:bg-zinc-900/40 border border-border/80 flex items-center justify-center shrink-0 text-muted-foreground">
+                        <FileText className="w-4 h-4" />
                       </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      ) : filteredLeavesToApprove.length === 0 ? (
-        <div className="bg-card border border-border rounded-xl shadow-sm overflow-hidden min-h-[300px] flex flex-col">
-          <div className="flex-1 flex flex-col items-center justify-center p-8 text-center animate-in fade-in duration-500">
-            <div className="w-16 h-16 rounded-full border border-border bg-background/50 flex items-center justify-center mb-6">
-              <FileText className="w-8 h-8 text-foreground" />
-            </div>
-            <h3 className="text-xl font-bold text-foreground mb-2">No Approvals Pending</h3>
-            <p className="text-muted-foreground text-sm max-w-sm">
-              You are all caught up! There are no leave requests waiting for your approval at this time.
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-5">
-          {filteredLeavesToApprove.map((leave: any) => {
-            const firstName = leave.employee?.first_name || "Employee"
-            const lastName = leave.employee?.last_name || ""
-            const isApproved = leave.status === 'Approved'
-            const isRejected = leave.status === 'Rejected' || leave.status === 'Cancelled'
-
-            return (
-              <div
-                key={leave.id}
-                className="bg-card border border-border/80 hover:border-foreground/20 rounded-2xl shadow-xs hover:shadow-md transition-all duration-200 flex flex-col sm:flex-row group overflow-hidden"
-              >
-                {/* Left Column - Details */}
-                <div className="flex-1 min-w-0 p-4 sm:p-5 md:p-6 flex flex-col justify-between relative">
-                  {/* Vertical Divider for Desktop */}
-                  <div className="hidden sm:block absolute right-0 top-6 bottom-6 w-px bg-border/60" />
-
-                  <div>
-                    {/* Card Header: Avatar, Name, Department & Status Badge */}
-                    <div className="flex items-start justify-between gap-3 mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-muted/50 border border-border/60 flex items-center justify-center text-muted-foreground shrink-0 shadow-2xs">
-                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[11px] text-muted-foreground font-medium">Reason</div>
+                        <div className="text-xs sm:text-sm font-normal text-foreground/90 truncate">
+                          {leave.reason || <span className="italic text-muted-foreground">No reason provided</span>}
                         </div>
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-bold text-foreground text-base sm:text-lg leading-none group-hover:text-primary transition-colors truncate">
-                              {firstName} {lastName}
-                            </h3>
-                            <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[10px] font-medium shrink-0 ${isApproved
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                : isRejected
-                                  ? 'bg-rose-500/10 text-rose-400 border-rose-500/20'
-                                  : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                              }`}>
-                              {getStatusIcon(leave.status)}
-                              <span>{leave.status}</span>
+                      </div>
+                      {leave.medical_certificate_url && (
+                        <a
+                          href={leave.medical_certificate_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-secondary/50 hover:bg-secondary border border-border text-xs font-medium text-foreground transition-colors shrink-0"
+                        >
+                          <Paperclip className="w-3.5 h-3.5" />
+                          <span>Doc</span>
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Vertical Divider 2 */}
+                    <div className="hidden xl:block w-px h-10 bg-border/60 shrink-0" />
+
+                    {/* ZONE 3: Right - Duration, Status Badge, Cancel & 3-dots */}
+                    <div className="flex items-center justify-between xl:justify-end gap-3 sm:gap-4 shrink-0 pt-3 xl:pt-0 border-t xl:border-t-0 border-border/50">
+                      {/* Duration Column (hidden when pending) */}
+                      {!isPending && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="w-8 h-8 rounded-full border border-border/80 flex items-center justify-center text-muted-foreground shrink-0">
+                            <Clock className="w-4 h-4" />
+                          </div>
+                          <div className="leading-tight">
+                            <div className="text-[10px] text-muted-foreground font-medium">Duration</div>
+                            <div className="text-xs sm:text-sm font-bold text-foreground">
+                              {calculateDuration(leave.start_date, leave.end_date, leave.is_half_day)}
                             </div>
                           </div>
-                          <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 font-medium truncate">
-                            {leave.employee?.department ? `${leave.employee.department} • ` : ""}{leave.request_type === 'WFH' ? 'Work From Home' : leave.leave_type}
-                          </p>
                         </div>
-                      </div>
-                    </div>
+                      )}
 
-                    {/* Date & Type Details Box */}
-                    <div className="flex flex-row bg-muted/20 border border-border/60 rounded-xl p-3 sm:p-4 my-4 gap-3 relative">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
-                          <Calendar className="w-3.5 h-3.5 shrink-0" /> Date
-                        </div>
-                        <div className="text-xs sm:text-sm font-medium text-foreground">
-                          <div className="truncate">{format(new Date(leave.start_date), 'MMM d, yyyy')} -</div>
-                          <div className="truncate">{format(new Date(leave.end_date), 'MMM d, yyyy')}</div>
-                        </div>
-                      </div>
+                      {/* Status Badge */}
+                      {getStatusBadge(leave.status)}
 
-                      {/* Inner Vertical Divider */}
-                      <div className="w-px bg-border/60 my-1" />
+                      {/* Cancel Button (when pending) */}
+                      {isPending && (
+                        <button
+                          onClick={() => handleCancelMyLeave(leave.id)}
+                          disabled={submittingId === leave.id}
+                          className="h-10 px-3.5 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0 disabled:opacity-50"
+                        >
+                          {submittingId === leave.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                          ) : (
+                            <Trash2 className="w-4 h-4 shrink-0" />
+                          )}
+                          <span>Cancel</span>
+                        </button>
+                      )}
 
-                      <div className="flex-1 min-w-0 pl-1">
-                        <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5">
-                          <FileText className="w-3.5 h-3.5 shrink-0" /> Type
-                        </div>
-                        <div className="inline-flex items-center px-2 sm:px-3 py-1 rounded-lg bg-muted/50 border border-border/80 text-[11px] sm:text-xs font-semibold text-foreground shadow-xs truncate">
-                          {leave.request_type === 'WFH' ? 'WFH' : leave.leave_type}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Reason Section */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground uppercase tracking-wider">
-                        <div className="flex items-center gap-1.5">
-                          <FileText className="w-3.5 h-3.5" /> Reason
-                        </div>
-                        {leave.medical_certificate_url && (
-                          <a
-                            href={leave.medical_certificate_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-muted/40 hover:bg-muted border border-border/60 text-[10px] sm:text-[11px] font-bold text-foreground transition-all shadow-xs hover:shadow-sm"
+                      {/* 3-dots Menu */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          className="w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/60 rounded-xl transition-colors shrink-0"
+                          aria-label="More options"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44 bg-popover border border-border text-popover-foreground rounded-xl shadow-lg p-1.5">
+                          <DropdownMenuItem
+                            onClick={() => setSelectedLeave(leave)}
+                            className="flex items-center gap-2 cursor-pointer rounded-lg text-xs sm:text-sm py-2"
                           >
-                            <Paperclip className="w-3 h-3" /> View Doc
-                          </a>
-                        )}
-                      </div>
-                      <p className="text-xs sm:text-sm text-foreground/80 leading-relaxed font-medium break-words">
-                        {leave.reason || <span className="italic opacity-50">No reason provided</span>}
-                      </p>
+                            <FileText className="w-4 h-4 text-muted-foreground" />
+                            <span>View Details</span>
+                          </DropdownMenuItem>
+                          {leave.medical_certificate_url && (
+                            <DropdownMenuItem
+                              onClick={() => window.open(leave.medical_certificate_url, '_blank')}
+                              className="flex items-center gap-2 cursor-pointer rounded-lg text-xs sm:text-sm py-2"
+                            >
+                              <Paperclip className="w-4 h-4 text-muted-foreground" />
+                              <span>Medical Doc</span>
+                            </DropdownMenuItem>
+                          )}
+                          {canCancel && !isPending && (
+                            <DropdownMenuItem
+                              onClick={() => handleCancelMyLeave(leave.id)}
+                              disabled={submittingId === leave.id}
+                              variant="destructive"
+                              className="flex items-center gap-2 cursor-pointer rounded-lg text-xs sm:text-sm py-2 text-rose-500 focus:text-rose-400"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              <span>Cancel Request</span>
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </div>
+              )
+            })
+          )}
+        </div>
+      ) : (
+        /* Approvals List */
+        <div className="space-y-3 sm:space-y-3.5">
+          {filteredLeavesToApprove.length === 0 ? (
+            <div className="text-center py-16 px-4 border border-dashed border-border rounded-2xl bg-card">
+              <Calendar className="w-10 h-10 text-muted-foreground/60 mx-auto mb-3" />
+              <h3 className="text-base font-bold text-foreground mb-1">No Approvals Pending</h3>
+              <p className="text-xs sm:text-sm text-muted-foreground max-w-sm mx-auto">
+                You are all caught up! There are no leave or WFH requests waiting for your approval.
+              </p>
+            </div>
+          ) : (
+            filteredLeavesToApprove.map((leave: any) => {
+              const firstName = leave.employee?.first_name || "Employee"
+              const lastName = leave.employee?.last_name || ""
+              const department = leave.employee?.department || ""
+              const isPending = leave.status?.includes('Pending')
 
-                {/* Right Column - Actions */}
-                <div className="sm:w-[180px] md:w-[200px] p-4 sm:p-5 md:p-6 flex flex-col justify-center gap-2 sm:gap-3 shrink-0 bg-muted/10 sm:bg-transparent border-t sm:border-t-0 border-border/60">
-                  {isApproved || isRejected || leave.status === 'Cancelled' ? (
-                    <div className="flex flex-col items-center text-center justify-center text-muted-foreground opacity-80 py-2 sm:py-4">
-                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-2 border-muted-foreground/30 flex items-center justify-center mb-2 sm:mb-3">
-                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              return (
+                <div
+                  key={leave.id}
+                  className="rounded-2xl border border-border bg-card hover:border-border/80 transition-all p-4 sm:p-5 shadow-xs"
+                >
+                  <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
+                    {/* ZONE 1: Left - Employee & Request Info */}
+                    <div className="flex items-center gap-3.5 min-w-0 xl:w-[320px] 2xl:w-[360px] shrink-0">
+                      {/* Icon Box */}
+                      <div className="w-12 h-12 rounded-xl bg-secondary/50 dark:bg-zinc-900/80 border border-border flex items-center justify-center shrink-0">
+                        {getRequestTypeIcon(leave)}
                       </div>
-                      <span className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-widest mb-1 text-foreground/60">No Actions</span>
-                      <p className="text-[11px] sm:text-xs font-medium px-1 leading-relaxed">
-                        Request {isApproved ? 'approved' : 'rejected'}.
-                      </p>
+                      {/* Details */}
+                      <div className="min-w-0 flex-1 space-y-1">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-sm sm:text-base font-bold text-foreground tracking-tight truncate">
+                            {firstName} {lastName}
+                          </h3>
+                          {leave.is_half_day && (
+                            <span className="px-1.5 py-0.5 rounded-md bg-secondary text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0 border border-border">
+                              Half Day
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground truncate">
+                          {department ? `${department} • ` : ""}{leave.request_type === 'WFH' ? 'Work From Home' : leave.leave_type}
+                        </div>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                          <span className="truncate">{formatDateRange(leave.start_date, leave.end_date)}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-secondary/60 dark:bg-zinc-800/80 border border-border text-foreground shrink-0">
+                            {calculateDuration(leave.start_date, leave.end_date, leave.is_half_day)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  ) : (
-                    <>
-                      <Button
-                        className="w-full bg-foreground hover:bg-foreground/90 text-background font-bold h-10 sm:h-11 rounded-xl gap-2 text-xs sm:text-sm shadow-sm transition-all"
-                        onClick={() => handleUpdateStatus(leave.id, 'Approved')}
-                        disabled={submittingId === leave.id}
-                      >
-                        {submittingId === leave.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Approve
-                      </Button>
-                      <Button
-                        variant="outline"
-                        className="w-full border-border/80 text-rose-500 hover:bg-rose-500/10 hover:border-rose-500/30 hover:text-rose-400 font-bold h-10 sm:h-11 rounded-xl gap-2 text-xs sm:text-sm transition-all bg-transparent"
-                        onClick={() => handleUpdateStatus(leave.id, 'Rejected')}
-                        disabled={submittingId === leave.id}
-                      >
-                        {submittingId === leave.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <X className="w-4 h-4" />} Reject
-                      </Button>
-                    </>
-                  )}
+
+                    {/* Vertical Divider 1 */}
+                    <div className="hidden xl:block w-px h-10 bg-border/60 shrink-0" />
+
+                    {/* ZONE 2: Center - Reason */}
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 rounded-xl bg-secondary/30 dark:bg-zinc-900/40 border border-border/80 flex items-center justify-center shrink-0 text-muted-foreground">
+                        <FileText className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[11px] text-muted-foreground font-medium">Reason</div>
+                        <div className="text-xs sm:text-sm font-normal text-foreground/90 truncate">
+                          {leave.reason || <span className="italic text-muted-foreground">No reason provided</span>}
+                        </div>
+                      </div>
+                      {leave.medical_certificate_url && (
+                        <a
+                          href={leave.medical_certificate_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-secondary/50 hover:bg-secondary border border-border text-xs font-medium text-foreground transition-colors shrink-0"
+                        >
+                          <Paperclip className="w-3.5 h-3.5" />
+                          <span>Doc</span>
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Vertical Divider 2 */}
+                    <div className="hidden xl:block w-px h-10 bg-border/60 shrink-0" />
+
+                    {/* ZONE 3: Right - Duration, Status Badge, Approve/Reject & 3-dots */}
+                    <div className="flex items-center justify-between xl:justify-end gap-3 sm:gap-4 shrink-0 pt-3 xl:pt-0 border-t xl:border-t-0 border-border/50">
+                      {/* Duration Column (hidden when pending) */}
+                      {!isPending && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="w-8 h-8 rounded-full border border-border/80 flex items-center justify-center text-muted-foreground shrink-0">
+                            <Clock className="w-4 h-4" />
+                          </div>
+                          <div className="leading-tight">
+                            <div className="text-[10px] text-muted-foreground font-medium">Duration</div>
+                            <div className="text-xs sm:text-sm font-bold text-foreground">
+                              {calculateDuration(leave.start_date, leave.end_date, leave.is_half_day)}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Status Badge */}
+                      {getStatusBadge(leave.status)}
+
+                      {/* Approval Action Buttons (when pending) */}
+                      {isPending && (
+                        <div className="flex items-center gap-2 shrink-0">
+                          <button
+                            onClick={() => handleUpdateStatus(leave.id, 'Approved')}
+                            disabled={submittingId === leave.id}
+                            className="h-10 px-3.5 rounded-xl border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                          >
+                            {submittingId === leave.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                            ) : (
+                              <Check className="w-4 h-4 shrink-0" />
+                            )}
+                            <span>Approve</span>
+                          </button>
+                          <button
+                            onClick={() => handleUpdateStatus(leave.id, 'Rejected')}
+                            disabled={submittingId === leave.id}
+                            className="h-10 px-3.5 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                          >
+                            {submittingId === leave.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin shrink-0" />
+                            ) : (
+                              <X className="w-4 h-4 shrink-0" />
+                            )}
+                            <span>Reject</span>
+                          </button>
+                        </div>
+                      )}
+
+                      {/* 3-dots Menu */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger
+                          className="w-10 h-10 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/60 rounded-xl transition-colors shrink-0"
+                          aria-label="More options"
+                        >
+                          <MoreVertical className="w-4 h-4" />
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44 bg-popover border border-border text-popover-foreground rounded-xl shadow-lg p-1.5">
+                          <DropdownMenuItem
+                            onClick={() => setSelectedLeave(leave)}
+                            className="flex items-center gap-2 cursor-pointer rounded-lg text-xs sm:text-sm py-2"
+                          >
+                            <FileText className="w-4 h-4 text-muted-foreground" />
+                            <span>View Details</span>
+                          </DropdownMenuItem>
+                          {leave.medical_certificate_url && (
+                            <DropdownMenuItem
+                              onClick={() => window.open(leave.medical_certificate_url, '_blank')}
+                              className="flex items-center gap-2 cursor-pointer rounded-lg text-xs sm:text-sm py-2"
+                            >
+                              <Paperclip className="w-4 h-4 text-muted-foreground" />
+                              <span>Medical Doc</span>
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })
+          )}
         </div>
       )}
     </div>

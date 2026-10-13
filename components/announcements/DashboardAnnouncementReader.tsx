@@ -61,10 +61,12 @@ export function DashboardAnnouncementReader({ announcement }: { announcement: an
 
         <div className="mt-auto px-5 py-3 border-t border-border flex items-center justify-between bg-muted/30">
           <div className="flex items-center gap-2 text-[13px] text-foreground font-medium">
-            <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[9px] font-bold">
-              {announcement.created_by_profile?.first_name?.[0]}{announcement.created_by_profile?.last_name?.[0]}
+            <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[9px] font-bold uppercase">
+              {(announcement.created_by_profile?.first_name?.[0] || 'A').toUpperCase()}{(announcement.created_by_profile?.last_name?.[0] || '').toUpperCase()}
             </div>
-            {announcement.created_by_profile?.first_name} {announcement.created_by_profile?.last_name}
+            <span className="capitalize">
+              {announcement.created_by_profile?.first_name || 'Admin'} {announcement.created_by_profile?.last_name || ''}
+            </span>
           </div>
           <div className="text-[11px] text-muted-foreground font-medium">
             {dayjs(announcement.published_at || announcement.created_at).format('DD MMM YYYY')}
@@ -84,7 +86,7 @@ export function DashboardAnnouncementReader({ announcement }: { announcement: an
               <span className="leading-tight">{announcement.title}</span>
             </DialogTitle>
             <div className="text-sm text-muted-foreground font-medium pt-1">
-              By {announcement.created_by_profile?.first_name} {announcement.created_by_profile?.last_name} • {dayjs(announcement.published_at || announcement.created_at).format('MMMM D, YYYY h:mm A')}
+              By <span className="capitalize">{announcement.created_by_profile?.first_name || 'Admin'} {announcement.created_by_profile?.last_name || ''}</span> • {dayjs(announcement.published_at || announcement.created_at).format('MMMM D, YYYY h:mm A')}
             </div>
           </DialogHeader>
           <div className="py-4 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">

@@ -22,10 +22,13 @@ export default async function SuperAdminLeavePage() {
     employeeId = empRecord?.id || ''
   }
   
-  const { data: allLeaves, error } = await supabase.from('leave_requests').select(`
-    *,
-    employee:employee_onboarding!leave_requests_employee_id_fkey(first_name, last_name, email, department)
-  `)
+  const { data: allLeaves, error } = await supabase
+    .from('leave_requests')
+    .select(`
+      *,
+      employee:employee_onboarding!leave_requests_employee_id_fkey(first_name, last_name, email, department)
+    `)
+    .order('created_at', { ascending: false })
 
   if (error) {
     console.error("Failed to fetch leaves:", error)

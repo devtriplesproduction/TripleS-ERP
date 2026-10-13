@@ -202,20 +202,20 @@ export function ClientModal({ isOpen, onClose, onSuccess, clientToEdit }: Client
             />
           </div>
 
-          <DialogFooter className="flex flex-col-reverse sm:flex-row gap-2 pt-4">
+          <DialogFooter className="flex flex-row items-center justify-center sm:justify-center gap-3 pt-4">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={loading}
-              className="w-full sm:w-auto"
+              className="w-auto min-w-[100px]"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="w-full sm:w-auto bg-primary text-primary-foreground hover:bg-primary/90"
+              className="w-auto min-w-[120px] bg-primary text-primary-foreground hover:bg-primary/90"
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isEditing ? 'Save Changes' : 'Create Client'}

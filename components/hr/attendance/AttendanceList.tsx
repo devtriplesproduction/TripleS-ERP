@@ -131,10 +131,14 @@ export function AttendanceList({ basePath = '/hr/attendance' }: { basePath?: str
               <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0 mt-1" />
             </div>
             
-            <div className="mt-4 grid grid-cols-5 gap-1 sm:gap-2 text-center text-xs sm:text-sm bg-muted/30 rounded-lg p-2">
+            <div className="mt-4 grid grid-cols-6 gap-1 sm:gap-2 text-center text-xs sm:text-sm bg-muted/30 rounded-lg p-2">
               <div>
                 <div className="text-emerald-500 font-semibold">{emp.summary.present}</div>
                 <div className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-tight">Present</div>
+              </div>
+              <div>
+                <div className="text-[#8b5cf6] font-semibold">{emp.summary.holidayWork}</div>
+                <div className="text-[9px] sm:text-[10px] text-muted-foreground uppercase tracking-tight">Hol. Work</div>
               </div>
               <div>
                 <div className="text-blue-500 font-semibold">{emp.summary.wfh}</div>

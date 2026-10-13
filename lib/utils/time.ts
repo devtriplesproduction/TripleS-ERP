@@ -422,6 +422,10 @@ export function determineAttendanceStatus(
   context: WorkDayContext,
   eodStatus: string
 ): string {
+  if (context === 'sunday' || context === 'paid_holiday') {
+    if (eodStatus === 'Approved' && workedMinutes > 0) return 'Holiday Work';
+    return 'Holiday';
+  }
   if (eodStatus === 'Pending') return 'Pending';
   if (eodStatus === 'Rejected') return 'Absent';
   if (eodStatus !== 'Approved') return 'Absent';

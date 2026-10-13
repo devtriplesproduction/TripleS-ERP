@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-import { Loader2, ChevronLeft, ChevronRight, Calendar as CalendarIcon, User as UserIcon, BarChart3, Clock, Home, CalendarDays, UserX, UserCheck } from "lucide-react"
+import { Loader2, ChevronLeft, ChevronRight, Calendar as CalendarIcon, User as UserIcon, BarChart3, Clock, Home, CalendarDays, UserX, UserCheck, Briefcase } from "lucide-react"
 import { getEmployeeAttendance, getAttendanceEmployeeProfile, DerivedAttendance, AttendanceStatus } from "@/lib/actions/attendance"
 import { calculateAttendanceSummary } from "@/lib/utils/attendance-summary"
 import { Button } from "@/components/ui/button"
@@ -50,6 +50,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
       case 'Absent': return 'bg-red-500/10 text-red-500 border-red-500/20'
       case 'Pending': return 'bg-amber-500/10 text-amber-500 border-amber-500/20'
       case 'Holiday': return 'bg-slate-500/10 text-slate-400 border-slate-500/20'
+      case 'Holiday Work': return 'bg-[#8b5cf6]/10 text-[#8b5cf6] border-[#8b5cf6]/20'
       default: return 'bg-transparent text-transparent border-transparent'
     }
   }
@@ -65,6 +66,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
       case 'Absent': return 'bg-red-500'
       case 'Pending': return 'bg-amber-500'
       case 'Holiday': return 'bg-slate-400'
+      case 'Holiday Work': return 'bg-[#8b5cf6]'
       default: return 'bg-transparent'
     }
   }
@@ -159,7 +161,10 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
                     
                     {att && att.status !== 'Weekend' && att.status !== 'Not Marked' && (
                       <div className="mt-auto w-full flex justify-center">
-                        <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border bg-opacity-10 text-[11px] font-medium ${getStatusColor(att.status)}`}>
+                        <div 
+                          title={att.holiday?.name ? `${att.status} (${att.holiday.name})` : att.status}
+                          className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-medium whitespace-nowrap ${getStatusColor(att.status)}`}
+                        >
                           <div className={`w-1.5 h-1.5 rounded-full ${getStatusIconColor(att.status)}`} />
                           {att.status.replace('Half Day + ', '')}
                         </div>
@@ -230,29 +235,29 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
                 <CalendarIcon className="w-4 h-4 text-emerald-500/50 absolute right-3 top-3" />
               </div>
               <div className="p-2 sm:p-2.5 border-b border-border flex flex-col gap-0.5 relative justify-center">
+                <span className="text-[12px] text-muted-foreground">Holiday Work</span>
+                <span className="text-xl font-bold text-[#8b5cf6]">{summary.holidayWork}</span>
+                <Briefcase className="w-4 h-4 text-[#8b5cf6]/50 absolute right-3 top-3" />
+              </div>
+              <div className="p-2 sm:p-2.5 border-b border-r border-border flex flex-col gap-0.5 relative justify-center">
                 <span className="text-[12px] text-muted-foreground">WFH</span>
                 <span className="text-xl font-bold text-blue-500">{summary.wfh}</span>
                 <Home className="w-4 h-4 text-blue-500/50 absolute right-3 top-3" />
               </div>
-              <div className="p-2 sm:p-2.5 border-b border-r border-border flex flex-col gap-0.5 relative justify-center">
+              <div className="p-2 sm:p-2.5 border-b border-border flex flex-col gap-0.5 relative justify-center">
                 <span className="text-[12px] text-muted-foreground">Leave</span>
                 <span className="text-xl font-bold text-orange-500">{summary.leave}</span>
                 <CalendarDays className="w-4 h-4 text-orange-500/50 absolute right-3 top-3" />
               </div>
-              <div className="p-2 sm:p-2.5 border-b border-border flex flex-col gap-0.5 relative justify-center">
+              <div className="p-2 sm:p-2.5 border-r border-border flex flex-col gap-0.5 relative justify-center">
                 <span className="text-[12px] text-muted-foreground">Half Days</span>
                 <span className="text-xl font-bold text-yellow-500">{summary.halfDay}</span>
                 <Clock className="w-4 h-4 text-yellow-500/50 absolute right-3 top-3" />
               </div>
-              <div className="p-2 sm:p-2.5 border-r border-border flex flex-col gap-0.5 relative justify-center">
+              <div className="p-2 sm:p-2.5 flex flex-col gap-0.5 relative justify-center">
                 <span className="text-[12px] text-muted-foreground">Absent</span>
                 <span className="text-xl font-bold text-red-500">{summary.absent}</span>
                 <UserX className="w-4 h-4 text-red-500/50 absolute right-3 top-3" />
-              </div>
-              <div className="p-2 sm:p-2.5 flex flex-col gap-0.5 relative justify-center">
-                <span className="text-[12px] text-muted-foreground">Pending</span>
-                <span className="text-xl font-bold text-amber-500">{summary.pending}</span>
-                <Clock className="w-4 h-4 text-amber-500/50 absolute right-3 top-3" />
               </div>
             </div>
           </Card>

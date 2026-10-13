@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Plus, Edit, Trash2, Search, Loader2, Megaphone, Check } from 'lucide-react'
 import { createAnnouncement, updateAnnouncement, deleteAnnouncement } from '@/lib/actions/announcements'
+import { broadcastNotificationUpdate } from '@/lib/notifications-client'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
@@ -41,14 +42,14 @@ function CustomToggle({ checked, onChange, disabled, loading }: { checked: boole
       aria-label={checked ? "Deactivate announcement" : "Activate announcement"}
       disabled={disabled || loading}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 ${
+      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:cursor-not-allowed disabled:opacity-50 ${
         checked 
-          ? 'bg-emerald-500/20 border-emerald-500/30' 
-          : 'bg-muted/50 border-border'
+          ? 'bg-emerald-500 border-emerald-500 hover:bg-emerald-600 dark:bg-emerald-600 dark:border-emerald-600 dark:hover:bg-emerald-500' 
+          : 'bg-neutral-200 border-neutral-300 hover:bg-neutral-300/80 dark:bg-neutral-800 dark:border-neutral-700 dark:hover:bg-neutral-700'
       }`}
     >
       <span 
-        className={`pointer-events-none flex items-center justify-center h-4 w-4 rounded-full bg-white shadow-sm ring-0 transition-transform duration-200 ${
+        className={`pointer-events-none flex items-center justify-center h-4 w-4 rounded-full bg-white shadow-sm border border-black/10 dark:border-transparent ring-0 transition-transform duration-200 ${
           checked ? 'translate-x-6' : 'translate-x-1'
         }`}
       >
@@ -175,8 +176,10 @@ export function AnnouncementsClientPage({ announcements: initialAnnouncements, d
         // Optimistic update locally
         setAnnouncements(prev => prev.map(a => a.id === editingId ? { ...a, ...dataToSubmit } as any : a))
         toast.success('Announcement updated successfully')
+        broadcastNotificationUpdate()
       } else {
         await createAnnouncement(dataToSubmit)
+        broadcastNotificationUpdate()
         // Refresh page or let the server action revalidate handled by next
         window.location.reload()
       }
@@ -201,6 +204,7 @@ export function AnnouncementsClientPage({ announcements: initialAnnouncements, d
       await deleteAnnouncement(announcementToDelete)
       setAnnouncements(prev => prev.filter(a => a.id !== announcementToDelete))
       toast.success('Announcement deleted')
+      broadcastNotificationUpdate()
       setDeleteDialogOpen(false)
       setAnnouncementToDelete(null)
     } catch (err: any) {
@@ -224,6 +228,7 @@ export function AnnouncementsClientPage({ announcements: initialAnnouncements, d
       })
       setAnnouncements(prev => prev.map(a => a.id === announcement.id ? { ...a, status: newStatus } : a))
       toast.success(`Announcement ${newStatus === 'published' ? 'activated' : 'deactivated'}`)
+      broadcastNotificationUpdate()
     } catch (err) {
       toast.error(`Unable to update announcement`)
     } finally {
@@ -349,10 +354,12 @@ export function AnnouncementsClientPage({ announcements: initialAnnouncements, d
 
               <div className="mt-auto px-5 py-3 border-t border-border flex items-center justify-between bg-muted/30">
                 <div className="flex items-center gap-2 text-sm text-foreground font-medium">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold">
-                    {announcement.created_by_profile?.first_name?.[0]}{announcement.created_by_profile?.last_name?.[0]}
+                  <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center text-[10px] font-bold uppercase">
+                    {(announcement.created_by_profile?.first_name?.[0] || 'A').toUpperCase()}{(announcement.created_by_profile?.last_name?.[0] || '').toUpperCase()}
                   </div>
-                  {announcement.created_by_profile?.first_name} {announcement.created_by_profile?.last_name}
+                  <span className="capitalize">
+                    {announcement.created_by_profile?.first_name || 'Admin'} {announcement.created_by_profile?.last_name || ''}
+                  </span>
                 </div>
                 <div className="text-xs text-muted-foreground font-medium">
                   {dayjs(announcement.created_at).format('DD MMM YYYY')}
@@ -384,30 +391,30 @@ export function AnnouncementsClientPage({ announcements: initialAnnouncements, d
         setIsOpen(open)
         if (!open) resetForm()
       }}>
-        <DialogContent className="sm:max-w-[650px] w-full">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-[650px] w-full no-scrollbar">
+          <DialogHeader className="pb-1 sm:pb-2">
             <DialogTitle>{editingId ? 'Edit' : 'Create'} Announcement</DialogTitle>
           </DialogHeader>
-          <div className="space-y-6 py-2">
-            <div className="space-y-2">
+          <div className="space-y-4 py-0">
+            <div className="space-y-1.5">
               <Label>Title <span className="text-destructive">*</span></Label>
-              <Input value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="Announcement title..." className="h-11" />
+              <Input value={formData.title} onChange={(e) => setFormData({...formData, title: e.target.value})} placeholder="Announcement title..." className="h-10" />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label>Message <span className="text-destructive">*</span></Label>
               <textarea 
-                className="flex min-h-[140px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+                className="flex min-h-[110px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-y"
                 value={formData.message} 
                 onChange={(e) => setFormData({...formData, message: e.target.value})} 
                 placeholder="Type your message here..." 
               />
             </div>
             
-            <div className={`grid gap-6 ${formData.target_audience === 'department' ? 'grid-cols-2' : 'grid-cols-1'}`}>
-              <div className="space-y-2">
+            <div className={`grid gap-4 ${formData.target_audience === 'department' ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              <div className="space-y-1.5">
                 <Label>Target Audience</Label>
                 <Select value={formData.target_audience as string} onValueChange={(v: any) => setFormData({...formData, target_audience: v})}>
-                  <SelectTrigger className="w-full h-11 capitalize"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full h-10 capitalize"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Company Wide</SelectItem>
                     <SelectItem value="department">Specific Department</SelectItem>
@@ -415,10 +422,10 @@ export function AnnouncementsClientPage({ announcements: initialAnnouncements, d
                 </Select>
               </div>
               {formData.target_audience === 'department' && (
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label>Department</Label>
                   <Select value={formData.target_department as string} onValueChange={(v: any) => setFormData({...formData, target_department: v})}>
-                    <SelectTrigger className="w-full h-11 capitalize"><SelectValue placeholder="Select dept" /></SelectTrigger>
+                    <SelectTrigger className="w-full h-10 capitalize"><SelectValue placeholder="Select dept" /></SelectTrigger>
                     <SelectContent>
                       {departments.map(d => (
                         <SelectItem key={d} value={d}>{d}</SelectItem>
@@ -429,11 +436,11 @@ export function AnnouncementsClientPage({ announcements: initialAnnouncements, d
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-6">
-              <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
                 <Label>Priority</Label>
                 <Select value={formData.priority as string} onValueChange={(v: any) => setFormData({...formData, priority: v})}>
-                  <SelectTrigger className="w-full h-11 capitalize"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full h-10 capitalize"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="low">Low</SelectItem>
                     <SelectItem value="medium">Medium</SelectItem>
@@ -442,10 +449,10 @@ export function AnnouncementsClientPage({ announcements: initialAnnouncements, d
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label>Status</Label>
                 <Select value={formData.status as string} onValueChange={(v: any) => setFormData({...formData, status: v})}>
-                  <SelectTrigger className="w-full h-11 capitalize"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full h-10 capitalize"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="draft">Draft (Inactive)</SelectItem>
                     <SelectItem value="published">Published (Active)</SelectItem>
@@ -455,9 +462,11 @@ export function AnnouncementsClientPage({ announcements: initialAnnouncements, d
               </div>
             </div>
           </div>
-          <DialogFooter className="mt-4">
-            <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting}>Cancel</Button>
-            <Button onClick={handleSubmit} disabled={isSubmitting}>
+          <DialogFooter className="flex flex-row items-center justify-center sm:justify-center gap-3 mt-2 sm:mt-2 py-3 sm:py-3">
+            <Button variant="outline" onClick={() => setIsOpen(false)} disabled={isSubmitting} className="min-w-[100px]">
+              Cancel
+            </Button>
+            <Button onClick={handleSubmit} disabled={isSubmitting} className="min-w-[100px]">
               {isSubmitting ? (
                 <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> {editingId ? 'Updating...' : 'Creating...'}</>
               ) : (

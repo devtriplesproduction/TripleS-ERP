@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { invalidateNotificationCache } from '@/actions/notifications.actions'
 
 export async function createAnnouncement(data: any) {
   const supabase = await createClient()
@@ -20,8 +21,10 @@ export async function createAnnouncement(data: any) {
     console.error("Error creating announcement:", error)
     throw new Error(error.message)
   }
+  await invalidateNotificationCache()
   revalidatePath('/announcements')
   revalidatePath('/dashboard')
+  revalidatePath('/', 'layout')
 }
 
 export async function updateAnnouncement(id: string, data: any) {
@@ -37,8 +40,10 @@ export async function updateAnnouncement(id: string, data: any) {
     await supabase.from('announcement_reads').delete().eq('announcement_id', id)
   }
   
+  await invalidateNotificationCache()
   revalidatePath('/announcements')
   revalidatePath('/dashboard')
+  revalidatePath('/', 'layout')
 }
 
 export async function deleteAnnouncement(id: string) {
@@ -48,8 +53,10 @@ export async function deleteAnnouncement(id: string) {
     console.error("Error deleting announcement:", error)
     throw new Error(error.message)
   }
+  await invalidateNotificationCache()
   revalidatePath('/announcements')
   revalidatePath('/dashboard')
+  revalidatePath('/', 'layout')
 }
 
 export async function getAnnouncements() {

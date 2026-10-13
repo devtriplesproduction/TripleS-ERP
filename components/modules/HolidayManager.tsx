@@ -14,6 +14,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { createHolidayAction, updateHolidayAction, deleteHolidayAction } from "@/actions/holiday.actions";
+import { broadcastNotificationUpdate } from "@/lib/notifications-client";
 import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
@@ -77,12 +78,20 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
     try {
       if (editingId) {
         const res = await updateHolidayAction(editingId, payload);
-        if (res.success && res.data) { toast.success("The holiday details have been updated."); setHolidays(prev => prev.map(h => h.id === editingId ? res.data : h)); setIsOpen(false); }
-        else toast.error(res.error || "Failed to update");
+        if (res.success && res.data) {
+          toast.success("The holiday details have been updated.");
+          setHolidays(prev => prev.map(h => h.id === editingId ? res.data : h));
+          setIsOpen(false);
+          broadcastNotificationUpdate();
+        } else toast.error(res.error || "Failed to update");
       } else {
         const res = await createHolidayAction(payload);
-        if (res.success && res.data) { toast.success("The holiday has been added successfully."); setHolidays(prev => [...prev, res.data]); setIsOpen(false); }
-        else toast.error(res.error || "Failed to add");
+        if (res.success && res.data) {
+          toast.success("The holiday has been added successfully.");
+          setHolidays(prev => [...prev, res.data]);
+          setIsOpen(false);
+          broadcastNotificationUpdate();
+        } else toast.error(res.error || "Failed to add");
       }
     } catch { toast.error("An error occurred."); }
     finally { setIsSubmitting(false); }
@@ -91,8 +100,11 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
   const handleDelete = async (id: string) => {
     try {
       const res = await deleteHolidayAction(id);
-      if (res.success) { toast.success("The holiday has been removed."); setHolidays(prev => prev.filter(h => h.id !== id)); }
-      else toast.error(res.error || "Failed to delete");
+      if (res.success) {
+        toast.success("The holiday has been removed.");
+        setHolidays(prev => prev.filter(h => h.id !== id));
+        broadcastNotificationUpdate();
+      } else toast.error(res.error || "Failed to delete");
     } catch { toast.error("An error occurred"); }
   };
 

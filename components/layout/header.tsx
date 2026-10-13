@@ -56,7 +56,7 @@ export function Header({ user }: HeaderProps) {
             <AvatarFallback className="bg-muted text-xs font-medium text-foreground">{initials}</AvatarFallback>
           </Avatar>
           <div className="hidden sm:flex flex-col min-w-0 max-w-[130px] md:max-w-[180px]">
-            <span className="text-sm font-semibold leading-none truncate text-foreground">{displayName}</span>
+            <span className="text-sm font-semibold leading-none truncate text-foreground capitalize">{displayName}</span>
             <span className="text-xs text-muted-foreground mt-1 truncate">{user.role}</span>
           </div>
           <form action={logoutAction} className="flex items-center">

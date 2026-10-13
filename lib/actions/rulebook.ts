@@ -1,6 +1,8 @@
 'use server'
 
 import { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
+import { invalidateNotificationCache } from "@/actions/notifications.actions";
 
 export type RulebookCategory = 'Work Policy' | 'Security & IT' | 'Leave & PTO' | 'Attendance' | 'Human Resources';
 export type RulebookStatus = 'Draft' | 'Published' | 'Archived';
@@ -43,10 +45,14 @@ export async function createRule(rule: Omit<CompanyRule, 'id' | 'created_at' | '
   const supabase = await createClient();
   const { data, error } = await supabase.from('company_rules').insert({
     ...rule,
-    version: '1.0'
+    version: '1.0',
+    published_at: rule.status === 'Published' ? (rule.published_at || new Date().toISOString()) : null,
   }).select().single();
   
   if (error) throw error;
+  await invalidateNotificationCache();
+  revalidatePath('/rulebook');
+  revalidatePath('/', 'layout');
   return data;
 }
 
@@ -87,12 +93,22 @@ export async function updateRule(ruleId: string, updates: Partial<CompanyRule>, 
       }).select().single();
       
       if (error) throw error;
+      await invalidateNotificationCache();
+      revalidatePath('/rulebook');
+      revalidatePath('/', 'layout');
       return data;
     }
   } else {
     // Just update
-    const { data, error } = await supabase.from('company_rules').update(updates).eq('id', ruleId).select().single();
+    const updatePayload = {
+      ...updates,
+      ...(updates.status === 'Published' ? { published_at: updates.published_at || new Date().toISOString() } : {}),
+    };
+    const { data, error } = await supabase.from('company_rules').update(updatePayload).eq('id', ruleId).select().single();
     if (error) throw error;
+    await invalidateNotificationCache();
+    revalidatePath('/rulebook');
+    revalidatePath('/', 'layout');
     return data;
   }
 }
@@ -132,6 +148,8 @@ export async function acknowledgeRule(employeeId: string, ruleId: string, versio
   }, { onConflict: 'employee_id, rule_id, version' });
   
   if (error) throw error;
+  revalidatePath('/rulebook');
+  revalidatePath('/', 'layout');
   return true;
 }
 
@@ -139,5 +157,7 @@ export async function deleteRule(ruleId: string) {
   const supabase = await createClient();
   const { error } = await supabase.from('company_rules').delete().eq('id', ruleId);
   if (error) throw error;
+  revalidatePath('/rulebook');
+  revalidatePath('/', 'layout');
   return true;
 }
