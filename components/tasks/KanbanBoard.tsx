@@ -1,19 +1,18 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Task, TaskStatus, Project } from '@/types/project-management'
 import { AssignableEmployee } from '@/lib/actions/team'
 import { KanbanColumn } from './KanbanColumn'
-import { TaskCard } from './TaskCard'
 import { TaskDetailsModal } from './TaskDetailsModal'
 import { TaskFormModal } from './TaskFormModal'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { updateTaskStatusAction } from '@/lib/actions/tasks'
-import { Plus, Search, Kanban, Filter } from 'lucide-react'
+import { Kanban, Columns3, Workflow, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
-import { PageHeader } from '@/components/PageHeader'
+import { TaskGanttView } from './TaskGanttView'
+import { TaskCalendarView } from './TaskCalendarView'
 
 interface KanbanBoardProps {
   initialTasks: Task[]
@@ -22,6 +21,8 @@ interface KanbanBoardProps {
   canManage: boolean
   defaultProjectId?: string
 }
+
+type ViewMode = 'kanban' | 'gantt' | 'calendar'
 
 const COLUMNS: { status: TaskStatus; title: string }[] = [
   { status: 'TODO', title: 'To Do' },
@@ -38,32 +39,31 @@ export function KanbanBoard({
   canManage,
   defaultProjectId,
 }: KanbanBoardProps) {
+  const router = useRouter()
   const [tasks, setTasks] = useState<Task[]>(initialTasks)
-  const [search, setSearch] = useState('')
-  const [selectedProjectId, setSelectedProjectId] = useState<string>(defaultProjectId || 'ALL')
+  const [selectedProjectId] = useState<string>(defaultProjectId || 'ALL')
   const [selectedAssignee, setSelectedAssignee] = useState<string>('ALL')
   const [selectedPriority, setSelectedPriority] = useState<string>('ALL')
   const [selectedStatus, setSelectedStatus] = useState<string>('ALL')
-  const [viewMode, setViewMode] = useState<'board' | 'list'>('board')
+  const [viewMode, setViewMode] = useState<ViewMode>('kanban')
 
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
-  const [defaultStatusForNew, setDefaultStatusForNew] = useState<TaskStatus | undefined>(undefined)
+  const [defaultStatusForNew, setDefaultStatusForNew] = useState<TaskStatus | undefined>('TODO')
+
+  useEffect(() => {
+    setTasks(initialTasks)
+  }, [initialTasks])
 
   const filteredTasks = tasks.filter((t) => {
-    const matchesSearch =
-      t.title.toLowerCase().includes(search.toLowerCase()) ||
-      t.task_id_display.toLowerCase().includes(search.toLowerCase()) ||
-      (t.description || '').toLowerCase().includes(search.toLowerCase())
-
     const matchesProject = selectedProjectId === 'ALL' || t.project_id === selectedProjectId
     const matchesAssignee = selectedAssignee === 'ALL' || (t.assignees?.some(a => a.user_id === selectedAssignee) ?? false)
     const matchesPriority = selectedPriority === 'ALL' || t.priority === selectedPriority
     const matchesStatus = selectedStatus === 'ALL' || t.status === selectedStatus
 
-    return matchesSearch && matchesProject && matchesAssignee && matchesPriority && matchesStatus
+    return matchesProject && matchesAssignee && matchesPriority && matchesStatus
   })
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
@@ -104,56 +104,104 @@ export function KanbanBoard({
     setIsCreateOpen(true)
   }
 
-  const handleSuccess = () => {
-    window.location.reload()
+  const handleSuccess = (updatedOrNewTask?: Task) => {
+    if (updatedOrNewTask) {
+      setTasks((prev) => {
+        const exists = prev.some((t) => t.id === updatedOrNewTask.id)
+        if (exists) {
+          return prev.map((t) => (t.id === updatedOrNewTask.id ? { ...t, ...updatedOrNewTask } : t))
+        }
+        return [updatedOrNewTask, ...prev]
+      })
+
+      if (selectedStatus !== 'ALL' && selectedStatus !== 'TODO') {
+        setSelectedStatus('ALL')
+      }
+    }
+    router.refresh()
   }
 
   return (
     <div className="space-y-6">
-      {/* Top Header */}
-      <PageHeader
-        title="Tasks & Kanban Board"
-        subtitle="Manage and track project tasks with a visual workflow."
-        icon={Kanban}
-        actions={
-          canManage && (
-            <Button
-              onClick={() => {
-                setTaskToEdit(null)
-                setDefaultStatusForNew(undefined)
-                setIsCreateOpen(true)
-              }}
-              className="w-full sm:w-auto h-11 px-5 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              New Task
-            </Button>
-          )
-        }
-      />
-
-      {/* Filter Bar */}
-      <div className="flex flex-col xl:flex-row gap-3 items-stretch xl:items-center bg-card border border-border p-3 rounded-lg shadow-xs">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search tasks by title, ID, or keyword..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9 bg-background border-border filter-control"
-          />
+      {/* Top Header Row matching the latest reference */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        {/* Left: Icon, Title & Subtitle */}
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-11 h-11 rounded-xl bg-card border border-border/80 flex items-center justify-center shrink-0 shadow-xs">
+            <Kanban className="w-5 h-5 text-foreground" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground leading-tight truncate">
+              Tasks Board
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground font-normal truncate mt-0.5">
+              Manage project tasks with a visual workflow.
+            </p>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap lg:flex-nowrap">
-          <Dropdown
-            value={selectedProjectId}
-            onChange={(val) => setSelectedProjectId(val || 'ALL')}
-            options={[
-              { value: 'ALL', label: 'All Projects' },
-              ...projects.map((p) => ({ value: p.id, label: p.name })),
-            ]}
-            buttonClassName="bg-background border-border filter-control text-xs min-w-[140px]"
-          />
+        {/* Right: Compact Segmented View Switcher & Filters */}
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
+          {/* Segmented View Switcher: Kanban | Gantt | Calendar */}
+          <div
+            role="radiogroup"
+            aria-label="Tasks view options"
+            className="flex items-center h-9 p-0.5 rounded-lg border border-border/80 bg-card shadow-xs shrink-0"
+          >
+            <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === 'kanban'}
+              aria-label="Kanban board view"
+              title="Kanban Board"
+              onClick={() => setViewMode('kanban')}
+              className={`h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
+                viewMode === 'kanban'
+                  ? 'bg-secondary text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+              }`}
+            >
+              <Columns3 className="h-4 w-4" />
+            </button>
+
+            <div className="w-px h-4 bg-border/60 mx-0.5 shrink-0" aria-hidden="true" />
+
+            <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === 'gantt'}
+              aria-label="Gantt chart view"
+              title="Gantt Chart"
+              onClick={() => setViewMode('gantt')}
+              className={`h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
+                viewMode === 'gantt'
+                  ? 'bg-secondary text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+              }`}
+            >
+              <Workflow className="h-4 w-4" />
+            </button>
+
+            <div className="w-px h-4 bg-border/60 mx-0.5 shrink-0" aria-hidden="true" />
+
+            <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === 'calendar'}
+              aria-label="Calendar view"
+              title="Calendar View"
+              onClick={() => setViewMode('calendar')}
+              className={`h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
+                viewMode === 'calendar'
+                  ? 'bg-secondary text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+              }`}
+            >
+              <Calendar className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* All Assignees Filter */}
           <Dropdown
             value={selectedAssignee}
             onChange={(val) => setSelectedAssignee(val || 'ALL')}
@@ -161,8 +209,11 @@ export function KanbanBoard({
               { value: 'ALL', label: 'All Assignees' },
               ...employees.map((e) => ({ value: e.id, label: e.name })),
             ]}
-            buttonClassName="bg-background border-border filter-control text-xs min-w-[140px]"
+            className="w-auto space-y-0 shrink-0"
+            buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[125px] shadow-xs hover:border-foreground/30 transition-colors"
           />
+
+          {/* All Priority Filter */}
           <Dropdown
             value={selectedPriority}
             onChange={(val) => setSelectedPriority(val || 'ALL')}
@@ -173,8 +224,11 @@ export function KanbanBoard({
               { value: 'HIGH', label: 'High' },
               { value: 'URGENT', label: 'Urgent' },
             ]}
-            buttonClassName="bg-background border-border filter-control text-xs min-w-[120px]"
+            className="w-auto space-y-0 shrink-0"
+            buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[110px] shadow-xs hover:border-foreground/30 transition-colors"
           />
+
+          {/* All Status Filter */}
           <Dropdown
             value={selectedStatus}
             onChange={(val) => setSelectedStatus(val || 'ALL')}
@@ -186,32 +240,14 @@ export function KanbanBoard({
               { value: 'DONE', label: 'Done' },
               { value: 'ON_HOLD', label: 'On Hold' },
             ]}
-            buttonClassName="bg-background border-border filter-control text-xs min-w-[120px]"
+            className="w-auto space-y-0 shrink-0"
+            buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[110px] shadow-xs hover:border-foreground/30 transition-colors"
           />
-
-          <div className="flex items-center bg-background border border-border rounded-md shrink-0 filter-toggle-container">
-            <button
-              onClick={() => setViewMode('board')}
-              className={`px-3 text-xs font-medium rounded-sm transition-colors filter-toggle-btn ${
-                viewMode === 'board' ? 'bg-secondary text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Board
-            </button>
-            <button
-              onClick={() => setViewMode('list')}
-              className={`px-3 text-xs font-medium rounded-sm transition-colors filter-toggle-btn ${
-                viewMode === 'list' ? 'bg-secondary text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              List
-            </button>
-          </div>
         </div>
       </div>
 
-      {viewMode === 'board' ? (
-        /* Kanban Columns Horizontal Container */
+      {/* Active View Container */}
+      {viewMode === 'kanban' && (
         <div className="w-full overflow-x-auto pb-6 pt-2 custom-scrollbar">
           <div className="flex items-start gap-4 min-w-max">
             {COLUMNS.map((col) => {
@@ -227,34 +263,39 @@ export function KanbanBoard({
                   onDropTask={handleDropTask}
                   canManage={canManage}
                   onQuickStatusChange={handleDropTask}
-                  onAddTask={(status) => {
-                    setTaskToEdit(null)
-                    setDefaultStatusForNew(status)
-                    setIsCreateOpen(true)
-                  }}
+                  onAddTask={
+                    col.status === 'TODO'
+                      ? () => {
+                          setTaskToEdit(null)
+                          setDefaultStatusForNew('TODO')
+                          setIsCreateOpen(true)
+                        }
+                      : undefined
+                  }
                 />
               )
             })}
           </div>
         </div>
-      ) : (
-        /* List View (Grid of Cards) */
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4 pb-6 pt-2">
-          {filteredTasks.length === 0 ? (
-            <div className="col-span-full text-center py-12 text-muted-foreground bg-secondary/20 rounded-lg border border-border/50">
-              No tasks found.
-            </div>
-          ) : (
-            filteredTasks.map((task) => (
-              <div key={task.id} className="h-full">
-                <TaskCard
-                  task={task}
-                  onClick={() => handleTaskClick(task)}
-                  canManage={canManage}
-                />
-              </div>
-            ))
-          )}
+      )}
+
+      {viewMode === 'gantt' && (
+        <div className="w-full pt-2">
+          <TaskGanttView
+            tasks={filteredTasks}
+            onTaskClick={handleTaskClick}
+            canManage={canManage}
+          />
+        </div>
+      )}
+
+      {viewMode === 'calendar' && (
+        <div className="w-full pt-2">
+          <TaskCalendarView
+            tasks={filteredTasks}
+            onTaskClick={handleTaskClick}
+            canManage={canManage}
+          />
         </div>
       )}
 
@@ -280,7 +321,7 @@ export function KanbanBoard({
           onClose={() => {
             setIsCreateOpen(false)
             setTaskToEdit(null)
-            setDefaultStatusForNew(undefined)
+            setDefaultStatusForNew('TODO')
           }}
           onSuccess={handleSuccess}
           projects={projects}

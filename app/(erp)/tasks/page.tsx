@@ -6,7 +6,7 @@ import { canManageTasks } from '@/lib/permissions/project-management'
 import { KanbanBoard } from '@/components/tasks/KanbanBoard'
 
 export const metadata = {
-  title: 'Tasks & Kanban | TripleS ERP',
+  title: 'Tasks Board | TripleS ERP',
   description: 'Interactive Kanban board for operational task workflows.',
 }
 

@@ -67,12 +67,14 @@ export const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
           <SelectTrigger 
             id={id}
             className={cn(
-              "h-10 text-sm text-left",
+              "h-10 text-sm text-left w-full",
               error && "border-error focus:ring-error",
               buttonClassName
             )}
           >
-            {value ? options.find(o => o.value === value)?.label || value : <SelectValue placeholder={placeholder} />}
+            <span className="truncate flex-1 text-left">
+              {value ? options.find(o => o.value === value)?.label || value : <SelectValue placeholder={placeholder} />}
+            </span>
           </SelectTrigger>
           <SelectContent align={align === "right" ? "end" : "start"} className={contentClassName}>
             {options.map((opt) => (

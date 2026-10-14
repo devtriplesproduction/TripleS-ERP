@@ -16,7 +16,7 @@ import { DatePicker } from '@/components/ui/date-picker'
 interface TaskFormModalProps {
   isOpen: boolean
   onClose: () => void
-  onSuccess: () => void
+  onSuccess: (task?: Task) => void
   projects: Array<{ id: string; name: string }>
   employees: AssignableEmployee[]
   defaultProjectId?: string
@@ -48,7 +48,7 @@ export function TaskFormModal({
   projects,
   employees,
   defaultProjectId,
-  defaultStatus,
+  defaultStatus = 'TODO',
   taskToEdit,
 }: TaskFormModalProps) {
   const isEditing = !!taskToEdit
@@ -58,7 +58,9 @@ export function TaskFormModal({
   const [description, setDescription] = useState(taskToEdit?.description || '')
   const [projectId, setProjectId] = useState(taskToEdit?.project_id || defaultProjectId || '')
   const [priority, setPriority] = useState<TaskPriority>(taskToEdit?.priority || 'MEDIUM')
-  const [status, setStatus] = useState<TaskStatus>(taskToEdit?.status || defaultStatus || 'TODO')
+  const [status, setStatus] = useState<TaskStatus>(
+    isEditing ? (taskToEdit?.status || 'TODO') : 'TODO'
+  )
   const [startDate, setStartDate] = useState(taskToEdit?.start_date || '')
   const [dueDate, setDueDate] = useState(taskToEdit?.due_date || '')
   const [estimatedHours, setEstimatedHours] = useState(
@@ -115,7 +117,7 @@ export function TaskFormModal({
           toast.error(res.error || 'Failed to update task.')
         } else {
           toast.success('Task updated successfully.')
-          onSuccess()
+          onSuccess(res.data)
           onClose()
         }
       } else {
@@ -124,7 +126,7 @@ export function TaskFormModal({
           description: description.trim() || null,
           project_id: projectId,
           priority,
-          status,
+          status: 'TODO',
           start_date: startDate || null,
           due_date: dueDate || null,
           estimated_hours: parsedHours,
@@ -136,7 +138,7 @@ export function TaskFormModal({
           toast.error(res.error || 'Failed to create task.')
         } else {
           toast.success('Task created successfully.')
-          onSuccess()
+          onSuccess(res.data)
           onClose()
         }
       }
@@ -223,17 +225,35 @@ export function TaskFormModal({
 
           {/* Status & Estimated Hours */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            <Dropdown
-              id="task-status"
-              label="Status"
-              value={status}
-              onChange={(val) => setStatus(val as TaskStatus)}
-              options={ALL_STATUSES.map((st) => ({
-                value: st,
-                label: statusLabels[st],
-              }))}
-              buttonClassName="bg-input border-border w-full"
-            />
+            {isEditing ? (
+              <Dropdown
+                id="task-status"
+                label="Status"
+                value={status}
+                onChange={(val) => setStatus(val as TaskStatus)}
+                options={ALL_STATUSES.map((st) => ({
+                  value: st,
+                  label: statusLabels[st],
+                }))}
+                buttonClassName="bg-input border-border w-full"
+              />
+            ) : (
+              <div className="space-y-1.5">
+                <Label htmlFor="task-status" className="text-sm font-medium">
+                  Status
+                </Label>
+                <div
+                  id="task-status"
+                  className="flex items-center justify-between h-10 w-full rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-foreground select-none"
+                >
+                  <span className="flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-muted-foreground/60" />
+                    To Do
+                  </span>
+                  <span className="text-xs text-muted-foreground font-mono">Initial status</span>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <Label htmlFor="task-hours" className="text-sm font-medium">

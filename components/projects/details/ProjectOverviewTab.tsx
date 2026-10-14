@@ -13,9 +13,11 @@ interface ProjectOverviewTabProps {
   tasks: Task[]
   teamStats: ProjectTeamMemberStats[]
   activities: ProjectActivity[]
+  onSelectTab?: (tab: string) => void
+  onTaskClick?: (task: Task) => void
 }
 
-export function ProjectOverviewTab({ project, totalOperationalHours, tasks, teamStats, activities }: ProjectOverviewTabProps) {
+export function ProjectOverviewTab({ project, totalOperationalHours, tasks, teamStats, activities, onSelectTab, onTaskClick }: ProjectOverviewTabProps) {
   const summary = project.task_summary || { total: 0, done: 0, in_progress: 0, in_review: 0, todo: 0, on_hold: 0 }
   const activeTasks = tasks.filter(t => t.status === 'IN_PROGRESS' || t.status === 'IN_REVIEW').slice(0, 5)
   const recentActivities = activities.slice(0, 5)

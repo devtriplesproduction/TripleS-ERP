@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Loader2, ChevronLeft, ChevronRight, Calendar as CalendarIcon, User as UserIcon, BarChart3, Clock, Home, CalendarDays, UserX, UserCheck, Briefcase } from "lucide-react"
 import { getEmployeeAttendance, getAttendanceEmployeeProfile, DerivedAttendance, AttendanceStatus } from "@/lib/actions/attendance"
 import { calculateAttendanceSummary } from "@/lib/utils/attendance-summary"
+import { getISTDateString, formatMinutesAsHHMM, formatOfficeHoursAsHHMM } from "@/lib/utils/time"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { Progress } from "@/components/ui/progress"
@@ -72,6 +73,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
   }
 
   const summary = calculateAttendanceSummary(attendance)
+  const todayStr = getISTDateString()
 
   // Calendar generation logic
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
@@ -90,13 +92,18 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
     calendarDays.push(null)
   }
 
+  // Selected date details
+  const selectedDateStr = selectedDate 
+    ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
+    : null;
+  const selectedAtt = attendance.find(a => a.date === selectedDateStr);
+
   if (loading && !employee) {
     return <div className="flex h-[50vh] items-center justify-center"><Loader2 className="w-8 h-8 animate-spin" /></div>
   }
 
   return (
     <div className="flex flex-col h-full space-y-6">
-      {/* Header */}
       {/* Header */}
       <PageHeader
         title="Attendance & Leaves"
@@ -149,18 +156,26 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
                 const att = attendance.find(a => a.date === dStr)
                 
                 const isSelected = selectedDate?.getDate() === dayNum && selectedDate?.getMonth() === currentDate.getMonth() && selectedDate?.getFullYear() === currentDate.getFullYear()
+                const isToday = dStr === todayStr
                 
                 return (
                   <div 
                     key={dStr} 
                     onClick={() => setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum))}
-                    className={`min-h-[90px] p-2 sm:p-3 border-b border-r border-border relative cursor-pointer transition-colors hover:bg-muted/50 flex flex-col items-center justify-between
-                      ${isSelected ? 'bg-muted/50 ring-1 ring-inset ring-primary/50' : 'bg-transparent'}`}
+                    className={`min-h-[90px] p-2 sm:p-2.5 border-b border-r border-border relative cursor-pointer transition-colors hover:bg-muted/50 flex flex-col items-center justify-between
+                      ${isSelected ? 'bg-muted/60 ring-1 ring-inset ring-foreground/60' : isToday ? 'ring-1 ring-inset ring-foreground/25 bg-muted/20' : 'bg-transparent'}`}
                   >
-                    <span className="absolute top-2 left-2.5 text-[13px] font-medium text-muted-foreground">{dayNum}</span>
+                    <div className="w-full flex items-center justify-between">
+                      <span className={`text-[13px] font-medium ${isToday ? 'text-foreground font-bold' : 'text-muted-foreground'}`}>{dayNum}</span>
+                      {isToday && (
+                        <span className="text-[9px] uppercase font-semibold tracking-wider px-1 py-0.2 rounded border border-border text-foreground bg-muted/50">
+                          Today
+                        </span>
+                      )}
+                    </div>
                     
                     {att && att.status !== 'Weekend' && att.status !== 'Not Marked' && (
-                      <div className="mt-auto w-full flex justify-center">
+                      <div className="mt-auto w-full flex justify-center pb-0.5">
                         <div 
                           title={att.holiday?.name ? `${att.status} (${att.holiday.name})` : att.status}
                           className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-medium whitespace-nowrap ${getStatusColor(att.status)}`}
@@ -177,8 +192,8 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
           </div>
         </div>
 
-        {/* Right Area - Context & Insights */}
-        <div className="w-full lg:w-[320px] shrink-0 flex flex-col gap-3">
+        {/* Right Area - Context, Details & Insights */}
+        <div className="w-full lg:w-[340px] shrink-0 flex flex-col gap-3">
           
           {/* Personnel Context Card */}
           <Card className="bg-card border-border rounded-[16px] p-3 shadow-none">
@@ -190,8 +205,6 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
             </div>
             
             <div className="space-y-3">
-
-              
               {employee && (
                 <div className="flex items-center gap-3">
                   <Avatar className="h-10 w-10 border border-border">
@@ -206,21 +219,128 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
               )}
               
               {employee && (
-                <div className="grid grid-cols-[1fr_auto] gap-y-2.5 text-[13px] pt-1">
+                <div className="grid grid-cols-[1fr_auto] gap-y-2 text-[13px] pt-1">
                   <div className="text-muted-foreground">Department</div>
                   <div className="text-right font-medium">{employee.department}</div>
                   <div className="text-muted-foreground">Designation</div>
                   <div className="text-right font-medium">{employee.designation}</div>
-
                 </div>
               )}
-              
-
             </div>
+          </Card>
+
+          {/* Day Details Card */}
+          <Card className="bg-card border-border rounded-[16px] p-3 shadow-none">
+            <div className="flex items-center justify-between mb-2.5">
+              <div className="flex items-center gap-2">
+                <div className="p-1.5 bg-muted text-muted-foreground rounded-md">
+                  <CalendarIcon className="w-4 h-4" />
+                </div>
+                <h3 className="font-semibold text-base">Day Details</h3>
+              </div>
+              {selectedDate && (
+                <span className="text-[12px] font-medium text-muted-foreground">
+                  {selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              )}
+            </div>
+
+            {selectedAtt ? (
+              <div className="space-y-2.5 text-[13px]">
+                {/* Primary Status Banner */}
+                <div className="flex items-center justify-between p-2 rounded-lg bg-muted/30 border border-border">
+                  <span className="text-muted-foreground text-xs">Primary Status</span>
+                  {selectedAtt.status !== 'Not Marked' ? (
+                    <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-xs font-medium ${getStatusColor(selectedAtt.status)}`}>
+                      <div className={`w-1.5 h-1.5 rounded-full ${getStatusIconColor(selectedAtt.status)}`} />
+                      {selectedAtt.status}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground font-medium">Not Marked</span>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-[1fr_auto] gap-y-2 text-xs pt-0.5">
+                  <div className="text-muted-foreground">Employee</div>
+                  <div className="text-right font-medium text-foreground">
+                    {employee ? `${employee.first_name} ${employee.last_name}` : '—'}
+                  </div>
+
+                  <div className="text-muted-foreground">EOD Status</div>
+                  <div className="text-right font-medium">
+                    {selectedAtt.eod ? (
+                      <span className={
+                        selectedAtt.eod.status === 'Approved' ? 'text-emerald-500 font-semibold' :
+                        selectedAtt.eod.status === 'Pending' ? 'text-amber-500 font-semibold' :
+                        selectedAtt.eod.status === 'Rejected' ? 'text-red-500 font-semibold' : 'text-foreground'
+                      }>
+                        {selectedAtt.eod.status}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">Not Submitted</span>
+                    )}
+                  </div>
+
+                  <div className="text-muted-foreground">Worked Hours</div>
+                  <div className="text-right font-medium text-foreground">
+                    {selectedAtt.workedHours > 0 
+                      ? `${formatOfficeHoursAsHHMM(selectedAtt.workedHours)} hrs (${selectedAtt.workedHours}h)`
+                      : '0.00 hrs'}
+                  </div>
+
+                  {selectedAtt.compOffMinutes > 0 && (
+                    <>
+                      <div className="text-muted-foreground">Comp-Off Credit</div>
+                      <div className="text-right font-semibold text-[#8b5cf6]">
+                        +{formatMinutesAsHHMM(selectedAtt.compOffMinutes)} hrs
+                      </div>
+                    </>
+                  )}
+
+                  <div className="text-muted-foreground">Approval Details</div>
+                  <div className="text-right font-medium text-foreground">
+                    {selectedAtt.eod?.status === 'Approved' ? (
+                      <span className="text-emerald-500">Approved</span>
+                    ) : selectedAtt.eod?.status === 'Pending' ? (
+                      <span className="text-amber-500">Awaiting HR/Admin</span>
+                    ) : selectedAtt.eod?.status === 'Rejected' ? (
+                      <span className="text-red-500 truncate max-w-[150px] inline-block" title={selectedAtt.eod.rejection_reason || 'Rejected'}>
+                        {selectedAtt.eod.rejection_reason ? `Rejected: ${selectedAtt.eod.rejection_reason}` : 'Rejected'}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">No review required</span>
+                    )}
+                  </div>
+
+                  <div className="text-muted-foreground">Holiday / Leave Info</div>
+                  <div className="text-right font-medium text-foreground">
+                    {selectedAtt.holiday ? (
+                      <span className="text-[#8b5cf6]">
+                        {selectedAtt.holiday.name} {selectedAtt.holiday.name === 'Sunday' ? '(Weekly Off)' : '(Holiday)'}
+                      </span>
+                    ) : selectedAtt.leave ? (
+                      <span className="text-orange-500">
+                        {selectedAtt.leave.request_type || 'Leave'}{selectedAtt.leave.is_half_day ? ' (Half Day)' : ''}
+                      </span>
+                    ) : selectedAtt.wfh ? (
+                      <span className="text-blue-500">
+                        WFH{selectedAtt.wfh.is_half_day ? ' (Half Day)' : ''}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">Regular Working Day</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="py-4 text-center text-xs text-muted-foreground">
+                Click a calendar date to view details.
+              </div>
+            )}
           </Card>
           
           {/* Monthly Insights Card */}
-          <Card className="bg-card border-border rounded-[16px] p-3 shadow-none flex-1 flex flex-col">
+          <Card className="bg-card border-border rounded-[16px] p-3 shadow-none flex flex-col">
             <div className="flex items-center gap-2 mb-3">
               <div className="p-1.5 bg-muted text-muted-foreground rounded-md">
                 <BarChart3 className="w-4 h-4" />
@@ -228,7 +348,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
               <h3 className="font-semibold text-base">Monthly Insights</h3>
             </div>
             
-            <div className="grid grid-cols-2 gap-0 border border-border rounded-xl overflow-hidden flex-1">
+            <div className="grid grid-cols-2 gap-0 border border-border rounded-xl overflow-hidden">
               <div className="p-2 sm:p-2.5 border-b border-r border-border flex flex-col gap-0.5 relative justify-center">
                 <span className="text-[12px] text-muted-foreground">Present</span>
                 <span className="text-xl font-bold text-emerald-500">{summary.present}</span>
@@ -249,15 +369,22 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
                 <span className="text-xl font-bold text-orange-500">{summary.leave}</span>
                 <CalendarDays className="w-4 h-4 text-orange-500/50 absolute right-3 top-3" />
               </div>
-              <div className="p-2 sm:p-2.5 border-r border-border flex flex-col gap-0.5 relative justify-center">
+              <div className="p-2 sm:p-2.5 border-b border-r border-border flex flex-col gap-0.5 relative justify-center">
                 <span className="text-[12px] text-muted-foreground">Half Days</span>
                 <span className="text-xl font-bold text-yellow-500">{summary.halfDay}</span>
                 <Clock className="w-4 h-4 text-yellow-500/50 absolute right-3 top-3" />
               </div>
-              <div className="p-2 sm:p-2.5 flex flex-col gap-0.5 relative justify-center">
+              <div className="p-2 sm:p-2.5 border-b border-border flex flex-col gap-0.5 relative justify-center">
                 <span className="text-[12px] text-muted-foreground">Absent</span>
                 <span className="text-xl font-bold text-red-500">{summary.absent}</span>
                 <UserX className="w-4 h-4 text-red-500/50 absolute right-3 top-3" />
+              </div>
+              <div className="p-2 sm:p-2.5 col-span-2 flex items-center justify-between relative bg-muted/10">
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[12px] text-muted-foreground">Pending</span>
+                  <span className="text-xl font-bold text-amber-500">{summary.pending}</span>
+                </div>
+                <Clock className="w-4 h-4 text-amber-500/50" />
               </div>
             </div>
           </Card>

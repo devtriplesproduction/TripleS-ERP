@@ -73,3 +73,39 @@ export async function submitLeaveAction(leaveData: any) {
 
   return { success: true, data };
 }
+
+export async function cancelLeaveAction(leaveId: string) {
+  const supabase = await createClient();
+  
+  const { data: leave, error: fetchError } = await supabase
+    .from('leave_requests')
+    .select('*')
+    .eq('id', leaveId)
+    .single();
+
+  if (fetchError || !leave) {
+    return { success: false, error: "Leave request not found" };
+  }
+
+  // If this was a Comp-Off leave, handle reversal of debit
+  if (leave.leave_type === 'Compensatory Off') {
+    const startDate = new Date(leave.start_date);
+    const endDate = new Date(leave.end_date);
+    const diffTime = Math.abs(endDate.getTime() - startDate.getTime());
+    let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    if (leave.is_half_day) diffDays = 0.5;
+
+    await processLeaveCompOff(leaveId, leave.employee_id, diffDays, 'Cancelled');
+  }
+
+  const { error: updateError } = await supabase
+    .from('leave_requests')
+    .update({ status: 'Cancelled' })
+    .eq('id', leaveId);
+
+  if (updateError) {
+    return { success: false, error: "Failed to cancel leave request" };
+  }
+
+  return { success: true };
+}

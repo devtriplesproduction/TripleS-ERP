@@ -76,11 +76,13 @@ export function KanbanColumn({
             {tasks.length}
           </Badge>
         </div>
-        {canManage && onAddTask && (
+        {canManage && onAddTask && status === 'TODO' && (
           <button 
+            type="button"
             onClick={() => onAddTask(status)}
             className="text-muted-foreground hover:text-foreground hover:bg-secondary rounded p-1 transition-colors"
-            title="Add Task"
+            title="Add Task to To Do"
+            aria-label="Add Task to To Do"
           >
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>
           </button>
@@ -96,7 +98,9 @@ export function KanbanColumn({
             </div>
             <div className="space-y-0.5">
               <p className="text-[13px] font-medium text-muted-foreground">No tasks here</p>
-              <p className="text-[11px] text-muted-foreground/60">Drag a task here or create a new task.</p>
+              <p className="text-[11px] text-muted-foreground/60">
+                {status === 'TODO' ? 'Drag a task here or create a new task.' : 'Drag a task here.'}
+              </p>
             </div>
           </div>
         ) : (

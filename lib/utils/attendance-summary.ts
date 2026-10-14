@@ -18,15 +18,41 @@ export interface AttendanceSummary {
 /** Single source of truth for summarizing attendance records. Used by both list and detail views. */
 export function calculateAttendanceSummary(attendance: DerivedAttendance[]): AttendanceSummary {
   return attendance.reduce((acc, curr) => {
-    if (curr.status === 'Present' || curr.status === 'Half Day + Present') acc.present += 1;
-    if (curr.status === 'Holiday Work') acc.holidayWork += 1;
-    if (curr.status === 'Holiday') acc.holiday += 1;
-    if (curr.status === 'WFH' || curr.status === 'Half Day + WFH') acc.wfh += 1;
-    if (curr.status === 'Leave') acc.leave += 1;
-    if (curr.status.includes('Half Day')) acc.halfDay += 1;
-    if (curr.status === 'Unpaid Leave') acc.unpaidLeave += 1;
-    if (curr.status === 'Absent') acc.absent += 1;
-    if (curr.status === 'Pending') acc.pending += 1;
+    switch (curr.status) {
+      case 'Present':
+        acc.present += 1;
+        break;
+      case 'Holiday Work':
+        acc.holidayWork += 1;
+        break;
+      case 'Holiday':
+        acc.holiday += 1;
+        break;
+      case 'WFH':
+        acc.wfh += 1;
+        break;
+      case 'Leave':
+        acc.leave += 1;
+        break;
+      case 'Half Day':
+      case 'Half Day + Present':
+      case 'Half Day + WFH':
+        acc.halfDay += 1;
+        break;
+      case 'Unpaid Leave':
+        acc.unpaidLeave += 1;
+        acc.absent += 1;
+        break;
+      case 'Absent':
+        acc.absent += 1;
+        break;
+      case 'Pending':
+        acc.pending += 1;
+        break;
+      default:
+        // 'Not Marked' or other unbadged dates
+        break;
+    }
     acc.workedHours += curr.workedHours;
     acc.extraHours += curr.extraHours;
     acc.compOffMinutes += (curr.compOffMinutes || 0);

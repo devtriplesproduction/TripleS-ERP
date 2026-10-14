@@ -25,6 +25,7 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/rulebook',
     '/announcements',
     '/my-tasks',
+    '/time-tracking',
   ],
   Admin: [
     '/admin-eod',
@@ -41,6 +42,7 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/projects',
     '/tasks',
     '/my-tasks',
+    '/time-tracking',
   ],
   Employee: [
     '/hr/employee-leave',
@@ -143,3 +145,4 @@ export function determineERPRole(department?: string, division?: string, designa
   
   return 'Employee'
 }
+

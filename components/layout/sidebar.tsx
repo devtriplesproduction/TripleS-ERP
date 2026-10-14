@@ -16,6 +16,7 @@ import {
   CreditCard,
   Briefcase,
   CheckSquare,
+  Clock,
 } from 'lucide-react'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
@@ -73,9 +74,10 @@ function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: 
       allItems.push({ label: 'Projects', href: '/projects', icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" /> })
     }
     if (isHod) {
-      allItems.push({ label: 'Tasks & Kanban', href: '/tasks', icon: <CheckSquare className="mr-3 h-5 w-5 shrink-0" /> })
+      allItems.push({ label: 'Tasks Board', href: '/tasks', icon: <CheckSquare className="mr-3 h-5 w-5 shrink-0" /> })
       allItems.push({ label: 'Clients', href: '/clients', icon: <Briefcase className="mr-3 h-5 w-5 shrink-0" /> })
     }
+    allItems.push({ label: 'Time Tracking', href: '/time-tracking', icon: <Clock className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'EOD Reports', href: eodHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Request Leave / WFH', href: leaveHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Attendance', href: attendanceHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
@@ -87,8 +89,9 @@ function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: 
     allItems.push({ label: 'Projects', href: '/projects', icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'My Tasks', href: '/my-tasks', icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Payroll', href: payrollHref, icon: <CreditCard className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Time Tracking', href: '/time-tracking', icon: <Clock className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Review EOD', href: eodHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
-    allItems.push({ label: 'Review Leave / WFH', href: leaveHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Leave | WFH | Comp Hrs', href: leaveHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Attendance', href: attendanceHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Holiday', href: holidayHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Announcements', href: '/announcements', icon: <Megaphone className="mr-3 h-5 w-5 shrink-0" /> })
@@ -96,11 +99,11 @@ function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: 
   } else if (userRole === 'Admin') {
     allItems.push({ label: 'Employees', href: employeesHref, icon: <Users className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Projects', href: '/projects', icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" /> })
-    allItems.push({ label: 'Tasks & Kanban', href: '/tasks', icon: <CheckSquare className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Tasks Board', href: '/tasks', icon: <CheckSquare className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Clients', href: '/clients', icon: <Briefcase className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Payroll', href: payrollHref, icon: <CreditCard className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Review EOD', href: eodHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
-    allItems.push({ label: 'Review Leave / WFH', href: leaveHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Leave | WFH | Comp Hrs', href: leaveHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Attendance', href: attendanceHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Holiday', href: holidayHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Announcements', href: '/announcements', icon: <Megaphone className="mr-3 h-5 w-5 shrink-0" /> })
@@ -150,14 +153,14 @@ export function Sidebar({ userRole, isHod, hasProjectAccess, hasTasks }: Sidebar
             href="/dashboard"
             onClick={closeSidebar}
             className={cn(
-              "flex items-center px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-lg transition-colors",
+              "flex items-center px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-lg transition-colors whitespace-nowrap",
               pathname === '/dashboard'
                 ? "bg-foreground text-background"
                 : "hover:bg-muted text-muted-foreground hover:text-foreground"
             )}
           >
             <LayoutDashboard className="mr-3 h-5 w-5 shrink-0" />
-            Dashboard
+            <span className="truncate">Dashboard</span>
           </Link>
 
 
@@ -169,14 +172,14 @@ export function Sidebar({ userRole, isHod, hasProjectAccess, hasTasks }: Sidebar
                 <div key={item.moduleKey} className="space-y-1">
                   <div
                     className={cn(
-                      "flex items-center px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-lg cursor-pointer transition-colors",
+                      "flex items-center px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-lg cursor-pointer transition-colors whitespace-nowrap",
                       openModule === item.moduleKey ? "text-foreground" : "text-muted-foreground hover:bg-muted hover:text-foreground"
                     )}
                     onClick={() => toggleModule(item.moduleKey!)}
                   >
                     {item.icon}
-                    <span className="flex-1">{item.label}</span>
-                    <ChevronDown className={cn("h-4 w-4 transition-transform", openModule === item.moduleKey ? "" : "-rotate-90")} />
+                    <span className="flex-1 truncate">{item.label}</span>
+                    <ChevronDown className={cn("h-4 w-4 transition-transform shrink-0", openModule === item.moduleKey ? "" : "-rotate-90")} />
                   </div>
 
                   {openModule === item.moduleKey && (
@@ -187,14 +190,14 @@ export function Sidebar({ userRole, isHod, hasProjectAccess, hasTasks }: Sidebar
                           href={child.href as any}
                           onClick={closeSidebar}
                           className={cn(
-                            "flex items-center px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-lg transition-colors",
+                            "flex items-center px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-lg transition-colors whitespace-nowrap",
                             isItemActive(child.href)
                               ? "bg-foreground text-background"
                               : "text-muted-foreground hover:bg-muted hover:text-foreground"
                           )}
                         >
                           {child.icon || renderDotIcon(isItemActive(child.href))}
-                          {child.label}
+                          <span className="truncate">{child.label}</span>
                         </Link>
                       ))}
                     </div>
@@ -210,14 +213,14 @@ export function Sidebar({ userRole, isHod, hasProjectAccess, hasTasks }: Sidebar
                 href={item.href as any}
                 onClick={closeSidebar}
                 className={cn(
-                  "flex items-center px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-lg transition-colors mt-1",
+                  "flex items-center px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-lg transition-colors mt-1 whitespace-nowrap",
                   isItemActive(item.href)
                     ? "bg-foreground text-background"
                     : "text-muted-foreground hover:bg-muted hover:text-foreground"
                 )}
               >
                 {item.icon || renderDotIcon(isItemActive(item.href))}
-                {item.label}
+                <span className="truncate">{item.label}</span>
               </Link>
             )
           })}
@@ -228,10 +231,10 @@ export function Sidebar({ userRole, isHod, hasProjectAccess, hasTasks }: Sidebar
         <Link
           href="/settings"
           onClick={closeSidebar}
-          className="flex items-center px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          className="flex items-center px-3 py-2.5 min-h-[44px] text-sm font-medium rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors whitespace-nowrap"
         >
           <Settings className="mr-3 h-5 w-5 shrink-0" />
-          Settings
+          <span className="truncate">Settings</span>
         </Link>
       </div>
     </>
@@ -240,7 +243,7 @@ export function Sidebar({ userRole, isHod, hasProjectAccess, hasTasks }: Sidebar
   return (
     <>
       {/* Desktop Persistent Sidebar (>= 1024px) */}
-      <aside className="hidden lg:flex w-60 border-r border-border bg-background flex-col h-full text-muted-foreground shrink-0 select-none">
+      <aside className="hidden lg:flex w-[260px] border-r border-border bg-background flex-col h-full text-muted-foreground shrink-0 select-none">
         <div className="h-16 flex items-center px-3 border-b border-border shrink-0">
           <div className="flex items-center text-foreground">
             <div className="relative h-12 w-12 overflow-hidden rounded-lg shrink-0">

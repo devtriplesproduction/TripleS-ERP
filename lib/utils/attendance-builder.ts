@@ -1,5 +1,5 @@
 import type { AttendanceStatus, DerivedAttendance } from "@/lib/actions/attendance"
-import { getDayOfWeek, STANDARD_WORK_MINUTES, HALF_DAY_THRESHOLD, calculateExtraMinutes, classifyWorkDay } from "@/lib/utils/time"
+import { getDayOfWeek, STANDARD_WORK_MINUTES, HALF_DAY_THRESHOLD, calculateExtraMinutes, classifyWorkDay, getISTDateString } from "@/lib/utils/time"
 
 /** Pure in-memory attendance record builder */
 export function buildAttendanceRecords(
@@ -32,17 +32,9 @@ export function buildAttendanceRecords(
   }
 
   const attendance: DerivedAttendance[] = [];
-  
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Kolkata',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-  const todayStr = formatter.format(new Date());
+  const todayStr = getISTDateString();
 
   for (let d = 1; d <= endDate.getDate(); d++) {
-    const currentDate = new Date(year, month - 1, d); // local date
     const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     
     const eod = eodMap.get(dateStr);
@@ -53,13 +45,13 @@ export function buildAttendanceRecords(
     const isHolidayDate = isSunday || Boolean(holidayRecord);
     const holiday = holidayRecord || (isSunday ? { name: 'Sunday' } : undefined);
     
-    let status: AttendanceStatus = 'Absent';
+    let status: AttendanceStatus = 'Not Marked';
     let workedHours = 0;
     
     const eodStatus = eod ? (eod as any).status : null;
     const isApprovedEod = eodStatus === 'Approved';
     const isPendingEod = eodStatus === 'Pending';
-    // Rejected EOD = treat as no EOD (Absent / Holiday)
+    const isRejectedEod = eodStatus === 'Rejected';
     
     let workedMinutes = 0;
     if (isApprovedEod) {
@@ -73,7 +65,7 @@ export function buildAttendanceRecords(
     else if (holidayRecord) context = 'paid_holiday';
     else if (leave && !leave.is_half_day) context = 'approved_leave';
 
-    // Use centralized classification for approved EODs
+    // Centralized classification for approved EODs
     const classification = isApprovedEod ? classifyWorkDay(workedMinutes, context) : null;
     const compOffMinutes = classification ? classification.compOffMinutes : 0;
     const payrollStatus = classification ? classification.payrollStatus : '';
@@ -82,6 +74,7 @@ export function buildAttendanceRecords(
     const hasApprovedWork = isApprovedEod && workedMinutes > 0;
 
     if (isHolidayDate) {
+      // Holiday Work takes priority over Holiday and Present
       if (hasApprovedWork) {
         status = 'Holiday Work';
       } else {
@@ -89,17 +82,17 @@ export function buildAttendanceRecords(
       }
     } else {
       // Normal working days (Mon-Sat, non-holiday)
-      if (leave && leave.is_half_day && isApprovedEod) {
-        status = 'Half Day + Present';
-      } else if (wfh && wfh.is_half_day && isApprovedEod) {
-        status = 'Half Day + WFH';
-      } else if (leave && !leave.is_half_day) {
+      if (leave && !leave.is_half_day) {
         status = 'Leave';
       } else if (wfh && !wfh.is_half_day) {
         status = 'WFH';
+      } else if (leave && leave.is_half_day && isApprovedEod) {
+        status = 'Half Day';
+      } else if (wfh && wfh.is_half_day && isApprovedEod) {
+        status = 'Half Day';
       } else if (isApprovedEod) {
         if (workedMinutes < HALF_DAY_THRESHOLD) {
-          status = 'Unpaid Leave';
+          status = 'Absent';
         } else if (workedMinutes < STANDARD_WORK_MINUTES) {
           status = 'Half Day';
         } else {
@@ -107,11 +100,18 @@ export function buildAttendanceRecords(
         }
       } else if (isPendingEod) {
         status = 'Pending';
+      } else if (isRejectedEod) {
+        // Rejected EOD follows existing absent rule
+        status = 'Absent';
       } else if (dateStr > todayStr) {
-        status = 'Not Marked'; // Future dates
-      } else if (dateStr === todayStr && !eod) {
-        status = 'Pending'; // Current day without EOD is Pending, not Absent.
+        // Future dates: No attendance status unless a scheduled holiday applies
+        status = 'Not Marked';
+      } else if (dateStr === todayStr) {
+        // Current day: If no EOD or approved request exists yet, do not mark Absent prematurely.
+        // Show Pending only after submission.
+        status = 'Not Marked';
       } else {
+        // Past working day (`dateStr < todayStr`): submission deadline passed with no valid EOD/leave/WFH
         status = 'Absent';
       }
     }

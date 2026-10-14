@@ -383,6 +383,10 @@ export async function createTaskAction(input: CreateTaskInput): Promise<{ succes
       return { success: false, error: 'Project is required.' }
     }
 
+    if (input.status && input.status !== 'TODO') {
+      return { success: false, error: 'New tasks can only be created with status TO DO.' }
+    }
+
     const admin = await createAdminClient()
     const taskIdDisplay = await generateTaskId()
 
@@ -394,7 +398,7 @@ export async function createTaskAction(input: CreateTaskInput): Promise<{ succes
         description: input.description?.trim() || null,
         project_id: input.project_id,
         priority: input.priority || 'MEDIUM',
-        status: input.status || 'TODO',
+        status: 'TODO',
         start_date: input.start_date || null,
         due_date: input.due_date || null,
         estimated_hours: input.estimated_hours || 0,
@@ -436,12 +440,68 @@ export async function createTaskAction(input: CreateTaskInput): Promise<{ succes
       },
     })
 
+    // Fetch complete task with relations to return immediately for optimistic/instant UI update
+    const { data: completeTask } = await admin
+      .from('tasks')
+      .select(`
+        *,
+        project:projects(id, name),
+        assignees:task_assignees(
+          id, user_id, assigned_at,
+          profile:profiles!task_assignees_user_id_fkey(id, first_name, last_name, employee_id)
+        )
+      `)
+      .eq('id', inserted.id)
+      .single()
+
+    const allProfiles: any[] = []
+    if (completeTask) {
+      ;(completeTask.assignees || []).forEach((a: any) => {
+        if (a.profile) allProfiles.push(a.profile)
+      })
+      await attachProfilePhotos(admin, allProfiles)
+    }
+
+    const taskData: Task = completeTask
+      ? {
+          id: completeTask.id,
+          task_id_display: completeTask.task_id_display,
+          title: completeTask.title,
+          description: completeTask.description,
+          project_id: completeTask.project_id,
+          project_name: completeTask.project?.name || null,
+          priority: completeTask.priority,
+          status: 'TODO',
+          start_date: completeTask.start_date,
+          due_date: completeTask.due_date,
+          estimated_hours: completeTask.estimated_hours ? Number(completeTask.estimated_hours) : null,
+          worked_hours: completeTask.worked_hours ? Number(completeTask.worked_hours) : null,
+          dependencies: completeTask.dependencies || [],
+          attachments: completeTask.attachments || [],
+          created_by: completeTask.created_by,
+          created_at: completeTask.created_at,
+          updated_at: completeTask.updated_at,
+          order_index: completeTask.order_index,
+          assignees: (completeTask.assignees || []).map((a: any) => ({
+            id: a.id,
+            user_id: a.user_id,
+            employee_name: a.profile
+              ? `${a.profile.first_name || ''} ${a.profile.last_name || ''}`.trim()
+              : 'Unknown',
+            employee_id: a.profile?.employee_id,
+            avatar_url: a.profile?.avatar_url,
+          })),
+          comments_count: 0,
+          is_overdue: false,
+        }
+      : (inserted as Task)
+
     revalidatePath('/tasks')
     revalidatePath('/my-tasks')
     revalidatePath(`/projects/${input.project_id}`)
     revalidatePath('/dashboard')
 
-    return { success: true, data: inserted as Task }
+    return { success: true, data: taskData }
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to create task' }
   }
@@ -596,12 +656,75 @@ export async function updateTaskAction(input: UpdateTaskInput): Promise<{ succes
       })
     }
 
+    // Fetch complete task with relations
+    const { data: completeTask } = await admin
+      .from('tasks')
+      .select(`
+        *,
+        project:projects(id, name),
+        assignees:task_assignees(
+          id, user_id, assigned_at,
+          profile:profiles!task_assignees_user_id_fkey(id, first_name, last_name, employee_id)
+        ),
+        comments:task_comments(
+          id, user_id, comment, created_at, updated_at,
+          user_profile:profiles(id, first_name, last_name)
+        )
+      `)
+      .eq('id', input.id)
+      .single()
+
+    const allProfiles: any[] = []
+    if (completeTask) {
+      ;(completeTask.assignees || []).forEach((a: any) => {
+        if (a.profile) allProfiles.push(a.profile)
+      })
+      ;(completeTask.comments || []).forEach((c: any) => {
+        if (c.user_profile) allProfiles.push(c.user_profile)
+      })
+      await attachProfilePhotos(admin, allProfiles)
+    }
+
+    const taskData: Task = completeTask
+      ? {
+          id: completeTask.id,
+          task_id_display: completeTask.task_id_display,
+          title: completeTask.title,
+          description: completeTask.description,
+          project_id: completeTask.project_id,
+          project_name: completeTask.project?.name || null,
+          priority: completeTask.priority,
+          status: completeTask.status || 'TODO',
+          start_date: completeTask.start_date,
+          due_date: completeTask.due_date,
+          estimated_hours: completeTask.estimated_hours ? Number(completeTask.estimated_hours) : null,
+          worked_hours: completeTask.worked_hours ? Number(completeTask.worked_hours) : null,
+          dependencies: completeTask.dependencies || [],
+          attachments: completeTask.attachments || [],
+          created_by: completeTask.created_by,
+          created_at: completeTask.created_at,
+          updated_at: completeTask.updated_at,
+          order_index: completeTask.order_index,
+          assignees: (completeTask.assignees || []).map((a: any) => ({
+            id: a.id,
+            user_id: a.user_id,
+            employee_name: a.profile
+              ? `${a.profile.first_name || ''} ${a.profile.last_name || ''}`.trim()
+              : 'Unknown',
+            employee_id: a.profile?.employee_id,
+            avatar_url: a.profile?.avatar_url,
+          })),
+          comments_count: (completeTask.comments || []).length,
+          is_overdue: completeTask.due_date && new Date(completeTask.due_date) < new Date() && completeTask.status !== 'DONE',
+        }
+      : (updated as Task)
+
     revalidatePath('/tasks')
     revalidatePath('/my-tasks')
     revalidatePath(`/projects/${updated.project_id}`)
     revalidatePath('/dashboard')
 
-    return { success: true, data: updated as Task }
+    return { success: true, data: taskData }
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to update task' }
   }

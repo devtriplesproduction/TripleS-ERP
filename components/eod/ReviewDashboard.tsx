@@ -4,7 +4,19 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/Dropdown';
-import { Search, SlidersHorizontal, CheckCircle2, Clock, XCircle, AlertCircle, FileSearch, FileText, Calendar, Loader2 } from 'lucide-react';
+import {
+  Search,
+  SlidersHorizontal,
+  CheckCircle2,
+  Clock,
+  XCircle,
+  AlertCircle,
+  FileSearch,
+  FileText,
+  Calendar,
+  Loader2,
+  BarChart2,
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { EODReport } from '@/lib/actions/eod';
 import { reviewEODAction, batchReviewEODAction, updateEODAction } from '@/actions/eod.actions';
@@ -19,11 +31,15 @@ type EnrichedEOD = EODReport & { profiles: Employee | null };
 export function ReviewDashboard({
   initialEods,
   employees,
-  currentUserId
+  currentUserId,
+  showHeader = false,
+  todayReportsCount: initialTodayReportsCount,
 }: {
   initialEods: EnrichedEOD[];
   employees: Employee[];
   currentUserId?: string;
+  showHeader?: boolean;
+  todayReportsCount?: number;
 }) {
   const [eods, setEods] = useState<EnrichedEOD[]>(initialEods);
   useEffect(() => { setEods(initialEods); }, [initialEods]);
@@ -77,7 +93,7 @@ export function ReviewDashboard({
         return next;
       });
     }
-  }
+  };
 
   const handleAction = async (eodId: string, action: 'Approve' | 'Reject', reason?: string) => {
     setSubmittingIds(prev => new Set(prev).add(eodId));
@@ -170,10 +186,14 @@ export function ReviewDashboard({
         const matchesTasks = eod.tasks_accomplished?.toLowerCase().includes(s);
         const matchesBlockers = eod.blockers?.toLowerCase().includes(s);
         const matchesName = eod.profiles && (
-          eod.profiles.first_name.toLowerCase().includes(s) ||
-          eod.profiles.last_name.toLowerCase().includes(s)
+          eod.profiles.first_name?.toLowerCase().includes(s) ||
+          eod.profiles.last_name?.toLowerCase().includes(s) ||
+          eod.profiles.employee_id?.toLowerCase().includes(s) ||
+          (eod.profiles as any).department?.toLowerCase().includes(s)
         );
-        if (!matchesTasks && !matchesBlockers && !matchesName) return false;
+        const matchesEmployeeId = (eod as any).employee_id?.toLowerCase().includes(s);
+        const matchesRoleContext = (eod as any).role_context?.toLowerCase().includes(s);
+        if (!matchesTasks && !matchesBlockers && !matchesName && !matchesEmployeeId && !matchesRoleContext) return false;
       }
 
       return true;
@@ -199,148 +219,293 @@ export function ReviewDashboard({
   const pending = filteredEods.filter(e => e.status === 'Pending').length;
   const rejected = filteredEods.filter(e => e.status === 'Rejected').length;
 
-  const calcPercent = (val: number) => totalReports === 0 ? 0 : Math.round((val / totalReports) * 100 * 100) / 100;
-
-
+  const getISTDateString = () =>
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(new Date());
+  const todayStr = getISTDateString();
+  const reportsToday =
+    initialTodayReportsCount !== undefined
+      ? initialTodayReportsCount
+      : eods.filter((e) => e.report_date === todayStr).length;
 
   const filterInputStyles = "!h-11 filter-control w-full !bg-card !border !border-border !rounded-xl !text-sm transition-all focus:!ring-2 focus:!ring-orange-500/20 focus:!border-orange-400 !text-foreground !shadow-sm";
 
   return (
     <div className="space-y-6 w-full">
-      {/* Filters Section */}
-      <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm p-6">
-        <div className="flex items-center gap-2 mb-4 text-foreground">
-          <SlidersHorizontal className="w-5 h-5 text-foreground" />
-          <h3 className="font-semibold">Filter Reports</h3>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-end">
-          <div className="space-y-3">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Search</label>
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                type="text"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search..."
-                className={cn(filterInputStyles, "!pl-9 !pr-4 !py-2")}
-              />
+      {/* Top Header matching reference image */}
+      {showHeader && (
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          {/* Left: Icon, Title & Subtitle */}
+          <div className="flex items-center gap-3.5 min-w-0">
+            <div className="w-12 h-12 rounded-xl bg-card border border-border/80 flex items-center justify-center shrink-0 shadow-xs">
+              <FileText className="w-6 h-6 text-foreground" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-2xl sm:text-[26px] font-bold tracking-tight text-foreground leading-tight truncate">
+                Review EOD
+              </h1>
+              <p className="text-xs sm:text-sm text-muted-foreground font-normal truncate mt-0.5">
+                Review employee and HR end-of-day reports.
+              </p>
             </div>
           </div>
 
-          <div className="space-y-3">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Employee</label>
+          {/* Right: Four compact statistic tags in one horizontal row */}
+          <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap lg:flex-nowrap shrink-0">
+            {/* Reports */}
+            <div className="w-[130px] sm:w-[136px] h-[60px] rounded-xl border border-border/80 bg-card/60 px-3 py-2 flex items-center shrink-0 shadow-xs">
+              <div className="w-8 h-8 rounded-lg bg-muted/50 border border-border/80 flex items-center justify-center shrink-0 mr-2.5">
+                <FileText className="w-4 h-4 text-foreground/80" />
+              </div>
+              <div className="min-w-0 flex flex-col justify-center">
+                <span className="text-[11px] font-medium text-muted-foreground leading-none truncate">
+                  Reports
+                </span>
+                <span className="text-lg font-bold text-foreground leading-tight mt-1">
+                  {totalReports}
+                </span>
+              </div>
+            </div>
+
+            {/* Approved */}
+            <div className="w-[130px] sm:w-[136px] h-[60px] rounded-xl border border-emerald-500/25 bg-emerald-950/20 px-3 py-2 flex items-center shrink-0 shadow-xs">
+              <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0 mr-2.5">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              </div>
+              <div className="min-w-0 flex flex-col justify-center">
+                <span className="text-[11px] font-medium text-neutral-300 leading-none truncate">
+                  Approved
+                </span>
+                <span className="text-lg font-bold text-foreground leading-tight mt-1">
+                  {approved}
+                </span>
+              </div>
+            </div>
+
+            {/* Pending */}
+            <div className="w-[130px] sm:w-[136px] h-[60px] rounded-xl border border-amber-500/25 bg-amber-950/20 px-3 py-2 flex items-center shrink-0 shadow-xs">
+              <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0 mr-2.5">
+                <Clock className="w-4 h-4 text-amber-400" />
+              </div>
+              <div className="min-w-0 flex flex-col justify-center">
+                <span className="text-[11px] font-medium text-neutral-300 leading-none truncate">
+                  Pending
+                </span>
+                <span className="text-lg font-bold text-foreground leading-tight mt-1">
+                  {pending}
+                </span>
+              </div>
+            </div>
+
+            {/* Today */}
+            <div className="w-[130px] sm:w-[136px] h-[60px] rounded-xl border border-border/80 bg-card/60 px-3 py-2 flex items-center shrink-0 shadow-xs">
+              <div className="w-8 h-8 rounded-lg bg-muted/50 border border-border/80 flex items-center justify-center shrink-0 mr-2.5">
+                <BarChart2 className="w-4 h-4 text-foreground/80" />
+              </div>
+              <div className="min-w-0 flex flex-col justify-center">
+                <span className="text-[11px] font-medium text-muted-foreground leading-none truncate">
+                  Today
+                </span>
+                <span className="text-lg font-bold text-foreground leading-tight mt-1">
+                  {reportsToday}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* When showHeader is true: Filters row directly below header without surrounding grey panel */}
+      {showHeader ? (
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+          {/* Employee search */}
+          <div className="relative flex-1 w-full min-w-0">
+            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by employee name, department, or ID..."
+              className="!h-11 w-full !bg-muted/40 dark:!bg-[#141416] hover:!bg-muted/60 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border dark:hover:!border-border focus-visible:!border-neutral-500 !rounded-xl !pl-10 !pr-4 !text-sm !text-foreground placeholder:!text-muted-foreground !shadow-none transition-colors"
+            />
+          </div>
+
+          {/* All Employees dropdown */}
+          <div className="w-full sm:w-[190px] lg:w-[210px] shrink-0">
             <Dropdown
-              className="!space-y-0"
-              buttonClassName={cn(filterInputStyles, "!px-3 !py-2")}
+              className="!space-y-0 !w-full"
+              buttonClassName="!h-11 !w-full !rounded-xl !bg-muted/40 dark:!bg-[#141416] hover:!bg-muted/60 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border focus:!border-neutral-500 !text-sm !text-foreground !px-3.5 !shadow-none !justify-between transition-colors"
               value={selectedEmployee}
-              onChange={val => setSelectedEmployee(val as string)}
+              onChange={(val) => setSelectedEmployee(val as string)}
               placeholder="All Employees"
               options={[
                 { label: 'All Employees', value: 'all' },
                 ...employees
-                  .filter(emp => emp.first_name.toLowerCase() !== 'admin')
-                  .map(emp => ({
-                  label: emp.first_name + ' ' + (emp.last_name || ''),
-                  value: emp.id
-                }))
+                  .filter((emp) => emp.first_name?.toLowerCase() !== 'admin')
+                  .map((emp) => ({
+                    label: `${emp.first_name} ${emp.last_name || ''}`.trim(),
+                    value: emp.id,
+                  })),
               ]}
             />
           </div>
 
-          <div className="space-y-3">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">From</label>
+          {/* Start Date */}
+          <div className="w-full sm:w-[150px] lg:w-[165px] shrink-0">
             <DatePicker
               placeholder="Start Date"
               value={fromDate}
               onChange={(date) => setFromDate(date)}
-              className={cn(filterInputStyles, "!px-3 !py-2 !justify-between !flex !items-center")}
+              className="!h-11 !w-full !rounded-xl !bg-muted/40 dark:!bg-[#141416] hover:!bg-muted/60 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border focus-visible:!border-neutral-500 !text-sm !text-foreground !px-3.5 !justify-between !flex !items-center !shadow-none transition-colors"
             />
           </div>
 
-          <div className="space-y-3">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">To</label>
+          {/* End Date */}
+          <div className="w-full sm:w-[150px] lg:w-[165px] shrink-0">
             <DatePicker
               placeholder="End Date"
               value={toDate}
               onChange={(date) => setToDate(date)}
-              className={cn(filterInputStyles, "!px-3 !py-2 !justify-between !flex !items-center")}
+              className="!h-11 !w-full !rounded-xl !bg-muted/40 dark:!bg-[#141416] hover:!bg-muted/60 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border focus-visible:!border-neutral-500 !text-sm !text-foreground !px-3.5 !justify-between !flex !items-center !shadow-none transition-colors"
             />
           </div>
-
-
         </div>
-      </div>
-
-      {/* Stats Section */}
-      <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm p-4 sm:p-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
-
-          <div className="flex items-center gap-3 sm:gap-4 p-2 rounded-xl bg-muted/20 sm:bg-transparent">
-            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-muted flex items-center justify-center border border-border flex-shrink-0">
-              <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-foreground" />
-            </div>
-            <div>
-              <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Reports</div>
-              <div className="text-xl sm:text-3xl font-bold text-foreground">{totalReports}</div>
-              <div className="text-[10px] sm:text-xs text-muted-foreground font-medium">Selected range</div>
-            </div>
+      ) : (
+        /* Fallback filter section for other pages */
+        <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm p-6">
+          <div className="flex items-center gap-2 mb-4 text-foreground">
+            <SlidersHorizontal className="w-5 h-5 text-foreground" />
+            <h3 className="font-semibold">Filter Reports</h3>
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4 p-2 rounded-xl bg-emerald-500/5 sm:bg-transparent">
-            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-100 dark:border-emerald-500/20 flex-shrink-0">
-              <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-end">
+            <div className="space-y-3">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Search</label>
+              <div className="relative">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="Search..."
+                  className={cn(filterInputStyles, "!pl-9 !pr-4 !py-2")}
+                />
+              </div>
             </div>
-            <div>
-              <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Approved</div>
-              <div className="text-xl sm:text-3xl font-bold text-foreground">{approved}</div>
-              <div className="text-[10px] sm:text-xs text-muted-foreground font-medium">{calcPercent(approved)}%</div>
+
+            <div className="space-y-3">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Employee</label>
+              <Dropdown
+                className="!space-y-0"
+                buttonClassName={cn(filterInputStyles, "!px-3 !py-2")}
+                value={selectedEmployee}
+                onChange={val => setSelectedEmployee(val as string)}
+                placeholder="All Employees"
+                options={[
+                  { label: 'All Employees', value: 'all' },
+                  ...employees
+                    .filter(emp => emp.first_name?.toLowerCase() !== 'admin')
+                    .map(emp => ({
+                    label: emp.first_name + ' ' + (emp.last_name || ''),
+                    value: emp.id
+                  }))
+                ]}
+              />
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">From</label>
+              <DatePicker
+                placeholder="Start Date"
+                value={fromDate}
+                onChange={(date) => setFromDate(date)}
+                className={cn(filterInputStyles, "!px-3 !py-2 !justify-between !flex !items-center")}
+              />
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">To</label>
+              <DatePicker
+                placeholder="End Date"
+                value={toDate}
+                onChange={(date) => setToDate(date)}
+                className={cn(filterInputStyles, "!px-3 !py-2 !justify-between !flex !items-center")}
+              />
             </div>
           </div>
-
-          <div className="flex items-center gap-3 sm:gap-4 p-2 rounded-xl bg-amber-500/5 sm:bg-transparent">
-            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-100 dark:border-amber-500/20 flex-shrink-0">
-              <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />
-            </div>
-            <div>
-              <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pending</div>
-              <div className="text-xl sm:text-3xl font-bold text-foreground">{pending}</div>
-              <div className="text-[10px] sm:text-xs text-muted-foreground font-medium">{calcPercent(pending)}%</div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 sm:gap-4 p-2 rounded-xl bg-rose-500/5 sm:bg-transparent">
-            <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-rose-500/10 flex items-center justify-center border border-rose-100 dark:border-rose-500/20 flex-shrink-0">
-              <XCircle className="w-5 h-5 sm:w-6 sm:h-6 text-rose-600" />
-            </div>
-            <div>
-              <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rejected</div>
-              <div className="text-xl sm:text-3xl font-bold text-foreground">{rejected}</div>
-              <div className="text-[10px] sm:text-xs text-muted-foreground font-medium">{calcPercent(rejected)}%</div>
-            </div>
-          </div>
-
         </div>
+      )}
 
-        {pending > 0 && (
-          <div className="mt-4 pt-4 border-t border-border flex flex-wrap items-center justify-between gap-3">
-            <div className="text-xs text-muted-foreground">
-              There are <span className="font-semibold text-foreground">{pending}</span> pending reports in the current filter.
-            </div>
-            <Button
-              size="sm"
-              variant="default"
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm rounded-xl"
-              disabled={batchProcessing}
-              onClick={handleBatchApprovePending}
-            >
-              {batchProcessing ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <CheckCircle2 className="w-4 h-4 mr-2" />}
-              {batchProcessing ? "Batch Approving..." : `Approve All ${pending} Pending Reports`}
-            </Button>
+      {/* Batch approve action if pending > 0 */}
+      {pending > 0 && (
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs">
+          <div className="text-amber-200">
+            There are <span className="font-semibold text-foreground">{pending}</span> pending reports in the current filter.
           </div>
-        )}
-      </div>
+          <Button
+            size="sm"
+            variant="default"
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm rounded-xl h-8 px-3 text-xs"
+            disabled={batchProcessing}
+            onClick={handleBatchApprovePending}
+          >
+            {batchProcessing ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />}
+            {batchProcessing ? "Batch Approving..." : `Approve All ${pending} Pending Reports`}
+          </Button>
+        </div>
+      )}
+
+      {/* Fallback stats section for other pages when !showHeader */}
+      {!showHeader && (
+        <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm p-4 sm:p-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
+            <div className="flex items-center gap-3 sm:gap-4 p-2 rounded-xl bg-muted/20 sm:bg-transparent">
+              <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-muted flex items-center justify-center border border-border flex-shrink-0">
+                <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-foreground" />
+              </div>
+              <div>
+                <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Reports</div>
+                <div className="text-xl sm:text-3xl font-bold text-foreground">{totalReports}</div>
+                <div className="text-[10px] sm:text-xs text-muted-foreground font-medium">Selected range</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 sm:gap-4 p-2 rounded-xl bg-emerald-500/5 sm:bg-transparent">
+              <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-100 dark:border-emerald-500/20 flex-shrink-0">
+                <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500" />
+              </div>
+              <div>
+                <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Approved</div>
+                <div className="text-xl sm:text-3xl font-bold text-foreground">{approved}</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 sm:gap-4 p-2 rounded-xl bg-amber-500/5 sm:bg-transparent">
+              <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-100 dark:border-amber-500/20 flex-shrink-0">
+                <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />
+              </div>
+              <div>
+                <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pending</div>
+                <div className="text-xl sm:text-3xl font-bold text-foreground">{pending}</div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 sm:gap-4 p-2 rounded-xl bg-rose-500/5 sm:bg-transparent">
+              <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-rose-500/10 flex items-center justify-center border border-rose-100 dark:border-rose-500/20 flex-shrink-0">
+                <XCircle className="w-5 h-5 sm:w-6 sm:h-6 text-rose-600" />
+              </div>
+              <div>
+                <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rejected</div>
+                <div className="text-xl sm:text-3xl font-bold text-foreground">{rejected}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Data Section */}
       <div className="flex flex-col gap-4 min-h-[300px]">

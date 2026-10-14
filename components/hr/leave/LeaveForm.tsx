@@ -9,6 +9,8 @@ import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { formatHoursMinutes } from "@/lib/utils/time"
 
+import { submitLeaveAction } from "@/actions/leave.actions"
+
 export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatus = "Pending HR", compOffBalance = 0 }: { onCancel: () => void, currentEmployeeId: string, onSuccess: (leave: any) => void, initialStatus?: string, compOffBalance?: number }) {
   const [requestType, setRequestType] = useState("LEAVE")
   const [leaveType, setLeaveType] = useState("Sick Leave")
@@ -78,20 +80,14 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
       medical_certificate_url: fileUrl
     }
 
-    const { data, error } = await supabase
-      .from('leave_requests')
-      .insert(newLeave)
-      .select('*, employee:employee_onboarding!leave_requests_employee_id_fkey(first_name, last_name, email, department)')
-      .single()
-
+    const res = await submitLeaveAction(newLeave)
     setLoading(false)
 
-    if (error) {
-      console.error(error)
-      toast.error("Failed to submit leave application")
+    if (!res.success) {
+      toast.error(res.error || "Failed to submit leave application")
     } else {
       toast.success(requestType === 'WFH' ? "WFH request submitted successfully" : "Leave application submitted successfully")
-      onSuccess(data)
+      onSuccess(res.data)
     }
   }
   
@@ -135,9 +131,11 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
               <SelectContent>
                 <SelectItem value="Sick Leave">Sick Leave</SelectItem>
                 <SelectItem value="Casual Leave">Casual Leave</SelectItem>
-                <SelectItem value="Compensatory Off" disabled={compOffBalance < 8}>
-                  Compensatory Off {compOffBalance < 8 ? `— Needs 8h, only ${formatHoursMinutes(compOffBalance)} available` : `(${formatHoursMinutes(compOffBalance)} available)`}
-                </SelectItem>
+                {compOffBalance >= 8 && (
+                  <SelectItem value="Compensatory Off">
+                    Compensatory Off ({formatHoursMinutes(compOffBalance)} • {Math.floor(compOffBalance / 8)} {Math.floor(compOffBalance / 8) === 1 ? 'day' : 'days'} available)
+                  </SelectItem>
+                )}
                 <SelectItem value="Unpaid Leave">Unpaid Leave</SelectItem>
               </SelectContent>
             </Select>

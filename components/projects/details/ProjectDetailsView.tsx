@@ -19,8 +19,8 @@ import { ProjectListTab } from './ProjectListTab'
 import { ProjectFilesTab } from './ProjectFilesTab'
 import { ProjectModal } from '../ProjectModal'
 import { TaskFormModal } from '@/components/tasks/TaskFormModal'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { LayoutGrid, CheckSquare, Users, Calendar, Activity, ListTodo, FileText } from 'lucide-react'
+import { TaskDetailsModal } from '@/components/tasks/TaskDetailsModal'
+import { Tabs, TabsContent } from '@/components/ui/tabs'
 
 interface ProjectDetailsViewProps {
   project: Project
@@ -52,6 +52,9 @@ export function ProjectDetailsView({
   const [activeTab, setActiveTab] = useState('overview')
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
+  const [isTaskDetailsOpen, setIsTaskDetailsOpen] = useState(false)
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
 
   const handleSuccess = () => {
     window.location.reload()
@@ -59,14 +62,13 @@ export function ProjectDetailsView({
 
   const handleDelete = () => {
     if (window.confirm('Are you sure you want to delete this project?')) {
-      // TODO: Call API to delete project
       alert('Delete functionality needs to be wired to the API backend.')
     }
   }
 
   return (
-    <div className="space-y-6">
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+    <div className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <ProjectHeader
           project={project}
           tasks={tasks}
@@ -75,13 +77,27 @@ export function ProjectDetailsView({
           canEdit={canEdit}
           canManageTasks={canManageTasks}
           onEdit={() => setIsEditModalOpen(true)}
-          onAddTask={() => setIsTaskModalOpen(true)}
+          onAddTask={() => {
+            setTaskToEdit(null)
+            setIsTaskModalOpen(true)
+          }}
           onDelete={handleDelete}
         />
 
         {/* Tab 1: Overview */}
         <TabsContent value="overview">
-          <ProjectOverviewTab project={project} totalOperationalHours={totalOperationalHours} tasks={tasks} teamStats={teamStats} activities={activities} />
+          <ProjectOverviewTab
+            project={project}
+            totalOperationalHours={totalOperationalHours}
+            tasks={tasks}
+            teamStats={teamStats}
+            activities={activities}
+            onSelectTab={setActiveTab}
+            onTaskClick={(t: Task) => {
+              setSelectedTask(t)
+              setIsTaskDetailsOpen(true)
+            }}
+          />
         </TabsContent>
 
         {/* Tab 2: List */}
@@ -121,6 +137,26 @@ export function ProjectDetailsView({
         </TabsContent>
       </Tabs>
 
+      {/* Task Details Modal */}
+      {isTaskDetailsOpen && (
+        <TaskDetailsModal
+          isOpen={isTaskDetailsOpen}
+          onClose={() => {
+            setIsTaskDetailsOpen(false)
+            setSelectedTask(null)
+          }}
+          task={selectedTask}
+          canManage={canManageTasks}
+          onUpdate={handleSuccess}
+          onEditTask={(t) => {
+            setSelectedTask(null)
+            setIsTaskDetailsOpen(false)
+            setTaskToEdit(t)
+            setIsTaskModalOpen(true)
+          }}
+        />
+      )}
+
       {/* Edit Project Modal */}
       {isEditModalOpen && (
         <ProjectModal
@@ -135,17 +171,22 @@ export function ProjectDetailsView({
         />
       )}
 
-      {/* Add Task Modal */}
+      {/* Add / Edit Task Modal */}
       {isTaskModalOpen && (
         <TaskFormModal
           isOpen={isTaskModalOpen}
-          onClose={() => setIsTaskModalOpen(false)}
+          onClose={() => {
+            setIsTaskModalOpen(false)
+            setTaskToEdit(null)
+          }}
           onSuccess={handleSuccess}
           projects={[{ id: project.id, name: project.name }]}
           employees={employees}
           defaultProjectId={project.id}
+          taskToEdit={taskToEdit}
         />
       )}
     </div>
   )
 }
+

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { getCompOffBalance } from '@/lib/actions/compoff'
+import { getCompOffBalance, getCompOffOverview } from '@/lib/actions/compoff'
 import { LeaveClientPage } from '@/components/hr/leave/LeaveClientPage'
 import { requireRole } from '@/lib/auth'
 
@@ -38,6 +38,7 @@ export default async function SuperAdminLeavePage() {
   const myLeaves = leavesList.filter(l => l.employee_id === employeeId)
   const leavesToApprove = leavesList
   const compOffBalance = employeeId ? await getCompOffBalance(employeeId) : 0;
+  const compOffOverview = await getCompOffOverview().catch(() => null);
 
   return (
     <div className="max-w-7xl mx-auto">
@@ -48,6 +49,8 @@ export default async function SuperAdminLeavePage() {
         isHR={false}
         compOffBalance={compOffBalance}
         isSuperAdmin={isSuperAdmin}
+        currentEmployeeId={employeeId}
+        initialCompOffOverview={compOffOverview}
       />
     </div>
   )

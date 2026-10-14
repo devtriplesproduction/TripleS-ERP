@@ -183,12 +183,12 @@ async function _calculateAttendance(employeeId: string, month: number, year: num
   const [authUserId, holidaysRes, leaveRequestsRes] = await Promise.all([
     authUserPromise,
     supabase.from('holidays').select('id, date, name, holiday_type').gte('date', startDateStr).lte('date', endDateStr),
-    supabase.from('leave_requests').select('id, employee_id, start_date, end_date, status, request_type, is_half_day').eq('employee_id', employeeId).in('status', ['Approved', 'Approved HR', 'Approved (Auto)']).lte('start_date', endDateStr).gte('end_date', startDateStr)
+    supabase.from('leave_requests').select('id, employee_id, start_date, end_date, status, request_type, is_half_day, reason').eq('employee_id', employeeId).in('status', ['Approved', 'Approved HR', 'Approved (Auto)']).lte('start_date', endDateStr).gte('end_date', startDateStr)
   ]);
 
   const { data: eods } = await supabase
     .from('eod_reports')
-    .select('id, employee_id, report_date, office_hours, status')
+    .select('id, employee_id, report_date, office_hours, status, tasks_accomplished, location, rejection_reason, approved_at, approved_by')
     .eq('employee_id', authUserId)
     .gte('report_date', startDateStr)
     .lte('report_date', endDateStr);

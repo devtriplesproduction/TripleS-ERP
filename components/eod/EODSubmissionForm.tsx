@@ -8,7 +8,7 @@ import { createClient } from '@/lib/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/Dropdown';
-import { ImagePlus, X, Plus, User, Key } from 'lucide-react';
+import { ImagePlus, Clock, X, Plus, User, Key } from 'lucide-react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
@@ -47,6 +47,25 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
     window.dispatchEvent(new CustomEvent('eod-tasks-changed', { detail: tasksCompleted }));
   }, [tasksAccomplished]);
   const [workedHoursInput, setWorkedHoursInput] = useState<string>('');
+  const [trackedHours, setTrackedHours] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function loadTimeTrackerHours() {
+      try {
+        const res = await fetch(`/api/time-tracking/summary?employeeId=${selectedEmployeeId}&date=${reportDate}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.formattedActive) {
+            setTrackedHours(data.formattedActive);
+            if (!workedHoursInput && !isUpdate) {
+              setWorkedHoursInput(data.formattedActive);
+            }
+          }
+        }
+      } catch (e) {}
+    }
+    loadTimeTrackerHours();
+  }, [selectedEmployeeId, reportDate, isUpdate]);
   const [blockers, setBlockers] = useState('');
   const [jobCardNumbers, setJobCardNumbers] = useState<string[]>([]);
   const [jobCardInput, setJobCardInput] = useState('');

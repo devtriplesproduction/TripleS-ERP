@@ -8,8 +8,7 @@ import { ProjectModal } from './ProjectModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dropdown } from '@/components/ui/Dropdown'
-import { Plus, Search, FolderKanban, SlidersHorizontal, FolderGit2 } from 'lucide-react'
-import { PageHeader } from '@/components/PageHeader'
+import { Plus, Search, FolderKanban, LayoutGrid, List, FolderGit2 } from 'lucide-react'
 
 interface ProjectGridProps {
   initialProjects: Project[]
@@ -55,120 +54,134 @@ export function ProjectGrid({
     window.location.reload()
   }
 
-  const filterInputStyles = "!h-11 filter-control w-full !bg-card !border !border-border !rounded-xl !text-sm transition-all focus:!ring-2 focus:!ring-orange-500/20 focus:!border-orange-400 !text-foreground !shadow-sm";
-
   return (
     <div className="space-y-6">
-      {/* Top Header */}
-      <PageHeader
-        title="Projects"
-        subtitle="Track operational milestones, client delivery pipelines, and team assignments."
-        icon={FolderKanban}
-        actions={
-          canCreate && (
-            <Button
-              onClick={() => setIsModalOpen(true)}
-              className="w-full sm:w-auto h-11 px-5 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              New Project
-            </Button>
-          )
-        }
-      />
-
-
-      {/* Filters Section */}
-      <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm p-6">
-        <div className="flex items-center gap-2 mb-4 text-foreground">
-          <SlidersHorizontal className="w-5 h-5 text-foreground" />
-          <h3 className="font-semibold">Filter Projects</h3>
+      {/* Top Header Row matching Task Board reference */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        {/* Left: Icon, Title & Subtitle */}
+        <div className="flex items-center gap-3.5 min-w-0">
+          <div className="w-11 h-11 rounded-xl bg-card border border-border/80 flex items-center justify-center shrink-0 shadow-xs">
+            <FolderKanban className="w-5 h-5 text-foreground" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground leading-tight truncate">
+              Projects
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground font-normal truncate mt-0.5">
+              Track operational milestones, client delivery pipelines, and team assignments.
+            </p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-3 sm:gap-4 items-end">
-          <div className="space-y-3">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Search</label>
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search projects by name, client, or ID..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className={`${filterInputStyles} !pl-9 !pr-4 !py-2`}
-              />
-            </div>
-          </div>
+        {/* Right: New Project Action Button */}
+        {canCreate && (
+          <Button
+            onClick={() => setIsModalOpen(true)}
+            className="h-9 px-4 bg-foreground text-background hover:bg-foreground/90 font-medium text-xs sm:text-sm rounded-lg shadow-xs shrink-0 self-start sm:self-auto"
+          >
+            <Plus className="mr-1.5 h-4 w-4" />
+            New Project
+          </Button>
+        )}
+      </div>
 
-          <div className="space-y-3">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Status</label>
-            <Dropdown
-              className="!space-y-0"
-              buttonClassName={`${filterInputStyles} !px-3 !py-2`}
-              value={statusFilter}
-              onChange={(val) => setStatusFilter(val || 'ALL')}
-              options={[
-                { value: 'ALL', label: 'All Statuses' },
-                { value: 'PLANNING', label: 'Planning' },
-                { value: 'IN_PROGRESS', label: 'In Progress' },
-                { value: 'ON_HOLD', label: 'On Hold' },
-                { value: 'COMPLETED', label: 'Completed' },
-                { value: 'CANCELLED', label: 'Cancelled' },
-              ]}
-            />
-          </div>
+      {/* Compact Filters Row matching Task Board page styling */}
+      <div className="flex flex-col lg:flex-row lg:items-center gap-2.5 sm:gap-3">
+        {/* Left: Search input extending till filters */}
+        <div className="relative flex-1 min-w-0">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="Search projects by name, client, or ID..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="!h-9 !min-h-[36px] !max-h-[36px] !pl-9 !pr-4 !text-xs rounded-lg border-border/80 bg-card font-normal shadow-xs focus-visible:ring-1 focus-visible:ring-foreground/20 text-foreground w-full placeholder:text-muted-foreground"
+          />
+        </div>
 
-          <div className="space-y-3">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Client</label>
-            <Dropdown
-              className="!space-y-0"
-              buttonClassName={`${filterInputStyles} !px-3 !py-2`}
-              value={clientFilter}
-              onChange={(val) => setClientFilter(val || 'ALL')}
-              options={[
-                { value: 'ALL', label: 'All Clients' },
-                ...clients.map(c => ({ value: c.id, label: c.name }))
-              ]}
-            />
-          </div>
+        {/* Right: Filters on left, then Segmented View Switcher on far right */}
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
+          {/* All Statuses Filter */}
+          <Dropdown
+            value={statusFilter}
+            onChange={(val) => setStatusFilter(val || 'ALL')}
+            options={[
+              { value: 'ALL', label: 'All Statuses' },
+              { value: 'PLANNING', label: 'Planning' },
+              { value: 'IN_PROGRESS', label: 'In Progress' },
+              { value: 'ON_HOLD', label: 'On Hold' },
+              { value: 'COMPLETED', label: 'Completed' },
+              { value: 'CANCELLED', label: 'Cancelled' },
+            ]}
+            className="w-auto space-y-0 shrink-0"
+            buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[125px] shadow-xs hover:border-foreground/30 transition-colors"
+          />
 
-          <div className="space-y-3">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Priority</label>
-            <Dropdown
-              className="!space-y-0"
-              buttonClassName={`${filterInputStyles} !px-3 !py-2`}
-              value={priorityFilter}
-              onChange={(val) => setPriorityFilter(val || 'ALL')}
-              options={[
-                { value: 'ALL', label: 'All Priorities' },
-                { value: 'LOW', label: 'Low' },
-                { value: 'MEDIUM', label: 'Medium' },
-                { value: 'HIGH', label: 'High' },
-                { value: 'URGENT', label: 'Urgent' },
-              ]}
-            />
-          </div>
+          {/* All Clients Filter */}
+          <Dropdown
+            value={clientFilter}
+            onChange={(val) => setClientFilter(val || 'ALL')}
+            options={[
+              { value: 'ALL', label: 'All Clients' },
+              ...clients.map(c => ({ value: c.id, label: c.name }))
+            ]}
+            className="w-auto space-y-0 shrink-0"
+            buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[130px] shadow-xs hover:border-foreground/30 transition-colors"
+          />
 
-          {/* Grid / List Toggle */}
-          <div className="space-y-3">
-            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider invisible hidden lg:block">View</label>
-            <div className="flex bg-card border border-border rounded-xl shrink-0 filter-toggle-container h-11 p-1 shadow-sm">
-              <button
-                onClick={() => setViewMode('GRID')}
-                className={`px-4 text-sm font-medium rounded-lg transition-colors filter-toggle-btn w-full ${
-                  viewMode === 'GRID' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                Grid
-              </button>
-              <button
-                onClick={() => setViewMode('LIST')}
-                className={`px-4 text-sm font-medium rounded-lg transition-colors filter-toggle-btn w-full ${
-                  viewMode === 'LIST' ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                List
-              </button>
-            </div>
+          {/* All Priorities Filter */}
+          <Dropdown
+            value={priorityFilter}
+            onChange={(val) => setPriorityFilter(val || 'ALL')}
+            options={[
+              { value: 'ALL', label: 'All Priorities' },
+              { value: 'LOW', label: 'Low' },
+              { value: 'MEDIUM', label: 'Medium' },
+              { value: 'HIGH', label: 'High' },
+              { value: 'URGENT', label: 'Urgent' },
+            ]}
+            className="w-auto space-y-0 shrink-0"
+            buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[120px] shadow-xs hover:border-foreground/30 transition-colors"
+          />
+
+          {/* Segmented View Switcher: Grid | List (on right side) */}
+          <div
+            role="radiogroup"
+            aria-label="Projects view options"
+            className="flex items-center h-9 p-0.5 rounded-lg border border-border/80 bg-card shadow-xs shrink-0"
+          >
+            <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === 'GRID'}
+              aria-label="Grid view"
+              title="Grid View"
+              onClick={() => setViewMode('GRID')}
+              className={`h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
+                viewMode === 'GRID'
+                  ? 'bg-secondary text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+              }`}
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </button>
+
+            <div className="w-px h-4 bg-border/60 mx-0.5 shrink-0" aria-hidden="true" />
+
+            <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === 'LIST'}
+              aria-label="List view"
+              title="List View"
+              onClick={() => setViewMode('LIST')}
+              className={`h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
+                viewMode === 'LIST'
+                  ? 'bg-secondary text-foreground shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+              }`}
+            >
+              <List className="h-4 w-4" />
+            </button>
           </div>
         </div>
       </div>

@@ -1,5 +1,8 @@
+'use server';
+
 import { createAdminClient } from "@/lib/supabase/server";
 import { calculateCompOffMinutes, isSunday } from "@/lib/utils/time";
+import { getCurrentUser } from "@/lib/auth";
 
 const onboardingIdCache = new Map<string, string>();
 
@@ -336,11 +339,10 @@ export async function batchProcessEODCompOff(
 
 export async function processLeaveCompOff(leaveId: string, employeeId: string, durationDays: number, status: string) {
   const supabase = await createAdminClient();
+  const resolvedId = await resolveOnboardingId(employeeId, supabase);
+  if (!resolvedId) return;
 
   if (status === 'Approved') {
-    const resolvedId = await resolveOnboardingId(employeeId, supabase);
-    if (!resolvedId) return;
-
     const { data: existing } = await supabase
       .from('comp_off_ledger')
       .select('id')
@@ -357,7 +359,267 @@ export async function processLeaveCompOff(leaveId: string, employeeId: string, d
         reference_id: leaveId
       });
     }
+  } else if (status === 'Rejected' || status === 'Cancelled') {
+    // If a debit was previously created for this approved leave, reverse it
+    const { data: debitEntry } = await supabase
+      .from('comp_off_ledger')
+      .select('hours')
+      .eq('reference_id', leaveId)
+      .eq('transaction_type', 'DEBIT')
+      .maybeSingle();
+
+    if (debitEntry) {
+      const { data: existingReversal } = await supabase
+        .from('comp_off_ledger')
+        .select('id')
+        .eq('reference_id', leaveId)
+        .eq('transaction_type', 'REVERSAL')
+        .maybeSingle();
+
+      if (!existingReversal) {
+        await supabase.from('comp_off_ledger').insert({
+          employee_id: resolvedId,
+          transaction_type: 'REVERSAL',
+          hours: debitEntry.hours,
+          reference_id: leaveId
+        });
+      }
+    }
   }
+}
+
+export interface EmployeeCompOffSummary {
+  id: string;
+  employee_id_number: string;
+  first_name: string;
+  last_name: string;
+  profile_photo: string | null;
+  department: string;
+  job_title: string;
+  earnedHours: number;
+  usedHours: number;
+  availableHours: number;
+  availableDays: number;
+  lastUpdated: string | null;
+  ledgerCount: number;
+}
+
+export interface CompOffOverviewData {
+  summary: {
+    totalEmployeesWithBalance: number;
+    totalAvailableHours: number;
+    eligibleEmployeesCount: number;
+    pendingCompOffRequestsCount: number;
+  };
+  employees: EmployeeCompOffSummary[];
+}
+
+export async function getCompOffOverview(): Promise<CompOffOverviewData> {
+  const currentUser = await getCurrentUser();
+  if (!currentUser || (currentUser.role !== 'Admin' && currentUser.role !== 'HR')) {
+    throw new Error("Unauthorized: HR or Admin access required");
+  }
+
+  const supabase = await createAdminClient();
+
+  // 1. Fetch all employees (exclude salary & private info)
+  const { data: employeesData, error: empErr } = await supabase
+    .from('employee_onboarding')
+    .select('id, first_name, last_name, employee_id_number, department, job_title, profile_photo')
+    .order('first_name', { ascending: true });
+
+  if (empErr) {
+    console.error("Failed to fetch employees for comp-off overview:", empErr);
+    throw new Error("Failed to fetch employee list");
+  }
+
+  // 2. Fetch all comp_off_ledger entries
+  const { data: ledgerData, error: ledErr } = await supabase
+    .from('comp_off_ledger')
+    .select('id, employee_id, transaction_type, hours, created_at')
+    .order('created_at', { ascending: false });
+
+  if (ledErr) {
+    console.error("Failed to fetch comp-off ledger:", ledErr);
+  }
+
+  // 3. Fetch pending comp-off leave requests count
+  const { data: pendingRequests, error: reqErr } = await supabase
+    .from('leave_requests')
+    .select('id')
+    .eq('leave_type', 'Compensatory Off')
+    .ilike('status', '%Pending%');
+
+  if (reqErr) {
+    console.error("Failed to fetch pending comp-off requests:", reqErr);
+  }
+
+  // 4. Group ledger entries by employee_id
+  const ledgerMap = new Map<string, any[]>();
+  (ledgerData || []).forEach((row: any) => {
+    if (!ledgerMap.has(row.employee_id)) {
+      ledgerMap.set(row.employee_id, []);
+    }
+    ledgerMap.get(row.employee_id)!.push(row);
+  });
+
+  const employees: EmployeeCompOffSummary[] = (employeesData || []).map((emp: any) => {
+    const entries = ledgerMap.get(emp.id) || [];
+    let earnedHours = 0;
+    let debitHours = 0;
+    let reversalHours = 0;
+
+    entries.forEach((e: any) => {
+      const h = Number(e.hours) || 0;
+      if (e.transaction_type === 'CREDIT') earnedHours += h;
+      else if (e.transaction_type === 'DEBIT') debitHours += h;
+      else if (e.transaction_type === 'REVERSAL') reversalHours += h;
+    });
+
+    const usedHours = Math.round(Math.max(0, debitHours - reversalHours) * 100) / 100;
+    const earned = Math.round(earnedHours * 100) / 100;
+    const availableHours = Math.round(Math.max(0, earned - usedHours) * 100) / 100;
+    const availableDays = Math.floor(availableHours / 8);
+    const lastUpdated = entries[0]?.created_at || null;
+
+    return {
+      id: emp.id,
+      employee_id_number: emp.employee_id_number || '—',
+      first_name: emp.first_name,
+      last_name: emp.last_name || '',
+      profile_photo: emp.profile_photo || null,
+      department: emp.department || 'General',
+      job_title: emp.job_title || 'Employee',
+      earnedHours: earned,
+      usedHours,
+      availableHours,
+      availableDays,
+      lastUpdated,
+      ledgerCount: entries.length,
+    };
+  });
+
+  const totalEmployeesWithBalance = employees.filter(e => e.availableHours > 0 || e.ledgerCount > 0).length;
+  const totalAvailableHours = Math.round(employees.reduce((sum, e) => sum + e.availableHours, 0) * 100) / 100;
+  const eligibleEmployeesCount = employees.filter(e => e.availableHours >= 8).length;
+  const pendingCompOffRequestsCount = pendingRequests?.length || 0;
+
+  return {
+    summary: {
+      totalEmployeesWithBalance,
+      totalAvailableHours,
+      eligibleEmployeesCount,
+      pendingCompOffRequestsCount,
+    },
+    employees,
+  };
+}
+
+export async function getEmployeeCompOffDetails(employeeId: string) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser) throw new Error("Unauthorized");
+
+  const supabase = await createAdminClient();
+  const resolvedId = await resolveOnboardingId(employeeId, supabase);
+  if (!resolvedId) throw new Error("Employee not found");
+
+  const isPrivileged = currentUser.role === 'Admin' || currentUser.role === 'HR';
+  if (!isPrivileged) {
+    const userEmployeeOnboardingId = await resolveOnboardingId(currentUser.id, supabase);
+    if (userEmployeeOnboardingId !== resolvedId) {
+      throw new Error("Unauthorized: You may only view your own Comp-Off details");
+    }
+  }
+
+  // 1. Fetch employee info
+  const { data: employee, error: empErr } = await supabase
+    .from('employee_onboarding')
+    .select('id, first_name, last_name, employee_id_number, department, job_title, profile_photo')
+    .eq('id', resolvedId)
+    .single();
+
+  if (empErr || !employee) {
+    throw new Error("Employee not found");
+  }
+
+  // 2. Fetch ledger entries
+  const { data: rawEntries } = await supabase
+    .from('comp_off_ledger')
+    .select('*')
+    .eq('employee_id', resolvedId)
+    .order('created_at', { ascending: false });
+
+  const entries = rawEntries || [];
+
+  // 3. For CREDIT entries, fetch linked EOD reports
+  const eodRefIds = entries.filter((e: any) => e.transaction_type === 'CREDIT').map((e: any) => e.reference_id).filter(Boolean);
+  const eodMap = new Map<string, any>();
+  if (eodRefIds.length > 0) {
+    const { data: eods } = await supabase
+      .from('eod_reports')
+      .select('id, report_date, office_hours, status, summary, tasks_completed, created_at')
+      .in('id', eodRefIds);
+    (eods || []).forEach((e: any) => eodMap.set(e.id, e));
+  }
+
+  // 4. For DEBIT / REVERSAL entries, fetch linked leave requests
+  const leaveRefIds = entries.filter((e: any) => e.transaction_type === 'DEBIT' || e.transaction_type === 'REVERSAL').map((e: any) => e.reference_id).filter(Boolean);
+  const leaveMap = new Map<string, any>();
+  if (leaveRefIds.length > 0) {
+    const { data: leaves } = await supabase
+      .from('leave_requests')
+      .select('id, start_date, end_date, is_half_day, status, reason, created_at')
+      .in('id', leaveRefIds);
+    (leaves || []).forEach((l: any) => leaveMap.set(l.id, l));
+  }
+
+  let earnedHours = 0;
+  let debitHours = 0;
+  let reversalHours = 0;
+
+  const enrichedEntries = entries.map((entry: any) => {
+    const hours = Number(entry.hours) || 0;
+    if (entry.transaction_type === 'CREDIT') earnedHours += hours;
+    else if (entry.transaction_type === 'DEBIT') debitHours += hours;
+    else if (entry.transaction_type === 'REVERSAL') reversalHours += hours;
+
+    const eod = eodMap.get(entry.reference_id) || null;
+    const leave = leaveMap.get(entry.reference_id) || null;
+
+    return {
+      id: entry.id,
+      transaction_type: entry.transaction_type,
+      hours,
+      reference_id: entry.reference_id,
+      created_at: entry.created_at,
+      eod,
+      leave,
+    };
+  });
+
+  const usedHours = Math.round(Math.max(0, debitHours - reversalHours) * 100) / 100;
+  const earned = Math.round(earnedHours * 100) / 100;
+  const availableHours = Math.round(Math.max(0, earned - usedHours) * 100) / 100;
+  const availableDays = Math.floor(availableHours / 8);
+
+  return {
+    employee: {
+      id: employee.id,
+      employee_id_number: employee.employee_id_number || '—',
+      first_name: employee.first_name,
+      last_name: employee.last_name || '',
+      profile_photo: employee.profile_photo || null,
+      department: employee.department || 'General',
+      job_title: employee.job_title || 'Employee',
+    },
+    balance: {
+      earnedHours: earned,
+      usedHours,
+      availableHours,
+      availableDays,
+    },
+    entries: enrichedEntries,
+  };
 }
 
 

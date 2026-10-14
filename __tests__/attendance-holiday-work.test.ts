@@ -170,4 +170,88 @@ describe('Holiday Work and Holiday Display in Attendance Calendar', () => {
     expect(determineAttendanceStatus(480, 'normal', 'Pending')).toBe('Pending');
     expect(determineAttendanceStatus(480, 'normal', 'Rejected')).toBe('Absent');
   });
+
+  it('11. Current day without EOD or request is "Not Marked", Pending only after submission, and Absent on rejection', () => {
+    // Current IST date
+    const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+    const [y, m, d] = todayStr.split('-').map(Number);
+
+    // Case A: No EOD today -> Not Marked (not Absent, not Pending prematurely)
+    const recordsNoEod = _buildAttendanceRecords(y, m, [], [], []);
+    const todayRecNoEod = recordsNoEod.find(r => r.date === todayStr);
+    // If today is a Sunday, it's Holiday, otherwise on a working day it must be Not Marked
+    const isTodaySunday = new Date(y, m - 1, d).getDay() === 0;
+    if (!isTodaySunday) {
+      expect(todayRecNoEod?.status).toBe('Not Marked');
+    }
+
+    // Case B: Submitted EOD today -> Pending
+    const recordsPending = _buildAttendanceRecords(y, m, [{ report_date: todayStr, office_hours: 8, status: 'Pending' }], [], []);
+    const todayRecPending = recordsPending.find(r => r.date === todayStr);
+    if (!isTodaySunday) {
+      expect(todayRecPending?.status).toBe('Pending');
+    }
+
+    // Case C: Rejected EOD today -> Absent
+    const recordsRejected = _buildAttendanceRecords(y, m, [{ report_date: todayStr, office_hours: 8, status: 'Rejected' }], [], []);
+    const todayRecRejected = recordsRejected.find(r => r.date === todayStr);
+    if (!isTodaySunday) {
+      expect(todayRecRejected?.status).toBe('Absent');
+    }
+  });
+
+  it('12. Future dates have no status (Not Marked) unless a scheduled holiday applies', () => {
+    // Pick year 2029 (always in the future)
+    // 2029-10-01 is a Monday, 2029-10-07 is a Sunday
+    const futureHolidays = [{ id: 'fh-1', date: '2029-10-02', name: 'Gandhi Jayanti', holiday_type: 'PAID' }];
+    const records = _buildAttendanceRecords(2029, 10, [], [], futureHolidays);
+
+    const normalMonday = records.find(r => r.date === '2029-10-01');
+    const holidayTuesday = records.find(r => r.date === '2029-10-02');
+    const sunday = records.find(r => r.date === '2029-10-07');
+
+    expect(normalMonday?.status).toBe('Not Marked'); // Future normal working day
+    expect(holidayTuesday?.status).toBe('Holiday');   // Scheduled published holiday applies
+    expect(sunday?.status).toBe('Holiday');           // Scheduled Sunday applies
+  });
+
+  it('13. Monthly insights counts Present, Holiday Work, WFH, Leave, Half Day, Absent, and Pending without double-counting', () => {
+    // In August 2026:
+    // Past month where dates are guaranteed past:
+    // 2026-08-01 (Sat) - Present (Approved 8h)
+    // 2026-08-02 (Sun) - Holiday Work (Approved 8h on Sunday)
+    // 2026-08-03 (Mon) - WFH (Approved WFH)
+    // 2026-08-04 (Tue) - Leave (Approved Leave)
+    // 2026-08-05 (Wed) - Half Day (Approved 5h)
+    // 2026-08-06 (Thu) - Pending (Pending EOD)
+    // 2026-08-07 (Fri) - Absent (Rejected EOD)
+    // 2026-08-08 (Sat) - Absent (No EOD on past working day)
+    // 2026-08-09 (Sun) - Holiday (Sunday without work)
+    const eods = [
+      { report_date: '2026-08-01', office_hours: 8, status: 'Approved' },
+      { report_date: '2026-08-02', office_hours: 8, status: 'Approved' },
+      { report_date: '2026-08-05', office_hours: 5, status: 'Approved' },
+      { report_date: '2026-08-06', office_hours: 8, status: 'Pending' },
+      { report_date: '2026-08-07', office_hours: 8, status: 'Rejected' },
+    ];
+    const leaves = [
+      { start_date: '2026-08-03', end_date: '2026-08-03', request_type: 'WFH', is_half_day: false, status: 'Approved' },
+      { start_date: '2026-08-04', end_date: '2026-08-04', request_type: 'Leave', is_half_day: false, status: 'Approved' }
+    ];
+
+    const records = _buildAttendanceRecords(2026, 8, eods, leaves, []);
+    const summary = calculateAttendanceSummary(records);
+
+    expect(summary.present).toBe(1);      // 2026-08-01
+    expect(summary.holidayWork).toBe(1);  // 2026-08-02
+    expect(summary.wfh).toBe(1);          // 2026-08-03
+    expect(summary.leave).toBe(1);        // 2026-08-04
+    expect(summary.halfDay).toBe(1);      // 2026-08-05 (NOT counted as present)
+    expect(summary.pending).toBe(1);      // 2026-08-06
+    // 2026-08-07 (Rejected) + all other unworked past working days -> counted as Absent
+    expect(summary.absent).toBeGreaterThanOrEqual(2);
+    // Ensure total counted dates equals sum of distinct categories without double counting
+    const totalCounted = summary.present + summary.holidayWork + summary.holiday + summary.wfh + summary.leave + summary.halfDay + summary.absent + summary.pending;
+    expect(totalCounted).toBe(31); // August has 31 days, each day accounted for exactly once
+  });
 });
