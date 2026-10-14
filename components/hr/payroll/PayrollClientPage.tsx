@@ -205,7 +205,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
                       <th className="px-6 py-3 text-right">Worked Hrs</th>
                       <th className="px-6 py-3 text-right">Half Days</th>
                       <th className="px-6 py-3 text-right">Unpaid (&lt;4h)</th>
-                      <th className="px-6 py-3 text-right">Overtime (₹)</th>
+                      <th className="px-6 py-3 text-right">Base Salary (₹)</th>
                       <th className="px-6 py-3 text-right">Deduction (₹)</th>
                       <th className="px-6 py-3 text-right">Net Payable (₹)</th>
                     </tr>
@@ -221,8 +221,8 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
                         <td className="px-6 py-4 text-right">{res.hasPayrollData ? res.actualWorkedHours : '—'}</td>
                         <td className="px-6 py-4 text-right font-medium">{res.hasPayrollData ? res.daysHalfDay : '—'}</td>
                         <td className="px-6 py-4 text-right text-rose-500 font-medium">{res.hasPayrollData ? res.daysUnpaidLeaveEod : '—'}</td>
-                        <td className="px-6 py-4 text-right text-emerald-500 font-medium whitespace-nowrap">
-                          ₹0.00
+                        <td className="px-6 py-4 text-right font-medium text-foreground whitespace-nowrap">
+                          ₹{Number(res.salary || 0).toFixed(2)}
                         </td>
                         <td className="px-6 py-4 text-right text-rose-500 font-medium whitespace-nowrap">
                           {res.hasPayrollData ? (res.totalDeductions > 0 ? `-₹${res.totalDeductions.toFixed(2)}` : '₹0.00') : '—'}
@@ -272,8 +272,8 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
                         <span className="font-medium text-rose-500">{res.hasPayrollData ? res.daysUnpaidLeaveEod : '—'}</span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Overtime: </span>
-                        <span className="font-medium text-emerald-500">₹0.00</span>
+                        <span className="text-muted-foreground">Base Salary: </span>
+                        <span className="font-medium text-foreground">₹{Number(res.salary || 0).toFixed(2)}</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Deduction: </span>

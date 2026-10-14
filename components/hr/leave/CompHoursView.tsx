@@ -8,7 +8,6 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
-  FileText,
   Loader2,
   RefreshCw,
   ArrowUpRight,
@@ -338,13 +337,12 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
                 <th className="py-3.5 px-4 text-right whitespace-nowrap">Available Hours</th>
                 <th className="py-3.5 px-4 text-center whitespace-nowrap">Available Days</th>
                 <th className="py-3.5 px-4 whitespace-nowrap">Last Updated</th>
-                <th className="py-3.5 px-4 text-right whitespace-nowrap">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {paginatedEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="py-14 text-center text-muted-foreground">
+                  <td colSpan={8} className="py-14 text-center text-muted-foreground">
                     <Clock className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
                     <p className="font-medium text-sm text-foreground">No employees found</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -445,19 +443,6 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
                       {/* Last Updated */}
                       <td className="py-3.5 px-4 text-xs text-muted-foreground whitespace-nowrap">
                         {formattedLastUpdated}
-                      </td>
-
-                      {/* Action */}
-                      <td className="py-3.5 px-4 text-right whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleOpenDetails(emp.id)}
-                          className="h-8 px-2.5 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-secondary/60"
-                        >
-                          <FileText className="w-3.5 h-3.5 mr-1 text-muted-foreground" />
-                          Ledger
-                        </Button>
                       </td>
                     </tr>
                   )
