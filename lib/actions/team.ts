@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth'
+import { getProfilePhotoUrl } from '@/lib/utils/profile-photos'
 
 export interface AssignableEmployee {
   id: string // profiles id / user_id
@@ -63,7 +64,7 @@ export async function getAssignableEmployees(): Promise<{ success: boolean; data
         employee_id: p.employee_id,
         department: emp?.department || null,
         designation: emp?.designation || null,
-        profile_photo: emp?.profile_photo || null,
+        profile_photo: getProfilePhotoUrl(emp?.profile_photo),
       }
     })
 

@@ -67,6 +67,7 @@ export async function assignHod(authUserId: string, employeeIdNumber: string, de
     }
 
     revalidatePath('/hr/onboarding')
+    revalidatePath('/hr/onboarding', 'layout')
     revalidatePath('/dashboard')
     return { success: true }
   } catch (error: any) {
@@ -135,6 +136,7 @@ export async function removeHod(authUserId: string, employeeIdNumber: string, de
     }
 
     revalidatePath('/hr/onboarding')
+    revalidatePath('/hr/onboarding', 'layout')
     revalidatePath('/dashboard')
     return { success: true }
   } catch (error: any) {

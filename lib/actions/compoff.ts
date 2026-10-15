@@ -3,6 +3,7 @@
 import { createAdminClient } from "@/lib/supabase/server";
 import { calculateCompOffMinutes, isSunday } from "@/lib/utils/time";
 import { getCurrentUser } from "@/lib/auth";
+import { getProfilePhotoUrl } from "@/lib/utils/profile-photos";
 
 const onboardingIdCache = new Map<string, string>();
 
@@ -487,7 +488,7 @@ export async function getCompOffOverview(): Promise<CompOffOverviewData> {
       employee_id_number: emp.employee_id_number || '—',
       first_name: emp.first_name,
       last_name: emp.last_name || '',
-      profile_photo: emp.profile_photo || null,
+      profile_photo: getProfilePhotoUrl(emp.profile_photo),
       department: emp.department || 'General',
       job_title: emp.job_title || 'Employee',
       earnedHours: earned,
@@ -608,7 +609,7 @@ export async function getEmployeeCompOffDetails(employeeId: string) {
       employee_id_number: employee.employee_id_number || '—',
       first_name: employee.first_name,
       last_name: employee.last_name || '',
-      profile_photo: employee.profile_photo || null,
+      profile_photo: getProfilePhotoUrl(employee.profile_photo),
       department: employee.department || 'General',
       job_title: employee.job_title || 'Employee',
     },

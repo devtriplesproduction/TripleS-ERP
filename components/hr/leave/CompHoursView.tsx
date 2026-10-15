@@ -2,9 +2,7 @@
 
 import { useState, useMemo, useEffect, useTransition } from "react"
 import {
-  Users,
   Clock,
-  CheckCircle2,
   Search,
   ChevronLeft,
   ChevronRight,
@@ -13,7 +11,6 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Undo2,
-  Hourglass,
   Calendar,
   Sparkles,
   ChevronDown,
@@ -38,6 +35,7 @@ import {
   getCompOffOverview,
   getEmployeeCompOffDetails,
 } from "@/lib/actions/compoff"
+import { getProfilePhotoUrl } from "@/lib/utils/profile-photos"
 import { toast } from "sonner"
 
 interface CompHoursViewProps {
@@ -66,7 +64,7 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
       if (!data) setIsLoading(true)
       const res = await getCompOffOverview()
       setData(res)
-      if (showToast) toast.success("Comp Hours overview updated")
+      if (showToast) toast.success("Credits overview updated")
     } catch (err: any) {
       console.error("Failed to load comp off overview:", err)
       toast.error(err.message || "Failed to load comp off data")
@@ -154,100 +152,18 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
     setCurrentPage(1)
   }, [search, department, eligibilityFilter, sortBy])
 
-  const summary = data?.summary || {
-    totalEmployeesWithBalance: 0,
-    totalAvailableHours: 0,
-    eligibleEmployeesCount: 0,
-    pendingCompOffRequestsCount: 0,
-  }
-
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 space-y-4">
         <Loader2 className="w-9 h-9 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground font-medium">Loading Comp Hours overview...</p>
+        <p className="text-sm text-muted-foreground font-medium">Loading Credits overview...</p>
       </div>
     )
   }
 
   return (
     <div className="space-y-6 w-full min-w-0">
-      {/* 1. Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {/* Card 1: Employees with Balance / Activity */}
-        <div className="rounded-2xl border border-border/80 bg-card/70 p-4 sm:p-5 flex items-center justify-between shadow-xs">
-          <div className="space-y-1 min-w-0">
-            <span className="text-xs font-medium text-muted-foreground truncate block">
-              Active Comp Accounts
-            </span>
-            <div className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-              {summary.totalEmployeesWithBalance}
-            </div>
-            <span className="text-[11px] text-muted-foreground/80 truncate block">
-              With balance or ledger records
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-secondary/50 dark:bg-zinc-900/80 border border-border/80 flex items-center justify-center shrink-0">
-            <Users className="w-5 h-5 text-foreground" />
-          </div>
-        </div>
-
-        {/* Card 2: Total Available Hours */}
-        <div className="rounded-2xl border border-emerald-500/25 bg-emerald-950/15 dark:bg-[#0d1f14] p-4 sm:p-5 flex items-center justify-between shadow-xs">
-          <div className="space-y-1 min-w-0">
-            <span className="text-xs font-medium text-emerald-400/90 truncate block">
-              Total Available Hours
-            </span>
-            <div className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-              {formatHoursMinutes(summary.totalAvailableHours)}
-            </div>
-            <span className="text-[11px] text-emerald-400/70 truncate block">
-              ≈ {Math.floor(summary.totalAvailableHours / 8)} total Comp Days
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0 text-emerald-400">
-            <Clock className="w-5 h-5" />
-          </div>
-        </div>
-
-        {/* Card 3: Eligible Employees (>= 8h) */}
-        <div className="rounded-2xl border border-border/80 bg-card/70 p-4 sm:p-5 flex items-center justify-between shadow-xs">
-          <div className="space-y-1 min-w-0">
-            <span className="text-xs font-medium text-muted-foreground truncate block">
-              Eligible for Leave (≥8h)
-            </span>
-            <div className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-              {summary.eligibleEmployeesCount}
-            </div>
-            <span className="text-[11px] text-muted-foreground/80 truncate block">
-              Can apply for a full Comp-Off day
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-secondary/50 dark:bg-zinc-900/80 border border-border/80 flex items-center justify-center shrink-0 text-foreground">
-            <CheckCircle2 className="w-5 h-5 text-foreground" />
-          </div>
-        </div>
-
-        {/* Card 4: Pending Requests */}
-        <div className="rounded-2xl border border-amber-500/25 bg-amber-950/15 dark:bg-[#201808] p-4 sm:p-5 flex items-center justify-between shadow-xs">
-          <div className="space-y-1 min-w-0">
-            <span className="text-xs font-medium text-amber-400/90 truncate block">
-              Pending Comp Requests
-            </span>
-            <div className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-              {summary.pendingCompOffRequestsCount}
-            </div>
-            <span className="text-[11px] text-amber-400/70 truncate block">
-              Awaiting review & debit approval
-            </span>
-          </div>
-          <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0 text-amber-400">
-            <Hourglass className="w-5 h-5" />
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Horizontal Filters Row matching 44px standard */}
+      {/* Horizontal Filters Row matching 44px standard */}
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center gap-3 w-full">
         {/* Search */}
         <div className="relative flex-1 min-w-0">
@@ -316,7 +232,7 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
           onClick={() => startRefresh(() => loadOverview(true))}
           disabled={isRefreshing}
           className="h-11 w-11 p-0 shrink-0 rounded-xl !bg-muted/40 dark:!bg-[#141416] hover:!bg-muted/60 dark:hover:!bg-[#1a1a1d] border border-border/80 text-muted-foreground hover:text-foreground transition-colors"
-          title="Refresh Comp Hours"
+          title="Refresh Credits"
         >
           <RefreshCw className={cn("w-4 h-4", isRefreshing && "animate-spin")} />
         </Button>
@@ -336,13 +252,12 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
                 <th className="py-3.5 px-4 text-right whitespace-nowrap">Used</th>
                 <th className="py-3.5 px-4 text-right whitespace-nowrap">Available Hours</th>
                 <th className="py-3.5 px-4 text-center whitespace-nowrap">Available Days</th>
-                <th className="py-3.5 px-4 whitespace-nowrap">Last Updated</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
               {paginatedEmployees.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="py-14 text-center text-muted-foreground">
+                  <td colSpan={7} className="py-14 text-center text-muted-foreground">
                     <Clock className="w-8 h-8 text-muted-foreground/50 mx-auto mb-2" />
                     <p className="font-medium text-sm text-foreground">No employees found</p>
                     <p className="text-xs text-muted-foreground mt-0.5">
@@ -353,9 +268,6 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
               ) : (
                 paginatedEmployees.map((emp) => {
                   const isEligible = emp.availableHours >= 8
-                  const formattedLastUpdated = emp.lastUpdated
-                    ? format(new Date(emp.lastUpdated), "MMM d, yyyy")
-                    : "—"
 
                   return (
                     <tr
@@ -367,7 +279,7 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <div className="flex items-center gap-3 min-w-0">
                           <Avatar className="w-9 h-9 shrink-0 border border-border/80">
-                            <AvatarImage src={emp.profile_photo || ""} />
+                            <AvatarImage src={getProfilePhotoUrl(emp.profile_photo) || ""} />
                             <AvatarFallback className="text-xs font-semibold bg-secondary/80 text-foreground">
                               {emp.first_name?.[0]}
                               {emp.last_name?.[0]}
@@ -438,11 +350,6 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
                             {emp.availableDays} days
                           </span>
                         )}
-                      </td>
-
-                      {/* Last Updated */}
-                      <td className="py-3.5 px-4 text-xs text-muted-foreground whitespace-nowrap">
-                        {formattedLastUpdated}
                       </td>
                     </tr>
                   )
@@ -599,7 +506,7 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
               <div className="p-4 rounded-xl bg-secondary/30 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <Avatar className="w-11 h-11 shrink-0 border border-border">
-                    <AvatarImage src={detailData.employee?.profile_photo || ""} />
+                    <AvatarImage src={getProfilePhotoUrl(detailData.employee?.profile_photo) || ""} />
                     <AvatarFallback className="text-sm font-semibold bg-secondary text-foreground">
                       {detailData.employee?.first_name?.[0]}
                       {detailData.employee?.last_name?.[0]}

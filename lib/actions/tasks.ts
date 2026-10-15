@@ -3,9 +3,16 @@
 import { createAdminClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth'
 import { canManageTasks, canUpdateTaskStatus } from '@/lib/permissions/project-management'
-import { Task, TaskStatus, TaskPriority, TaskComment } from '@/types/project-management'
+import { Task, TaskStatus, TaskPriority, TaskComment, TaskChecklistItem } from '@/types/project-management'
 import { revalidatePath } from 'next/cache'
 import { attachProfilePhotos } from '@/lib/utils/profile-photos'
+
+export interface ChecklistInputItem {
+  id?: string
+  title: string
+  is_completed?: boolean
+  order_index?: number
+}
 
 export interface CreateTaskInput {
   title: string
@@ -20,10 +27,150 @@ export interface CreateTaskInput {
   dependencies?: string[]
   attachments?: Array<{ name: string; url: string; size?: number }>
   assignees?: string[] // user UUIDs
+  checklist?: ChecklistInputItem[]
 }
 
 export interface UpdateTaskInput extends Partial<CreateTaskInput> {
   id: string
+}
+
+/**
+ * Fetch checklists for multiple task IDs.
+ * Queries `task_checklists` table with graceful fallback to `attachments` JSON if migration isn't applied yet.
+ */
+async function fetchChecklistsForTasks(
+  admin: any,
+  taskIds: string[],
+  rawTasks?: any[]
+): Promise<Map<string, TaskChecklistItem[]>> {
+  const map = new Map<string, TaskChecklistItem[]>()
+  if (!taskIds || taskIds.length === 0) return map
+
+  try {
+    const { data, error } = await admin
+      .from('task_checklists')
+      .select('id, task_id, title, is_completed, order_index, created_at, updated_at')
+      .in('task_id', taskIds)
+      .order('order_index', { ascending: true })
+
+    if (!error && data && data.length > 0) {
+      for (const item of data) {
+        if (!map.has(item.task_id)) {
+          map.set(item.task_id, [])
+        }
+        map.get(item.task_id)!.push({
+          id: item.id,
+          task_id: item.task_id,
+          title: item.title,
+          is_completed: !!item.is_completed,
+          order_index: item.order_index,
+          created_at: item.created_at,
+          updated_at: item.updated_at,
+        })
+      }
+      return map
+    }
+  } catch {}
+
+  // Fallback: Check if stored in attachments metadata
+  if (rawTasks) {
+    for (const task of rawTasks) {
+      const attachments = Array.isArray(task.attachments) ? task.attachments : []
+      const metaItem = attachments.find((a: any) => a && a.name === '__CHECKLIST__')
+      if (metaItem && metaItem.url) {
+        try {
+          const parsed = JSON.parse(metaItem.url)
+          if (Array.isArray(parsed)) {
+            map.set(task.id, parsed.map((p: any, i: number) => ({
+              id: p.id || `chk-${task.id}-${i}`,
+              task_id: task.id,
+              title: p.title || '',
+              is_completed: !!p.is_completed,
+              order_index: p.order_index ?? i,
+              created_at: p.created_at,
+              updated_at: p.updated_at,
+            })))
+          }
+        } catch {}
+      }
+    }
+  }
+
+  return map
+}
+
+/**
+ * Persists checklist items for a given task.
+ * Tries `task_checklists` table first; if unavailable, stores in `tasks.attachments` fallback.
+ */
+async function saveChecklistItems(
+  admin: any,
+  taskId: string,
+  items: ChecklistInputItem[],
+  currentAttachments?: any[]
+): Promise<TaskChecklistItem[]> {
+  const sanitizedItems = items
+    .filter(it => it && it.title && it.title.trim())
+    .map((it, idx) => ({
+      id: it.id && !it.id.startsWith('temp-') ? it.id : undefined,
+      task_id: taskId,
+      title: it.title.trim(),
+      is_completed: !!it.is_completed,
+      order_index: it.order_index ?? idx,
+    }))
+
+  let tableSuccess = false
+  try {
+    const { error: delErr } = await admin
+      .from('task_checklists')
+      .delete()
+      .eq('task_id', taskId)
+
+    if (!delErr) {
+      if (sanitizedItems.length > 0) {
+        const { data: inserted, error: insErr } = await admin
+          .from('task_checklists')
+          .insert(sanitizedItems.map(s => ({
+            ...(s.id ? { id: s.id } : {}),
+            task_id: s.task_id,
+            title: s.title,
+            is_completed: s.is_completed,
+            order_index: s.order_index,
+          })))
+          .select()
+
+        if (!insErr && inserted) {
+          tableSuccess = true
+          return inserted as TaskChecklistItem[]
+        }
+      } else {
+        tableSuccess = true
+        return []
+      }
+    }
+  } catch {}
+
+  // Fallback storage in tasks.attachments metadata
+  const cleanAttachments = (currentAttachments || []).filter((a: any) => a && a.name !== '__CHECKLIST__')
+  const checklistData: TaskChecklistItem[] = sanitizedItems.map((s, i) => ({
+    id: s.id || `chk-${Date.now()}-${i}`,
+    task_id: taskId,
+    title: s.title,
+    is_completed: s.is_completed,
+    order_index: s.order_index,
+  }))
+
+  const updatedAttachments = [
+    ...cleanAttachments,
+    ...(checklistData.length > 0 ? [{ name: '__CHECKLIST__', url: JSON.stringify(checklistData) }] : [])
+  ]
+
+  await admin
+    .from('tasks')
+    .update({ attachments: updatedAttachments })
+    .eq('id', taskId)
+
+  return checklistData
 }
 
 async function generateTaskId(): Promise<string> {
@@ -140,9 +287,13 @@ export async function getTasks(filters?: {
     await attachProfilePhotos(admin, allProfiles)
 
     const now = new Date()
+    const taskIds = (data || []).map((row: any) => row.id)
+    const checklistMap = await fetchChecklistsForTasks(admin, taskIds, data)
 
     const tasks: Task[] = (data || []).map((row: any) => {
       const is_overdue = row.due_date && new Date(row.due_date) < now && row.status !== 'DONE'
+      const taskChecklist = checklistMap.get(row.id) || []
+      const attachments = (row.attachments || []).filter((a: any) => a && a.name !== '__CHECKLIST__')
       return {
         id: row.id,
         task_id_display: row.task_id_display,
@@ -157,7 +308,7 @@ export async function getTasks(filters?: {
         estimated_hours: row.estimated_hours ? Number(row.estimated_hours) : null,
         worked_hours: row.worked_hours ? Number(row.worked_hours) : null,
         dependencies: row.dependencies || [],
-        attachments: row.attachments || [],
+        attachments,
         order_index: row.order_index || 0,
         created_by: row.created_by,
         created_at: row.created_at,
@@ -166,6 +317,9 @@ export async function getTasks(filters?: {
         comments: row.comments || [],
         comments_count: (row.comments || []).length,
         is_overdue: !!is_overdue,
+        checklist: taskChecklist,
+        checklist_total: taskChecklist.length,
+        checklist_completed: taskChecklist.filter(c => c.is_completed).length,
       }
     })
 
@@ -282,8 +436,12 @@ export async function getMyTasks(): Promise<{
     const todayStr = now.toISOString().split('T')[0]
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
 
+    const checklistMap = await fetchChecklistsForTasks(admin, taskIds, tasksData)
+
     const allAssignedTasks: Task[] = (tasksData || []).map((row: any) => {
       const is_overdue = row.due_date && row.due_date < todayStr && row.status !== 'DONE'
+      const taskChecklist = checklistMap.get(row.id) || []
+      const attachments = (row.attachments || []).filter((a: any) => a && a.name !== '__CHECKLIST__')
       return {
         id: row.id,
         task_id_display: row.task_id_display,
@@ -298,7 +456,7 @@ export async function getMyTasks(): Promise<{
         estimated_hours: row.estimated_hours ? Number(row.estimated_hours) : null,
         worked_hours: row.worked_hours ? Number(row.worked_hours) : null,
         dependencies: row.dependencies || [],
-        attachments: row.attachments || [],
+        attachments,
         order_index: row.order_index || 0,
         created_by: row.created_by,
         created_at: row.created_at,
@@ -307,6 +465,9 @@ export async function getMyTasks(): Promise<{
         comments: row.comments || [],
         comments_count: (row.comments || []).length,
         is_overdue: !!is_overdue,
+        checklist: taskChecklist,
+        checklist_total: taskChecklist.length,
+        checklist_completed: taskChecklist.filter(c => c.is_completed).length,
       }
     })
 
@@ -425,6 +586,12 @@ export async function createTaskAction(input: CreateTaskInput): Promise<{ succes
       await admin.from('task_assignees').insert(assigneeRows)
     }
 
+    // Save checklist items if provided
+    let savedChecklist: TaskChecklistItem[] = []
+    if (input.checklist && input.checklist.length > 0) {
+      savedChecklist = await saveChecklistItems(admin, inserted.id, input.checklist, inserted.attachments)
+    }
+
     // Log Activity: Task Created & Assigned
     await admin.from('project_activity').insert({
       project_id: input.project_id,
@@ -437,6 +604,7 @@ export async function createTaskAction(input: CreateTaskInput): Promise<{ succes
         priority: inserted.priority,
         created_by: user.employee_name || user.email,
         assigned_count: uniqueAssignees.length,
+        checklist_count: savedChecklist.length,
       },
     })
 
@@ -477,7 +645,7 @@ export async function createTaskAction(input: CreateTaskInput): Promise<{ succes
           estimated_hours: completeTask.estimated_hours ? Number(completeTask.estimated_hours) : null,
           worked_hours: completeTask.worked_hours ? Number(completeTask.worked_hours) : null,
           dependencies: completeTask.dependencies || [],
-          attachments: completeTask.attachments || [],
+          attachments: (completeTask.attachments || []).filter((a: any) => a && a.name !== '__CHECKLIST__'),
           created_by: completeTask.created_by,
           created_at: completeTask.created_at,
           updated_at: completeTask.updated_at,
@@ -493,6 +661,9 @@ export async function createTaskAction(input: CreateTaskInput): Promise<{ succes
           })),
           comments_count: 0,
           is_overdue: false,
+          checklist: savedChecklist,
+          checklist_total: savedChecklist.length,
+          checklist_completed: savedChecklist.filter(c => c.is_completed).length,
         }
       : (inserted as Task)
 
@@ -656,6 +827,12 @@ export async function updateTaskAction(input: UpdateTaskInput): Promise<{ succes
       })
     }
 
+    // Update checklist items if provided
+    let taskChecklist: TaskChecklistItem[] = []
+    if (input.checklist !== undefined) {
+      taskChecklist = await saveChecklistItems(admin, input.id, input.checklist, updated.attachments)
+    }
+
     // Fetch complete task with relations
     const { data: completeTask } = await admin
       .from('tasks')
@@ -673,6 +850,11 @@ export async function updateTaskAction(input: UpdateTaskInput): Promise<{ succes
       `)
       .eq('id', input.id)
       .single()
+
+    if (input.checklist === undefined && completeTask) {
+      const existingChecklists = await fetchChecklistsForTasks(admin, [input.id], [completeTask])
+      taskChecklist = existingChecklists.get(input.id) || []
+    }
 
     const allProfiles: any[] = []
     if (completeTask) {
@@ -700,7 +882,7 @@ export async function updateTaskAction(input: UpdateTaskInput): Promise<{ succes
           estimated_hours: completeTask.estimated_hours ? Number(completeTask.estimated_hours) : null,
           worked_hours: completeTask.worked_hours ? Number(completeTask.worked_hours) : null,
           dependencies: completeTask.dependencies || [],
-          attachments: completeTask.attachments || [],
+          attachments: (completeTask.attachments || []).filter((a: any) => a && a.name !== '__CHECKLIST__'),
           created_by: completeTask.created_by,
           created_at: completeTask.created_at,
           updated_at: completeTask.updated_at,
@@ -716,6 +898,9 @@ export async function updateTaskAction(input: UpdateTaskInput): Promise<{ succes
           })),
           comments_count: (completeTask.comments || []).length,
           is_overdue: completeTask.due_date && new Date(completeTask.due_date) < new Date() && completeTask.status !== 'DONE',
+          checklist: taskChecklist,
+          checklist_total: taskChecklist.length,
+          checklist_completed: taskChecklist.filter(c => c.is_completed).length,
         }
       : (updated as Task)
 
@@ -840,3 +1025,63 @@ export async function logTaskHoursAction(taskId: string, additionalHours: number
     return { success: false, error: err.message || 'Failed to log hours' }
   }
 }
+
+/**
+ * Toggle completion status of a task checklist item.
+ */
+export async function toggleTaskChecklistItemAction(
+  taskId: string,
+  itemId: string,
+  isCompleted: boolean
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) return { success: false, error: 'Authentication required' }
+
+    const admin = await createAdminClient()
+    let tableUpdated = false
+
+    try {
+      const { data, error } = await admin
+        .from('task_checklists')
+        .update({ is_completed: isCompleted })
+        .eq('id', itemId)
+        .eq('task_id', taskId)
+        .select()
+
+      if (!error && data && data.length > 0) {
+        tableUpdated = true
+      }
+    } catch {}
+
+    if (!tableUpdated) {
+      // Fallback in tasks.attachments metadata
+      const { data: task } = await admin.from('tasks').select('attachments').eq('id', taskId).single()
+      if (task) {
+        const attachments = Array.isArray(task.attachments) ? task.attachments : []
+        const meta = attachments.find((a: any) => a && a.name === '__CHECKLIST__')
+        if (meta && meta.url) {
+          try {
+            const list: any[] = JSON.parse(meta.url)
+            const target = list.find((it: any) => it.id === itemId)
+            if (target) {
+              target.is_completed = isCompleted
+              const updated = [
+                ...attachments.filter((a: any) => a && a.name !== '__CHECKLIST__'),
+                { name: '__CHECKLIST__', url: JSON.stringify(list) }
+              ]
+              await admin.from('tasks').update({ attachments: updated }).eq('id', taskId)
+            }
+          } catch {}
+        }
+      }
+    }
+
+    revalidatePath('/tasks')
+    revalidatePath('/my-tasks')
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to toggle checklist item' }
+  }
+}
+

@@ -28,6 +28,7 @@ import {
 } from 'lucide-react'
 import dayjs from 'dayjs'
 import { toast } from 'sonner'
+import { getProfilePhotoUrl } from '@/lib/utils/profile-photos'
 import { PageHeader } from '@/components/PageHeader'
 import { cn } from '@/lib/utils'
 
@@ -514,7 +515,7 @@ export function MyTasksView({
                                       className="h-7 w-7 rounded-full border-2 border-card bg-secondary text-[10px] font-bold text-foreground transition-transform hover:z-10 hover:scale-105"
                                     >
                                       {m.profile?.profile_photo && (
-                                        <AvatarImage src={m.profile.profile_photo} alt={name} />
+                                        <AvatarImage src={getProfilePhotoUrl(m.profile.profile_photo) || undefined} alt={name} />
                                       )}
                                       <AvatarFallback>{initials}</AvatarFallback>
                                     </Avatar>

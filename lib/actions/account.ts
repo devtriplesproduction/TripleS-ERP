@@ -106,12 +106,12 @@ export async function getEmployeeAccountStatus(onboardingId: string) {
 
     const { data: employee } = await supabase
       .from('employee_onboarding')
-      .select('employee_id_number, email')
+      .select('employee_id_number, email, is_hod')
       .eq('id', onboardingId)
       .single()
 
     if (!employee || !employee.employee_id_number) {
-      return { hasAccount: false, isHod: false, authUserId: null }
+      return { hasAccount: false, isHod: Boolean(employee?.is_hod), authUserId: null }
     }
 
     const adminClient = await createAdminClient()
@@ -123,13 +123,13 @@ export async function getEmployeeAccountStatus(onboardingId: string) {
       .maybeSingle()
 
     if (!profile || !profile.id) {
-      return { hasAccount: false, isHod: false, authUserId: null }
+      return { hasAccount: false, isHod: Boolean(employee.is_hod), authUserId: null }
     }
 
     const { data: authUser, error: userError } = await adminClient.auth.admin.getUserById(profile.id)
 
     if (userError || !authUser?.user) {
-      return { hasAccount: false, isHod: false, authUserId: null }
+      return { hasAccount: false, isHod: Boolean(employee.is_hod || profile.is_hod), authUserId: null }
     }
 
     return {
@@ -137,7 +137,7 @@ export async function getEmployeeAccountStatus(onboardingId: string) {
       authUserId: profile.id,
       profileId: profile.id,
       employeeId: employee.employee_id_number,
-      isHod: profile.is_hod === true
+      isHod: profile.is_hod === true || employee.is_hod === true
     }
   } catch (err) {
     console.error('Error fetching account status:', err)

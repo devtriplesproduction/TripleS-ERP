@@ -1,0 +1,20 @@
+[
+  {
+    "id": "f3d0f042-dee5-4cfc-a07c-e81871aaf936",
+    "title": "test",
+    "description": "new",
+    "assigned_by": "6eaa69b5-833e-44ff-9b5e-e52fd3963839",
+    "assigned_to": "3f1a7db7-0ebf-45a7-b5a9-f9a0a393c023",
+    "due_date": "2026-10-16",
+    "priority": "Medium",
+    "status": "Completed",
+    "created_at": "2026-10-15T11:41:06.361Z",
+    "updated_at": "2026-10-15T11:41:41.294Z",
+    "assigned_by_name": "admin",
+    "assigned_to_name": "Employee",
+    "assigned_to_department": null,
+    "completed_at": "2026-10-15T11:41:41.294Z",
+    "completed_by": "3f1a7db7-0ebf-45a7-b5a9-f9a0a393c023",
+    "completed_by_name": "Omkar Sawant"
+  }
+]

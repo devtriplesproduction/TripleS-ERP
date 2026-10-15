@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ShieldAlert, Loader2, UserCheck, UserX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
@@ -10,7 +11,14 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { createEmployeeAccount, getEmployeeAccountStatus } from '@/lib/actions/account'
 import { Employee } from '@/lib/supabase/types'
 
-export function HodAssignmentAction({ employee }: { employee: Employee }) {
+export function HodAssignmentAction({ 
+  employee,
+  onHodChange 
+}: { 
+  employee: Employee
+  onHodChange?: (isHod: boolean) => void 
+}) {
+  const router = useRouter()
   const [isAdmin, setIsAdmin] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [isHod, setIsHod] = useState(false)
@@ -56,6 +64,7 @@ export function HodAssignmentAction({ employee }: { employee: Employee }) {
   useEffect(() => {
     checkStatus()
   }, [employee.id, employee.department])
+
   const handleMakeHod = async () => {
     if (!employee.department || !employee.employee_id_number) {
       toast({
@@ -71,7 +80,15 @@ export function HodAssignmentAction({ employee }: { employee: Employee }) {
     setIsProcessing(false)
 
     if (res.success) {
+      setIsHod(true)
+      onHodChange?.(true)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('hod-status-changed', {
+          detail: { employeeId: employee.id, employeeIdNumber: employee.employee_id_number, isHod: true }
+        }))
+      }
       await checkStatus()
+      router.refresh()
       toast({
         title: 'Success',
         description: `${employee.first_name} is now the HOD of ${employee.department}.`
@@ -93,7 +110,15 @@ export function HodAssignmentAction({ employee }: { employee: Employee }) {
     setIsProcessing(false)
 
     if (res.success) {
+      setIsHod(false)
+      onHodChange?.(false)
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('hod-status-changed', {
+          detail: { employeeId: employee.id, employeeIdNumber: employee.employee_id_number, isHod: false }
+        }))
+      }
       await checkStatus()
+      router.refresh()
       toast({
         title: 'Success',
         description: `${employee.first_name} has been removed as HOD.`

@@ -26,6 +26,8 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/announcements',
     '/my-tasks',
     '/time-tracking',
+    '/notes',
+    '/quick-tasks',
   ],
   Admin: [
     '/admin-eod',
@@ -43,6 +45,8 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/tasks',
     '/my-tasks',
     '/time-tracking',
+    '/notes',
+    '/quick-tasks',
   ],
   Employee: [
     '/hr/employee-leave',
@@ -54,6 +58,8 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/announcements',
     '/my-tasks',
     '/projects',
+    '/notes',
+    '/quick-tasks',
   ],
   Manager: [
     '/dashboard',
@@ -64,6 +70,8 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/announcements',
     '/my-tasks',
     '/hr/employee-leave',
+    '/notes',
+    '/quick-tasks',
   ],
 }
 

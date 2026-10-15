@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { guardServerAction } from '@/lib/auth'
 import { calculateMonthlyBasicSalary } from '@/lib/utils/salary'
+import { onboardSchema, validatePhone } from '@/lib/validations/onboard'
 
 const DEFAULT_TASKS = [
   { task_name: 'Collect Identity Documents', is_required: true },
@@ -15,7 +16,7 @@ const DEFAULT_TASKS = [
   { task_name: 'Office Tour & Introduction', is_required: false },
 ]
 
-export async function getEmployees(columns = 'id, first_name, last_name, email, phone, job_title, department, designation, division, joining_date, status, employee_id_number, employment_type, employment_status, probation_end_date, salary, stipend, profile_photo, created_at'): Promise<Employee[]> {
+export async function getEmployees(columns = 'id, first_name, last_name, email, phone, job_title, department, designation, division, joining_date, status, employee_id_number, employment_type, employment_status, probation_end_date, salary, stipend, profile_photo, created_at, is_hod'): Promise<Employee[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('employee_onboarding')
@@ -27,7 +28,20 @@ export async function getEmployees(columns = 'id, first_name, last_name, email, 
     return []
   }
 
-  return (data || []) as unknown as Employee[]
+  // Cross-reference profiles.is_hod to ensure consistent source of truth
+  const { data: hodProfiles } = await supabase
+    .from('profiles')
+    .select('employee_id, is_hod')
+    .eq('is_hod', true)
+
+  const hodEmpIdSet = new Set(hodProfiles?.map((p: any) => p.employee_id).filter(Boolean))
+
+  const employees = (data || []).map((emp: any) => ({
+    ...emp,
+    is_hod: Boolean(emp.is_hod || (emp.employee_id_number && hodEmpIdSet.has(emp.employee_id_number)))
+  })) as Employee[]
+
+  return employees
 }
 
 export async function getEmployeeById(id: string): Promise<{ employee: Employee | null, tasks: OnboardingTask[] }> {
@@ -38,8 +52,20 @@ export async function getEmployeeById(id: string): Promise<{ employee: Employee 
     supabase.from('onboarding_tasks').select('*').eq('employee_id', id).order('created_at', { ascending: true })
   ])
 
+  let employee = employeeRes.data as Employee | null
+  if (employee && employee.employee_id_number) {
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('is_hod')
+      .eq('employee_id', employee.employee_id_number)
+      .maybeSingle()
+    if (profile?.is_hod) {
+      employee.is_hod = true
+    }
+  }
+
   return {
-    employee: employeeRes.data as Employee | null,
+    employee,
     tasks: (tasksRes.data || []) as OnboardingTask[]
   }
 }
@@ -207,6 +233,16 @@ async function updateEmployeeStatusFromTasks(employeeId: string) {
 
 export async function onboardEmployeeAction(data: any) {
   await guardServerAction(['HR', 'Admin'])
+
+  // Server-side validation
+  const validationResult = onboardSchema.safeParse(data)
+  if (!validationResult.success) {
+    return {
+      success: false,
+      error: validationResult.error.issues[0]?.message || 'Validation failed. Please verify required fields.'
+    }
+  }
+
   const supabase = await createClient()
   const { createEmployeeAccount, generateEmployeeId } = await import('@/actions/auth.actions')
   const { determineERPRole } = await import('@/config/rbac')
@@ -230,7 +266,10 @@ export async function onboardEmployeeAction(data: any) {
     first_name: data.first_name,
     last_name: data.last_name,
     email: data.email,
-    phone: data.phone_number || null,
+    phone: (() => {
+      const p = validatePhone(data.phone_number)
+      return p.valid ? `+91 ${p.national}` : (data.phone_number || null)
+    })(),
     job_title: data.designation,
     department: data.department,
     division: data.division || null,

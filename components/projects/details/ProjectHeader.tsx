@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Project, Task, ProjectTeamMemberStats } from '@/types/project-management'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, Pencil, Plus, Trash2 } from 'lucide-react'
+import { ChevronLeft, Pencil, Plus, Trash2, ChartGantt } from 'lucide-react'
 import { TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 interface ProjectHeaderProps {
@@ -32,7 +32,7 @@ export function ProjectHeader({
   onDelete,
 }: ProjectHeaderProps) {
   return (
-    <div className="flex flex-col gap-5 bg-[#0a0a0a] rounded-2xl p-4 sm:p-5 border border-border/40 shadow-sm">
+    <div className="flex flex-col gap-5 bg-card text-foreground rounded-2xl p-4 sm:p-5 border border-border/80 shadow-xs">
       
       {/* Top Row: Title & Action Icons */}
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
@@ -40,7 +40,8 @@ export function ProjectHeader({
         <div className="flex items-center gap-4 min-w-0">
           <Link 
             href="/projects" 
-            className="flex items-center justify-center h-10 w-10 shrink-0 rounded-full border border-border/60 bg-white/5 hover:bg-white/10 text-muted-foreground hover:text-foreground transition-colors"
+            className="flex items-center justify-center h-10 w-10 shrink-0 rounded-full border border-border bg-secondary/50 hover:bg-secondary text-foreground transition-colors shadow-xs"
+            title="Back to Projects"
           >
             <ChevronLeft className="h-5 w-5" />
           </Link>
@@ -58,20 +59,22 @@ export function ProjectHeader({
         <div className="flex items-center gap-2 shrink-0">
           {canEdit && (
             <Button 
-              variant="ghost" 
+              variant="outline" 
               size="icon" 
               onClick={onEdit} 
-              className="h-10 w-10 rounded-full text-muted-foreground hover:text-foreground hover:bg-white/10"
+              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full border-border bg-card hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors shadow-xs"
+              title="Edit Project"
             >
               <Pencil className="h-4 w-4" />
             </Button>
           )}
           {canDelete && (
             <Button 
-              variant="ghost" 
+              variant="outline" 
               size="icon" 
               onClick={onDelete} 
-              className="h-10 w-10 rounded-full text-destructive hover:text-destructive hover:bg-destructive/10 border border-transparent hover:border-destructive/30 transition-all"
+              className="h-9 w-9 sm:h-10 sm:w-10 rounded-full border-border bg-card text-muted-foreground hover:text-destructive hover:border-destructive/30 hover:bg-destructive/10 transition-colors shadow-xs"
+              title="Delete Project"
             >
               <Trash2 className="h-4 w-4" />
             </Button>
@@ -83,53 +86,54 @@ export function ProjectHeader({
       <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-4">
         {/* Tabs */}
         <div className="flex-1 w-full overflow-x-auto no-scrollbar">
-          <TabsList className="bg-white/5 border border-border/40 p-1.5 rounded-full h-auto inline-flex flex-nowrap shrink-0 gap-2 sm:gap-6 w-auto max-w-full overflow-x-auto no-scrollbar items-center shadow-xs">
+          <TabsList className="bg-secondary/60 border border-border/70 p-1 rounded-full h-auto inline-flex flex-nowrap shrink-0 gap-1 sm:gap-1.5 w-auto max-w-full overflow-x-auto no-scrollbar items-center shadow-xs">
             
             <TabsTrigger 
               value="overview" 
-              className="rounded-full px-5 py-2 text-[13px] font-semibold data-[state=active]:bg-foreground data-[state=active]:text-background text-muted-foreground hover:text-foreground transition-all whitespace-nowrap"
+              className="rounded-full px-4 sm:px-5 py-2 text-[13px] font-semibold data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground transition-all whitespace-nowrap cursor-pointer"
             >
               Overview
             </TabsTrigger>
             
             <TabsTrigger 
               value="list" 
-              className="rounded-full px-5 py-2 text-[13px] font-semibold data-[state=active]:bg-foreground data-[state=active]:text-background text-muted-foreground hover:text-foreground transition-all whitespace-nowrap"
+              className="rounded-full px-4 sm:px-5 py-2 text-[13px] font-semibold data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground transition-all whitespace-nowrap cursor-pointer"
             >
               List
             </TabsTrigger>
             
             <TabsTrigger 
               value="kanban" 
-              className="rounded-full px-5 py-2 text-[13px] font-semibold data-[state=active]:bg-foreground data-[state=active]:text-background text-muted-foreground hover:text-foreground transition-all whitespace-nowrap"
+              className="rounded-full px-4 sm:px-5 py-2 text-[13px] font-semibold data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground transition-all whitespace-nowrap cursor-pointer"
             >
               Kanban
             </TabsTrigger>
             
             <TabsTrigger 
-              value="timeline" 
-              className="rounded-full px-5 py-2 text-[13px] font-semibold data-[state=active]:bg-foreground data-[state=active]:text-background text-muted-foreground hover:text-foreground transition-all whitespace-nowrap"
+              value="gantt" 
+              className="rounded-full px-4 sm:px-5 py-2 text-[13px] font-semibold data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground transition-all whitespace-nowrap flex items-center gap-2 cursor-pointer"
             >
-              Timeline
+              <ChartGantt className="w-3.5 h-3.5" />
+              <span>Gantt Chart</span>
             </TabsTrigger>
             
             <TabsTrigger 
               value="team" 
-              className="rounded-full px-5 py-2 text-[13px] font-semibold data-[state=active]:bg-foreground data-[state=active]:text-background text-muted-foreground hover:text-foreground transition-all whitespace-nowrap"
+              className="rounded-full px-4 sm:px-5 py-2 text-[13px] font-semibold data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground transition-all whitespace-nowrap cursor-pointer"
             >
               Team
             </TabsTrigger>
 
             <TabsTrigger 
               value="files" 
-              className="rounded-full px-5 py-2 text-[13px] font-semibold data-[state=active]:bg-foreground data-[state=active]:text-background text-muted-foreground hover:text-foreground transition-all whitespace-nowrap"
+              className="rounded-full px-4 sm:px-5 py-2 text-[13px] font-semibold data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground transition-all whitespace-nowrap cursor-pointer"
             >
               Files
             </TabsTrigger>
 
             <TabsTrigger 
               value="activity" 
-              className="rounded-full px-5 py-2 text-[13px] font-semibold data-[state=active]:bg-foreground data-[state=active]:text-background text-muted-foreground hover:text-foreground transition-all whitespace-nowrap"
+              className="rounded-full px-4 sm:px-5 py-2 text-[13px] font-semibold data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground transition-all whitespace-nowrap cursor-pointer"
             >
               Activity
             </TabsTrigger>
@@ -141,7 +145,7 @@ export function ProjectHeader({
         {canManageTasks && onAddTask && (
           <Button 
             onClick={onAddTask} 
-            className="h-10 px-5 rounded-full font-bold bg-foreground text-background hover:bg-foreground/90 shadow-sm tracking-wide text-[13px] shrink-0"
+            className="h-10 px-5 rounded-full font-bold bg-foreground text-background hover:bg-foreground/90 shadow-xs tracking-wide text-[13px] shrink-0 cursor-pointer"
           >
             <Plus className="mr-2 h-4 w-4" strokeWidth={3} /> New Task
           </Button>

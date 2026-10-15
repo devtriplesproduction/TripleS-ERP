@@ -107,6 +107,16 @@ export interface TaskComment {
   }
 }
 
+export interface TaskChecklistItem {
+  id: string
+  task_id: string
+  title: string
+  is_completed: boolean
+  order_index: number
+  created_at?: string
+  updated_at?: string
+}
+
 export interface Task {
   id: string
   task_id_display: string
@@ -130,6 +140,9 @@ export interface Task {
   comments?: TaskComment[]
   comments_count?: number
   is_overdue?: boolean
+  checklist?: TaskChecklistItem[]
+  checklist_total?: number
+  checklist_completed?: number
 }
 
 export interface ProjectActivity {

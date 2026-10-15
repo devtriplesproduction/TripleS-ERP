@@ -1,17 +1,19 @@
 'use client'
 
-import { useState } from 'react'
-import { Task, TaskStatus, TaskPriority } from '@/types/project-management'
+import { useState, useEffect } from 'react'
+import { Task, TaskStatus, TaskPriority, TaskChecklistItem } from '@/types/project-management'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { updateTaskStatusAction, addTaskCommentAction, logTaskHoursAction } from '@/lib/actions/tasks'
+import { updateTaskStatusAction, addTaskCommentAction, logTaskHoursAction, toggleTaskChecklistItemAction } from '@/lib/actions/tasks'
 import { toast } from 'sonner'
-import { Calendar, Clock, AlertCircle, MessageSquare, Send, User, Loader2, Edit } from 'lucide-react'
+import { Calendar, Clock, AlertCircle, MessageSquare, Send, User, Loader2, Edit, CheckSquare, Check } from 'lucide-react'
 import dayjs from 'dayjs'
+import { getProfilePhotoUrl } from '@/lib/utils/profile-photos'
+import { cn } from '@/lib/utils'
 
 interface TaskDetailsModalProps {
   task: Task | null
@@ -37,6 +39,11 @@ export function TaskDetailsModal({
   const [hoursToAdd, setHoursToAdd] = useState('')
   const [loggingHours, setLoggingHours] = useState(false)
   const [updatingStatus, setUpdatingStatus] = useState(false)
+  const [localChecklist, setLocalChecklist] = useState<TaskChecklistItem[]>(task?.checklist || [])
+
+  useEffect(() => {
+    setLocalChecklist(task?.checklist || [])
+  }, [task?.checklist])
 
   if (!task) return null
 
@@ -101,6 +108,30 @@ export function TaskDetailsModal({
       toast.error(err.message || 'Error logging hours')
     } finally {
       setLoggingHours(false)
+    }
+  }
+
+  const handleToggleChecklist = async (itemId: string, currentState: boolean) => {
+    const newState = !currentState
+    // Optimistic update
+    setLocalChecklist((prev) =>
+      prev.map((it) => (it.id === itemId ? { ...it, is_completed: newState } : it))
+    )
+    try {
+      const res = await toggleTaskChecklistItemAction(task.id, itemId, newState)
+      if (!res.success) {
+        toast.error(res.error || 'Failed to update checklist item')
+        // Revert
+        setLocalChecklist((prev) =>
+          prev.map((it) => (it.id === itemId ? { ...it, is_completed: currentState } : it))
+        )
+      } else {
+        onUpdate()
+      }
+    } catch {
+      setLocalChecklist((prev) =>
+        prev.map((it) => (it.id === itemId ? { ...it, is_completed: currentState } : it))
+      )
     }
   }
 
@@ -271,7 +302,9 @@ export function TaskDetailsModal({
                       className="flex items-center gap-2 py-1 px-3 bg-secondary/40 border border-border rounded-full text-xs"
                     >
                       <Avatar className="h-6 w-6 border border-card bg-secondary text-[10px]">
-                        {a.profile?.profile_photo && <AvatarImage src={a.profile.profile_photo} alt={name} />}
+                        {a.profile?.profile_photo && (
+                          <AvatarImage src={getProfilePhotoUrl(a.profile.profile_photo) || undefined} alt={name} />
+                        )}
                         <AvatarFallback>{initials}</AvatarFallback>
                       </Avatar>
                       <span className="font-medium text-foreground">{name}</span>
@@ -281,6 +314,61 @@ export function TaskDetailsModal({
               </div>
             )}
           </div>
+
+          {/* Execution Checklist */}
+          {localChecklist.length > 0 && (
+            <div className="space-y-3 pt-3 border-t border-border/60">
+              <div className="flex items-center justify-between">
+                <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
+                  Execution Checklist ({localChecklist.filter(c => c.is_completed).length}/{localChecklist.length})
+                </h5>
+                <span className="text-[11px] font-mono text-muted-foreground">
+                  {Math.round((localChecklist.filter(c => c.is_completed).length / localChecklist.length) * 100)}%
+                </span>
+              </div>
+
+              {/* Progress bar */}
+              <div className="w-full bg-secondary/60 rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="bg-foreground h-1.5 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${Math.round((localChecklist.filter(c => c.is_completed).length / localChecklist.length) * 100)}%`
+                  }}
+                />
+              </div>
+
+              {/* Checklist Items */}
+              <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                {localChecklist.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => handleToggleChecklist(item.id, item.is_completed)}
+                    className={cn(
+                      "flex items-center gap-2.5 p-2 rounded-lg border text-xs cursor-pointer transition-colors",
+                      item.is_completed
+                        ? "bg-secondary/20 border-border/40 text-muted-foreground"
+                        : "bg-secondary/40 border-border/70 hover:border-foreground/50 text-foreground"
+                    )}
+                  >
+                    <div
+                      className={cn(
+                        "w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 transition-colors",
+                        item.is_completed
+                          ? "bg-foreground border-foreground text-background"
+                          : "border-muted-foreground/50 hover:border-foreground text-foreground"
+                      )}
+                    >
+                      {item.is_completed && <Check className="h-3 w-3 stroke-[3]" />}
+                    </div>
+                    <span className={cn("truncate select-none", item.is_completed && "line-through")}>
+                      {item.title}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Comments Section */}
           <div className="space-y-3 pt-3 border-t border-border">

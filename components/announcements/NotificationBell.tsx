@@ -9,6 +9,7 @@ import {
   Megaphone,
   CheckCheck,
   CheckCircle2,
+  CheckSquare,
   ExternalLink,
   ChevronRight,
   Sparkles,
@@ -84,6 +85,13 @@ export function NotificationBell() {
           loadNotifications()
         }
       )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'quick_tasks' },
+        () => {
+          loadNotifications()
+        }
+      )
       .subscribe()
 
     // 2. Cross-tab BroadcastChannel listener
@@ -102,6 +110,7 @@ export function NotificationBell() {
       loadNotifications()
     }
     window.addEventListener('erp-notification-update', handleCustomUpdate)
+    window.addEventListener('erp-quick-tasks-update', handleCustomUpdate)
 
     // 4. Fallback interval polling (every 30 seconds when tab is active)
     const interval = setInterval(() => {
@@ -115,6 +124,7 @@ export function NotificationBell() {
       supabase.removeChannel(channel)
       if (bc) bc.close()
       window.removeEventListener('erp-notification-update', handleCustomUpdate)
+      window.removeEventListener('erp-quick-tasks-update', handleCustomUpdate)
       clearInterval(interval)
     }
   }, [loadNotifications])
@@ -127,6 +137,7 @@ export function NotificationBell() {
         prev.map((n) => (n.id === notif.id ? { ...n, isRead: true } : n))
       )
       setUnreadCount((prev) => Math.max(0, prev - 1))
+
       // Call server action in background
       markNotificationAsReadAction(notif.id, notif.rawId, notif.type).catch(console.error)
     }
@@ -184,6 +195,12 @@ export function NotificationBell() {
   // Icon and badge styling per type
   const getTypeConfig = (type: NotificationType) => {
     switch (type) {
+      case 'quick_task':
+        return {
+          icon: CheckSquare,
+          badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+          iconBg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+        }
       case 'rulebook':
         return {
           icon: BookOpen,

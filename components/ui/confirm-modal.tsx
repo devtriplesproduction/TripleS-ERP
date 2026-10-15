@@ -14,13 +14,15 @@ import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
 
 interface ConfirmModalProps {
-  children: React.ReactNode
+  children?: React.ReactNode
   title: string
   description: string
   onConfirm: () => Promise<void> | void
   confirmText?: string
   cancelText?: string
   variant?: 'default' | 'destructive'
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 export function ConfirmModal({
@@ -31,9 +33,15 @@ export function ConfirmModal({
   confirmText = 'Confirm',
   cancelText = 'Cancel',
   variant = 'destructive',
+  open: controlledOpen,
+  onOpenChange: controlledOnOpenChange,
 }: ConfirmModalProps) {
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+
+  const isControlled = controlledOpen !== undefined
+  const open = isControlled ? controlledOpen : internalOpen
+  const setOpen = isControlled ? (controlledOnOpenChange || (() => {})) : setInternalOpen
 
   const handleConfirm = async () => {
     setIsLoading(true)
@@ -47,9 +55,11 @@ export function ConfirmModal({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={React.isValidElement(children) ? (children as any) : <span />}>
-        {React.isValidElement(children) ? undefined : children}
-      </DialogTrigger>
+      {children ? (
+        <DialogTrigger render={React.isValidElement(children) ? (children as any) : <span />}>
+          {React.isValidElement(children) ? undefined : children}
+        </DialogTrigger>
+      ) : null}
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>

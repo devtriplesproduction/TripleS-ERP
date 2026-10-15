@@ -410,7 +410,7 @@ export function LeaveClientPage({
                   onClick={() => setActiveTab('comphours')}
                 >
                   <Clock className="w-3.5 h-3.5" />
-                  <span>Comp Hours</span>
+                  <span>Credits</span>
                 </button>
               </div>
             )}

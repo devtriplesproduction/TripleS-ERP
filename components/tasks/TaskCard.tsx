@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Calendar, MessageSquare, Clock } from 'lucide-react'
 import dayjs from 'dayjs'
+import { getProfilePhotoUrl } from '@/lib/utils/profile-photos'
 
 
 interface TaskCardProps {
@@ -114,7 +115,9 @@ export function TaskCard({ task, onClick, onDragStart, canManage, onStatusChange
               const initials = name.slice(0, 2).toUpperCase()
               return (
                 <Avatar key={idx} title={name} className="h-6 w-6 border-[1.5px] border-card bg-secondary text-[9px] hover:z-10 transition-transform">
-                  {a.profile?.profile_photo && <AvatarImage src={a.profile.profile_photo} alt={name} />}
+                  {a.profile?.profile_photo && (
+                    <AvatarImage src={getProfilePhotoUrl(a.profile.profile_photo) || undefined} alt={name} />
+                  )}
                   <AvatarFallback>{initials}</AvatarFallback>
                 </Avatar>
               )

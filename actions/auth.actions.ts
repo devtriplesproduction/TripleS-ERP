@@ -65,19 +65,101 @@ export async function generateEmployeeId(): Promise<string> {
   return `EMP-${String(nextNum).padStart(3, '0')}`
 }
 
+import { headers } from 'next/headers'
+import { getClientIpDetails, parseUserAgent } from '@/lib/utils/device-parser'
+import { logSecurityEvent } from '@/lib/utils/audit-logger'
+
 /**
  * Login with email and password.
  */
 export async function loginAction(email: string, password: string): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
+  const headerStore = await headers()
+  const { ip, sourceHeader, classification, location } = getClientIpDetails(headerStore)
+  const userAgent = headerStore.get('user-agent') || ''
+  const { browser, os, device } = parseUserAgent(userAgent)
+
+  // Safe development diagnostics (strictly non-sensitive)
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('[Auth Login Diagnostic]', {
+      email,
+      sourceHeader,
+      ipFound: Boolean(ip),
+      ipAddress: ip,
+      classification,
+    })
+  }
   
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
 
   if (error) {
+    await logSecurityEvent({
+      eventType: 'login_failed',
+      status: 'Failed',
+      authMethod: 'Password',
+      ipAddress: ip,
+      ipClassification: classification,
+      location,
+      userAgent,
+      browser,
+      os,
+      device,
+      metadataSource: sourceHeader,
+      metadata: {
+        attempted_email: email,
+        failure_reason: error.message
+      }
+    })
     return { success: false, error: error.message }
+  }
+
+  if (data?.user) {
+    const admin = await createAdminClient()
+    const { data: profile } = await admin
+      .from('profiles')
+      .select('employee_id, first_name, last_name')
+      .eq('id', data.user.id)
+      .maybeSingle()
+
+    let onboardingId: string | null = null
+    if (profile?.employee_id) {
+      const { data: ob } = await admin
+        .from('employee_onboarding')
+        .select('id')
+        .eq('employee_id_number', profile.employee_id)
+        .maybeSingle()
+      if (ob) onboardingId = ob.id
+    }
+
+    const empName = profile
+      ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
+      : null
+
+    await logSecurityEvent({
+      eventType: 'login_success',
+      status: 'Success',
+      userId: data.user.id,
+      employeeId: onboardingId,
+      employeeIdNumber: profile?.employee_id || null,
+      employeeName: empName || null,
+      authMethod: 'Password',
+      ipAddress: ip,
+      ipClassification: classification,
+      location,
+      userAgent,
+      browser,
+      os,
+      device,
+      sessionId: data.session ? `sess_${crypto.randomUUID().slice(0, 8)}` : null,
+      sessionStatus: 'Active',
+      metadataSource: sourceHeader,
+      metadata: {
+        email: data.user.email
+      }
+    })
   }
 
   return { success: true }
@@ -88,6 +170,29 @@ export async function loginAction(email: string, password: string): Promise<{ su
  */
 export async function logoutAction() {
   const supabase = await createClient()
+  try {
+    const headerStore = await headers()
+    const { ip, sourceHeader, classification, location } = getClientIpDetails(headerStore)
+    const userAgent = headerStore.get('user-agent') || ''
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (user) {
+      await logSecurityEvent({
+        eventType: 'logout',
+        status: 'Success',
+        userId: user.id,
+        ipAddress: ip,
+        ipClassification: classification,
+        location,
+        userAgent,
+        sessionStatus: 'Logged Out',
+        metadataSource: sourceHeader,
+        metadata: { email: user.email }
+      })
+    }
+  } catch (e) {
+    console.error('[logoutAction] Error logging security event:', e)
+  }
   await supabase.auth.signOut()
   redirect('/login')
 }

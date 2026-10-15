@@ -5,12 +5,12 @@ import { useForm, Controller, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import {
   User, Loader2, Camera, FileText, Trash2, CalendarIcon, CheckCircle2, Circle, Eye,
-  Save, X, MapPin, Phone, Mail, Lock, Copy, Edit2
+  Save, X, MapPin, Phone, Mail, Lock, Copy, Edit2, UploadCloud
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 import { useToast } from "@/hooks/use-toast"
-import { onboardSchema, type OnboardFormData } from "@/lib/validations/onboard"
+import { onboardSchema, type OnboardFormData, STEP_1_FIELDS, STEP_2_FIELDS, validatePhone } from "@/lib/validations/onboard"
 import { DEPARTMENTS, DIVISIONS, DESIGNATIONS, ROLES, HOD_STATUS } from "@/config/roles"
 import Image from "next/image"
 import { onboardEmployeeAction, uploadEmployeeFileAction } from "@/lib/actions/onboarding"
@@ -228,13 +228,18 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
   const [selectedAvatar, setSelectedAvatar] = useState<string>("")
   const [selectedAvatarFile, setSelectedAvatarFile] = useState<File | null>(null)
   const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([])
+  const [isDraggingDocs, setIsDraggingDocs] = useState(false)
+  const dragDocsCounter = useRef(0)
 
   const { toast } = useToast()
 
   const {
-    register, handleSubmit, setValue, trigger, control, getValues, reset
+    register, handleSubmit, setValue, trigger, control, getValues, reset, setFocus,
+    formState: { errors }
   } = useForm<OnboardFormData>({
-    resolver: zodResolver(onboardSchema),
+    resolver: zodResolver(onboardSchema) as any,
+    mode: 'onTouched',
+    reValidateMode: 'onChange',
     defaultValues: {
       first_name: "", last_name: "", dob: "", phone_number: "+91 ", personal_email: "", address: "",
       emergency_name: "", emergency_relationship: "", emergency_phone: "",
@@ -345,23 +350,34 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
   const nextStep = async () => {
     let fields: (keyof OnboardFormData)[] = []
     if (step === 1) {
-      fields = ["first_name", "last_name", "dob", "gender", "phone_number", "personal_email", "address", "city", "pincode", "emergency_name", "emergency_relationship", "emergency_phone"]
+      fields = STEP_1_FIELDS
     }
-    else if (step === 2) fields = ["department", "division", "designation", "employment_type", "employment_status", "salary", "basic_salary", "stipend", "experience_type", "experience_years", "experience_months", "joining_date", "role", "is_hod"]
-    else if (step === 3) { setStep(4); return }
+    else if (step === 2) {
+      fields = STEP_2_FIELDS
+    }
+    else if (step === 3) {
+      setStep(4)
+      setHighestStep(prev => Math.max(prev, 4))
+      return
+    }
 
-    const isValid = await trigger(fields)
+    const isValid = await trigger(fields, { shouldFocus: true })
     if (isValid) {
       setStep(step + 1)
       setHighestStep(prev => Math.max(prev, step + 1))
     }
     else {
-      const vals = getValues()
-      if (step === 1 && !/^\+91 ?\d{10}$/.test(vals.phone_number || "")) {
-        toast({ title: "Validation Error", description: "Phone number must 10 digit", variant: "destructive" })
-      } else {
-        toast({ title: "Validation Error", description: "Please fill required fields", variant: "destructive" })
+      const firstInvalid = fields.find(f => errors[f])
+      if (firstInvalid) {
+        setFocus(firstInvalid)
+        const el = document.getElementById(`field-${firstInvalid}`) || document.querySelector(`[name="${firstInvalid}"]`)
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
       }
+      toast({
+        title: "Validation Error",
+        description: "Please fill in all required fields correctly to continue.",
+        variant: "destructive"
+      })
     }
   }
 
@@ -376,14 +392,60 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
     }
   }
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
+  const addFiles = (files: File[]) => {
     if (!files || files.length === 0) return
-    Array.from(files).forEach((file: File) => {
-      const fileId = `file-${Date.now()}`
+    files.forEach((file: File, index: number) => {
+      if (file.size > 10 * 1024 * 1024) {
+        toast({ title: "File too large", description: `"${file.name}" exceeds 10MB limit.`, variant: "destructive" })
+        return
+      }
+      const fileId = `file-${Date.now()}-${index}`
       setUploadedFiles(prev => [...prev, { id: fileId, name: file.name, label: file.name, size: file.size, uploaded_at: new Date().toISOString(), url: '', file }])
       toast({ title: "Document Added", description: `${file.name} staged.` })
     })
+  }
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    addFiles(Array.from(files))
+    if (e.target) e.target.value = ''
+  }
+
+  const handleDocsDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragDocsCounter.current += 1
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDraggingDocs(true)
+    }
+  }
+
+  const handleDocsDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    dragDocsCounter.current -= 1
+    if (dragDocsCounter.current <= 0) {
+      setIsDraggingDocs(false)
+      dragDocsCounter.current = 0
+    }
+  }
+
+  const handleDocsDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    e.dataTransfer.dropEffect = 'copy'
+  }
+
+  const handleDocsDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDraggingDocs(false)
+    dragDocsCounter.current = 0
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      addFiles(Array.from(e.dataTransfer.files))
+      e.dataTransfer.clearData()
+    }
   }
 
   const onSubmit = async (data: OnboardFormData) => {
@@ -414,8 +476,12 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
         }
       }
 
+      const phoneValidation = validatePhone(data.phone_number)
+      const formattedPhone = phoneValidation.valid ? `+91 ${phoneValidation.national}` : data.phone_number
+
       const onboardData = {
         ...data,
+        phone_number: formattedPhone,
         profile_photo: uploadedAvatarPath || undefined,
         documents: uploadedDocs,
       }
@@ -655,16 +721,16 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                 {/* Step 1: Personal */}
                 {step === 1 && (
                   <>
-                    <div className="flex flex-col gap-2">
+                    <div className="flex flex-col">
                       {/* Section Header */}
                       <div className="flex items-center gap-2 mb-6">
                         <User className="w-4 h-4 text-foreground" />
                         <h3 className="text-base font-bold text-foreground">Personal Information</h3>
                       </div>
 
-                      <div className="flex flex-col sm:flex-row gap-4">
+                      <div className="flex flex-col sm:flex-row gap-4 sm:items-center">
                         {/* Photo Upload */}
-                        <div className="flex-shrink-0">
+                        <div className="flex-shrink-0 self-center">
                           <input type="file" id="photo" accept="image/*" className="hidden" onChange={handlePhotoUpload} />
                           <div
                             onClick={() => document.getElementById("photo")?.click()}
@@ -684,34 +750,62 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
 
                         {/* Fields */}
                         <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-4">
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-col gap-1.5" id="field-first_name">
                             <label className="text-sm font-medium text-secondary-foreground">First Name <span className="text-destructive">*</span></label>
-                            <Input {...register("first_name")} placeholder="Enter first name" />
+                            <Input
+                              {...register("first_name")}
+                              placeholder="Enter first name"
+                              className={cn(errors.first_name && "border-destructive focus-visible:ring-destructive")}
+                            />
+                            {errors.first_name && (
+                              <p className="text-xs font-medium text-destructive mt-0.5">{errors.first_name.message}</p>
+                            )}
                           </div>
 
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-col gap-1.5" id="field-last_name">
                             <label className="text-sm font-medium text-secondary-foreground">Last Name <span className="text-destructive">*</span></label>
-                            <Input {...register("last_name")} placeholder="Enter last name" />
+                            <Input
+                              {...register("last_name")}
+                              placeholder="Enter last name"
+                              className={cn(errors.last_name && "border-destructive focus-visible:ring-destructive")}
+                            />
+                            {errors.last_name && (
+                              <p className="text-xs font-medium text-destructive mt-0.5">{errors.last_name.message}</p>
+                            )}
                           </div>
 
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-col gap-1.5" id="field-dob">
                             <label className="text-sm font-medium text-secondary-foreground">Date of Birth <span className="text-destructive">*</span></label>
                             <Controller name="dob" control={control} render={({ field }) => (
                               <DatePicker
                                 value={field.value}
-                                onChange={field.onChange}
+                                onChange={(val) => {
+                                  field.onChange(val)
+                                  if (errors.dob) trigger("dob")
+                                }}
                                 placeholder="DD/MM/YYYY"
-                                className="h-10 w-full rounded-lg px-3 py-2 text-sm"
+                                className={cn("h-10 w-full rounded-lg px-3 py-2 text-sm", errors.dob && "border-destructive focus-visible:ring-destructive")}
                                 endMonth={new Date()}
                               />
                             )} />
+                            {errors.dob && (
+                              <p className="text-xs font-medium text-destructive mt-0.5">{errors.dob.message}</p>
+                            )}
                           </div>
 
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-col gap-1.5" id="field-gender">
                             <label className="text-sm font-medium text-secondary-foreground">Gender <span className="text-destructive">*</span></label>
                             <Controller name="gender" control={control} render={({ field }) => (
-                              <Select onValueChange={field.onChange} value={field.value || ""}>
-                                <SelectTrigger className="w-full capitalize"><SelectValue placeholder="Select gender" /></SelectTrigger>
+                              <Select
+                                onValueChange={(val) => {
+                                  field.onChange(val)
+                                  if (errors.gender) trigger("gender")
+                                }}
+                                value={field.value || ""}
+                              >
+                                <SelectTrigger className={cn("w-full capitalize", errors.gender && "border-destructive focus:ring-destructive")}>
+                                  <SelectValue placeholder="Select gender" />
+                                </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="male">Male</SelectItem>
                                   <SelectItem value="female">Female</SelectItem>
@@ -719,28 +813,46 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                                 </SelectContent>
                               </Select>
                             )} />
+                            {errors.gender && (
+                              <p className="text-xs font-medium text-destructive mt-0.5">{errors.gender.message}</p>
+                            )}
                           </div>
 
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-col gap-1.5" id="field-personal_email">
                             <label className="text-sm font-medium text-secondary-foreground">Personal Email</label>
                             <div className="relative">
                               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                              <Input type="email" {...register("personal_email")} placeholder="example@company.com" className="pl-9" />
+                              <Input
+                                type="email"
+                                {...register("personal_email")}
+                                placeholder="example@company.com"
+                                className={cn("pl-9", errors.personal_email && "border-destructive focus-visible:ring-destructive")}
+                              />
                             </div>
+                            {errors.personal_email && (
+                              <p className="text-xs font-medium text-destructive mt-0.5">{errors.personal_email.message}</p>
+                            )}
                           </div>
 
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-col gap-1.5" id="field-phone_number">
                             <label className="text-sm font-medium text-secondary-foreground">Phone Number <span className="text-destructive">*</span></label>
                             <div className="relative">
                               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                              <Input {...register("phone_number")} placeholder="+91 9876543210" className="pl-9" />
+                              <Input
+                                {...register("phone_number")}
+                                placeholder="+91 9876543210"
+                                className={cn("pl-9", errors.phone_number && "border-destructive focus-visible:ring-destructive")}
+                              />
                             </div>
+                            {errors.phone_number && (
+                              <p className="text-xs font-medium text-destructive mt-0.5">{errors.phone_number.message}</p>
+                            )}
                           </div>
                         </div>
                       </div>
                     </div>
 
-                    <div className="pt-6 mt-4 border-t border-border">
+                    <div className="pt-6 mt-6 border-t border-border">
                       <div className="flex items-center gap-2 mb-6">
                         <MapPin className="w-4 h-4 text-foreground" />
                         <h3 className="text-base font-bold text-foreground">Address Information</h3>
@@ -804,41 +916,50 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-4">
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-1.5" id="field-department">
                         <label className="text-sm font-medium text-secondary-foreground">Department <span className="text-destructive">*</span></label>
                         <Controller name="department" control={control} render={({ field }) => (
-                          <Select onValueChange={(v) => { field.onChange(v); setValue("division", ""); setValue("designation", ""); }} value={field.value}>
-                            <SelectTrigger className="w-full"><SelectValue placeholder="Select Department" /></SelectTrigger>
+                          <Select onValueChange={(v) => { field.onChange(v); setValue("division", ""); setValue("designation", ""); if (errors.department) trigger("department"); }} value={field.value}>
+                            <SelectTrigger className={cn("w-full", errors.department && "border-destructive focus:ring-destructive")}><SelectValue placeholder="Select Department" /></SelectTrigger>
                             <SelectContent>{DEPARTMENTS.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
                           </Select>
                         )} />
+                        {errors.department && (
+                          <p className="text-xs font-medium text-destructive mt-0.5">{errors.department.message}</p>
+                        )}
                       </div>
 
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-1.5" id="field-division">
                         <label className="text-sm font-medium text-secondary-foreground">Division / Team <span className="text-destructive">*</span></label>
                         <Controller name="division" control={control} render={({ field }) => (
-                          <Select onValueChange={(v) => { field.onChange(v); setValue("designation", ""); }} value={field.value} disabled={!watchedDepartment}>
-                            <SelectTrigger className="w-full"><SelectValue placeholder="Select Division" /></SelectTrigger>
+                          <Select onValueChange={(v) => { field.onChange(v); setValue("designation", ""); if (errors.division) trigger("division"); }} value={field.value} disabled={!watchedDepartment}>
+                            <SelectTrigger className={cn("w-full", errors.division && "border-destructive focus:ring-destructive")}><SelectValue placeholder="Select Division" /></SelectTrigger>
                             <SelectContent className="max-h-40">
                               {watchedDepartment && DIVISIONS[watchedDepartment]?.map((d) => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         )} />
+                        {errors.division && (
+                          <p className="text-xs font-medium text-destructive mt-0.5">{errors.division.message}</p>
+                        )}
                       </div>
 
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-1.5" id="field-designation">
                         <label className="text-sm font-medium text-secondary-foreground">Designation <span className="text-destructive">*</span></label>
                         <Controller name="designation" control={control} render={({ field }) => (
-                          <Select onValueChange={field.onChange} value={field.value} disabled={!watchedDivision}>
-                            <SelectTrigger className="w-full"><SelectValue placeholder="Select Designation" /></SelectTrigger>
+                          <Select onValueChange={(v) => { field.onChange(v); if (errors.designation) trigger("designation"); }} value={field.value} disabled={!watchedDivision}>
+                            <SelectTrigger className={cn("w-full", errors.designation && "border-destructive focus:ring-destructive")}><SelectValue placeholder="Select Designation" /></SelectTrigger>
                             <SelectContent className="max-h-40">
                               {watchedDivision && DESIGNATIONS[watchedDivision]?.map((d) => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>)}
                             </SelectContent>
                           </Select>
                         )} />
+                        {errors.designation && (
+                          <p className="text-xs font-medium text-destructive mt-0.5">{errors.designation.message}</p>
+                        )}
                       </div>
 
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-1.5" id="field-employment_type">
                         <label className="text-sm font-medium text-secondary-foreground">Employment Type <span className="text-destructive">*</span></label>
                         <Controller name="employment_type" control={control} render={({ field }) => (
                           <Select onValueChange={(val) => {
@@ -853,8 +974,9 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                             } else {
                               setValue('stipend', '', { shouldValidate: true });
                             }
+                            if (errors.employment_type) trigger("employment_type");
                           }} value={field.value}>
-                            <SelectTrigger className="w-full"><SelectValue placeholder="Select Type" /></SelectTrigger>
+                            <SelectTrigger className={cn("w-full", errors.employment_type && "border-destructive focus:ring-destructive")}><SelectValue placeholder="Select Type" /></SelectTrigger>
                             <SelectContent>
                               <SelectItem value="Full Time">Full Time</SelectItem>
                               <SelectItem value="Part Time">Part Time</SelectItem>
@@ -863,28 +985,28 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                             </SelectContent>
                           </Select>
                         )} />
+                        {errors.employment_type && (
+                          <p className="text-xs font-medium text-destructive mt-0.5">{errors.employment_type.message}</p>
+                        )}
                       </div>
 
-                      <div className="flex flex-col gap-2">
+                      <div className="flex flex-col gap-1.5" id="field-joining_date">
                         <label className="text-sm font-medium text-secondary-foreground">Joining Date <span className="text-destructive">*</span></label>
                         <Controller name="joining_date" control={control} render={({ field }) => (
                           <DatePicker
                             value={field.value}
-                            onChange={field.onChange}
+                            onChange={(val) => { field.onChange(val); if (errors.joining_date) trigger("joining_date"); }}
                             placeholder="Pick a date"
-                            className="h-10 w-full rounded-md px-3 py-2 text-sm"
+                            className={cn("h-10 w-full rounded-md px-3 py-2 text-sm", errors.joining_date && "border-destructive focus-visible:ring-destructive")}
                           />
                         )} />
+                        {errors.joining_date && (
+                          <p className="text-xs font-medium text-destructive mt-0.5">{errors.joining_date.message}</p>
+                        )}
                       </div>
 
-
-
-                      
-
-
-
                       {watchedEmploymentType !== 'Intern' && (
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-1.5" id="field-experience_type">
                           <label className="text-sm font-medium text-secondary-foreground">Experience Type <span className="text-destructive">*</span></label>
                           <Controller name="experience_type" control={control} render={({ field }) => (
                             <Select onValueChange={(val) => {
@@ -896,51 +1018,90 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                                 setValue('experience_years', '', { shouldValidate: true });
                                 setValue('experience_months', '', { shouldValidate: true });
                               }
+                              if (errors.experience_type) trigger("experience_type");
                             }} value={field.value}>
-                              <SelectTrigger className="w-full"><SelectValue placeholder="Select Experience" /></SelectTrigger>
+                              <SelectTrigger className={cn("w-full", errors.experience_type && "border-destructive focus:ring-destructive")}><SelectValue placeholder="Select Experience" /></SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="Fresher">Fresher</SelectItem>
                                 <SelectItem value="Experienced">Experienced</SelectItem>
                               </SelectContent>
                             </Select>
                           )} />
+                          {errors.experience_type && (
+                            <p className="text-xs font-medium text-destructive mt-0.5">{errors.experience_type.message}</p>
+                          )}
                         </div>
                       )}
 
                       {watchedEmploymentType === 'Intern' ? (
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-1.5" id="field-stipend">
                           <label className="text-sm font-medium text-secondary-foreground">Stipend (INR/Month) <span className="text-destructive">*</span></label>
-                          <Input type="number" {...register("stipend")} placeholder="₹ 15000" />
+                          <Input
+                            type="number"
+                            {...register("stipend")}
+                            placeholder="₹ 15000"
+                            className={cn(errors.stipend && "border-destructive focus-visible:ring-destructive")}
+                          />
+                          {errors.stipend && (
+                            <p className="text-xs font-medium text-destructive mt-0.5">{errors.stipend.message}</p>
+                          )}
                         </div>
                       ) : (
-                        <div className="flex flex-col gap-2">
+                        <div className="flex flex-col gap-1.5" id="field-salary">
                           <label className="text-sm font-medium text-secondary-foreground">Annual CTC (INR) <span className="text-destructive">*</span></label>
-                          <Input type="number" {...register("salary", {
-                            onChange: (e) => {
-                              const val = parseFloat(e.target.value);
-                              if (!isNaN(val)) {
-                                setValue("basic_salary", calculateMonthlyBasicSalary(val).toString(), { shouldValidate: true });
-                              } else {
-                                setValue("basic_salary", "", { shouldValidate: true });
+                          <Input
+                            type="number"
+                            {...register("salary", {
+                              onChange: (e) => {
+                                const val = parseFloat(e.target.value);
+                                if (!isNaN(val)) {
+                                  setValue("basic_salary", calculateMonthlyBasicSalary(val).toString(), { shouldValidate: true });
+                                } else {
+                                  setValue("basic_salary", "", { shouldValidate: true });
+                                }
                               }
-                            }
-                          })} placeholder="₹ 1200000" />
+                            })}
+                            placeholder="₹ 1200000"
+                            className={cn(errors.salary && "border-destructive focus-visible:ring-destructive")}
+                          />
+                          {errors.salary && (
+                            <p className="text-xs font-medium text-destructive mt-0.5">{errors.salary.message}</p>
+                          )}
                         </div>
                       )}
 
                       {watchedExperienceType === 'Experienced' && (
                         <div className="space-y-2 col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-5 p-4 rounded-md bg-muted border border-border">
-                          <div className="flex flex-col gap-2">
+                          <div className="flex flex-col gap-1.5" id="field-experience_years">
                             <label className="text-sm font-medium text-secondary-foreground">Years <span className="text-destructive">*</span></label>
-                            <Input type="number" min="0" max="50" {...register("experience_years")} placeholder="e.g. 5" className="bg-background" />
+                            <Input
+                              type="number"
+                              min="0"
+                              max="50"
+                              {...register("experience_years")}
+                              placeholder="e.g. 5"
+                              className={cn("bg-background", errors.experience_years && "border-destructive focus-visible:ring-destructive")}
+                            />
+                            {errors.experience_years && (
+                              <p className="text-xs font-medium text-destructive mt-0.5">{errors.experience_years.message}</p>
+                            )}
                           </div>
-                          <div className="flex flex-col gap-2">
-                            <label className="text-sm font-medium text-secondary-foreground">Months <span className="text-destructive">*</span></label>
-                            <Input type="number" min="0" max="11" {...register("experience_months")} placeholder="e.g. 2" className="bg-background" />
+                          <div className="flex flex-col gap-1.5" id="field-experience_months">
+                            <label className="text-sm font-medium text-secondary-foreground">Months</label>
+                            <Input
+                              type="number"
+                              min="0"
+                              max="11"
+                              {...register("experience_months")}
+                              placeholder="e.g. 2"
+                              className={cn("bg-background", errors.experience_months && "border-destructive focus-visible:ring-destructive")}
+                            />
+                            {errors.experience_months && (
+                              <p className="text-xs font-medium text-destructive mt-0.5">{errors.experience_months.message}</p>
+                            )}
                           </div>
                         </div>
                       )}
-
 
                       <input type="hidden" {...register("basic_salary")} />
                     </div>
@@ -950,13 +1111,34 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                 {/* Step 3: Documents */}
                 {step === 3 && (
                   <div className="space-y-6">
-                    <div onClick={() => document.getElementById('docs')?.click()} className="border border-dashed border-border hover:border-foreground p-12 flex flex-col items-center justify-center cursor-pointer rounded-xl bg-input transition-colors group">
-                      <input type="file" id="docs" multiple className="hidden" onChange={handleFileUpload} />
-                      <div className="mb-2">
-                        <FileText className="w-8 h-8 text-muted-foreground" />
+                    <div
+                      onClick={() => document.getElementById('docs')?.click()}
+                      onDragEnter={handleDocsDragEnter}
+                      onDragLeave={handleDocsDragLeave}
+                      onDragOver={handleDocsDragOver}
+                      onDrop={handleDocsDrop}
+                      className={cn(
+                        "border-2 border-dashed p-10 flex flex-col items-center justify-center cursor-pointer rounded-xl transition-all duration-200 group select-none relative",
+                        isDraggingDocs
+                          ? "border-foreground/80 dark:border-zinc-300 bg-muted/40 dark:bg-zinc-900/60 ring-2 ring-foreground/20"
+                          : "border-border/60 hover:border-foreground/60 bg-muted/10 dark:bg-zinc-950/40"
+                      )}
+                    >
+                      <input
+                        type="file"
+                        id="docs"
+                        multiple
+                        className="hidden"
+                        onChange={handleFileUpload}
+                        accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.zip"
+                      />
+                      <div className={cn("mb-2 transition-transform duration-200", isDraggingDocs ? "scale-110 text-foreground" : "text-muted-foreground group-hover:scale-105")}>
+                        <UploadCloud className="w-8 h-8" />
                       </div>
-                      <p className="text-sm font-medium text-foreground">Click to upload documents</p>
-                      <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, PNG, JPG up to 10MB</p>
+                      <p className="text-sm font-medium text-foreground">
+                        {isDraggingDocs ? "Drop documents here to upload" : "Click to upload or drag & drop documents"}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, PNG, JPG, ZIP up to 10MB</p>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-4">
                       {uploadedFiles.map(f => (
@@ -1171,12 +1353,21 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                     <>
                       {highestStep === 4 && (
                         <Button key="jump-btn" type="button" onClick={async () => {
-                          let fields: any = []
-                          if (step === 1) fields = ["first_name", "last_name", "dob", "gender", "phone_number", "personal_email", "address", "city", "pincode", "emergency_name", "emergency_relationship", "emergency_phone"]
-                          else if (step === 2) fields = ["department", "division", "designation", "employment_type", "employment_status", "salary", "basic_salary", "stipend", "experience_type", "experience_years", "experience_months", "joining_date", "role", "is_hod"]
-                          const isValid = step === 3 || await trigger(fields)
-                          if (isValid) setStep(4)
-                          else toast({ title: "Incomplete Fields", description: "Please complete all required fields.", variant: "destructive" })
+                          let fields: (keyof OnboardFormData)[] = []
+                          if (step === 1) fields = STEP_1_FIELDS
+                          else if (step === 2) fields = STEP_2_FIELDS
+                          const isValid = step === 3 || await trigger(fields, { shouldFocus: true })
+                          if (isValid) {
+                            setStep(4)
+                          } else {
+                            const firstInvalid = fields.find(f => errors[f])
+                            if (firstInvalid) {
+                              setFocus(firstInvalid)
+                              const el = document.getElementById(`field-${firstInvalid}`) || document.querySelector(`[name="${firstInvalid}"]`)
+                              el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                            }
+                            toast({ title: "Incomplete Fields", description: "Please complete all required fields.", variant: "destructive" })
+                          }
                         }} className="rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 h-9 w-32 font-bold text-xs">Jump to Review</Button>
                       )}
                       <Button key="next-btn" type="button" onClick={nextStep} className="rounded-md bg-foreground text-background hover:bg-foreground/90 h-9 w-28 font-bold text-xs">Next &rarr;</Button>

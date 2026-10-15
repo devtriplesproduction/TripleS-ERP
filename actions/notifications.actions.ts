@@ -5,14 +5,16 @@ import { getCurrentUser } from '@/lib/auth'
 import { cookies } from 'next/headers'
 import { revalidatePath } from 'next/cache'
 import dayjs from 'dayjs'
+import fs from 'fs'
+import path from 'path'
 
-export type NotificationType = 'rulebook' | 'holiday' | 'announcement'
+export type NotificationType = 'rulebook' | 'holiday' | 'announcement' | 'quick_task'
 
 export interface ERPNotificationItem {
   id: string
   rawId: string
   type: NotificationType
-  typeLabel: 'Rulebook Policy' | 'Holiday' | 'Announcement'
+  typeLabel: 'Rulebook Policy' | 'Holiday' | 'Announcement' | 'Quick Task'
   title: string
   description: string
   creatorName: string
@@ -86,6 +88,7 @@ export async function getUserNotificationsAction(): Promise<UserNotificationData
     acksRes,
     holidaysRes,
     announcementsRes,
+    quickTasksRes,
   ] = await Promise.all([
     supabase
       .from('company_rules')
@@ -117,12 +120,33 @@ export async function getUserNotificationsAction(): Promise<UserNotificationData
       .eq('status', 'published')
       .order('created_at', { ascending: false })
       .limit(10),
+
+    supabase
+      .from('quick_tasks')
+      .select('id, title, description, priority, status, created_at, assigned_by')
+      .eq('assigned_to', user.id)
+      .eq('status', 'Pending')
+      .order('created_at', { ascending: false })
+      .limit(10),
   ])
 
   const rules = rulesRes.data || []
   const acks = acksRes.data || []
   const holidays = holidaysRes.data || []
   const announcements = announcementsRes.data || []
+
+  let quickTasks = quickTasksRes.data || []
+  if (quickTasksRes.error && quickTasksRes.error.code === 'PGRST205') {
+    try {
+      const p = path.join(process.cwd(), 'scratch', 'quick_tasks_store.json')
+      if (fs.existsSync(p)) {
+        const all = JSON.parse(fs.readFileSync(p, 'utf-8'))
+        quickTasks = (all || []).filter(
+          (t: any) => t.assigned_to === user.id && t.status === 'Pending'
+        )
+      }
+    } catch {}
+  }
 
   // Build acknowledgment lookup set
   const ackKeys = new Set<string>()
@@ -145,6 +169,7 @@ export async function getUserNotificationsAction(): Promise<UserNotificationData
     ...new Set([
       ...rules.map((r: any) => r.created_by).filter(Boolean),
       ...holidays.map((h: any) => h.created_by).filter(Boolean),
+      ...quickTasks.map((t: any) => t.assigned_by).filter(Boolean),
     ]),
   ]
 
@@ -270,6 +295,36 @@ export async function getUserNotificationsAction(): Promise<UserNotificationData
       isRead: isMarkedRead,
       priority: a.priority,
       meta: a,
+    })
+  })
+
+  // Add Quick Tasks
+  quickTasks.forEach((t: any) => {
+    const notifId = `quick_task_${t.id}`
+    const createdAtIso = t.created_at || new Date().toISOString()
+    const isMarkedRead =
+      readIds.includes(notifId) ||
+      (new Date(createdAtIso).getTime() <= readAllBefore)
+
+    const creatorName =
+      t.assigned_by && creatorNameCache.get(t.assigned_by)
+        ? creatorNameCache.get(t.assigned_by)!
+        : 'Admin'
+
+    items.push({
+      id: notifId,
+      rawId: t.id,
+      type: 'quick_task',
+      typeLabel: 'Quick Task',
+      title: `Quick Task: ${t.title}`,
+      description: t.description || 'Casual task assigned to you.',
+      creatorName,
+      date: t.created_at,
+      createdAt: createdAtIso,
+      link: '/quick-tasks',
+      isRead: isMarkedRead,
+      priority: (t.priority?.toLowerCase() || 'medium') as any,
+      meta: t,
     })
   })
 

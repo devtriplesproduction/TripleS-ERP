@@ -10,6 +10,8 @@ import { logoutAction } from '@/actions/auth.actions'
 import { type AuthUser } from '@/lib/auth'
 import { useSidebar } from './sidebar-context'
 import { GlobalSearch } from '@/components/global-search/global-search'
+import { NotesNavbarTrigger } from '@/components/notes/NotesNavbarTrigger'
+import { QuickTasksNavbarTrigger } from '@/components/quick-tasks/QuickTasksNavbarTrigger'
 
 interface HeaderProps {
   user: AuthUser
@@ -45,10 +47,14 @@ export function Header({ user }: HeaderProps) {
         <GlobalSearch />
       </div>
       
-      {/* Right side: Theme toggle, Notifications, Profile, Signout */}
+      {/* Right side: Theme toggle, Notes, Notifications, Profile, Signout */}
       <div className="flex items-center gap-2 sm:gap-4 shrink-0">
         <ThemeToggle />
         
+        <NotesNavbarTrigger />
+        
+        <QuickTasksNavbarTrigger user={user} />
+
         <NotificationBell />
         
         <div className="flex items-center gap-2 sm:gap-3 pl-1 sm:pl-2 border-l border-border">

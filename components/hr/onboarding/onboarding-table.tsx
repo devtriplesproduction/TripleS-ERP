@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { DatePicker } from '@/components/ui/date-picker'
-import { ChevronLeft, ChevronRight, Trash2, Search, Filter, Loader2, Eye, Calendar, Building2, Briefcase } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Trash2, Search, Filter, Loader2, Eye, Calendar, Building2, Briefcase, Star } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 import { Employee } from '@/lib/supabase/types'
@@ -177,9 +177,25 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
                             <>{emp.first_name[0]}{emp.last_name[0]}</>
                           )}
                         </div>
-                        <div>
-                          <div className="font-medium text-foreground transition-all">{emp.first_name} {emp.last_name}</div>
-                          <div className="text-xs text-muted-foreground">{emp.email}</div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="font-medium text-foreground transition-all truncate">
+                              {emp.first_name} {emp.last_name}
+                            </span>
+                            {emp.is_hod && (
+                              <span 
+                                className="relative inline-flex items-center group/hod shrink-0 cursor-default" 
+                                title="Head of Department (HOD)"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 drop-shadow-[0_0_2px_rgba(251,191,36,0.4)] shrink-0" />
+                                <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 opacity-0 group-hover/hod:opacity-100 transition-opacity duration-150 flex items-center whitespace-nowrap rounded-md bg-zinc-900 dark:bg-zinc-800 text-zinc-100 px-2 py-0.5 text-[11px] font-medium shadow-lg border border-border/60 z-50">
+                                  Head of Department (HOD)
+                                </span>
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground truncate">{emp.email}</div>
                         </div>
                       </Link>
                     </TableCell>
@@ -238,9 +254,23 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
                       )}
                     </div>
                     <div className="min-w-0">
-                      <Link href={`/hr/onboarding/${emp.id}`} className="font-semibold text-foreground text-sm truncate block">
-                        {emp.first_name} {emp.last_name}
-                      </Link>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <Link href={`/hr/onboarding/${emp.id}`} className="font-semibold text-foreground text-sm truncate">
+                          {emp.first_name} {emp.last_name}
+                        </Link>
+                        {emp.is_hod && (
+                          <span 
+                            className="relative inline-flex items-center group/hod shrink-0 cursor-default" 
+                            title="Head of Department (HOD)"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 drop-shadow-[0_0_2px_rgba(251,191,36,0.4)] shrink-0" />
+                            <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 opacity-0 group-hover/hod:opacity-100 transition-opacity duration-150 flex items-center whitespace-nowrap rounded-md bg-zinc-900 dark:bg-zinc-800 text-zinc-100 px-2 py-0.5 text-[11px] font-medium shadow-lg border border-border/60 z-50">
+                              Head of Department (HOD)
+                            </span>
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-muted-foreground truncate">{emp.email}</p>
                     </div>
                   </div>

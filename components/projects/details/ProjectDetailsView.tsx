@@ -12,7 +12,7 @@ import { AssignableEmployee } from '@/lib/actions/team'
 import { ProjectHeader } from './ProjectHeader'
 import { ProjectOverviewTab } from './ProjectOverviewTab'
 import { ProjectTeamTab } from './ProjectTeamTab'
-import { ProjectTimelineTab } from './ProjectTimelineTab'
+import { ProjectGanttTab } from './ProjectGanttTab'
 import { ProjectActivityTab } from './ProjectActivityTab'
 import { KanbanBoard } from '@/components/tasks/KanbanBoard'
 import { ProjectListTab } from './ProjectListTab'
@@ -116,9 +116,38 @@ export function ProjectDetailsView({
           />
         </TabsContent>
 
-        {/* Tab 4: Timeline */}
+        {/* Tab 4: Gantt Chart */}
+        <TabsContent value="gantt">
+          <ProjectGanttTab
+            project={project}
+            tasks={tasks}
+            canManageTasks={canManageTasks}
+            onTaskClick={(t: Task) => {
+              setSelectedTask(t)
+              setIsTaskDetailsOpen(true)
+            }}
+            onAddTask={() => {
+              setTaskToEdit(null)
+              setIsTaskModalOpen(true)
+            }}
+          />
+        </TabsContent>
+
+        {/* Backward-compatible fallback for timeline tab value */}
         <TabsContent value="timeline">
-          <ProjectTimelineTab project={project} tasks={tasks} />
+          <ProjectGanttTab
+            project={project}
+            tasks={tasks}
+            canManageTasks={canManageTasks}
+            onTaskClick={(t: Task) => {
+              setSelectedTask(t)
+              setIsTaskDetailsOpen(true)
+            }}
+            onAddTask={() => {
+              setTaskToEdit(null)
+              setIsTaskModalOpen(true)
+            }}
+          />
         </TabsContent>
 
         {/* Tab 5: Team */}
