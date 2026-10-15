@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Calendar,
@@ -18,7 +18,8 @@ import {
   Plane,
   MoreVertical,
   Briefcase,
-  Search
+  Search,
+  TrendingUp,
 } from "lucide-react"
 import { format } from "date-fns"
 import {
@@ -52,6 +53,7 @@ import { PageHeader } from "@/components/PageHeader"
 import { Dropdown } from "@/components/ui/Dropdown"
 import { Input } from "@/components/ui/input"
 import { CompHoursView } from "./CompHoursView"
+import { WorklogView } from "./WorklogView"
 
 function SickLeaveIcon({ className = "w-5 h-5 text-foreground" }: { className?: string }) {
   return (
@@ -150,7 +152,7 @@ export function LeaveClientPage({
   initialCompOffOverview = null,
 }: any) {
   const supabase = createClient()
-  const [activeTab, setActiveTab] = useState<"mine" | "approve" | "comphours">(canApprove ? "approve" : "mine")
+  const [activeTab, setActiveTab] = useState<"mine" | "approve" | "comphours" | "worklog">(canApprove ? "approve" : "mine")
   const [statusFilter, setStatusFilter] = useState<string>("All Statuses")
   const [typeFilter, setTypeFilter] = useState<string>("ALL")
   const [search, setSearch] = useState<string>("")
@@ -159,6 +161,32 @@ export function LeaveClientPage({
   const [approvalLeaves, setApprovalLeaves] = useState<any[]>(leavesToApprove || [])
   const [myLeavesList, setMyLeavesList] = useState<any[]>(myLeaves || [])
   const [submittingId, setSubmittingId] = useState<string | null>(null)
+
+  // Dynamic header based on selected tab
+  const headerInfo = useMemo(() => {
+    switch (activeTab) {
+      case "comphours":
+        return {
+          title: "Comp-Off Credits",
+          subtitle: "Track employee compensatory hours earned, used, and available.",
+          icon: Clock,
+        }
+      case "worklog":
+        return {
+          title: "Worklog",
+          subtitle: "View approved EOD hours and employee contributions.",
+          icon: TrendingUp,
+        }
+      case "approve":
+      case "mine":
+      default:
+        return {
+          title: "Leave & WFH Request",
+          subtitle: "Manage your leaves and approvals from one place.",
+          icon: Calendar,
+        }
+    }
+  }, [activeTab])
 
   const handleUpdateStatus = async (id: string, newStatus: string) => {
     if (submittingId) return // Prevent duplicate submissions while in-flight
@@ -352,9 +380,9 @@ export function LeaveClientPage({
 
       {/* Shared Page Header matching ERP standard */}
       <PageHeader
-        title="Leave & WFH Request"
-        subtitle="Manage your leaves and approvals from one place."
-        icon={Calendar}
+        title={headerInfo.title}
+        subtitle={headerInfo.subtitle}
+        icon={headerInfo.icon}
         actions={
           <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap sm:flex-nowrap shrink-0">
             {/* Tab Switcher for Admins/HR */}
@@ -412,6 +440,20 @@ export function LeaveClientPage({
                   <Clock className="w-3.5 h-3.5" />
                   <span>Credits</span>
                 </button>
+
+                <button
+                  type="button"
+                  className={cn(
+                    "px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all flex items-center gap-1.5 h-9",
+                    activeTab === 'worklog'
+                      ? "bg-foreground text-background shadow-xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => setActiveTab('worklog')}
+                >
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  <span>Worklog</span>
+                </button>
               </div>
             )}
 
@@ -440,7 +482,7 @@ export function LeaveClientPage({
       />
 
       {/* Filter and Search Bar directly below header without grey container */}
-      {activeTab !== 'comphours' && (
+      {activeTab !== 'comphours' && activeTab !== 'worklog' && (
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
           {/* Search */}
           <div className="relative flex-1 w-full min-w-0">
@@ -496,6 +538,8 @@ export function LeaveClientPage({
       {/* Main Content Area */}
       {activeTab === 'comphours' ? (
         <CompHoursView initialData={initialCompOffOverview} />
+      ) : activeTab === 'worklog' ? (
+        <WorklogView />
       ) : activeTab === 'mine' ? (
         <div className="space-y-2 sm:space-y-2.5">
           {filteredMyLeaves.length === 0 ? (

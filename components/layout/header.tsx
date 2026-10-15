@@ -47,13 +47,13 @@ export function Header({ user }: HeaderProps) {
         <GlobalSearch />
       </div>
       
-      {/* Right side: Theme toggle, Notes, Notifications, Profile, Signout */}
+      {/* Right side: Tasks, Notes, Theme toggle, Notifications, Profile, Signout */}
       <div className="flex items-center gap-2 sm:gap-4 shrink-0">
-        <ThemeToggle />
-        
-        <NotesNavbarTrigger />
-        
         <QuickTasksNavbarTrigger user={user} />
+
+        <NotesNavbarTrigger />
+
+        <ThemeToggle />
 
         <NotificationBell />
         
