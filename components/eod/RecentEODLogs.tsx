@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { CheckCircle2, Clock, History, FileText, User, Calendar, MapPin, AlertTriangle, X, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { formatWorkedTime } from '@/lib/utils/time';
+import { formatWorkedTime, formatCanonicalDuration } from '@/lib/utils/time';
 import { EodCard } from './EodCard';
 
 type EODLog = {
@@ -96,10 +96,7 @@ function HistoryRow({ eod }: { eod: EODLog }) {
     : 0;
   
   // Format hours
-  const totalMinutes = Math.round((eod.office_hours || 0) * 60);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  const hoursStr = minutes === 0 ? `${hours}h` : `${hours}h ${minutes}m`;
+  const hoursStr = formatCanonicalDuration(Number(eod.office_hours || 0));
 
   // Status Colors
   let statusBadgeClasses = "bg-muted text-foreground border-border";

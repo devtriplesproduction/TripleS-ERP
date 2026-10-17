@@ -14,8 +14,6 @@ import {
   Loader2,
   User,
   Users,
-  Calendar,
-  AlertCircle,
   Check,
 } from 'lucide-react'
 import {
@@ -30,17 +28,17 @@ import { Button } from '@/components/ui/button'
 import type {
   QuickTask,
   QuickTaskStatus,
-  QuickTaskPriority,
 } from '@/types/quick-tasks'
 import {
   getQuickTasksAction,
   createQuickTasksAction,
   markQuickTaskCompleteAction,
   cancelQuickTaskAction,
+  deleteQuickTaskAction,
+  markQuickTasksSeenAction,
 } from '@/lib/actions/quick-tasks'
 import { AssignableEmployee, getAssignableEmployees } from '@/lib/actions/team'
 import { TaskAssigneeSelector } from '@/components/tasks/TaskAssigneeSelector'
-import { DatePicker } from '@/components/ui/date-picker'
 import { QuickTaskCard } from './QuickTaskCard'
 import { QuickTaskEditModal } from './QuickTaskEditModal'
 import { toast } from 'sonner'
@@ -67,23 +65,20 @@ export function QuickTasksPopoverPanel({
   const [isSearchOpen, setIsSearchOpen] = useState(false)
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<string>('ALL')
 
-  // Assignable employees (shared with Create Task form)
+  // Assignable employees (Admin only)
   const [assignableEmployees, setAssignableEmployees] = useState<AssignableEmployee[]>([])
 
   // Inline Creation State
   const [isCreatingInline, setIsCreatingInline] = useState(false)
-  const [inlineTitle, setInlineTitle] = useState('')
   const [inlineDescription, setInlineDescription] = useState('')
   const [inlineAssignees, setInlineAssignees] = useState<string[]>([])
-  const [inlinePriority, setInlinePriority] = useState<QuickTaskPriority>('Medium')
-  const [inlineDueDate, setInlineDueDate] = useState('')
   const [isSubmittingInline, setIsSubmittingInline] = useState(false)
 
   // Edit Modal State
   const [editingTask, setEditingTask] = useState<QuickTask | null>(null)
 
   const searchInputRef = useRef<HTMLInputElement>(null)
-  const inlineTitleRef = useRef<HTMLInputElement>(null)
+  const inlineDescriptionRef = useRef<HTMLTextAreaElement>(null)
 
   // Load tasks
   const loadTasks = useCallback(async () => {
@@ -107,9 +102,10 @@ export function QuickTasksPopoverPanel({
 
   useEffect(() => {
     loadTasks()
+    markQuickTasksSeenAction().catch(() => {})
   }, [loadTasks])
 
-  // Load assignable employees for Admin (reusing existing team assignment action)
+  // Load assignable employees for Admin
   useEffect(() => {
     if (isAdmin) {
       getAssignableEmployees().then((res) => {
@@ -125,7 +121,17 @@ export function QuickTasksPopoverPanel({
     const handleUpdate = () => {
       loadTasks()
     }
+    const handleEmployeeChange = () => {
+      if (isAdmin) {
+        getAssignableEmployees().then((res) => {
+          if (res.success && res.data) {
+            setAssignableEmployees(res.data)
+          }
+        })
+      }
+    }
     window.addEventListener('erp-quick-tasks-update', handleUpdate)
+    window.addEventListener('employee-status-changed', handleEmployeeChange)
 
     let bc: BroadcastChannel | null = null
     try {
@@ -141,6 +147,7 @@ export function QuickTasksPopoverPanel({
 
     return () => {
       window.removeEventListener('erp-quick-tasks-update', handleUpdate)
+      window.removeEventListener('employee-status-changed', handleEmployeeChange)
       if (bc) bc.close()
     }
   }, [loadTasks])
@@ -152,10 +159,10 @@ export function QuickTasksPopoverPanel({
     }
   }, [isSearchOpen])
 
-  // Focus inline title when inline creator opens
+  // Focus inline description when inline creator opens
   useEffect(() => {
-    if (isCreatingInline && inlineTitleRef.current) {
-      inlineTitleRef.current.focus()
+    if (isCreatingInline && inlineDescriptionRef.current) {
+      inlineDescriptionRef.current.focus()
     }
   }, [isCreatingInline])
 
@@ -219,60 +226,70 @@ export function QuickTasksPopoverPanel({
     }
   }
 
+  // Delete Task (Owners can delete personal tasks; Admin can delete assigned tasks)
+  const handleDeleteTask = async (task: QuickTask) => {
+    setTasks((prev) => prev.filter((t) => t.id !== task.id))
+    try {
+      const res = await deleteQuickTaskAction(task.id)
+      if (res.success) {
+        toast.success('Task deleted')
+        window.dispatchEvent(new CustomEvent('erp-quick-tasks-update'))
+        window.dispatchEvent(new CustomEvent('erp-notification-update'))
+      } else {
+        toast.error(res.error || 'Failed to delete task')
+        loadTasks()
+      }
+    } catch {
+      toast.error('Error deleting task')
+      loadTasks()
+    }
+  }
+
   // Handle Save Inline Quick Task
   const handleSaveInlineTask = async () => {
-    const trimmedTitle = inlineTitle.trim()
-    if (!trimmedTitle) {
-      toast.error('Task title is required')
-      return
-    }
-
-    if (inlineAssignees.length === 0) {
-      toast.error('Please assign at least one member')
+    const trimmed = inlineDescription.trim()
+    if (!trimmed) {
+      toast.error('Task description is required')
       return
     }
 
     setIsSubmittingInline(true)
     try {
       const res = await createQuickTasksAction({
-        title: trimmedTitle,
-        description: inlineDescription.trim() || undefined,
-        assigned_to: inlineAssignees,
-        priority: inlinePriority,
-        due_date: inlineDueDate || undefined,
+        description: trimmed,
+        assigned_to: isAdmin ? inlineAssignees : [],
       })
 
       if (res.success && res.data) {
+        const isPersonal = inlineAssignees.length === 0 || (inlineAssignees.length === 1 && inlineAssignees[0] === user.id)
         toast.success(
-          inlineAssignees.length > 1
+          isPersonal
+            ? 'Personal task created'
+            : inlineAssignees.length > 1
             ? `Assigned task to ${inlineAssignees.length} members`
             : 'Task assigned successfully'
         )
 
-        // Broadcast notifications
+        // Optimistically add to top of tasks
+        setTasks((prev) => [...res.data!, ...prev])
+        setInlineDescription('')
+        setInlineAssignees([])
+        setIsCreatingInline(false)
+
+        window.dispatchEvent(new CustomEvent('erp-quick-tasks-update'))
+        window.dispatchEvent(new CustomEvent('erp-notification-update'))
         try {
           const bc = new BroadcastChannel('erp-notifications-channel')
           bc.postMessage({ type: 'QUICK_TASK_CREATED' })
           bc.close()
         } catch {}
-        window.dispatchEvent(new CustomEvent('erp-quick-tasks-update'))
-        window.dispatchEvent(new CustomEvent('erp-notification-update'))
 
-        // Update list & reset inline editor
-        setTasks((prev) => [...res.data!, ...prev])
-        setActiveTab('Pending')
-
-        setInlineTitle('')
-        setInlineDescription('')
-        setInlineAssignees([])
-        setInlinePriority('Medium')
-        setInlineDueDate('')
-        setIsCreatingInline(false)
+        loadTasks()
       } else {
-        toast.error(res.error || 'Failed to assign task')
+        toast.error(res.error || 'Failed to create task')
       }
     } catch {
-      toast.error('Error assigning task')
+      toast.error('Error creating task')
     } finally {
       setIsSubmittingInline(false)
     }
@@ -280,11 +297,8 @@ export function QuickTasksPopoverPanel({
 
   // Handle Cancel Inline Quick Task
   const handleCancelInline = () => {
-    setInlineTitle('')
     setInlineDescription('')
     setInlineAssignees([])
-    setInlinePriority('Medium')
-    setInlineDueDate('')
     setIsCreatingInline(false)
   }
 
@@ -316,8 +330,12 @@ export function QuickTasksPopoverPanel({
     }
 
     // Assignee filter (Admin)
-    if (isAdmin && selectedAssigneeId !== 'ALL') {
-      result = result.filter((t) => t.assigned_to === selectedAssigneeId)
+    if (isAdmin) {
+      if (selectedAssigneeId === 'PERSONAL') {
+        result = result.filter((t) => Boolean(t.is_personal || t.assigned_by === t.assigned_to) && t.assigned_to === user.id)
+      } else if (selectedAssigneeId !== 'ALL') {
+        result = result.filter((t) => t.assigned_to === selectedAssigneeId && !t.is_personal)
+      }
     }
 
     // Search query
@@ -328,13 +346,12 @@ export function QuickTasksPopoverPanel({
           t.title.toLowerCase().includes(q) ||
           (t.description && t.description.toLowerCase().includes(q)) ||
           (t.assigned_to_name && t.assigned_to_name.toLowerCase().includes(q)) ||
-          (t.assigned_by_name && t.assigned_by_name.toLowerCase().includes(q)) ||
-          t.priority.toLowerCase().includes(q)
+          (t.assigned_by_name && t.assigned_by_name.toLowerCase().includes(q))
       )
     }
 
     return result
-  }, [tasks, activeTab, selectedAssigneeId, isAdmin, searchQuery])
+  }, [tasks, activeTab, selectedAssigneeId, isAdmin, searchQuery, user.id])
 
   return (
     <>
@@ -385,7 +402,7 @@ export function QuickTasksPopoverPanel({
                 >
                   <Filter className="w-4 h-4" />
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 text-xs max-h-64 overflow-y-auto z-[120]">
+                <DropdownMenuContent align="end" className="w-52 text-xs max-h-64 overflow-y-auto z-[120]">
                   <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
                     Filter by Assignee
                   </DropdownMenuLabel>
@@ -394,8 +411,21 @@ export function QuickTasksPopoverPanel({
                     onClick={() => setSelectedAssigneeId('ALL')}
                     className={`cursor-pointer ${selectedAssigneeId === 'ALL' ? 'font-semibold bg-muted' : ''}`}
                   >
-                    <span>All Assignees</span>
+                    <span>All Tasks</span>
                   </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => setSelectedAssigneeId('PERSONAL')}
+                    className={`cursor-pointer ${selectedAssigneeId === 'PERSONAL' ? 'font-semibold bg-muted' : ''}`}
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <User className="w-3 h-3" />
+                      <span>My Personal Tasks</span>
+                    </span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuLabel className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Assigned to Employee
+                  </DropdownMenuLabel>
                   {assignableEmployees.map((emp) => (
                     <DropdownMenuItem
                       key={emp.id}
@@ -446,7 +476,7 @@ export function QuickTasksPopoverPanel({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search tasks by title, description, or person..."
+                placeholder="Search tasks by description or person..."
                 className="w-full pl-8 pr-7 py-1.5 text-xs bg-background border border-border/60 rounded-lg outline-none focus:border-foreground/40 transition-colors text-foreground placeholder:text-muted-foreground"
               />
               {searchQuery && (
@@ -462,9 +492,9 @@ export function QuickTasksPopoverPanel({
           </div>
         )}
 
-        {/* Action Bar: Filter Tabs & Admin "+ Assign Task" inline toggle */}
+        {/* Action Bar: Filter Tabs & "+ New Task" inline toggle */}
         <div className="px-3 py-2 border-b border-border/40 bg-muted/10 flex items-center justify-between gap-2 shrink-0">
-          {/* Tabs */}
+          {/* Tabs for Everyone: Pending, Completed, All */}
           <div className="flex items-center gap-1">
             <button
               type="button"
@@ -488,37 +518,33 @@ export function QuickTasksPopoverPanel({
             >
               Completed ({completedCount})
             </button>
-            {isAdmin && (
-              <button
-                type="button"
-                onClick={() => setActiveTab('All')}
-                className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
-                  activeTab === 'All'
-                    ? 'bg-foreground text-background font-semibold shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                }`}
-              >
-                All ({tasks.length})
-              </button>
-            )}
-          </div>
-
-          {/* Admin "+ Assign Task" Inline Toggle Button */}
-          {isAdmin && (
-            <Button
+            <button
               type="button"
-              size="sm"
-              onClick={() => setIsCreatingInline((prev) => !prev)}
-              className={`h-7 px-2.5 text-xs rounded-lg font-medium cursor-pointer gap-1 shrink-0 transition-all ${
-                isCreatingInline
-                  ? 'bg-muted text-foreground hover:bg-muted/80'
-                  : 'bg-foreground text-background hover:bg-foreground/90 shadow-xs'
+              onClick={() => setActiveTab('All')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-lg transition-colors cursor-pointer ${
+                activeTab === 'All'
+                  ? 'bg-foreground text-background font-semibold shadow-xs'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
               }`}
             >
-              <Plus className={`w-3.5 h-3.5 transition-transform duration-200 ${isCreatingInline ? 'rotate-45' : ''}`} />
-              <span>{isCreatingInline ? 'Cancel' : 'Assign Task'}</span>
-            </Button>
-          )}
+              All ({tasks.length})
+            </button>
+          </div>
+
+          {/* "+ New Task" Inline Toggle Button for ALL users */}
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setIsCreatingInline((prev) => !prev)}
+            className={`h-7 px-2.5 text-xs rounded-lg font-medium cursor-pointer gap-1 shrink-0 transition-all ${
+              isCreatingInline
+                ? 'bg-muted text-foreground hover:bg-muted/80'
+                : 'bg-foreground text-background hover:bg-foreground/90 shadow-xs'
+            }`}
+          >
+            <Plus className={`w-3.5 h-3.5 transition-transform duration-200 ${isCreatingInline ? 'rotate-45' : ''}`} />
+            <span>{isCreatingInline ? 'Cancel' : 'New Task'}</span>
+          </Button>
         </div>
 
         {/* Active Filter indicator if Admin filtered by specific assignee */}
@@ -527,7 +553,9 @@ export function QuickTasksPopoverPanel({
             <span>
               Filtered to:{' '}
               <strong className="text-foreground">
-                {assignableEmployees.find((u) => u.id === selectedAssigneeId)?.name || 'Assignee'}
+                {selectedAssigneeId === 'PERSONAL'
+                  ? 'My Personal Tasks'
+                  : assignableEmployees.find((u) => u.id === selectedAssigneeId)?.name || 'Assignee'}
               </strong>
             </span>
             <button
@@ -543,7 +571,7 @@ export function QuickTasksPopoverPanel({
         {/* Scrollable Container (Inline Creator + Task List) */}
         <div className="flex-1 overflow-y-auto p-3 space-y-2.5">
           {/* Inline Creation Card (Inside the Popover window) */}
-          {isAdmin && isCreatingInline && (
+          {isCreatingInline && (
             <div className="p-3 bg-card border border-border/90 rounded-xl shadow-md space-y-2.5 animate-in fade-in-50 zoom-in-98 duration-150 mb-2">
               {/* Header */}
               <div className="flex items-center justify-between pb-1.5 border-b border-border/40">
@@ -551,7 +579,7 @@ export function QuickTasksPopoverPanel({
                   <span className="p-0.5 rounded bg-foreground text-background">
                     <Plus className="w-3 h-3" />
                   </span>
-                  <span>Assign Quick Task</span>
+                  <span>{isAdmin && inlineAssignees.length > 0 ? 'Assign Quick Task' : 'New Task'}</span>
                 </div>
                 <button
                   type="button"
@@ -563,17 +591,18 @@ export function QuickTasksPopoverPanel({
                 </button>
               </div>
 
-              {/* Title input */}
+              {/* Task Description multiline textarea */}
               <div className="space-y-1">
-                <input
-                  ref={inlineTitleRef}
-                  type="text"
-                  value={inlineTitle}
-                  onChange={(e) => setInlineTitle(e.target.value)}
-                  placeholder="Task title (required)..."
-                  className="w-full text-xs font-semibold bg-background border border-border/70 rounded-lg px-2.5 py-1.5 outline-none focus:border-foreground/50 transition-colors text-foreground placeholder:text-muted-foreground/60"
+                <textarea
+                  ref={inlineDescriptionRef}
+                  value={inlineDescription}
+                  onChange={(e) => setInlineDescription(e.target.value)}
+                  placeholder="Task description or notes..."
+                  rows={3}
+                  className="w-full text-xs bg-background border border-border/70 rounded-lg px-2.5 py-1.5 outline-none focus:border-foreground/50 transition-colors resize-none text-foreground placeholder:text-muted-foreground/60 leading-relaxed"
+                  autoFocus
                   onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey && inlineTitle.trim() && inlineAssignees.length > 0) {
+                    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
                       e.preventDefault()
                       handleSaveInlineTask()
                     }
@@ -581,70 +610,24 @@ export function QuickTasksPopoverPanel({
                 />
               </div>
 
-              {/* Description input */}
-              <div className="space-y-1">
-                <textarea
-                  value={inlineDescription}
-                  onChange={(e) => setInlineDescription(e.target.value)}
-                  placeholder="Description or notes (optional)..."
-                  rows={2}
-                  className="w-full text-xs bg-background border border-border/70 rounded-lg px-2.5 py-1.5 outline-none focus:border-foreground/50 transition-colors resize-none text-foreground placeholder:text-muted-foreground/60 leading-relaxed"
-                />
-              </div>
-
-              {/* Reusable Assignee Selector (Shared with Create Task form) */}
-              <TaskAssigneeSelector
-                employees={assignableEmployees}
-                selectedAssignees={inlineAssignees}
-                onChange={setInlineAssignees}
-                compact
-                label="Assign To"
-                popoverAlign="start"
-              />
-
-              {/* Priority & Due Date Row */}
-              <div className="grid grid-cols-2 gap-2 pt-0.5">
-                {/* Priority Pills */}
+              {/* Reusable Assignee Selector (Admin only) */}
+              {isAdmin && (
                 <div className="space-y-1">
-                  <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                    Priority
-                  </label>
-                  <div className="grid grid-cols-3 gap-0.5 bg-muted/40 p-0.5 rounded-lg border border-border/60">
-                    {(['Low', 'Medium', 'High'] as QuickTaskPriority[]).map((p) => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setInlinePriority(p)}
-                        className={`py-0.5 text-center text-[10px] font-medium rounded transition-all cursor-pointer ${
-                          inlinePriority === p
-                            ? 'bg-foreground text-background shadow-xs font-semibold'
-                            : 'text-muted-foreground hover:text-foreground'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Due Date */}
-                <div className="space-y-1">
-                  <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                    <Calendar className="w-2.5 h-2.5" />
-                    <span>Due Date</span>
-                  </label>
-                  <DatePicker
-                    value={inlineDueDate}
-                    onChange={(date) => setInlineDueDate(date)}
-                    placeholder="Select due date"
-                    className="h-7 text-[11px] bg-background border-border/70 rounded-lg px-2 py-1"
-                    popoverAlign="end"
-                    isClearable
+                  <TaskAssigneeSelector
+                    employees={assignableEmployees}
+                    selectedAssignees={inlineAssignees}
+                    onChange={setInlineAssignees}
+                    compact
+                    label="Assign To"
+                    popoverAlign="start"
                   />
+                  <p className="text-[10px] text-muted-foreground/70">
+                    Leave empty to save as your own personal task.
+                  </p>
                 </div>
-              </div>
+              )}
 
-              {/* Action Buttons: Cancel and Assign Task */}
+              {/* Action Buttons: Cancel and Save Task */}
               <div className="flex items-center justify-end gap-2 pt-1 border-t border-border/40">
                 <button
                   type="button"
@@ -657,93 +640,105 @@ export function QuickTasksPopoverPanel({
                 <Button
                   type="button"
                   size="sm"
-                  disabled={isSubmittingInline || !inlineTitle.trim() || inlineAssignees.length === 0}
+                  disabled={isSubmittingInline || !inlineDescription.trim()}
                   onClick={handleSaveInlineTask}
                   className="h-7 px-3 text-xs font-medium rounded-lg bg-foreground text-background hover:bg-foreground/90 cursor-pointer gap-1.5 shadow-xs"
                 >
                   {isSubmittingInline ? (
                     <>
                       <Loader2 className="w-3 h-3 animate-spin" />
-                      <span>Assigning...</span>
+                      <span>Saving...</span>
                     </>
                   ) : (
-                    <>
-                      <Check className="w-3 h-3" />
-                      <span>
-                        Assign Task{inlineAssignees.length > 1 ? ` (${inlineAssignees.length})` : ''}
-                      </span>
-                    </>
+                    <span>{isAdmin && inlineAssignees.length > 0 ? 'Assign Task' : 'Save Task'}</span>
                   )}
                 </Button>
               </div>
             </div>
           )}
 
-          {/* Task List Content */}
+          {/* Task List or Empty / Loading State */}
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-48 text-muted-foreground gap-2">
-              <Loader2 className="w-5 h-5 animate-spin" />
+            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <Loader2 className="w-5 h-5 animate-spin mb-2" />
               <span className="text-xs">Loading tasks...</span>
             </div>
           ) : displayedTasks.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-52 text-center p-4">
-              <div className="w-10 h-10 rounded-full bg-muted/50 border border-border flex items-center justify-center text-muted-foreground mb-2">
-                <CheckSquare className="w-5 h-5" />
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+              <div className="w-12 h-12 rounded-full bg-muted/60 flex items-center justify-center mb-3">
+                <CheckSquare className="w-5 h-5 text-muted-foreground/70" />
               </div>
-              <p className="text-xs font-semibold text-foreground">
+              <p className="text-sm font-semibold text-foreground">No tasks found</p>
+              <p className="text-xs text-muted-foreground mt-1 max-w-[260px]">
                 {searchQuery
-                  ? 'No matching tasks'
+                  ? 'No tasks match your search query.'
                   : activeTab === 'Pending'
-                  ? 'No pending quick tasks'
-                  : 'No completed tasks'}
+                  ? 'You have no pending tasks right now.'
+                  : activeTab === 'Completed'
+                  ? 'No tasks have been marked completed yet.'
+                  : 'No tasks have been created yet.'}
               </p>
-              <p className="text-[11px] text-muted-foreground max-w-[240px] mt-0.5">
-                {searchQuery
-                  ? 'Try adjusting your search query or filters'
-                  : activeTab === 'Pending'
-                  ? 'You are all caught up! New casual tasks assigned by Admin will appear here.'
-                  : 'Tasks you mark completed will be kept here.'}
-              </p>
-              {isAdmin && activeTab === 'Pending' && !searchQuery && !isCreatingInline && (
+              {!isCreatingInline && (
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   onClick={() => setIsCreatingInline(true)}
-                  className="mt-3 text-xs h-7 rounded-lg gap-1 border-border cursor-pointer hover:bg-muted"
+                  className="mt-4 text-xs h-8 gap-1.5 rounded-lg border-border cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  <span>Assign a Task</span>
+                  <span>Create Quick Task</span>
                 </Button>
               )}
             </div>
           ) : (
-            displayedTasks.map((task) => (
-              <QuickTaskCard
-                key={task.id}
-                task={task}
-                currentUserId={user.id}
-                currentUserRole={user.role}
-                onToggleComplete={handleToggleComplete}
-                onEditTask={isAdmin ? (t) => setEditingTask(t) : undefined}
-                onCancelTask={isAdmin ? handleCancelTask : undefined}
-                isCompact
-              />
-            ))
+            <div className="space-y-2">
+              {displayedTasks.map((task) => (
+                <QuickTaskCard
+                  key={task.id}
+                  task={task}
+                  currentUserId={user.id}
+                  currentUserRole={user.role}
+                  onToggleComplete={handleToggleComplete}
+                  onEditTask={(t) => setEditingTask(t)}
+                  onDeleteTask={handleDeleteTask}
+                  onCancelTask={handleCancelTask}
+                  isCompact
+                />
+              ))}
+            </div>
           )}
+        </div>
+
+        {/* Footer info */}
+        <div className="px-4 py-2 border-t border-border/40 bg-muted/20 flex items-center justify-between text-[11px] text-muted-foreground shrink-0">
+          <span>{tasks.length} total tasks</span>
+          <button
+            type="button"
+            onClick={handleOpenFullPage}
+            className="hover:text-foreground hover:underline cursor-pointer flex items-center gap-1"
+          >
+            <span>View all</span>
+            <ExternalLink className="w-3 h-3" />
+          </button>
         </div>
       </div>
 
-      {/* Admin Edit Task Modal */}
-      {isAdmin && editingTask && (
+      {/* Edit Task Modal */}
+      {editingTask && (
         <QuickTaskEditModal
           task={editingTask}
-          isOpen={!!editingTask}
+          isOpen={Boolean(editingTask)}
           onClose={() => setEditingTask(null)}
           onTaskUpdated={(updated) => {
             setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
             setEditingTask(null)
           }}
+          onTaskDeleted={(deletedId) => {
+            setTasks((prev) => prev.filter((t) => t.id !== deletedId))
+            setEditingTask(null)
+          }}
+          currentUserId={user.id}
         />
       )}
     </>

@@ -56,6 +56,11 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
+  // Deactivated account → revoke ERP access and redirect
+  if (user.app_metadata?.deactivated || user.banned_until) {
+    return NextResponse.redirect(new URL('/access-disabled', request.url))
+  }
+
   // For root path, let the page handle redirect
   if (pathname === '/') {
     return response

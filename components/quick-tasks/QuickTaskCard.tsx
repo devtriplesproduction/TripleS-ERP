@@ -3,16 +3,13 @@
 import React, { useState } from 'react'
 import {
   Check,
-  Calendar,
   User,
+  Users,
   Clock,
   MoreVertical,
   Pencil,
+  Trash2,
   Ban,
-  CheckCircle2,
-  Circle,
-  AlertCircle,
-  ShieldCheck,
 } from 'lucide-react'
 import {
   DropdownMenu,
@@ -32,6 +29,7 @@ interface QuickTaskCardProps {
   currentUserRole: string
   onToggleComplete: (task: QuickTask) => void
   onEditTask?: (task: QuickTask) => void
+  onDeleteTask?: (task: QuickTask) => void
   onCancelTask?: (task: QuickTask) => void
   isCompact?: boolean
 }
@@ -42,6 +40,7 @@ export function QuickTaskCard({
   currentUserRole,
   onToggleComplete,
   onEditTask,
+  onDeleteTask,
   onCancelTask,
   isCompact = false,
 }: QuickTaskCardProps) {
@@ -50,9 +49,19 @@ export function QuickTaskCard({
   const isCompleted = task.status === 'Completed'
   const isCancelled = task.status === 'Cancelled'
   const isAdmin = currentUserRole === 'Admin'
-  const isAssignedToMe = task.assigned_to === currentUserId
-  // Allowed to complete if assigned to me or if Admin
-  const canComplete = (isAssignedToMe || isAdmin) && !isCancelled
+
+  const isPersonal = Boolean(task.is_personal || task.assigned_by === task.assigned_to)
+  const isOwner = task.assigned_to === currentUserId
+
+  // Permission rules:
+  // - Owners can complete their own tasks (personal or assigned)
+  // - Admin can complete assigned tasks (but not others' personal tasks)
+  const canComplete = (isOwner || (isAdmin && !isPersonal)) && !isCancelled
+
+  // - Owners can edit/delete their own personal tasks
+  // - Admin can edit/delete assigned tasks or admin's own tasks
+  const canEdit = isPersonal ? isOwner : isAdmin
+  const canDelete = isPersonal ? isOwner : isAdmin
 
   const handleToggle = async (e: React.MouseEvent) => {
     e.stopPropagation()
@@ -65,12 +74,8 @@ export function QuickTaskCard({
     }
   }
 
-  // Format due date & check overdue
-  const isOverdue =
-    task.due_date &&
-    !isCompleted &&
-    !isCancelled &&
-    dayjs(task.due_date).isBefore(dayjs(), 'day')
+  // Display text: either description or title
+  const displayText = task.description || task.title || 'Untitled task'
 
   return (
     <div
@@ -80,7 +85,7 @@ export function QuickTaskCard({
           : isCancelled
           ? 'bg-muted/10 border-border/30 opacity-60'
           : 'bg-card border-border/70 hover:border-foreground/30 hover:shadow-xs'
-      } ${isCompact ? 'p-3' : 'p-4'}`}
+      } ${isCompact ? 'p-3' : 'p-3.5'}`}
     >
       <div className="flex items-start gap-3">
         {/* Checkbox / Toggle Complete button */}
@@ -90,13 +95,13 @@ export function QuickTaskCard({
           disabled={!canComplete || isUpdating}
           title={
             !canComplete
-              ? 'Only assigned user can mark this completed'
+              ? 'Only assigned user or owner can mark this completed'
               : isCompleted
               ? 'Mark as pending'
               : 'Mark as completed'
           }
           className={`shrink-0 mt-0.5 rounded-lg flex items-center justify-center transition-all ${
-            isCompact ? 'w-5 h-5' : 'w-6 h-6'
+            isCompact ? 'w-5 h-5' : 'w-5.5 h-5.5'
           } ${
             isCompleted
               ? 'bg-foreground text-background cursor-pointer'
@@ -105,15 +110,15 @@ export function QuickTaskCard({
               : 'border-2 border-muted/60 opacity-40 cursor-not-allowed text-transparent'
           }`}
         >
-          <Check className={`${isCompact ? 'w-3.5 h-3.5' : 'w-4 h-4'} ${isCompleted ? 'stroke-[3]' : ''}`} />
+          <Check className={`${isCompact ? 'w-3.5 h-3.5' : 'w-3.5 h-3.5'} ${isCompleted ? 'stroke-[3]' : ''}`} />
         </button>
 
         {/* Task Details */}
         <div className="flex-1 min-w-0">
-          {/* Header Row: Title & Priority & Actions */}
+          {/* Header Row: Content & Badges & Actions */}
           <div className="flex items-start justify-between gap-2">
-            <h4
-              className={`text-xs sm:text-sm font-semibold tracking-tight break-words ${
+            <p
+              className={`text-xs sm:text-sm font-medium tracking-tight break-words leading-snug whitespace-pre-wrap ${
                 isCompleted
                   ? 'line-through text-muted-foreground'
                   : isCancelled
@@ -121,32 +126,32 @@ export function QuickTaskCard({
                   : 'text-foreground'
               }`}
             >
-              {task.title}
-            </h4>
+              {displayText}
+            </p>
 
-            <div className="flex items-center gap-1.5 shrink-0">
-              {/* Priority badge */}
-              <span
-                className={`text-[10px] uppercase font-semibold tracking-wider px-1.5 py-0.5 rounded border leading-none ${
-                  task.priority === 'High'
-                    ? 'border-foreground/40 bg-foreground/10 text-foreground'
-                    : task.priority === 'Medium'
-                    ? 'border-border bg-muted/60 text-muted-foreground'
-                    : 'border-border/60 bg-muted/30 text-muted-foreground/80'
-                }`}
-              >
-                {task.priority}
-              </span>
+            <div className="flex items-center gap-1.5 shrink-0 ml-1">
+              {/* Personal vs Assigned badge */}
+              {isPersonal ? (
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border border-border/70 bg-muted/60 text-muted-foreground flex items-center gap-1 leading-none shrink-0">
+                  <User className="w-2.5 h-2.5" />
+                  Personal
+                </span>
+              ) : (
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border border-border/60 bg-muted/40 text-muted-foreground flex items-center gap-1 leading-none shrink-0">
+                  <Users className="w-2.5 h-2.5" />
+                  Assigned
+                </span>
+              )}
 
-              {/* Status badge if Cancelled or Completed */}
+              {/* Status badge if Cancelled */}
               {isCancelled && (
                 <span className="text-[10px] font-medium px-1.5 py-0.5 rounded border border-destructive/30 bg-destructive/10 text-destructive leading-none">
                   Cancelled
                 </span>
               )}
 
-              {/* Admin Menu */}
-              {isAdmin && !isCancelled && (
+              {/* Options Menu (Edit / Delete / Cancel) */}
+              {(canEdit || canDelete) && !isCancelled && (
                 <DropdownMenu>
                   <DropdownMenuTrigger
                     className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors outline-none cursor-pointer"
@@ -155,7 +160,7 @@ export function QuickTaskCard({
                     <MoreVertical className="w-3.5 h-3.5" />
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-36 text-xs">
-                    {onEditTask && (
+                    {onEditTask && canEdit && (
                       <DropdownMenuItem
                         onClick={() => onEditTask(task)}
                         className="cursor-pointer gap-2"
@@ -164,7 +169,7 @@ export function QuickTaskCard({
                         <span>Edit Task</span>
                       </DropdownMenuItem>
                     )}
-                    {onCancelTask && !isCompleted && (
+                    {isAdmin && !isPersonal && onCancelTask && !isCompleted && (
                       <DropdownMenuItem
                         onClick={() => onCancelTask(task)}
                         className="cursor-pointer gap-2 text-destructive focus:text-destructive"
@@ -173,67 +178,58 @@ export function QuickTaskCard({
                         <span>Cancel Task</span>
                       </DropdownMenuItem>
                     )}
+                    {onDeleteTask && canDelete && (
+                      <DropdownMenuItem
+                        onClick={() => onDeleteTask(task)}
+                        className="cursor-pointer gap-2 text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                        <span>Delete Task</span>
+                      </DropdownMenuItem>
+                    )}
                   </DropdownMenuContent>
                 </DropdownMenu>
               )}
             </div>
           </div>
 
-          {/* Description */}
-          {task.description && (
-            <p
-              className={`mt-1 text-xs text-muted-foreground whitespace-pre-wrap leading-relaxed ${
-                isCompleted ? 'opacity-70' : ''
-              }`}
-            >
-              {task.description}
-            </p>
-          )}
-
-          {/* Metadata Footer: Assignees, Due Date, Completed Timestamp */}
-          <div className="mt-2.5 pt-2 border-t border-border/40 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-muted-foreground">
-            {/* Assigned by */}
-            <div className="flex items-center gap-1">
-              <User className="w-3 h-3 text-muted-foreground/70" />
-              <span>By:</span>
-              <span className="font-medium text-foreground">
-                {task.assigned_by_name || 'Admin'}
-              </span>
-            </div>
-
-            {/* Assigned to (crucial for Admin view) */}
-            {isAdmin && task.assigned_to_name && (
-              <div className="flex items-center gap-1 border-l border-border/40 pl-2.5">
-                <span className="text-muted-foreground/80">To:</span>
-                <span className="font-medium text-foreground">
-                  {task.assigned_to_name}
-                </span>
-                {task.assigned_to_department && (
-                  <span className="text-[10px] text-muted-foreground/70">
-                    ({task.assigned_to_department})
+          {/* Metadata Footer: Personal or Assigned details & Completed Timestamp */}
+          <div className="mt-2 pt-2 border-t border-border/30 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-muted-foreground">
+            {isPersonal ? (
+              <div className="flex items-center gap-1 text-muted-foreground/80">
+                <User className="w-3 h-3 text-muted-foreground/60" />
+                <span>Personal task</span>
+              </div>
+            ) : (
+              <>
+                {/* Assigned by */}
+                <div className="flex items-center gap-1">
+                  <span className="text-muted-foreground/70">By:</span>
+                  <span className="font-medium text-foreground">
+                    {task.assigned_by_name || 'Admin'}
                   </span>
-                )}
-              </div>
-            )}
+                </div>
 
-            {/* Due Date */}
-            {task.due_date && (
-              <div
-                className={`flex items-center gap-1 border-l border-border/40 pl-2.5 ${
-                  isOverdue ? 'text-destructive font-medium' : ''
-                }`}
-              >
-                <Calendar className="w-3 h-3" />
-                <span>
-                  Due: {dayjs(task.due_date).format('MMM D, YYYY')}
-                  {isOverdue && ' (Overdue)'}
-                </span>
-              </div>
+                {/* Assigned to */}
+                {task.assigned_to_name && (
+                  <div className="flex items-center gap-1 border-l border-border/40 pl-2.5">
+                    <span className="text-muted-foreground/70">To:</span>
+                    <span className="font-medium text-foreground">
+                      {task.assigned_to_name}
+                    </span>
+                    {task.assigned_to_department && (
+                      <span className="text-[10px] text-muted-foreground/70">
+                        ({task.assigned_to_department})
+                      </span>
+                    )}
+                  </div>
+                )}
+              </>
             )}
 
             {/* Completed timestamp */}
             {isCompleted && task.completed_at && (
-              <div className="flex items-center gap-1 border-l border-border/40 pl-2.5 text-foreground/80 font-medium">
+              <div className="flex items-center gap-1 border-l border-border/40 pl-2.5 text-foreground/80 font-medium ml-auto">
                 <Clock className="w-3 h-3" />
                 <span>
                   Done {dayjs(task.completed_at).format('MMM D, h:mm A')}

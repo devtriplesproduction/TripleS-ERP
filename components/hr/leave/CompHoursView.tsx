@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dialog"
 import { Dropdown } from "@/components/ui/Dropdown"
 import { cn } from "@/lib/utils"
-import { formatHoursMinutes } from "@/lib/utils/time"
+import { formatHoursMinutes, formatKolkataDateTime, formatCanonicalDuration } from "@/lib/utils/time"
 import { format } from "date-fns"
 import {
   CompOffOverviewData,
@@ -484,96 +484,110 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
 
       {/* 4. Detailed Employee Ledger Modal */}
       <Dialog open={!!selectedEmployeeId} onOpenChange={(open) => !open && setSelectedEmployeeId(null)}>
-        <DialogContent className="w-[calc(100vw-1.5rem)] sm:max-w-2xl max-h-[85vh] overflow-y-auto bg-card border-border text-foreground p-5 sm:p-6 rounded-2xl shadow-xl">
-          <DialogHeader>
+        <DialogContent className="w-[calc(100vw-1.5rem)] sm:max-w-2xl max-h-[90dvh] flex flex-col overflow-hidden bg-card border-border text-foreground p-5 sm:p-6 rounded-2xl shadow-xl gap-0">
+          <DialogHeader className="shrink-0 pb-4 pr-8">
             <DialogTitle className="text-lg font-bold flex items-center gap-2">
               <Clock className="w-5 h-5 text-foreground" />
               <span>Comp-Off Ledger Details</span>
             </DialogTitle>
-            <DialogDescription className="text-xs text-muted-foreground">
+            <DialogDescription className="text-xs text-muted-foreground mt-1">
               Official audit ledger and historical records for this employee.
             </DialogDescription>
           </DialogHeader>
 
           {isDetailLoading ? (
-            <div className="flex flex-col items-center justify-center py-12 space-y-3">
+            <div className="flex-1 min-h-0 flex flex-col items-center justify-center py-12 space-y-3">
               <Loader2 className="w-7 h-7 animate-spin text-primary" />
               <p className="text-xs text-muted-foreground">Loading employee audit records...</p>
             </div>
           ) : detailData ? (
-            <div className="space-y-5 py-2">
-              {/* Employee Banner */}
-              <div className="p-4 rounded-xl bg-secondary/30 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <Avatar className="w-11 h-11 shrink-0 border border-border">
-                    <AvatarImage src={getProfilePhotoUrl(detailData.employee?.profile_photo) || ""} />
-                    <AvatarFallback className="text-sm font-semibold bg-secondary text-foreground">
-                      {detailData.employee?.first_name?.[0]}
-                      {detailData.employee?.last_name?.[0]}
-                    </AvatarFallback>
-                  </Avatar>
+            <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-hidden">
+              {/* Fixed Top Section: Employee Banner + Stats Bar */}
+              <div className="shrink-0 space-y-3">
+                {/* Employee Banner */}
+                <div className="p-4 rounded-xl bg-secondary/30 border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="w-11 h-11 shrink-0 border border-border">
+                      <AvatarImage src={getProfilePhotoUrl(detailData.employee?.profile_photo) || ""} />
+                      <AvatarFallback className="text-sm font-semibold bg-secondary text-foreground">
+                        {detailData.employee?.first_name?.[0]}
+                        {detailData.employee?.last_name?.[0]}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <h3 className="font-bold text-base text-foreground leading-tight">
+                        {detailData.employee?.first_name} {detailData.employee?.last_name}
+                      </h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {detailData.employee?.employee_id_number} • {detailData.employee?.department} •{" "}
+                        {detailData.employee?.job_title}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
+                    <div className="text-right sm:text-right">
+                      <div className="text-[10px] text-muted-foreground uppercase font-medium">Available</div>
+                      <div className="text-lg font-bold text-foreground leading-tight">
+                        {formatHoursMinutes(detailData.balance.availableHours)}
+                      </div>
+                      <div className="text-[11px] text-emerald-400 font-semibold">
+                        {detailData.balance.availableDays} full {detailData.balance.availableDays === 1 ? "day" : "days"}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Stats Bar */}
+                <div className="grid grid-cols-3 gap-2.5 p-3 rounded-xl bg-muted/30 border border-border/80 text-center text-xs">
                   <div>
-                    <h3 className="font-bold text-base text-foreground leading-tight">
-                      {detailData.employee?.first_name} {detailData.employee?.last_name}
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {detailData.employee?.employee_id_number} • {detailData.employee?.department} •{" "}
-                      {detailData.employee?.job_title}
-                    </p>
+                    <span className="text-[11px] text-muted-foreground block">Total Earned</span>
+                    <span className="text-sm font-bold text-emerald-400 mt-0.5 block">
+                      +{formatHoursMinutes(detailData.balance.earnedHours)}
+                    </span>
                   </div>
-                </div>
-
-                <div className="flex items-center gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50">
-                  <div className="text-right sm:text-right">
-                    <div className="text-[10px] text-muted-foreground uppercase font-medium">Available</div>
-                    <div className="text-lg font-bold text-foreground leading-tight">
-                      {formatHoursMinutes(detailData.balance.availableHours)}
-                    </div>
-                    <div className="text-[11px] text-emerald-400 font-semibold">
-                      {detailData.balance.availableDays} full {detailData.balance.availableDays === 1 ? "day" : "days"}
-                    </div>
+                  <div>
+                    <span className="text-[11px] text-muted-foreground block">Total Used</span>
+                    <span className="text-sm font-bold text-rose-400 mt-0.5 block">
+                      -{formatHoursMinutes(detailData.balance.usedHours)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[11px] text-muted-foreground block">Total Ledger Entries</span>
+                    <span className="text-sm font-bold text-foreground mt-0.5 block">
+                      {detailData.entries.length}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Stats Bar */}
-              <div className="grid grid-cols-3 gap-2.5 p-3 rounded-xl bg-muted/30 border border-border/80 text-center text-xs">
-                <div>
-                  <span className="text-[11px] text-muted-foreground block">Total Earned</span>
-                  <span className="text-sm font-bold text-emerald-400 mt-0.5 block">
-                    +{formatHoursMinutes(detailData.balance.earnedHours)}
-                  </span>
+              {/* Scrollable Section: Transaction Audit History */}
+              <div className="flex-1 min-h-0 flex flex-col pt-1">
+                <div className="shrink-0 pb-2">
+                  <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
+                    Transaction Audit History
+                  </h4>
                 </div>
-                <div>
-                  <span className="text-[11px] text-muted-foreground block">Total Used</span>
-                  <span className="text-sm font-bold text-rose-400 mt-0.5 block">
-                    -{formatHoursMinutes(detailData.balance.usedHours)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-[11px] text-muted-foreground block">Total Ledger Entries</span>
-                  <span className="text-sm font-bold text-foreground mt-0.5 block">
-                    {detailData.entries.length}
-                  </span>
-                </div>
-              </div>
-
-              {/* Ledger Entries List */}
-              <div className="space-y-2">
-                <h4 className="text-xs font-semibold text-foreground uppercase tracking-wider">
-                  Transaction Audit History
-                </h4>
 
                 {detailData.entries.length === 0 ? (
                   <div className="py-10 text-center text-muted-foreground border border-dashed border-border rounded-xl">
                     <p className="text-xs">No ledger activity recorded for this employee yet.</p>
                   </div>
                 ) : (
-                  <div className="space-y-2 max-h-[340px] overflow-y-auto pr-1">
+                  <div className="flex-1 min-h-0 overflow-y-auto pr-1.5 space-y-2">
                     {detailData.entries.map((entry: any) => {
                       const isCredit = entry.transaction_type === "CREDIT"
                       const isDebit = entry.transaction_type === "DEBIT"
                       const isReversal = entry.transaction_type === "REVERSAL"
+
+                      let displayDate = "Unavailable"
+                      if (isCredit) {
+                        displayDate = formatKolkataDateTime(entry.eod?.submitted_at)
+                      } else if (isDebit) {
+                        displayDate = formatKolkataDateTime(entry.leave?.created_at || entry.created_at)
+                      } else {
+                        displayDate = formatKolkataDateTime(entry.created_at)
+                      }
 
                       return (
                         <div
@@ -602,41 +616,44 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
                                 </span>
                               )}
 
-                              <span className="text-[11px] text-muted-foreground">
-                                {format(new Date(entry.created_at), "MMM d, yyyy h:mm a")}
+                              <span
+                                className="text-[11px] text-muted-foreground"
+                                title={entry.created_at ? `Audit recorded: ${formatKolkataDateTime(entry.created_at)}` : undefined}
+                              >
+                                {displayDate}
                               </span>
                             </div>
 
                             {/* Linked Context Details */}
-                            <div className="text-foreground/90 leading-relaxed pt-0.5">
+                            <div className="text-foreground/90 leading-relaxed pt-0.5 space-y-0.5">
                               {isCredit && entry.eod && (
-                                <span>
-                                  Earned via Approved EOD Report for{" "}
-                                  <strong>{entry.eod.report_date}</strong> (
-                                  {entry.eod.office_hours} worked hours).
-                                  {entry.eod.summary && (
-                                    <span className="block text-muted-foreground text-[11px] mt-0.5 line-clamp-1 italic">
-                                      &ldquo;{entry.eod.summary}&rdquo;
-                                    </span>
-                                  )}
-                                </span>
+                                <div>
+                                  <span>
+                                    Earned via Approved EOD Report for{" "}
+                                    <strong>{entry.eod.report_date}</strong> (
+                                    {formatCanonicalDuration(Number(entry.eod.office_hours))} worked hours).
+                                  </span>
+                                  <span className="block text-muted-foreground/80 text-[10px] mt-0.5 font-mono">
+                                    Source reference ID: {entry.reference_id}
+                                  </span>
+                                </div>
                               )}
 
                               {(isDebit || isReversal) && entry.leave && (
-                                <span>
-                                  {isDebit ? "Consumed for" : "Reversed for"} Comp-Off Leave from{" "}
-                                  <strong>{entry.leave.start_date}</strong> to{" "}
-                                  <strong>{entry.leave.end_date}</strong> ({entry.leave.status}).
-                                  {entry.leave.reason && (
-                                    <span className="block text-muted-foreground text-[11px] mt-0.5 line-clamp-1 italic">
-                                      Reason: {entry.leave.reason}
-                                    </span>
-                                  )}
-                                </span>
+                                <div>
+                                  <span>
+                                    {isDebit ? "Consumed for" : "Reversed for"} Comp-Off Leave from{" "}
+                                    <strong>{entry.leave.start_date}</strong> to{" "}
+                                    <strong>{entry.leave.end_date}</strong> ({entry.leave.status}).
+                                  </span>
+                                  <span className="block text-muted-foreground/80 text-[10px] mt-0.5 font-mono">
+                                    Source reference ID: {entry.reference_id}
+                                  </span>
+                                </div>
                               )}
 
                               {!entry.eod && !entry.leave && (
-                                <span className="text-muted-foreground">
+                                <span className="text-muted-foreground font-mono text-[11px]">
                                   Source reference ID: {entry.reference_id}
                                 </span>
                               )}

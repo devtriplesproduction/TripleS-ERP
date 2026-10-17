@@ -9,19 +9,23 @@ import {
   Megaphone,
   CheckCheck,
   CheckCircle2,
-  CheckSquare,
   ExternalLink,
   ChevronRight,
   Sparkles,
+  Trash2,
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
+import { toast } from 'sonner'
+import { broadcastNotificationUpdate } from '@/lib/notifications-client'
 import {
   getUserNotificationsAction,
   markNotificationAsReadAction,
   markAllNotificationsAsReadAction,
+  clearUserNotificationsAction,
   type ERPNotificationItem,
   type NotificationType,
 } from '@/actions/notifications.actions'
@@ -39,6 +43,8 @@ export function NotificationBell() {
   const [activeTab, setActiveTab] = useState<'all' | 'rulebook' | 'holiday' | 'announcement'>('all')
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<ERPNotificationItem | null>(null)
   const [isMarkingAll, setIsMarkingAll] = useState(false)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [isClearing, setIsClearing] = useState(false)
 
   // Track if component is mounted
   const isMountedRef = useRef(true)
@@ -85,13 +91,6 @@ export function NotificationBell() {
           loadNotifications()
         }
       )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'quick_tasks' },
-        () => {
-          loadNotifications()
-        }
-      )
       .subscribe()
 
     // 2. Cross-tab BroadcastChannel listener
@@ -110,7 +109,6 @@ export function NotificationBell() {
       loadNotifications()
     }
     window.addEventListener('erp-notification-update', handleCustomUpdate)
-    window.addEventListener('erp-quick-tasks-update', handleCustomUpdate)
 
     // 4. Fallback interval polling (every 30 seconds when tab is active)
     const interval = setInterval(() => {
@@ -124,7 +122,6 @@ export function NotificationBell() {
       supabase.removeChannel(channel)
       if (bc) bc.close()
       window.removeEventListener('erp-notification-update', handleCustomUpdate)
-      window.removeEventListener('erp-quick-tasks-update', handleCustomUpdate)
       clearInterval(interval)
     }
   }, [loadNotifications])
@@ -175,6 +172,32 @@ export function NotificationBell() {
     }
   }
 
+  // Handle Clear Notifications
+  const handleClearNotifications = async () => {
+    if (notifications.length === 0 || isClearing) return
+    setIsClearing(true)
+
+    try {
+      const res = await clearUserNotificationsAction()
+      if (!res.success) {
+        toast.error(res.error || 'Failed to clear notifications')
+        return
+      }
+
+      // Display success only after the server confirms the operation
+      setNotifications([])
+      setUnreadCount(0)
+      toast.success('Notifications cleared')
+      broadcastNotificationUpdate()
+      await loadNotifications()
+    } catch (err: any) {
+      console.error('Error clearing notifications:', err)
+      toast.error('Failed to clear notifications')
+    } finally {
+      setIsClearing(false)
+    }
+  }
+
   // Filter notifications based on tab
   const filteredNotifications = notifications.filter((n) => {
     if (activeTab === 'all') return true
@@ -195,12 +218,6 @@ export function NotificationBell() {
   // Icon and badge styling per type
   const getTypeConfig = (type: NotificationType) => {
     switch (type) {
-      case 'quick_task':
-        return {
-          icon: CheckSquare,
-          badgeColor: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
-          iconBg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
-        }
       case 'rulebook':
         return {
           icon: BookOpen,
@@ -377,17 +394,35 @@ export function NotificationBell() {
           </div>
 
           {/* Footer */}
-          <div className="border-t border-border p-2 bg-muted/20 flex items-center justify-between text-xs px-3">
-            <span className="text-[11px] text-muted-foreground">
-              {unreadCount > 0 ? `${unreadCount} unread` : 'All read'}
-            </span>
+          <div className="border-t border-border py-2 px-3 bg-muted/20 flex items-center justify-between text-xs gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-[11px] text-muted-foreground shrink-0">
+                {unreadCount > 0 ? `${unreadCount} unread` : 'All read'}
+              </span>
+              <span className="text-border/80 select-none text-[11px]">·</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsOpen(false)
+                  setShowClearConfirm(true)
+                }}
+                disabled={notifications.length === 0 || isClearing}
+                className="text-[11px] text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed font-medium flex items-center gap-1 transition-colors cursor-pointer shrink-0"
+                title={notifications.length === 0 ? 'No notifications to clear' : 'Clear all notifications'}
+                aria-label="Clear notifications"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Clear notifications</span>
+              </button>
+            </div>
+
             <button
               type="button"
               onClick={() => {
                 setIsOpen(false)
                 router.push('/announcements')
               }}
-              className="text-[11px] text-foreground font-medium hover:underline flex items-center gap-1"
+              className="text-[11px] text-foreground font-medium hover:underline flex items-center gap-1 shrink-0 cursor-pointer"
             >
               <span>All Announcements</span>
               <ExternalLink className="w-3 h-3" />
@@ -395,6 +430,30 @@ export function NotificationBell() {
           </div>
         </PopoverContent>
       </Popover>
+
+      {/* Clear Notifications Confirmation Modal */}
+      <ConfirmModal
+        open={showClearConfirm}
+        onOpenChange={(open) => {
+          setShowClearConfirm(open)
+          if (!open && !isClearing) {
+            setTimeout(() => {
+              if (isMountedRef.current) setIsOpen(true)
+            }, 100)
+          }
+        }}
+        title="Clear Notifications"
+        description="Are you sure you want to clear your notifications? This will remove all current notifications from your notification bell without affecting announcements or policies for other users. New notifications will still appear when published."
+        confirmText="Clear Notifications"
+        cancelText="Cancel"
+        variant="default"
+        onConfirm={async () => {
+          await handleClearNotifications()
+          setTimeout(() => {
+            if (isMountedRef.current) setIsOpen(true)
+          }, 100)
+        }}
+      />
 
       {/* Announcement Detail Modal */}
       <Dialog
@@ -451,3 +510,4 @@ export function NotificationBell() {
     </>
   )
 }
+

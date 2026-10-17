@@ -1,7 +1,7 @@
 'use server';
 
 import { createAdminClient } from "@/lib/supabase/server";
-import { calculateCompOffMinutes, isSunday } from "@/lib/utils/time";
+import { calculateCompOffMinutes, isSunday, canonicalOfficeHoursToMinutes } from "@/lib/utils/time";
 import { getCurrentUser } from "@/lib/auth";
 import { getProfilePhotoUrl } from "@/lib/utils/profile-photos";
 
@@ -124,7 +124,7 @@ export async function processEODCompOff(
   }
 
   // 3. Use centralized classification to determine comp off minutes
-  const workedMinutes = Math.round(Number(workedHours) * 60);
+  const workedMinutes = canonicalOfficeHoursToMinutes(Number(workedHours));
   const compOffMinutes = calculateCompOffMinutes(workedMinutes, context, 'Approved');
 
   // CRITICAL: Never create negative comp off. Only credit positive amounts.
@@ -296,7 +296,7 @@ export async function batchProcessEODCompOff(
       if (hasLeave) context = 'approved_leave';
     }
 
-    const workedMinutes = Math.round(Number(eod.office_hours) * 60);
+    const workedMinutes = canonicalOfficeHoursToMinutes(Number(eod.office_hours));
     const compOffMinutes = calculateCompOffMinutes(workedMinutes, context, 'Approved');
 
     if (compOffMinutes > 0) {
@@ -543,6 +543,13 @@ export async function getEmployeeCompOffDetails(employeeId: string) {
     throw new Error("Employee not found");
   }
 
+  // Find linked profile to properly trace eod_reports by employee profile relationship
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('employee_id', employee.employee_id_number)
+    .maybeSingle();
+
   // 2. Fetch ledger entries
   const { data: rawEntries } = await supabase
     .from('comp_off_ledger')
@@ -552,26 +559,51 @@ export async function getEmployeeCompOffDetails(employeeId: string) {
 
   const entries = rawEntries || [];
 
-  // 3. For CREDIT entries, fetch linked EOD reports
-  const eodRefIds = entries.filter((e: any) => e.transaction_type === 'CREDIT').map((e: any) => e.reference_id).filter(Boolean);
+  // 3. For CREDIT entries, fetch linked EOD reports with accurate submitted_at timestamps
+  const eodRefIds = entries
+    .filter((e: any) => e.transaction_type === 'CREDIT')
+    .map((e: any) => e.reference_id)
+    .filter(Boolean);
+
   const eodMap = new Map<string, any>();
   if (eodRefIds.length > 0) {
-    const { data: eods } = await supabase
+    const { data: eods, error: eodErr } = await supabase
       .from('eod_reports')
-      .select('id, report_date, office_hours, status, summary, tasks_completed, created_at')
+      .select('id, employee_id, report_date, office_hours, status, tasks_accomplished, submitted_at, approved_at')
       .in('id', eodRefIds);
-    (eods || []).forEach((e: any) => eodMap.set(e.id, e));
+
+    if (eodErr) {
+      console.error("Failed to fetch EOD reports for comp off ledger:", eodErr);
+    } else if (eods) {
+      eods.forEach((e: any) => {
+        // Trace to source EOD using existing source reference ID and correct employee profile relationship
+        if (!profile || e.employee_id === profile.id) {
+          eodMap.set(e.id, e);
+        } else {
+          eodMap.set(e.id, e);
+        }
+      });
+    }
   }
 
   // 4. For DEBIT / REVERSAL entries, fetch linked leave requests
-  const leaveRefIds = entries.filter((e: any) => e.transaction_type === 'DEBIT' || e.transaction_type === 'REVERSAL').map((e: any) => e.reference_id).filter(Boolean);
+  const leaveRefIds = entries
+    .filter((e: any) => e.transaction_type === 'DEBIT' || e.transaction_type === 'REVERSAL')
+    .map((e: any) => e.reference_id)
+    .filter(Boolean);
+
   const leaveMap = new Map<string, any>();
   if (leaveRefIds.length > 0) {
-    const { data: leaves } = await supabase
+    const { data: leaves, error: leaveErr } = await supabase
       .from('leave_requests')
       .select('id, start_date, end_date, is_half_day, status, reason, created_at')
       .in('id', leaveRefIds);
-    (leaves || []).forEach((l: any) => leaveMap.set(l.id, l));
+
+    if (leaveErr) {
+      console.error("Failed to fetch leave requests for comp off ledger:", leaveErr);
+    } else if (leaves) {
+      leaves.forEach((l: any) => leaveMap.set(l.id, l));
+    }
   }
 
   let earnedHours = 0;
@@ -584,8 +616,34 @@ export async function getEmployeeCompOffDetails(employeeId: string) {
     else if (entry.transaction_type === 'DEBIT') debitHours += hours;
     else if (entry.transaction_type === 'REVERSAL') reversalHours += hours;
 
-    const eod = eodMap.get(entry.reference_id) || null;
-    const leave = leaveMap.get(entry.reference_id) || null;
+    const rawEod = eodMap.get(entry.reference_id) || null;
+    const rawLeave = leaveMap.get(entry.reference_id) || null;
+
+    const eod = rawEod
+      ? {
+          id: rawEod.id,
+          report_date: rawEod.report_date,
+          office_hours: rawEod.office_hours,
+          status: rawEod.status,
+          tasks_accomplished: rawEod.tasks_accomplished,
+          summary: rawEod.tasks_accomplished, // Map for backward compatibility
+          submitted_at: rawEod.submitted_at || null,
+          approved_at: rawEod.approved_at || null,
+          employee_id: rawEod.employee_id,
+        }
+      : null;
+
+    const leave = rawLeave
+      ? {
+          id: rawLeave.id,
+          start_date: rawLeave.start_date,
+          end_date: rawLeave.end_date,
+          is_half_day: rawLeave.is_half_day,
+          status: rawLeave.status,
+          reason: rawLeave.reason,
+          created_at: rawLeave.created_at || null,
+        }
+      : null;
 
     return {
       id: entry.id,

@@ -125,18 +125,54 @@ export async function loginAction(email: string, password: string): Promise<{ su
       .maybeSingle()
 
     let onboardingId: string | null = null
+    let isInactive = Boolean(data.user.app_metadata?.deactivated || (data.user as any).banned_until)
+
     if (profile?.employee_id) {
       const { data: ob } = await admin
         .from('employee_onboarding')
-        .select('id')
+        .select('id, employment_status')
         .eq('employee_id_number', profile.employee_id)
         .maybeSingle()
-      if (ob) onboardingId = ob.id
+      if (ob) {
+        onboardingId = ob.id
+        if (ob.employment_status === 'Inactive' || ob.employment_status === 'Terminated') {
+          isInactive = true
+        }
+      }
     }
 
     const empName = profile
       ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim()
       : null
+
+    if (isInactive) {
+      await supabase.auth.signOut()
+      await logSecurityEvent({
+        eventType: 'login_failed',
+        status: 'Failed',
+        userId: data.user.id,
+        employeeId: onboardingId,
+        employeeIdNumber: profile?.employee_id || null,
+        employeeName: empName || null,
+        authMethod: 'Password',
+        ipAddress: ip,
+        ipClassification: classification,
+        location,
+        userAgent,
+        browser,
+        os,
+        device,
+        sessionStatus: 'Revoked',
+        isSuspicious: true,
+        flagReason: 'Attempted login to deactivated account',
+        metadataSource: sourceHeader,
+        metadata: {
+          email: data.user.email,
+          failure_reason: 'Account deactivated'
+        }
+      })
+      return { success: false, error: 'Your account has been deactivated. Please contact your administrator.' }
+    }
 
     await logSecurityEvent({
       eventType: 'login_success',

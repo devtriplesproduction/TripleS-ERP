@@ -34,6 +34,7 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
   const [departmentFilter, setDepartmentFilter] = useState('')
   const [jobTitleFilter, setJobTitleFilter] = useState('')
   const [joiningDateFilter, setJoiningDateFilter] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
 
@@ -47,12 +48,18 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
         emp.first_name?.toLowerCase().includes(query) ||
         emp.last_name?.toLowerCase().includes(query) ||
         emp.email?.toLowerCase().includes(query) ||
-        emp.department?.toLowerCase().includes(query)
+        emp.department?.toLowerCase().includes(query) ||
+        emp.employee_id_number?.toLowerCase().includes(query) ||
+        emp.employment_status?.toLowerCase().includes(query)
       if (!matchesSearch) return false
     }
     if (departmentFilter && emp.department !== departmentFilter) return false
     if (jobTitleFilter && emp.job_title !== jobTitleFilter) return false
     if (joiningDateFilter && emp.joining_date !== joiningDateFilter) return false
+    if (statusFilter && statusFilter !== 'ALL') {
+      const empStatus = emp.employment_status || 'Active'
+      if (empStatus.toLowerCase() !== statusFilter.toLowerCase()) return false
+    }
     return true
   })
 
@@ -121,18 +128,17 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
           />
           </div>
 
-          <Button 
-            variant="outline" 
-            className="w-full filter-control text-sm shrink-0 bg-secondary hover:bg-accent border-border text-muted-foreground hover:text-foreground"
-            onClick={() => {
-              setSearchQuery('')
-              setDepartmentFilter('')
-              setJobTitleFilter('')
-              setJoiningDateFilter('')
-            }}
-          >
-            Clear Filters
-          </Button>
+          <Select value={statusFilter} onValueChange={(val) => { setStatusFilter(val ?? ""); setCurrentPage(1); }}>
+            <SelectTrigger className="w-full filter-control bg-input/50 border-border text-sm shrink-0">
+              <SelectValue placeholder="All Statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="ALL">All Statuses</SelectItem>
+              <SelectItem value="Active">Active</SelectItem>
+              <SelectItem value="Inactive">Inactive</SelectItem>
+              <SelectItem value="Probation">Probation</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="lg:ml-auto w-full lg:w-auto flex justify-end">
@@ -150,6 +156,7 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
                 <TableHead className="text-muted-foreground font-medium">Department</TableHead>
                 <TableHead className="text-muted-foreground font-medium">Job Title</TableHead>
                 <TableHead className="text-muted-foreground font-medium">Joining Date ↕</TableHead>
+                <TableHead className="text-muted-foreground font-medium">Status</TableHead>
                 <TableHead className="text-right text-muted-foreground font-medium pr-6">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -203,6 +210,18 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
                     <TableCell className="text-sm text-foreground">{emp.job_title || 'Not Set'}</TableCell>
                     <TableCell className="text-sm text-foreground">
                       {new Date(emp.joining_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={cn(
+                        "text-[10px] px-2 py-0.5 h-5 font-semibold",
+                        (emp.employment_status === 'Inactive' || emp.employment_status === 'Terminated')
+                          ? "bg-rose-500/15 text-rose-400 border-rose-500/25"
+                          : emp.employment_status === 'Probation'
+                          ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
+                          : "bg-emerald-500/15 text-emerald-400 border-emerald-500/25"
+                      )}>
+                        {emp.employment_status || 'Active'}
+                      </Badge>
                     </TableCell>
                     <TableCell className="text-right pr-4">
                       <div className="flex items-center justify-end gap-2">
@@ -271,7 +290,19 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
                           </span>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground truncate">{emp.email}</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className="text-xs text-muted-foreground truncate">{emp.email}</p>
+                        <Badge className={cn(
+                          "text-[9px] px-1.5 py-0 h-4 font-semibold",
+                          (emp.employment_status === 'Inactive' || emp.employment_status === 'Terminated')
+                            ? "bg-rose-500/15 text-rose-400 border-rose-500/25"
+                            : emp.employment_status === 'Probation'
+                            ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
+                            : "bg-emerald-500/15 text-emerald-400 border-emerald-500/25"
+                        )}>
+                          {emp.employment_status || 'Active'}
+                        </Badge>
+                      </div>
                     </div>
                   </div>
                   <ConfirmModal

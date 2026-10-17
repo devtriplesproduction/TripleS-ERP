@@ -6,6 +6,7 @@ import { canManageTasks, canUpdateTaskStatus } from '@/lib/permissions/project-m
 import { Task, TaskStatus, TaskPriority, TaskComment, TaskChecklistItem } from '@/types/project-management'
 import { revalidatePath } from 'next/cache'
 import { attachProfilePhotos } from '@/lib/utils/profile-photos'
+import { validateActiveEmployees } from '@/lib/services/employee-eligibility'
 
 export interface ChecklistInputItem {
   id?: string
@@ -549,6 +550,19 @@ export async function createTaskAction(input: CreateTaskInput): Promise<{ succes
     }
 
     const admin = await createAdminClient()
+
+    // Server-side active employee validation for assignees
+    const uniqueAssignees = Array.from(new Set(input.assignees || []))
+    if (uniqueAssignees.length > 0) {
+      const validation = await validateActiveEmployees(uniqueAssignees, admin)
+      if (!validation.allActive) {
+        return {
+          success: false,
+          error: `Cannot assign task to inactive or deactivated employee(s): ${validation.inactiveNames.join(', ')}.`,
+        }
+      }
+    }
+
     const taskIdDisplay = await generateTaskId()
 
     const { data: inserted, error: insertErr } = await admin
@@ -576,7 +590,6 @@ export async function createTaskAction(input: CreateTaskInput): Promise<{ succes
     }
 
     // Insert assignees (de-duplicate IDs)
-    const uniqueAssignees = Array.from(new Set(input.assignees || []))
     if (uniqueAssignees.length > 0) {
       const assigneeRows = uniqueAssignees.map(uid => ({
         task_id: inserted.id,
@@ -804,6 +817,15 @@ export async function updateTaskAction(input: UpdateTaskInput): Promise<{ succes
     // Reassign members if assignees array provided
     if (input.assignees) {
       const uniqueAssignees = Array.from(new Set(input.assignees))
+      if (uniqueAssignees.length > 0) {
+        const validation = await validateActiveEmployees(uniqueAssignees, admin)
+        if (!validation.allActive) {
+          return {
+            success: false,
+            error: `Cannot assign task to inactive or deactivated employee(s): ${validation.inactiveNames.join(', ')}.`,
+          }
+        }
+      }
       await admin.from('task_assignees').delete().eq('task_id', input.id)
       if (uniqueAssignees.length > 0) {
         const rows = uniqueAssignees.map(uid => ({

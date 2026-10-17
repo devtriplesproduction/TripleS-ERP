@@ -6,6 +6,7 @@ import { canCreateProjects, canEditProject, canViewRestrictedClientInfo } from '
 import { Project, ProjectStatus, ProjectPriority, ProjectDashboardStats, ProjectTeamMemberStats, ProjectActivity } from '@/types/project-management'
 import { revalidatePath } from 'next/cache'
 import { attachProfilePhotos } from '@/lib/utils/profile-photos'
+import { validateActiveEmployees } from '@/lib/services/employee-eligibility'
 import { cache } from 'react'
 
 
@@ -724,6 +725,29 @@ export async function createProjectAction(input: CreateProjectInput): Promise<{ 
 
     const admin = await createAdminClient()
 
+    // Server-side active employee validation for Project Manager
+    if (input.project_manager_id) {
+      const pmValidation = await validateActiveEmployees([input.project_manager_id], admin)
+      if (!pmValidation.allActive) {
+        return {
+          success: false,
+          error: `Cannot assign inactive or deactivated employee as Project Manager (${pmValidation.inactiveNames.join(', ')}).`,
+        }
+      }
+    }
+
+    // Server-side active employee validation for Team Members
+    const teamMembers = Array.from(new Set(input.team_members || []))
+    if (teamMembers.length > 0) {
+      const membersValidation = await validateActiveEmployees(teamMembers, admin)
+      if (!membersValidation.allActive) {
+        return {
+          success: false,
+          error: `Cannot assign inactive or deactivated employee(s) to project team: ${membersValidation.inactiveNames.join(', ')}.`,
+        }
+      }
+    }
+
     // Verify existing client
     const { data: clientData, error: clientErr } = await admin
       .from('clients')
@@ -763,14 +787,14 @@ export async function createProjectAction(input: CreateProjectInput): Promise<{ 
     }
 
     // Insert team members if provided
-    const teamMembers = Array.from(new Set(input.team_members || []))
+    const finalTeamMembers = [...teamMembers]
     // Ensure project manager / creator is also recorded if needed
-    if (input.project_manager_id && !teamMembers.includes(input.project_manager_id)) {
-      teamMembers.push(input.project_manager_id)
+    if (input.project_manager_id && !finalTeamMembers.includes(input.project_manager_id)) {
+      finalTeamMembers.push(input.project_manager_id)
     }
 
-    if (teamMembers.length > 0) {
-      const memberRows = teamMembers.map(uid => ({
+    if (finalTeamMembers.length > 0) {
+      const memberRows = finalTeamMembers.map(uid => ({
         project_id: inserted.id,
         user_id: uid,
         role: uid === inserted.project_manager_id ? 'Project Manager' : 'Member',
@@ -813,6 +837,31 @@ export async function updateProjectAction(input: UpdateProjectInput): Promise<{ 
     }
 
     const admin = await createAdminClient()
+
+    // Server-side active employee validation for Project Manager
+    if (input.project_manager_id) {
+      const pmValidation = await validateActiveEmployees([input.project_manager_id], admin)
+      if (!pmValidation.allActive) {
+        return {
+          success: false,
+          error: `Cannot assign inactive or deactivated employee as Project Manager (${pmValidation.inactiveNames.join(', ')}).`,
+        }
+      }
+    }
+
+    // Server-side active employee validation for Team Members
+    if (input.team_members) {
+      const uniqueMembers = Array.from(new Set(input.team_members))
+      if (uniqueMembers.length > 0) {
+        const membersValidation = await validateActiveEmployees(uniqueMembers, admin)
+        if (!membersValidation.allActive) {
+          return {
+            success: false,
+            error: `Cannot assign inactive or deactivated employee(s) to project team: ${membersValidation.inactiveNames.join(', ')}.`,
+          }
+        }
+      }
+    }
 
     const updatePayload: Record<string, any> = {}
     if (input.name !== undefined) updatePayload.name = input.name.trim()

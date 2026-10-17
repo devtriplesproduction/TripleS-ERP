@@ -32,6 +32,11 @@ export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
 
   if (error || !user) return null
 
+  // Check if banned or deactivated in Supabase Auth app_metadata
+  if (user.app_metadata?.deactivated || (user as any).banned_until) {
+    return null
+  }
+
   const { data: profile, error: profileError } = await supabase
     .from('profiles')
     .select('role, employee_id, first_name, last_name, is_hod')
@@ -39,6 +44,11 @@ export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
     .single()
 
   if (!profile) return null
+
+  // Check profiles is_active if column populated
+  if ((profile as any).is_active === false) {
+    return null
+  }
 
   let is_hod = !!profile.is_hod
   let department: string | null = null
@@ -49,11 +59,15 @@ export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
   if (profile.employee_id) {
     const { data: emp } = await supabase
       .from('employee_onboarding')
-      .select('is_hod, department, designation, division, role')
+      .select('is_hod, department, designation, division, role, employment_status')
       .eq('employee_id_number', profile.employee_id)
       .maybeSingle()
 
     if (emp) {
+      // Inactive employees must not access ERP pages or server actions
+      if (emp.employment_status === 'Inactive' || emp.employment_status === 'Terminated') {
+        return null
+      }
       if (!is_hod) is_hod = !!emp.is_hod
       department = emp.department || null
       designation = emp.designation || null

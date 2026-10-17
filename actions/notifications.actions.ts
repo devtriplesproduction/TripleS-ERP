@@ -8,13 +8,13 @@ import dayjs from 'dayjs'
 import fs from 'fs'
 import path from 'path'
 
-export type NotificationType = 'rulebook' | 'holiday' | 'announcement' | 'quick_task'
+export type NotificationType = 'rulebook' | 'holiday' | 'announcement'
 
 export interface ERPNotificationItem {
   id: string
   rawId: string
   type: NotificationType
-  typeLabel: 'Rulebook Policy' | 'Holiday' | 'Announcement' | 'Quick Task'
+  typeLabel: 'Rulebook Policy' | 'Holiday' | 'Announcement'
   title: string
   description: string
   creatorName: string
@@ -42,6 +42,54 @@ const CACHE_TTL_MS = 10000
 // In-memory creator name cache
 const creatorNameCache = new Map<string, string>()
 
+export interface UserClearRecord {
+  cleared_at: string
+  cleared_ids: string[]
+  updated_at: string
+}
+
+// Fallback persistence file in case table migration is pending on remote Supabase
+const FALLBACK_STORE_PATH = path.join(process.cwd(), 'scratch', 'notification_clears_store.json')
+
+function ensureStoreDir(): void {
+  const dir = path.dirname(FALLBACK_STORE_PATH)
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true })
+  }
+}
+
+function readFallbackClears(userId: string): UserClearRecord | null {
+  try {
+    ensureStoreDir()
+    if (!fs.existsSync(FALLBACK_STORE_PATH)) {
+      return null
+    }
+    const raw = fs.readFileSync(FALLBACK_STORE_PATH, 'utf-8')
+    const all = JSON.parse(raw) as Record<string, UserClearRecord>
+    return all[userId] || null
+  } catch {
+    return null
+  }
+}
+
+function writeFallbackClear(userId: string, record: UserClearRecord): void {
+  try {
+    ensureStoreDir()
+    let all: Record<string, UserClearRecord> = {}
+    if (fs.existsSync(FALLBACK_STORE_PATH)) {
+      try {
+        all = JSON.parse(fs.readFileSync(FALLBACK_STORE_PATH, 'utf-8'))
+      } catch {
+        all = {}
+      }
+    }
+    all[userId] = record
+    fs.writeFileSync(FALLBACK_STORE_PATH, JSON.stringify(all, null, 2), 'utf-8')
+  } catch (err) {
+    console.error('[NotificationClears] Failed to write fallback store:', err)
+  }
+}
+
 export async function invalidateNotificationCache(userId?: string) {
   if (userId) {
     notificationCache.delete(userId)
@@ -66,17 +114,70 @@ export async function getUserNotificationsAction(): Promise<UserNotificationData
   const supabase = await createClient()
 
   // 3. Read cookie for persistent read states
-  const cookieStore = await cookies()
-  const readCookie = cookieStore.get(`notif_reads_${user.id}`)?.value
   let readIds: string[] = []
   let readAllBefore: number = 0
-  if (readCookie) {
+  let cookieStore: any = null
+  try {
+    cookieStore = await cookies()
+    const readCookie = cookieStore.get(`notif_reads_${user.id}`)?.value
+    if (readCookie) {
+      try {
+        const parsed = JSON.parse(readCookie)
+        readIds = Array.isArray(parsed.ids) ? parsed.ids : []
+        readAllBefore = typeof parsed.readAllBefore === 'number' ? parsed.readAllBefore : 0
+      } catch {
+        // Ignore parse failure
+      }
+    }
+  } catch {
+    // Non-request context
+  }
+
+  // 3b. Read user cleared notification state (DB + fallback store + cookie)
+  let userClearedAt: string | null = null
+  let userClearedIds: string[] = []
+
+  try {
+    const { data: clearData, error: clearErr } = await supabase
+      .from('user_notification_clears')
+      .select('cleared_at, cleared_ids')
+      .eq('user_id', user.id)
+      .maybeSingle()
+
+    if (!clearErr && clearData) {
+      userClearedAt = clearData.cleared_at
+      userClearedIds = Array.isArray(clearData.cleared_ids) ? clearData.cleared_ids : []
+    }
+  } catch {
+    // DB unmigrated or unavailable
+  }
+
+  // Fallback to server store if not retrieved from DB
+  if (!userClearedAt) {
+    const fallback = readFallbackClears(user.id)
+    if (fallback) {
+      userClearedAt = fallback.cleared_at
+      userClearedIds = fallback.cleared_ids || []
+    }
+  }
+
+  // Also check cookie (takes newest timestamp)
+  if (cookieStore) {
     try {
-      const parsed = JSON.parse(readCookie)
-      readIds = Array.isArray(parsed.ids) ? parsed.ids : []
-      readAllBefore = typeof parsed.readAllBefore === 'number' ? parsed.readAllBefore : 0
+      const clearedCookie = cookieStore.get(`notif_cleared_${user.id}`)?.value
+      if (clearedCookie) {
+        const parsed = JSON.parse(clearedCookie)
+        if (parsed.clearedAt) {
+          if (!userClearedAt || new Date(parsed.clearedAt).getTime() > new Date(userClearedAt).getTime()) {
+            userClearedAt = parsed.clearedAt
+            if (Array.isArray(parsed.clearedIds) && parsed.clearedIds.length > 0) {
+              userClearedIds = Array.from(new Set([...userClearedIds, ...parsed.clearedIds]))
+            }
+          }
+        }
+      }
     } catch {
-      // Ignore parse failure
+      // Ignore cookie parse failure
     }
   }
 
@@ -88,7 +189,6 @@ export async function getUserNotificationsAction(): Promise<UserNotificationData
     acksRes,
     holidaysRes,
     announcementsRes,
-    quickTasksRes,
   ] = await Promise.all([
     supabase
       .from('company_rules')
@@ -120,33 +220,12 @@ export async function getUserNotificationsAction(): Promise<UserNotificationData
       .eq('status', 'published')
       .order('created_at', { ascending: false })
       .limit(10),
-
-    supabase
-      .from('quick_tasks')
-      .select('id, title, description, priority, status, created_at, assigned_by')
-      .eq('assigned_to', user.id)
-      .eq('status', 'Pending')
-      .order('created_at', { ascending: false })
-      .limit(10),
   ])
 
   const rules = rulesRes.data || []
   const acks = acksRes.data || []
   const holidays = holidaysRes.data || []
   const announcements = announcementsRes.data || []
-
-  let quickTasks = quickTasksRes.data || []
-  if (quickTasksRes.error && quickTasksRes.error.code === 'PGRST205') {
-    try {
-      const p = path.join(process.cwd(), 'scratch', 'quick_tasks_store.json')
-      if (fs.existsSync(p)) {
-        const all = JSON.parse(fs.readFileSync(p, 'utf-8'))
-        quickTasks = (all || []).filter(
-          (t: any) => t.assigned_to === user.id && t.status === 'Pending'
-        )
-      }
-    } catch {}
-  }
 
   // Build acknowledgment lookup set
   const ackKeys = new Set<string>()
@@ -169,7 +248,6 @@ export async function getUserNotificationsAction(): Promise<UserNotificationData
     ...new Set([
       ...rules.map((r: any) => r.created_by).filter(Boolean),
       ...holidays.map((h: any) => h.created_by).filter(Boolean),
-      ...quickTasks.map((t: any) => t.assigned_by).filter(Boolean),
     ]),
   ]
 
@@ -298,41 +376,28 @@ export async function getUserNotificationsAction(): Promise<UserNotificationData
     })
   })
 
-  // Add Quick Tasks
-  quickTasks.forEach((t: any) => {
-    const notifId = `quick_task_${t.id}`
-    const createdAtIso = t.created_at || new Date().toISOString()
-    const isMarkedRead =
-      readIds.includes(notifId) ||
-      (new Date(createdAtIso).getTime() <= readAllBefore)
+  // 7. Filter out cleared notifications for this user
+  const clearedTime = userClearedAt ? new Date(userClearedAt).getTime() : 0
+  const clearedIdSet = new Set(userClearedIds)
 
-    const creatorName =
-      t.assigned_by && creatorNameCache.get(t.assigned_by)
-        ? creatorNameCache.get(t.assigned_by)!
-        : 'Admin'
-
-    items.push({
-      id: notifId,
-      rawId: t.id,
-      type: 'quick_task',
-      typeLabel: 'Quick Task',
-      title: `Quick Task: ${t.title}`,
-      description: t.description || 'Casual task assigned to you.',
-      creatorName,
-      date: t.created_at,
-      createdAt: createdAtIso,
-      link: '/quick-tasks',
-      isRead: isMarkedRead,
-      priority: (t.priority?.toLowerCase() || 'medium') as any,
-      meta: t,
-    })
+  const visibleItems = items.filter((item) => {
+    // 1. Explicitly cleared ID check
+    if (clearedIdSet.has(item.id)) return false
+    // 2. Created on or before user clear timestamp
+    if (clearedTime > 0) {
+      const itemTime = new Date(item.createdAt).getTime()
+      if (!isNaN(itemTime) && itemTime <= clearedTime) {
+        return false
+      }
+    }
+    return true
   })
 
   // Sort by createdAt descending
-  items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+  visibleItems.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
 
-  const unreadCount = items.filter((n) => !n.isRead).length
-  const result: UserNotificationData = { notifications: items, unreadCount }
+  const unreadCount = visibleItems.filter((n) => !n.isRead).length
+  const result: UserNotificationData = { notifications: visibleItems, unreadCount }
 
   // Save to in-memory cache
   notificationCache.set(user.id, {
@@ -341,6 +406,93 @@ export async function getUserNotificationsAction(): Promise<UserNotificationData
   })
 
   return result
+}
+
+export async function clearUserNotificationsAction(): Promise<{ success: boolean; error?: string }> {
+  // 1. Derive user strictly from authenticated session
+  const user = await getCurrentUser()
+  if (!user) {
+    return { success: false, error: 'Unauthorized: User session required' }
+  }
+
+  const nowIso = new Date().toISOString()
+
+  // Invalidate in-memory cache for this user immediately
+  notificationCache.delete(user.id)
+
+  const supabase = await createClient()
+
+  // 2. Fetch current notifications to capture current notification IDs
+  let currentNotifIds: string[] = []
+  try {
+    const currentData = await getUserNotificationsAction()
+    currentNotifIds = currentData.notifications.map((n) => n.id)
+  } catch (err) {
+    console.warn('[NotificationClears] Could not pre-fetch current IDs:', err)
+  }
+
+  // Merge with existing fallback cleared IDs
+  const existingFallback = readFallbackClears(user.id)
+  const existingClearedIds = existingFallback?.cleared_ids || []
+  const allClearedIds = Array.from(new Set([...existingClearedIds, ...currentNotifIds]))
+
+  // 3. Attempt upsert into database table
+  try {
+    const { error: dbErr } = await supabase
+      .from('user_notification_clears')
+      .upsert(
+        {
+          user_id: user.id,
+          cleared_at: nowIso,
+          cleared_ids: allClearedIds,
+          updated_at: nowIso,
+        },
+        { onConflict: 'user_id' }
+      )
+    if (dbErr && dbErr.code !== 'PGRST205') {
+      console.warn('[NotificationClears] DB upsert warning:', dbErr.message)
+    }
+  } catch (err) {
+    console.warn('[NotificationClears] DB upsert exception:', err)
+  }
+
+  // 4. Persist to server fallback store
+  writeFallbackClear(user.id, {
+    cleared_at: nowIso,
+    cleared_ids: allClearedIds,
+    updated_at: nowIso,
+  })
+
+  // 5. Persist to user-isolated cookie
+  try {
+    const cookieStore = await cookies()
+    cookieStore.set(
+      `notif_cleared_${user.id}`,
+      JSON.stringify({
+        clearedAt: nowIso,
+        clearedIds: allClearedIds,
+      }),
+      {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 30, // 30 days
+        httpOnly: true,
+        sameSite: 'lax',
+      }
+    )
+  } catch (err) {
+    console.warn('[NotificationClears] Cookie set error:', err)
+  }
+
+  // 6. Invalidate cache again
+  notificationCache.delete(user.id)
+
+  try {
+    revalidatePath('/', 'layout')
+  } catch {
+    // Ignore in non-request contexts
+  }
+
+  return { success: true }
 }
 
 export async function markNotificationAsReadAction(
@@ -369,34 +521,40 @@ export async function markNotificationAsReadAction(
   }
 
   // Persist in cookie
-  const cookieStore = await cookies()
-  const cookieKey = `notif_reads_${user.id}`
-  const existingCookie = cookieStore.get(cookieKey)?.value
-  let currentIds: string[] = []
-  let readAllBefore = 0
+  try {
+    const cookieStore = await cookies()
+    const cookieKey = `notif_reads_${user.id}`
+    const existingCookie = cookieStore.get(cookieKey)?.value
+    let currentIds: string[] = []
+    let readAllBefore = 0
 
-  if (existingCookie) {
-    try {
-      const parsed = JSON.parse(existingCookie)
-      currentIds = Array.isArray(parsed.ids) ? parsed.ids : []
-      readAllBefore = typeof parsed.readAllBefore === 'number' ? parsed.readAllBefore : 0
-    } catch {
-      // Ignore
+    if (existingCookie) {
+      try {
+        const parsed = JSON.parse(existingCookie)
+        currentIds = Array.isArray(parsed.ids) ? parsed.ids : []
+        readAllBefore = typeof parsed.readAllBefore === 'number' ? parsed.readAllBefore : 0
+      } catch {
+        // Ignore
+      }
     }
+
+    if (!currentIds.includes(notifId)) {
+      currentIds = [notifId, ...currentIds].slice(0, 50)
+    }
+
+    cookieStore.set(cookieKey, JSON.stringify({ ids: currentIds, readAllBefore }), {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+      httpOnly: true,
+      sameSite: 'lax',
+    })
+  } catch {
+    // Non-request context
   }
 
-  if (!currentIds.includes(notifId)) {
-    currentIds = [notifId, ...currentIds].slice(0, 50)
-  }
-
-  cookieStore.set(cookieKey, JSON.stringify({ ids: currentIds, readAllBefore }), {
-    path: '/',
-    maxAge: 60 * 60 * 24 * 30, // 30 days
-    httpOnly: true,
-    sameSite: 'lax',
-  })
-
-  revalidatePath('/', 'layout')
+  try {
+    revalidatePath('/', 'layout')
+  } catch {}
 }
 
 export async function markAllNotificationsAsReadAction(
@@ -426,23 +584,30 @@ export async function markAllNotificationsAsReadAction(
   }
 
   // Set readAllBefore in cookie
-  const cookieStore = await cookies()
-  const cookieKey = `notif_reads_${user.id}`
-  const allIds = notifications.map((n) => n.notifId).slice(0, 50)
+  try {
+    const cookieStore = await cookies()
+    const cookieKey = `notif_reads_${user.id}`
+    const allIds = notifications.map((n) => n.notifId).slice(0, 50)
 
-  cookieStore.set(
-    cookieKey,
-    JSON.stringify({
-      ids: allIds,
-      readAllBefore: Date.now(),
-    }),
-    {
-      path: '/',
-      maxAge: 60 * 60 * 24 * 30,
-      httpOnly: true,
-      sameSite: 'lax',
-    }
-  )
+    cookieStore.set(
+      cookieKey,
+      JSON.stringify({
+        ids: allIds,
+        readAllBefore: Date.now(),
+      }),
+      {
+        path: '/',
+        maxAge: 60 * 60 * 24 * 30,
+        httpOnly: true,
+        sameSite: 'lax',
+      }
+    )
+  } catch {
+    // Non-request context
+  }
 
-  revalidatePath('/', 'layout')
+  try {
+    revalidatePath('/', 'layout')
+  } catch {}
 }
+

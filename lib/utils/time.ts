@@ -36,13 +36,60 @@ export function fromTotalMinutes(totalMinutes: number): { hours: number; minutes
 
 /** Convert a decimal office_hours value (e.g. 9.75) to total minutes. Used for backward compat with existing DB records. */
 export function decimalHoursToMinutes(decimalHours: number): number {
-  return Math.round(decimalHours * 60);
+  return canonicalOfficeHoursToMinutes(decimalHours);
 }
 
 /** Convert total minutes to decimal hours (for backward compat DB writes). */
 export function minutesToDecimalHours(totalMinutes: number): number {
-  return Math.round((totalMinutes / 60) * 100) / 100;
+  return Number((totalMinutes / 60).toFixed(6));
 }
+
+/**
+ * Known legacy HH.MM values in database that were stored directly as decimal hours
+ * instead of converting minutes to true decimal hours.
+ */
+export const LEGACY_HHMM_VALUES: Record<string, number> = {
+  '8.05': 8 * 60 + 5,   // 8h 5m = 485 min (true decimal 8.083333)
+  '8.15': 8 * 60 + 15,  // 8h 15m = 495 min (true decimal 8.25)
+  '8.45': 8 * 60 + 45,  // 8h 45m = 525 min (true decimal 8.75)
+  '10.47': 10 * 60 + 47,// 10h 47m = 647 min (true decimal 10.783333)
+  '8.3': 8 * 60 + 30,   // 8h 30m = 510 min (stored from 8.30, true decimal 8.5)
+  '11.3': 11 * 60 + 30, // 11h 30m = 690 min (stored from 11.30, true decimal 11.5)
+};
+
+/**
+ * Convert integer minutes to canonical decimal hours for database storage.
+ * e.g. 485 minutes (8h 5m) -> 8.083333 decimal hours.
+ */
+export function minutesToCanonicalDecimalHours(totalMinutes: number): number {
+  return Number((totalMinutes / 60).toFixed(6));
+}
+
+/**
+ * Convert database office_hours to canonical integer minutes.
+ * Handles both legacy HH.MM values and true decimal hours safely.
+ */
+export function canonicalOfficeHoursToMinutes(officeHours: number): number {
+  if (!Number.isFinite(officeHours) || officeHours <= 0) return 0;
+  const key = String(officeHours);
+  if (LEGACY_HHMM_VALUES[key] !== undefined) {
+    return LEGACY_HHMM_VALUES[key];
+  }
+  return Math.round(officeHours * 60);
+}
+
+/**
+ * Format canonical office hours into standard duration display string (e.g. "8h 5m", "8h 30m", "8h").
+ * Single source of truth for Review EOD, Comp-Off Ledger, and Attendance logs.
+ */
+export function formatCanonicalDuration(officeHours: number): string {
+  const totalMinutes = canonicalOfficeHoursToMinutes(officeHours);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (minutes === 0) return `${hours}h`;
+  return `${hours}h ${minutes}m`;
+}
+
 
 // ─── HH.MM Format (Primary User-Facing Format) ─────────────────────
 
@@ -185,6 +232,33 @@ export function formatHoursMinutes(decimalHours: number): string {
   return `${hours}h ${minutes}m`;
 }
 
+/**
+ * Converts decimal hours into display format (e.g., 29.5 -> "29.5 hrs", 10.0 -> "10 hrs")
+ * and detailed duration string (e.g., "29 hours 30 minutes") for accessibility / tooltip.
+ */
+export function formatHours(hours: number): { formatted: string; detailed: string } {
+  const rounded = Math.round(hours * 10) / 10;
+  const isWhole = rounded % 1 === 0;
+  const formatted = `${isWhole ? rounded.toFixed(0) : rounded.toFixed(1)} hrs`;
+
+  const totalMinutes = Math.round(hours * 60);
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+
+  let detailed = '';
+  if (h === 0 && m === 0) {
+    detailed = '0 hours';
+  } else if (m === 0) {
+    detailed = `${h} ${h === 1 ? 'hour' : 'hours'}`;
+  } else if (h === 0) {
+    detailed = `${m} ${m === 1 ? 'minute' : 'minutes'}`;
+  } else {
+    detailed = `${h} ${h === 1 ? 'hour' : 'hours'} ${m} ${m === 1 ? 'minute' : 'minutes'}`;
+  }
+
+  return { formatted, detailed };
+}
+
 // ─── Validation ─────────────────────────────────────────────────────
 
 /** Validate hours + minutes input. Returns error string or null. */
@@ -215,6 +289,38 @@ export function getISTDateString(date?: Date): string {
     month: '2-digit',
     day: '2-digit',
   }).format(date || new Date());
+}
+
+/**
+ * Format timestamp in Asia/Kolkata timezone standard: "MMM d, yyyy h:mm a"
+ * e.g. "Oct 14, 2026 10:58 PM"
+ * Returns "Unavailable" if dateInput is null, undefined, or invalid.
+ */
+export function formatKolkataDateTime(dateInput: string | Date | null | undefined): string {
+  if (!dateInput) return "Unavailable";
+  const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
+  if (isNaN(d.getTime())) return "Unavailable";
+
+  const formatter = new Intl.DateTimeFormat("en-US", {
+    timeZone: "Asia/Kolkata",
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+
+  const parts = formatter.formatToParts(d);
+  const getPart = (type: string) => parts.find((p) => p.type === type)?.value || "";
+  const month = getPart("month");
+  const day = getPart("day");
+  const year = getPart("year");
+  const hour = getPart("hour");
+  const minute = getPart("minute");
+  const dayPeriod = getPart("dayPeriod");
+
+  return `${month} ${day}, ${year} ${hour}:${minute} ${dayPeriod}`;
 }
 
 /** Get day of week for a date string (YYYY-MM-DD). 0=Sunday, 6=Saturday. */

@@ -6,6 +6,7 @@ import {
   isWorkingDay,
   isSunday,
   calculateCompOffMinutes,
+  canonicalOfficeHoursToMinutes,
 } from '@/lib/utils/time';
 import { processEODCompOff } from '@/lib/actions/compoff';
 
@@ -226,7 +227,7 @@ export async function calculateMonthlyPayroll(
     const newCredits: { employee_id: string; transaction_type: 'CREDIT'; hours: number; reference_id: string }[] = [];
     for (const eod of uncreditedEods) {
       const resolvedOnboardingId = authToOnboardingId.get(eod.employee_id) || eod.employee_id;
-      const workedMins = Math.round(Number(eod.office_hours) * 60);
+      const workedMins = canonicalOfficeHoursToMinutes(Number(eod.office_hours));
 
       let context: 'normal' | 'sunday' | 'paid_holiday' | 'approved_leave' = 'normal';
       if (isSunday(eod.report_date)) {
@@ -303,7 +304,7 @@ export async function calculateMonthlyPayroll(
     const holidaysWorkedDates = new Set<string>();
 
     empEods.forEach(eod => {
-      const wMins = Math.round(Number(eod.office_hours) * 60);
+      const wMins = canonicalOfficeHoursToMinutes(Number(eod.office_hours));
       totalWorkedMinutes += wMins;
 
       const context = getDayContext(eod.report_date, paidHolidayDates);

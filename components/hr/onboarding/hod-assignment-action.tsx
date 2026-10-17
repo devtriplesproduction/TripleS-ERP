@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { ShieldAlert, Loader2, UserCheck, UserX } from 'lucide-react'
+import { Loader2, UserCheck, UserX } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
 import { assignHod, removeHod, getHodAssignmentsForEmployee } from '@/lib/actions/hod'
@@ -169,6 +169,11 @@ export function HodAssignmentAction({
     )
   }
 
+  const isInactive =
+    employee.employment_status === 'Inactive' ||
+    employee.employment_status === 'Terminated' ||
+    (employee.employment_status && employee.employment_status.toLowerCase() !== 'active')
+
   return (
     <>
       {isHod ? (
@@ -183,7 +188,7 @@ export function HodAssignmentAction({
             Remove from HOD
           </button>
         </ConfirmModal>
-      ) : (
+      ) : isInactive ? null : (
         <ConfirmModal
           title="Make HOD"
           description={`Are you sure you want to assign ${employee.first_name} as the Head of Department for ${employee.department}? This will replace any existing HOD for this department.`}

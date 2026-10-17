@@ -25,6 +25,35 @@ export async function assignHod(authUserId: string, employeeIdNumber: string, de
   try {
     const adminClient = await createAdminClient()
 
+    // Server-side active employee validation for HOD assignment
+    const [{ data: targetEmp }, { data: targetProfile }] = await Promise.all([
+      (adminClient as any)
+        .from('employee_onboarding')
+        .select('employment_status')
+        .eq('employee_id_number', employeeIdNumber)
+        .maybeSingle(),
+      (adminClient as any)
+        .from('profiles')
+        .select('id')
+        .eq('id', authUserId)
+        .maybeSingle(),
+    ])
+
+    const isInactive =
+      targetEmp?.employment_status === 'Inactive' ||
+      targetEmp?.employment_status === 'Terminated' ||
+      (targetEmp?.employment_status && targetEmp.employment_status.toLowerCase() !== 'active') ||
+      targetEmp?.deactivated_at != null ||
+      targetProfile?.is_active === false ||
+      targetProfile?.deactivated_at != null
+
+    if (isInactive) {
+      return {
+        success: false,
+        error: 'Cannot assign inactive or deactivated employee as Head of Department.',
+      }
+    }
+
     // 1. Update profiles and employee_onboarding tables concurrently
     const [profileRes, empRes] = await Promise.all([
       (adminClient as any).from('profiles').update({ is_hod: true }).eq('id', authUserId).select(),

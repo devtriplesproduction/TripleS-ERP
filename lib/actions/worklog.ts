@@ -3,6 +3,7 @@
 import { createAdminClient, createClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth'
 import { getProfilePhotoUrl } from '@/lib/utils/profile-photos'
+import { canonicalOfficeHoursToMinutes } from '@/lib/utils/time'
 
 export interface WorklogEmployeeContribution {
   id: string
@@ -125,7 +126,7 @@ export async function getWorklogDataAction(year: number, month: number): Promise
     // 3. Query all profiles and onboarding records for resolving employee metadata
     const [profilesRes, onboardingRes] = await Promise.all([
       supabase.from('profiles').select('id, first_name, last_name, employee_id, role, department, designation'),
-      supabase.from('employee_onboarding').select('id, employee_id_number, first_name, last_name, profile_photo, department, job_title')
+      supabase.from('employee_onboarding').select('id, employee_id_number, first_name, last_name, profile_photo, department, job_title, employment_status')
     ])
 
     const profiles = profilesRes.data || []
@@ -155,7 +156,7 @@ export async function getWorklogDataAction(year: number, month: number): Promise
       }
       seenEmpDate.add(key)
 
-      const mins = Math.round(Number(e.office_hours || 0) * 60)
+      const mins = canonicalOfficeHoursToMinutes(Number(e.office_hours || 0))
       if (mins <= 0) continue
 
       totalMonthMinutes += mins
@@ -188,10 +189,24 @@ export async function getWorklogDataAction(year: number, month: number): Promise
       : 0
 
     // 6. Build Contribution Breakdown
-    // If privileged, show all non-admin employees (or current employee only if not privileged)
-    const targetProfiles = isPrivileged
+    // If privileged, show all active non-admin employees (or current employee only if not privileged)
+    const targetProfiles = (isPrivileged
       ? profiles.filter(p => p.role !== 'Admin')
       : profiles.filter(p => p.id === currentUser.id)
+    ).filter(p => {
+      const pAny = p as any
+      if (pAny.is_active === false || pAny.deactivated_at != null) return false
+      if (p.employee_id) {
+        const onb = onboardingByNumber.get(p.employee_id)
+        if (onb) {
+          const status = (onb.employment_status || '').toLowerCase()
+          if (status === 'inactive' || status === 'terminated' || (status && status !== 'active') || onb.deactivated_at != null) {
+            return false
+          }
+        }
+      }
+      return true
+    })
 
     const contributions: WorklogEmployeeContribution[] = targetProfiles.map(p => {
       const onbRecord = p.employee_id ? onboardingByNumber.get(p.employee_id) : null
@@ -248,3 +263,6 @@ export async function getWorklogDataAction(year: number, month: number): Promise
     return { success: false, error: err.message || 'Internal server error' }
   }
 }
+
+export const getApprovedWorklogOverview = getWorklogDataAction
+

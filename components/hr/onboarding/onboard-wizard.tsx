@@ -858,23 +858,62 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         <h3 className="text-base font-bold text-foreground">Address Information</h3>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-4 gap-x-2 gap-y-4">
-                        <div className="space-y-1.5 sm:col-span-2">
-                          <label className="text-sm font-medium text-secondary-foreground">Address Line 1</label>
-                          <div className="relative">
-                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                            <Input {...register("address")} placeholder="Flat No, 302, Sunshine Apartment" className="pl-9" />
+                      <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr] gap-3 w-full">
+                        {/* Address Line 1 (50% / 2fr) */}
+                        <div className="flex flex-col gap-1.5 min-w-0" id="field-address">
+                          <label className="text-sm font-medium text-secondary-foreground leading-none">
+                            Address Line 1
+                          </label>
+                          <div className="relative w-full">
+                            <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+                            <Input
+                              {...register("address")}
+                              placeholder="Flat No, 302, Sunshine Apartment"
+                              className={cn(
+                                "h-11 pl-10 pr-3.5 rounded-lg w-full text-sm",
+                                errors.address && "border-destructive focus-visible:ring-destructive"
+                              )}
+                            />
                           </div>
+                          {errors.address && (
+                            <p className="text-xs font-medium text-destructive mt-0.5">{errors.address.message}</p>
+                          )}
                         </div>
 
-                        <div className="flex flex-col gap-2">
-                          <label className="text-sm font-medium text-secondary-foreground">City</label>
-                          <Input {...register("city")} placeholder="Pune" />
+                        {/* City (25% / 1fr) */}
+                        <div className="flex flex-col gap-1.5 min-w-0" id="field-city">
+                          <label className="text-sm font-medium text-secondary-foreground leading-none">
+                            City
+                          </label>
+                          <Input
+                            {...register("city")}
+                            placeholder="Pune"
+                            className={cn(
+                              "h-11 px-3.5 rounded-lg w-full text-sm",
+                              errors.city && "border-destructive focus-visible:ring-destructive"
+                            )}
+                          />
+                          {errors.city && (
+                            <p className="text-xs font-medium text-destructive mt-0.5">{errors.city.message}</p>
+                          )}
                         </div>
 
-                        <div className="flex flex-col gap-2">
-                          <label className="text-sm font-medium text-secondary-foreground">PIN Code</label>
-                          <Input {...register("pincode")} placeholder="411057" />
+                        {/* PIN Code (25% / 1fr) */}
+                        <div className="flex flex-col gap-1.5 min-w-0" id="field-pincode">
+                          <label className="text-sm font-medium text-secondary-foreground leading-none">
+                            PIN Code
+                          </label>
+                          <Input
+                            {...register("pincode")}
+                            placeholder="411057"
+                            className={cn(
+                              "h-11 px-3.5 rounded-lg w-full text-sm",
+                              errors.pincode && "border-destructive focus-visible:ring-destructive"
+                            )}
+                          />
+                          {errors.pincode && (
+                            <p className="text-xs font-medium text-destructive mt-0.5">{errors.pincode.message}</p>
+                          )}
                         </div>
                       </div>
                     </div>

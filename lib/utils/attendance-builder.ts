@@ -1,5 +1,5 @@
 import type { AttendanceStatus, DerivedAttendance } from "@/lib/actions/attendance"
-import { getDayOfWeek, STANDARD_WORK_MINUTES, HALF_DAY_THRESHOLD, calculateExtraMinutes, classifyWorkDay, getISTDateString } from "@/lib/utils/time"
+import { getDayOfWeek, STANDARD_WORK_MINUTES, HALF_DAY_THRESHOLD, calculateExtraMinutes, classifyWorkDay, getISTDateString, canonicalOfficeHoursToMinutes } from "@/lib/utils/time"
 
 /** Pure in-memory attendance record builder */
 export function buildAttendanceRecords(
@@ -55,8 +55,8 @@ export function buildAttendanceRecords(
     
     let workedMinutes = 0;
     if (isApprovedEod) {
-      workedMinutes = Math.round(Number((eod as any).office_hours || 0) * 60);
-      workedHours = Number((eod as any).office_hours || 0); // Keep for backwards compat
+      workedMinutes = canonicalOfficeHoursToMinutes(Number((eod as any).office_hours || 0));
+      workedHours = workedMinutes / 60; // Keep for backwards compat
     }
 
     // Determine extra hours context

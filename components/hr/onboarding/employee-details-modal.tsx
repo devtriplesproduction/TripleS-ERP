@@ -33,6 +33,7 @@ import { ChangePasswordAction } from '@/components/hr/onboarding/change-password
 import { HodStatusBadge } from '@/components/hr/onboarding/hod-status-badge'
 import { EmployeeAttendanceCalendar } from '@/components/hr/onboarding/employee-attendance-calendar'
 import { EmployeeSecurityAuditTab } from '@/components/hr/onboarding/employee-security-audit-tab'
+import { DeactivateEmployeeAction } from '@/components/hr/onboarding/deactivate-employee-action'
 
 export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
   const router = useRouter()
@@ -44,10 +45,15 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
   const dragCounter = useRef(0)
   const [localPhotoUrl, setLocalPhotoUrl] = useState<string | null>(null)
   const [isHod, setIsHod] = useState<boolean>(Boolean(employee.is_hod))
+  const [employmentStatus, setEmploymentStatus] = useState<string>(employee.employment_status || 'Active')
 
   useEffect(() => {
     setIsHod(Boolean(employee.is_hod))
   }, [employee.is_hod])
+
+  useEffect(() => {
+    setEmploymentStatus(employee.employment_status || 'Active')
+  }, [employee.employment_status])
 
   const [isEditingPersonalAddress, setIsEditingPersonalAddress] = useState(false)
   const [isSavingPersonalAddress, setIsSavingPersonalAddress] = useState(false)
@@ -570,13 +576,13 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
               <span className="text-xs text-muted-foreground font-mono">{employee.employee_id_number || 'N/A'}</span>
               <Badge className={cn(
                 "text-[10px] px-2 py-0 h-5 font-semibold",
-                employee.employment_status === 'Inactive' || employee.employment_status === 'Terminated'
+                employmentStatus === 'Inactive' || employmentStatus === 'Terminated'
                   ? "bg-rose-500/15 text-rose-400 border-rose-500/25 hover:bg-rose-500/20"
                   : "bg-emerald-500/15 text-emerald-400 border-emerald-500/25 hover:bg-emerald-500/20"
               )}>
-                {employee.employment_status || 'Active'} <span className={cn(
+                {employmentStatus} <span className={cn(
                   "inline-block w-1.5 h-1.5 rounded-full ml-1",
-                  employee.employment_status === 'Inactive' || employee.employment_status === 'Terminated'
+                  employmentStatus === 'Inactive' || employmentStatus === 'Terminated'
                     ? "bg-rose-400"
                     : "bg-emerald-400"
                 )} />
@@ -669,9 +675,11 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
           </button>
           <ChangePasswordAction employee={employee} />
           <HodAssignmentAction employee={employee} onHodChange={setIsHod} />
-          <button className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-sm bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">
-            <UserX className="w-3.5 h-3.5" /> Deactivate Employee
-          </button>
+          <DeactivateEmployeeAction
+            employee={employee}
+            currentStatus={employmentStatus}
+            onStatusChange={setEmploymentStatus}
+          />
         </div>
       </div>
     </div>

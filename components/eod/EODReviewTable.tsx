@@ -9,6 +9,7 @@ import { usePrompt } from "@/hooks/use-prompt";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { formatCanonicalDuration } from "@/lib/utils/time";
 
 export function EODReviewTable({ eods }: { eods: (EODReport & { profiles: { first_name: string, last_name: string, employee_id: string } | null })[] }) {
   const [loading, setLoading] = useState<string | null>(null);
@@ -195,7 +196,7 @@ export function EODReviewTable({ eods }: { eods: (EODReport & { profiles: { firs
                   {eod.location}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {eod.office_hours}
+                  {formatCanonicalDuration(Number(eod.office_hours))}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium space-x-2">
                   <Button 

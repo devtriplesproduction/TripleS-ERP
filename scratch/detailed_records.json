@@ -1,0 +1,804 @@
+[
+  {
+    "id": "a6e3d0e1-917c-41ed-8f14-7bc25e42392f",
+    "date": "2026-10-17",
+    "emp": "Harishchandra Nanavare",
+    "hours": 4.2,
+    "status": "Pending",
+    "submitted_at": "2026-10-17T08:42:50.128662+00:00",
+    "credits": [],
+    "tasks": "Indictrans sitempa Refinment - *Done*  Mauli Jewellers Insta Profile U"
+  },
+  {
+    "id": "cc2d32ea-f03f-444c-9831-326bebaeebe6",
+    "date": "2026-10-16",
+    "emp": "Shital Khulape",
+    "hours": 8.5,
+    "status": "Pending",
+    "submitted_at": "2026-10-16T17:36:01.234047+00:00",
+    "credits": [],
+    "tasks": "Todays Task   setup  new supabase project   setup  new vercel project "
+  },
+  {
+    "id": "f9698635-f8cd-4cb5-a8b2-aea1cb1be4fd",
+    "date": "2026-10-16",
+    "emp": "Prince Nandagawali",
+    "hours": 10.733333,
+    "status": "Pending",
+    "submitted_at": "2026-10-16T17:04:48.234728+00:00",
+    "credits": [],
+    "tasks": "2 Indictrans videos (all videos edited)  Ankita video edited  My lil p"
+  },
+  {
+    "id": "abf2f7f2-d580-42f6-8ffb-0c8e7389cb70",
+    "date": "2026-10-16",
+    "emp": "Harishchandra Nanavare",
+    "hours": 4.25,
+    "status": "Approved",
+    "submitted_at": "2026-10-16T08:45:04.886903+00:00",
+    "credits": [],
+    "tasks": "16/10/2026 - Todays Task Update    Backlinks Building - *Done*  Sendin"
+  },
+  {
+    "id": "c6ce163e-f927-4d65-a7db-0708f04bcf37",
+    "date": "2026-10-15",
+    "emp": "Shital Khulape",
+    "hours": 8.183333,
+    "status": "Approved",
+    "submitted_at": "2026-10-15T13:08:39.031357+00:00",
+    "credits": [
+      {
+        "id": "50188470-8928-4c25-8f04-ae93078a002d",
+        "hours": 0.18,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "Todays Task    1)implement the remaining features of material assignme"
+  },
+  {
+    "id": "0a36316d-febe-47b0-9a85-dda719a24a1e",
+    "date": "2026-10-15",
+    "emp": "Prince Nandagawali",
+    "hours": 9.216667,
+    "status": "Approved",
+    "submitted_at": "2026-10-15T17:58:34.993615+00:00",
+    "credits": [
+      {
+        "id": "5b5e162c-b0c8-4727-8c01-867dea832ec1",
+        "hours": 1.22,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "My lil princess first story and character draft sent   Advocate video "
+  },
+  {
+    "id": "0f13c2f1-0fb1-4951-aff1-de890d4c95b7",
+    "date": "2026-10-15",
+    "emp": "Harishchandra Nanavare",
+    "hours": 3.8833333333333333,
+    "status": "Approved",
+    "submitted_at": "2026-10-15T08:24:35.004992+00:00",
+    "credits": [
+      {
+        "id": "610bb32d-b96c-4234-b737-1623ace08f56",
+        "hours": 3.88,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "Todays Task    1) Indictrans Blog Publish  2) Checking mails and Linke"
+  },
+  {
+    "id": "62576252-77df-4463-b237-3519985f6dc8",
+    "date": "2026-10-15",
+    "emp": "Omkar Sawant",
+    "hours": 8,
+    "status": "Approved",
+    "submitted_at": "2026-10-15T13:35:27.58689+00:00",
+    "credits": [],
+    "tasks": "implemented some newly assigned changes in ERP system "
+  },
+  {
+    "id": "5cfe2770-f547-417f-bb0b-ac7f4839f38c",
+    "date": "2026-10-14",
+    "emp": "Shital Khulape",
+    "hours": 8,
+    "status": "Approved",
+    "submitted_at": "2026-10-14T16:44:09.400008+00:00",
+    "credits": [],
+    "tasks": "implement the material assign functionality   test the working of work"
+  },
+  {
+    "id": "2be52e25-48af-4c62-a7c9-9335b7526f80",
+    "date": "2026-10-14",
+    "emp": "Omkar Sawant",
+    "hours": 9.5,
+    "status": "Approved",
+    "submitted_at": "2026-10-14T17:28:07.367581+00:00",
+    "credits": [
+      {
+        "id": "b0b345cb-7092-4b59-a2df-2d2e3dc41a39",
+        "hours": 1.5,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "Updated UI as per the new requirements   Worked on triple s time track"
+  },
+  {
+    "id": "cc3a435b-ee51-4720-8777-1e9050f58fb8",
+    "date": "2026-10-14",
+    "emp": "Harishchandra Nanavare",
+    "hours": 4,
+    "status": "Approved",
+    "submitted_at": "2026-10-14T08:50:05.948391+00:00",
+    "credits": [],
+    "tasks": "14/10/2026 - Todays Task    Mauli Jewelars Audit    - Istagram   - Goo"
+  },
+  {
+    "id": "67ac9a12-6558-4ce7-8536-2a03cad2c1ce",
+    "date": "2026-10-13",
+    "emp": "Harishchandra Nanavare",
+    "hours": 8,
+    "status": "Approved",
+    "submitted_at": "2026-10-13T13:48:46.530616+00:00",
+    "credits": [],
+    "tasks": "13/10/2026 - Todays Task    1) Ankita page audit - Insta - candle and "
+  },
+  {
+    "id": "985420c5-effb-4649-a7a1-067284916caa",
+    "date": "2026-10-13",
+    "emp": "Prince Nandagawali",
+    "hours": 8.833333,
+    "status": "Approved",
+    "submitted_at": "2026-10-13T18:28:59.967883+00:00",
+    "credits": [
+      {
+        "id": "66339e2d-cf27-4cd3-af0e-dd30cc04786f",
+        "hours": 0.83,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "Wynta (campaign, meetup and model) post edit  My lil princess meeting "
+  },
+  {
+    "id": "3afabc75-058e-46eb-a137-2db4bd4cd199",
+    "date": "2026-10-13",
+    "emp": "Omkar Sawant",
+    "hours": 8.416667,
+    "status": "Approved",
+    "submitted_at": "2026-10-13T14:11:04.218124+00:00",
+    "credits": [
+      {
+        "id": "06ce7447-2a74-4542-a60d-e86852988370",
+        "hours": 0.42,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "Enhanced UI of Announcement, Attendence , Leave apply request,rulebook"
+  },
+  {
+    "id": "6d97f8ac-2cbe-44d1-babd-be403e4214f9",
+    "date": "2026-10-13",
+    "emp": "Shital Khulape",
+    "hours": 8.333333,
+    "status": "Approved",
+    "submitted_at": "2026-10-13T16:35:51.332431+00:00",
+    "credits": [
+      {
+        "id": "c58f2fa0-3e24-4e3e-9a85-13a37b551072",
+        "hours": 0.33,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "Todays Task :-  change the color of gis Software   schedule meeting wi"
+  },
+  {
+    "id": "b4e3289d-c2b1-4e1c-b7ce-8aef6c00bd3a",
+    "date": "2026-10-12",
+    "emp": "Shital Khulape",
+    "hours": 8.15,
+    "status": "Approved",
+    "submitted_at": "2026-10-12T17:25:23.300937+00:00",
+    "credits": [
+      {
+        "id": "58e2b1de-8ef2-4d21-be87-adc073760053",
+        "hours": 0.15,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "Todays Task :-   test the implementation of construction software  cre"
+  },
+  {
+    "id": "ff1a715b-3ebc-439d-983c-b78b6159b48f",
+    "date": "2026-10-12",
+    "emp": "Harishchandra Nanavare",
+    "hours": 8,
+    "status": "Approved",
+    "submitted_at": "2026-10-12T13:39:58.615076+00:00",
+    "credits": [],
+    "tasks": "12/10/2026 - Todays Task    1) Sending Connection Requests - *Done*  2"
+  },
+  {
+    "id": "e9ad0ed4-2d50-44c2-80e2-2b1a2e1ed37e",
+    "date": "2026-10-12",
+    "emp": "Prince Nandagawali",
+    "hours": 8,
+    "status": "Approved",
+    "submitted_at": "2026-10-13T06:20:13.244285+00:00",
+    "credits": [],
+    "tasks": "Client meeting Shoot Wynta post uploading"
+  },
+  {
+    "id": "7e67b707-9f1c-4d60-baf0-628084725bd5",
+    "date": "2026-10-12",
+    "emp": "Omkar Sawant",
+    "hours": 8.45,
+    "status": "Approved",
+    "submitted_at": "2026-10-12T12:06:03.60236+00:00",
+    "credits": [
+      {
+        "id": "e6ea7418-70e5-444f-b63b-20ab2b7e2f15",
+        "hours": 0.45,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "Completed Construction ERP Prototype.  Optimized APIs, batch processin"
+  },
+  {
+    "id": "af05e19c-6013-461a-ba2b-8c64b2f54fce",
+    "date": "2026-10-11",
+    "emp": "Prince Nandagawali",
+    "hours": 6,
+    "status": "Approved",
+    "submitted_at": "2026-10-13T06:20:13.244285+00:00",
+    "credits": [
+      {
+        "id": "c0e673e0-c2fd-43c0-84a6-dbf82f7197d8",
+        "hours": 6,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "My lil princess complete ep finalization Uploading of EP 05 Advocate v"
+  },
+  {
+    "id": "442b9dbe-c411-411c-bd1c-c9a0940362b6",
+    "date": "2026-10-10",
+    "emp": "Shital Khulape",
+    "hours": 8.05,
+    "status": "Approved",
+    "submitted_at": "2026-10-10T18:29:55.816958+00:00",
+    "credits": [
+      {
+        "id": "198807a3-dd1b-447a-8464-b1710b61b2d0",
+        "hours": 0.05,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "Todays Task :-   review erp changes   test erp and list issues   add n"
+  },
+  {
+    "id": "943709c1-b5f4-4eca-8470-3de81cf4e2dc",
+    "date": "2026-10-10",
+    "emp": "Omkar Sawant",
+    "hours": 8.233333,
+    "status": "Approved",
+    "submitted_at": "2026-10-10T13:02:16.867574+00:00",
+    "credits": [
+      {
+        "id": "cf41698f-9680-4843-aaf4-7bf4eef4b396",
+        "hours": 0.23,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "resolve all bugs and ui changes told by shital  created log in and fro"
+  },
+  {
+    "id": "61ec6b19-7105-47bd-8515-f548f94d9e02",
+    "date": "2026-10-10",
+    "emp": "Harishchandra Nanavare",
+    "hours": 9,
+    "status": "Approved",
+    "submitted_at": "2026-10-10T14:27:36.328368+00:00",
+    "credits": [
+      {
+        "id": "db2e8e5f-929e-469f-bf2e-35df554df6bd",
+        "hours": 1,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "10/10/2026 - Todays Task    1) Checking mails, LinkedIn and GSC - Done"
+  },
+  {
+    "id": "3a3479e4-16bc-4ef1-94ba-aec2b9122ffb",
+    "date": "2026-10-10",
+    "emp": "Prince Nandagawali",
+    "hours": 10,
+    "status": "Approved",
+    "submitted_at": "2026-10-10T18:28:50.423011+00:00",
+    "credits": [
+      {
+        "id": "232bcf32-b933-4f33-ac18-73424a4a869b",
+        "hours": 2,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "Lil princess ep 05  Wynta post upload  Wynta photos edits   "
+  },
+  {
+    "id": "e1fcde9d-a297-4468-886a-781e9977cab9",
+    "date": "2026-10-09",
+    "emp": "Shital Khulape",
+    "hours": 11.3,
+    "status": "Approved",
+    "submitted_at": "2026-10-09T16:49:25.08277+00:00",
+    "credits": [
+      {
+        "id": "baedcb56-6136-4be2-a326-85ded5f1e8f0",
+        "hours": 3.3,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "test the working maleehouse gis  resolve the issues  setup new supabas"
+  },
+  {
+    "id": "eaa189c0-d22e-44bb-8e9a-09677bf75724",
+    "date": "2026-10-09",
+    "emp": "Omkar Sawant",
+    "hours": 8.033333,
+    "status": "Approved",
+    "submitted_at": "2026-10-09T14:36:20.595332+00:00",
+    "credits": [
+      {
+        "id": "47d9992f-1359-4502-aefb-f6ccec880bd6",
+        "hours": 0.03,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "UI and Performance enhancement of TripleS ERP"
+  },
+  {
+    "id": "f4f004dc-b131-4e7f-912a-42b1f90f7f74",
+    "date": "2026-10-09",
+    "emp": "Prince Nandagawali",
+    "hours": 10.5,
+    "status": "Approved",
+    "submitted_at": "2026-10-13T06:20:13.244285+00:00",
+    "credits": [
+      {
+        "id": "6c718c05-fa7c-4b50-aab3-1ec297e9886d",
+        "hours": 2.5,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "Advocate video finalization Fixing frames and generating new ones for "
+  },
+  {
+    "id": "5676551f-3ac9-4a00-9b25-d0180cadfefb",
+    "date": "2026-10-09",
+    "emp": "Harishchandra Nanavare",
+    "hours": 9,
+    "status": "Approved",
+    "submitted_at": "2026-10-09T14:26:02.038987+00:00",
+    "credits": [
+      {
+        "id": "23ea1b16-d053-4273-b253-c6820d785410",
+        "hours": 1,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "9/10/2026  - Todays Task    1) Checking Mails, WhatsApp and LinkedIn -"
+  },
+  {
+    "id": "e8b8e04a-88f5-40e0-a2ee-8c0f09939a41",
+    "date": "2026-10-08",
+    "emp": "Prince Nandagawali",
+    "hours": 9.816667,
+    "status": "Approved",
+    "submitted_at": "2026-10-08T18:29:20.920052+00:00",
+    "credits": [
+      {
+        "id": "d213d21a-8dd6-4c7b-8572-a0571916c1ce",
+        "hours": 1.82,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "Wynta post finalizations and upload  Finding music for Farmhouse edit "
+  },
+  {
+    "id": "80e05c68-3283-4dd9-a2c0-1dc9017f3770",
+    "date": "2026-10-08",
+    "emp": "Shital Khulape",
+    "hours": 10,
+    "status": "Approved",
+    "submitted_at": "2026-10-08T18:41:59.16103+00:00",
+    "credits": [
+      {
+        "id": "d354355b-f3b1-4b98-93a4-a06e84b26e3e",
+        "hours": 2,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "test the working of erp software  take fallow ups of erp software impl"
+  },
+  {
+    "id": "e3a727fc-d31c-4205-95b7-bea8ac1d5867",
+    "date": "2026-10-08",
+    "emp": "Harishchandra Nanavare",
+    "hours": 9,
+    "status": "Approved",
+    "submitted_at": "2026-10-08T15:11:30.281158+00:00",
+    "credits": [
+      {
+        "id": "f564d187-bace-4303-a087-75eb8fea834b",
+        "hours": 1,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "8/10/2026 - Todays Task      1) Adding Remark column in Sheet - *Done*"
+  },
+  {
+    "id": "42f5b5be-b296-4193-ab9a-c1ca1e141883",
+    "date": "2026-10-08",
+    "emp": "Omkar Sawant",
+    "hours": 8.283333,
+    "status": "Approved",
+    "submitted_at": "2026-10-08T15:08:51.081093+00:00",
+    "credits": [
+      {
+        "id": "88d70789-d1be-4a13-8adc-8f0be50b46b1",
+        "hours": 0.28,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "1.overdue / pending issue done  2.kpi's sets as malee house project  3"
+  },
+  {
+    "id": "43d7facc-5e07-475b-a062-cd35ff6fa3cc",
+    "date": "2026-10-07",
+    "emp": "Omkar Sawant",
+    "hours": 8.016667,
+    "status": "Approved",
+    "submitted_at": "2026-10-07T13:33:19.774407+00:00",
+    "credits": [
+      {
+        "id": "0737f275-14f1-4733-abc1-25da20ccff45",
+        "hours": 0.02,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "1.worked on attendance ui redesign    2.fixed current day attendance s"
+  },
+  {
+    "id": "331efca6-1cd2-4cd3-aa17-d2ce86b99245",
+    "date": "2026-10-07",
+    "emp": "Prince Nandagawali",
+    "hours": 8.283333,
+    "status": "Approved",
+    "submitted_at": "2026-10-07T18:29:52.647667+00:00",
+    "credits": [
+      {
+        "id": "1fa412b2-0ad1-47cc-ba5b-5352b6a3fcc3",
+        "hours": 0.28,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "Indictrans video changes(adding name tag and position)   Thumbnails (I"
+  },
+  {
+    "id": "93649091-4d31-46d9-82c8-5dcab4980f6f",
+    "date": "2026-10-07",
+    "emp": "Shital Khulape",
+    "hours": 8.3,
+    "status": "Approved",
+    "submitted_at": "2026-10-07T13:04:05.944765+00:00",
+    "credits": [
+      {
+        "id": "a07644e1-8564-4936-8965-67850c55c3fb",
+        "hours": 0.3,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "implement the remaining rules in constrotrate  improve the ui   start "
+  },
+  {
+    "id": "f4197380-230b-4a3b-a9b8-bedab1d9fa0d",
+    "date": "2026-10-07",
+    "emp": "Harishchandra Nanavare",
+    "hours": 9,
+    "status": "Approved",
+    "submitted_at": "2026-10-07T14:40:31.541012+00:00",
+    "credits": [
+      {
+        "id": "89bf6aea-dc71-4a3f-9016-da36e7065147",
+        "hours": 1,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "7/10/2026  - Todays Task     15 Days SEO Report  Suansh LinkedIn Post "
+  },
+  {
+    "id": "dbd1c5c4-3397-4275-8046-3214bbedf56f",
+    "date": "2026-10-06",
+    "emp": "Prince Nandagawali",
+    "hours": 8,
+    "status": "Approved",
+    "submitted_at": "2026-10-06T18:28:30.218928+00:00",
+    "credits": [],
+    "tasks": "Advocate reel  My lil princess ep 01 uploaded with proper captions, di"
+  },
+  {
+    "id": "c373bc04-3387-4418-a91d-99057297595c",
+    "date": "2026-10-06",
+    "emp": "Shital Khulape",
+    "hours": 8.3,
+    "status": "Approved",
+    "submitted_at": "2026-10-06T18:00:38.780551+00:00",
+    "credits": [
+      {
+        "id": "ce91c737-f2fb-4622-b0a4-46c267688781",
+        "hours": 0.3,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "EOD :-  generate sample id in updated format  change the rules of non "
+  },
+  {
+    "id": "4dd973d0-efbf-4cbc-934e-90bb1bef62ed",
+    "date": "2026-10-06",
+    "emp": "Omkar Sawant",
+    "hours": 8.05,
+    "status": "Approved",
+    "submitted_at": "2026-10-06T13:18:06.790359+00:00",
+    "credits": [
+      {
+        "id": "dac9d9c3-a088-42bd-a627-d6be88cf4b84",
+        "hours": 0.05,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "1.fixed all bugs in project manahement   2.fixed sidebar menus  3. cha"
+  },
+  {
+    "id": "e44cfb65-f7dd-4cc2-89fd-21f705e665da",
+    "date": "2026-10-05",
+    "emp": "Shital Khulape",
+    "hours": 11,
+    "status": "Approved",
+    "submitted_at": "2026-10-05T16:37:29.147226+00:00",
+    "credits": [
+      {
+        "id": "acdb9312-823f-4fab-9d16-16db883f0814",
+        "hours": 3,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "implement the job card workflow   integrate the jobcard and test workf"
+  },
+  {
+    "id": "9e503b92-6678-4519-9d1c-c566e8fe6a9e",
+    "date": "2026-10-05",
+    "emp": "Prince Nandagawali",
+    "hours": 8.2833333333,
+    "status": "Approved",
+    "submitted_at": "2026-10-07T10:40:08.292338+00:00",
+    "credits": [
+      {
+        "id": "370a546c-9fc4-4693-a055-747774f0efab",
+        "hours": 0.28,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "1. Wynta campaign launch V-01 Uploading  2. Ankita video changes (fixe"
+  },
+  {
+    "id": "12fdd796-a8fe-43b9-bd24-6537c93bbdfb",
+    "date": "2026-10-04",
+    "emp": "Shital Khulape",
+    "hours": 3.7,
+    "status": "Approved",
+    "submitted_at": "2026-10-05T16:33:08.074846+00:00",
+    "credits": [
+      {
+        "id": "c3a3535b-5f74-41cb-9cc0-4d0ebd2ff147",
+        "hours": 3.7,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "design the flow of allotment sheet  down the allotment sheet as per th"
+  },
+  {
+    "id": "1a0e3778-20aa-4c6b-b96e-5b3081fe4456",
+    "date": "2026-10-04",
+    "emp": "Omkar Sawant",
+    "hours": 8,
+    "status": "Approved",
+    "submitted_at": "2026-10-04T15:10:59.368857+00:00",
+    "credits": [
+      {
+        "id": "2ff8e7ff-bffb-4e4e-af5c-347803d20bc5",
+        "hours": 8,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "1. tested payroll and fixed all bugs  2.created back links (now total "
+  },
+  {
+    "id": "2217dd4d-8b28-4bb3-962b-b054a9c6de79",
+    "date": "2026-10-04",
+    "emp": "Prince Nandagawali",
+    "hours": 7,
+    "status": "Approved",
+    "submitted_at": "2026-10-04T17:57:59.010319+00:00",
+    "credits": [
+      {
+        "id": "55d53c83-ef2e-442c-8ff1-f55b80248b99",
+        "hours": 7,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "My lil princess ep 04 animation(40%)  Community post uploaded with upd"
+  },
+  {
+    "id": "1e515674-59fa-4b81-8e17-a08e9df90bb0",
+    "date": "2026-10-03",
+    "emp": "Shital Khulape",
+    "hours": 8,
+    "status": "Approved",
+    "submitted_at": "2026-10-03T18:31:42.111963+00:00",
+    "credits": [],
+    "tasks": "test the implementation of allotment sheet   imprve the ui  implement "
+  },
+  {
+    "id": "3435137d-f92c-4d8e-9051-6a9f2f26b869",
+    "date": "2026-10-03",
+    "emp": "Omkar Sawant",
+    "hours": 8.05,
+    "status": "Approved",
+    "submitted_at": "2026-10-07T10:27:04.637338+00:00",
+    "credits": [
+      {
+        "id": "849a16d6-cac5-4119-a705-adb3a9679ddc",
+        "hours": 0.05,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "1. Backlink creation  2. Payroll implementation  3. Inserted test data"
+  },
+  {
+    "id": "ee605315-7173-42f2-87ba-8d4d4c32cd95",
+    "date": "2026-10-03",
+    "emp": "Prince Nandagawali",
+    "hours": 9,
+    "status": "Approved",
+    "submitted_at": "2026-10-03T18:29:19.651358+00:00",
+    "credits": [
+      {
+        "id": "31185163-ec55-4e80-a2ff-2ecc6f8f6394",
+        "hours": 1,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "Indictrans videos   Property shoot  My lil princess complete gram me g"
+  },
+  {
+    "id": "47e2041f-86dd-480d-98ed-815d916af451",
+    "date": "2026-10-02",
+    "emp": "Shital Khulape",
+    "hours": 8,
+    "status": "Approved",
+    "submitted_at": "2026-10-02T13:19:30.151763+00:00",
+    "credits": [],
+    "tasks": "Todays Task:-  improve the ui of constrotrate   implement the constrot"
+  },
+  {
+    "id": "f33e5e1c-3ecc-40b8-b61f-a30c9816d553",
+    "date": "2026-10-02",
+    "emp": "Prince Nandagawali",
+    "hours": 9.5,
+    "status": "Approved",
+    "submitted_at": "2026-10-02T18:29:17.269858+00:00",
+    "credits": [
+      {
+        "id": "a42ecb3c-dd2b-478d-b825-477518de1b30",
+        "hours": 1.5,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "Wynta shoot(indoor, outdoor, photos and videos)  Indictraans V-13  Gan"
+  },
+  {
+    "id": "7451a7a4-eba6-4b01-b546-e4c99e5f5e8d",
+    "date": "2026-10-02",
+    "emp": "Omkar Sawant",
+    "hours": 8.15,
+    "status": "Approved",
+    "submitted_at": "2026-10-02T14:26:53.306092+00:00",
+    "credits": [
+      {
+        "id": "d5ca57b4-429e-4621-9517-49ddb13f4e35",
+        "hours": 0.15,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "1.implemented WFH engine in leave module  2.implemented attendence mod"
+  },
+  {
+    "id": "3bef9726-d06b-49b6-a872-374dabc5456a",
+    "date": "2026-10-01",
+    "emp": "Omkar Sawant",
+    "hours": 10.47,
+    "status": "Approved",
+    "submitted_at": "2026-10-01T14:41:30.469402+00:00",
+    "credits": [
+      {
+        "id": "017a1399-e45c-4c8f-b389-0fc0e34ef683",
+        "hours": 2.47,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "1.removed unnecessary input box in onboarding form  2.enhanced UI of e"
+  },
+  {
+    "id": "3b6fa824-53bd-46b9-8f92-5d210990a686",
+    "date": "2026-10-01",
+    "emp": "Shital Khulape",
+    "hours": 9,
+    "status": "Approved",
+    "submitted_at": "2026-10-01T16:45:14.116983+00:00",
+    "credits": [
+      {
+        "id": "756730f2-6632-4d5b-89d1-9fc0b276e4bb",
+        "hours": 1,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "Todays Task :-  implement the qr List if client send the list  improve"
+  },
+  {
+    "id": "10dd42af-c80f-4d51-a9e7-9c159965b372",
+    "date": "2026-10-01",
+    "emp": "Harishchandra Nanavare",
+    "hours": 10.5,
+    "status": "Approved",
+    "submitted_at": "2026-10-01T15:51:22.660842+00:00",
+    "credits": [
+      {
+        "id": "2f1d6ec0-7004-4dbd-b29a-f6a4dddb7b09",
+        "hours": 2.5,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "Checking GSC Console - Indictrans - *Done*  Sep Month SEO Activity Rep"
+  },
+  {
+    "id": "1cde83b0-5909-4e88-96e2-f49cd927a800",
+    "date": "2026-10-01",
+    "emp": "Prince Nandagawali",
+    "hours": 9.5,
+    "status": "Approved",
+    "submitted_at": "2026-10-01T18:28:47.129573+00:00",
+    "credits": [
+      {
+        "id": "d859aaa8-cd74-498f-94e1-6d390541a655",
+        "hours": 1.5,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "Indictrns V-11 changes and thumbnail  Wynta shoot  Indictrans V-13"
+  },
+  {
+    "id": "693a1c02-d25e-4bc2-a3cd-e66cbf477b1b",
+    "date": "2026-09-30",
+    "emp": "Omkar Sawant",
+    "hours": 11.3,
+    "status": "Approved",
+    "submitted_at": "2026-09-30T19:39:11.864149+00:00",
+    "credits": [
+      {
+        "id": "0340b18e-168d-491e-acfa-d1cd19e5c47b",
+        "hours": 3.3,
+        "type": "CREDIT"
+      }
+    ],
+    "tasks": "1.implemented final role structure of ERP(employee,HR,Admin)  2.restru"
+  }
+]

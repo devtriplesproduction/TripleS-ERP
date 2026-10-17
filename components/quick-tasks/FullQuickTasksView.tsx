@@ -8,12 +8,12 @@ import {
   Filter,
   LayoutGrid,
   List,
-  Calendar,
-  Users,
   Clock,
   Loader2,
   RefreshCw,
   X,
+  User,
+  Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,14 +25,12 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu'
-import type {
-  QuickTask,
-  QuickTaskPriority,
-} from '@/types/quick-tasks'
+import type { QuickTask } from '@/types/quick-tasks'
 import {
   getQuickTasksAction,
   markQuickTaskCompleteAction,
   cancelQuickTaskAction,
+  deleteQuickTaskAction,
 } from '@/lib/actions/quick-tasks'
 import { AssignableEmployee, getAssignableEmployees } from '@/lib/actions/team'
 import { QuickTaskCard } from './QuickTaskCard'
@@ -53,7 +51,7 @@ export function FullQuickTasksView({ user }: FullQuickTasksViewProps) {
 
   // Filters
   const [activeTab, setActiveTab] = useState<'Pending' | 'Completed' | 'All'>('Pending')
-  const [selectedPriority, setSelectedPriority] = useState<string>('ALL')
+  const [selectedType, setSelectedType] = useState<'ALL' | 'PERSONAL' | 'ASSIGNED'>('ALL')
   const [selectedAssigneeId, setSelectedAssigneeId] = useState<string>('ALL')
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
@@ -105,7 +103,17 @@ export function FullQuickTasksView({ user }: FullQuickTasksViewProps) {
     const handleUpdate = () => {
       loadTasks()
     }
+    const handleEmployeeChange = () => {
+      if (isAdmin) {
+        getAssignableEmployees().then((res) => {
+          if (res.success && res.data) {
+            setAssignableEmployees(res.data)
+          }
+        })
+      }
+    }
     window.addEventListener('erp-quick-tasks-update', handleUpdate)
+    window.addEventListener('employee-status-changed', handleEmployeeChange)
 
     let bc: BroadcastChannel | null = null
     try {
@@ -117,6 +125,7 @@ export function FullQuickTasksView({ user }: FullQuickTasksViewProps) {
 
     return () => {
       window.removeEventListener('erp-quick-tasks-update', handleUpdate)
+      window.removeEventListener('employee-status-changed', handleEmployeeChange)
       if (bc) bc.close()
     }
   }, [loadTasks])
@@ -176,6 +185,25 @@ export function FullQuickTasksView({ user }: FullQuickTasksViewProps) {
     }
   }
 
+  // Delete Task
+  const handleDeleteTask = async (task: QuickTask) => {
+    setTasks((prev) => prev.filter((t) => t.id !== task.id))
+    try {
+      const res = await deleteQuickTaskAction(task.id)
+      if (res.success) {
+        toast.success('Task deleted')
+        window.dispatchEvent(new CustomEvent('erp-quick-tasks-update'))
+        window.dispatchEvent(new CustomEvent('erp-notification-update'))
+      } else {
+        toast.error(res.error || 'Failed to delete task')
+        loadTasks()
+      }
+    } catch {
+      toast.error('Error deleting task')
+      loadTasks()
+    }
+  }
+
   // Counts for tabs
   const pendingCount = useMemo(
     () => tasks.filter((t) => t.status === 'Pending').length,
@@ -197,9 +225,11 @@ export function FullQuickTasksView({ user }: FullQuickTasksViewProps) {
       result = result.filter((t) => t.status === 'Completed')
     }
 
-    // Priority filter
-    if (selectedPriority !== 'ALL') {
-      result = result.filter((t) => t.priority === selectedPriority)
+    // Type filter (All vs Personal vs Assigned)
+    if (selectedType === 'PERSONAL') {
+      result = result.filter((t) => Boolean(t.is_personal || t.assigned_by === t.assigned_to) && t.assigned_to === user.id)
+    } else if (selectedType === 'ASSIGNED') {
+      result = result.filter((t) => !t.is_personal && t.assigned_by !== t.assigned_to)
     }
 
     // Assignee filter (Admin)
@@ -215,13 +245,12 @@ export function FullQuickTasksView({ user }: FullQuickTasksViewProps) {
           t.title.toLowerCase().includes(q) ||
           (t.description && t.description.toLowerCase().includes(q)) ||
           (t.assigned_to_name && t.assigned_to_name.toLowerCase().includes(q)) ||
-          (t.assigned_by_name && t.assigned_by_name.toLowerCase().includes(q)) ||
-          t.priority.toLowerCase().includes(q)
+          (t.assigned_by_name && t.assigned_by_name.toLowerCase().includes(q))
       )
     }
 
     return result
-  }, [tasks, activeTab, selectedPriority, selectedAssigneeId, isAdmin, searchQuery])
+  }, [tasks, activeTab, selectedType, selectedAssigneeId, isAdmin, searchQuery, user.id])
 
   return (
     <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto select-none">
@@ -238,8 +267,8 @@ export function FullQuickTasksView({ user }: FullQuickTasksViewProps) {
           </div>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             {isAdmin
-              ? 'Assign and oversee casual, ad-hoc tasks across your team without project overhead.'
-              : 'Casual tasks assigned directly to your account by management.'}
+              ? 'Manage personal tasks and assign casual tasks across your team without project overhead.'
+              : 'Your personal quick tasks and assignments from management.'}
           </p>
         </div>
 
@@ -256,175 +285,183 @@ export function FullQuickTasksView({ user }: FullQuickTasksViewProps) {
             <span className="hidden sm:inline">Refresh</span>
           </Button>
 
-          {isAdmin && (
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => setIsCreateOpen(true)}
-              className="text-xs h-9 rounded-lg bg-foreground text-background hover:bg-foreground/90 font-medium gap-1.5 cursor-pointer shadow-xs"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Assign Task</span>
-            </Button>
-          )}
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setIsCreateOpen(true)}
+            className="text-xs h-9 rounded-lg font-medium bg-foreground text-background hover:bg-foreground/90 cursor-pointer gap-1.5 shadow-xs"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{isAdmin ? 'Assign Task' : 'New Task'}</span>
+          </Button>
         </div>
       </div>
 
-      {/* Filter and Control Bar */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-card border border-border/60 p-3 rounded-2xl shadow-xs">
-        {/* Left: Status Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 md:pb-0">
-          <button
-            type="button"
-            onClick={() => setActiveTab('Pending')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-xl transition-colors cursor-pointer ${
-              activeTab === 'Pending'
-                ? 'bg-foreground text-background font-semibold shadow-xs'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-            }`}
-          >
-            Pending ({pendingCount})
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('Completed')}
-            className={`px-3 py-1.5 text-xs font-medium rounded-xl transition-colors cursor-pointer ${
-              activeTab === 'Completed'
-                ? 'bg-foreground text-background font-semibold shadow-xs'
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-            }`}
-          >
-            Completed ({completedCount})
-          </button>
-          {isAdmin && (
+      {/* Control Bar: Search, Tabs, Type Filter, View Switcher */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-card p-3 rounded-xl border border-border">
+        {/* Left: Search input */}
+        <div className="relative flex-1 max-w-md">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search tasks by description or person..."
+            className="pl-9 pr-8 text-xs bg-background h-9 rounded-lg border-border"
+          />
+          {searchQuery && (
             <button
               type="button"
-              onClick={() => setActiveTab('All')}
-              className={`px-3 py-1.5 text-xs font-medium rounded-xl transition-colors cursor-pointer ${
-                activeTab === 'All'
-                  ? 'bg-foreground text-background font-semibold shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              }`}
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
             >
-              All ({tasks.length})
+              <X className="w-3.5 h-3.5" />
             </button>
           )}
         </div>
 
-        {/* Right: Search, Priority filter, Assignee filter (Admin), View Mode */}
+        {/* Right: Tabs & Filters */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Search Input */}
-          <div className="relative flex-1 sm:w-60 min-w-[180px]">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search quick tasks..."
-              className="pl-8 text-xs bg-background h-8 rounded-lg border-border"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
-          </div>
-
-          {/* Priority Filter */}
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              className={`h-8 px-2.5 text-xs rounded-lg border flex items-center gap-1.5 transition-colors cursor-pointer outline-none ${
-                selectedPriority !== 'ALL'
-                  ? 'bg-foreground text-background border-foreground font-semibold'
-                  : 'bg-background border-border text-muted-foreground hover:text-foreground'
+          {/* Tabs */}
+          <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border">
+            <button
+              type="button"
+              onClick={() => setActiveTab('Pending')}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
+                activeTab === 'Pending'
+                  ? 'bg-foreground text-background shadow-xs font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <span>{selectedPriority === 'ALL' ? 'Priority' : selectedPriority}</span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-32 text-xs">
-              <DropdownMenuItem onClick={() => setSelectedPriority('ALL')} className="cursor-pointer">
-                All Priorities
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSelectedPriority('High')} className="cursor-pointer">
-                High
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSelectedPriority('Medium')} className="cursor-pointer">
-                Medium
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setSelectedPriority('Low')} className="cursor-pointer">
-                Low
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+              Pending ({pendingCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('Completed')}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
+                activeTab === 'Completed'
+                  ? 'bg-foreground text-background shadow-xs font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              Completed ({completedCount})
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('All')}
+              className={`px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
+                activeTab === 'All'
+                  ? 'bg-foreground text-background shadow-xs font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              All ({tasks.length})
+            </button>
+          </div>
+
+          {/* Type Filter: All / Personal / Assigned */}
+          <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border">
+            <button
+              type="button"
+              onClick={() => setSelectedType('ALL')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
+                selectedType === 'ALL'
+                  ? 'bg-foreground text-background shadow-xs font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              All
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedType('PERSONAL')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+                selectedType === 'PERSONAL'
+                  ? 'bg-foreground text-background shadow-xs font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <User className="w-3 h-3" />
+              <span>Personal</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setSelectedType('ASSIGNED')}
+              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+                selectedType === 'ASSIGNED'
+                  ? 'bg-foreground text-background shadow-xs font-semibold'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Users className="w-3 h-3" />
+              <span>Assigned</span>
+            </button>
+          </div>
 
           {/* Admin Assignee Filter */}
           {isAdmin && (
             <DropdownMenu>
               <DropdownMenuTrigger
-                className={`h-8 px-2.5 text-xs rounded-lg border flex items-center gap-1.5 transition-colors cursor-pointer outline-none ${
+                className={`flex items-center gap-1.5 h-9 px-3 text-xs font-medium rounded-lg border transition-colors outline-none cursor-pointer ${
                   selectedAssigneeId !== 'ALL'
-                    ? 'bg-foreground text-background border-foreground font-semibold'
-                    : 'bg-background border-border text-muted-foreground hover:text-foreground'
+                    ? 'border-foreground bg-foreground text-background'
+                    : 'border-border bg-card text-foreground hover:bg-muted'
                 }`}
               >
-                <Users className="w-3.5 h-3.5" />
-                <span className="truncate max-w-[100px]">
+                <Filter className="w-3.5 h-3.5" />
+                <span className="max-w-[120px] truncate">
                   {selectedAssigneeId === 'ALL'
                     ? 'Assignee'
-                    : assignableEmployees.find((u) => u.id === selectedAssigneeId)?.name || 'Assignee'}
+                    : assignableEmployees.find((e) => e.id === selectedAssigneeId)?.name || 'Assignee'}
                 </span>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48 text-xs max-h-64 overflow-y-auto">
+              <DropdownMenuContent align="end" className="w-52 max-h-72 overflow-y-auto text-xs">
                 <DropdownMenuLabel className="text-[10px] uppercase text-muted-foreground">
                   Filter by Assignee
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   onClick={() => setSelectedAssigneeId('ALL')}
-                  className="cursor-pointer"
+                  className={`cursor-pointer ${selectedAssigneeId === 'ALL' ? 'font-semibold bg-muted' : ''}`}
                 >
                   All Assignees
                 </DropdownMenuItem>
-                {assignableEmployees.map((u) => (
+                {assignableEmployees.map((emp) => (
                   <DropdownMenuItem
-                    key={u.id}
-                    onClick={() => setSelectedAssigneeId(u.id)}
-                    className="cursor-pointer justify-between"
+                    key={emp.id}
+                    onClick={() => setSelectedAssigneeId(emp.id)}
+                    className={`cursor-pointer justify-between ${
+                      selectedAssigneeId === emp.id ? 'font-semibold bg-muted' : ''
+                    }`}
                   >
-                    <span className="truncate">{u.name}</span>
-                    <span className="text-[10px] text-muted-foreground uppercase">{u.department || u.designation || 'Member'}</span>
+                    <span className="truncate">{emp.name}</span>
+                    <span className="text-[10px] text-muted-foreground uppercase">
+                      {emp.department || emp.designation || 'Member'}
+                    </span>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
           )}
 
-          {/* View Mode Toggle */}
-          <div className="flex items-center rounded-lg border border-border bg-muted/40 p-0.5">
+          {/* View mode toggle */}
+          <div className="flex items-center gap-0.5 bg-muted/40 p-1 rounded-lg border border-border">
             <button
               type="button"
               onClick={() => setViewMode('grid')}
+              title="Grid view"
               className={`p-1.5 rounded-md transition-colors cursor-pointer ${
-                viewMode === 'grid'
-                  ? 'bg-background text-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground'
+                viewMode === 'grid' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
               }`}
-              title="Grid View"
             >
               <LayoutGrid className="w-3.5 h-3.5" />
             </button>
             <button
               type="button"
               onClick={() => setViewMode('list')}
+              title="List view"
               className={`p-1.5 rounded-md transition-colors cursor-pointer ${
-                viewMode === 'list'
-                  ? 'bg-background text-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground'
+                viewMode === 'list' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
               }`}
-              title="List View"
             >
               <List className="w-3.5 h-3.5" />
             </button>
@@ -432,48 +469,43 @@ export function FullQuickTasksView({ user }: FullQuickTasksViewProps) {
         </div>
       </div>
 
-      {/* Task Grid / List */}
+      {/* Task List / Grid Display */}
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
-          <Loader2 className="w-6 h-6 animate-spin" />
-          <span className="text-xs sm:text-sm">Loading quick tasks...</span>
+        <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+          <Loader2 className="w-6 h-6 animate-spin mb-2" />
+          <span className="text-sm">Loading tasks...</span>
         </div>
       ) : displayedTasks.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border border-dashed border-border bg-card/50 p-6">
-          <div className="w-12 h-12 rounded-full bg-muted border border-border flex items-center justify-center text-muted-foreground mb-3">
-            <CheckSquare className="w-6 h-6" />
+        <div className="flex flex-col items-center justify-center py-20 px-4 text-center bg-card rounded-2xl border border-border">
+          <div className="w-14 h-14 rounded-full bg-muted/60 flex items-center justify-center mb-3">
+            <CheckSquare className="w-6 h-6 text-muted-foreground/70" />
           </div>
-          <h3 className="text-sm font-semibold text-foreground">
-            {searchQuery || selectedPriority !== 'ALL' || selectedAssigneeId !== 'ALL'
-              ? 'No matching tasks found'
+          <h3 className="text-base font-semibold text-foreground">No quick tasks found</h3>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-sm">
+            {searchQuery
+              ? 'No tasks match your current search or filter query.'
               : activeTab === 'Pending'
-              ? 'No pending quick tasks'
-              : 'No completed tasks yet'}
-          </h3>
-          <p className="text-xs text-muted-foreground max-w-sm mt-1">
-            {searchQuery || selectedPriority !== 'ALL' || selectedAssigneeId !== 'ALL'
-              ? 'Try resetting your search query or filters to see more tasks.'
-              : activeTab === 'Pending'
-              ? 'All caught up! Quick tasks assigned by management will show up here.'
-              : 'Completed quick tasks remain safely archived here for your records.'}
+              ? 'You have zero pending tasks right now.'
+              : activeTab === 'Completed'
+              ? 'No tasks have been marked as completed yet.'
+              : 'No tasks have been created yet.'}
           </p>
-          {isAdmin && activeTab === 'Pending' && !searchQuery && (
-            <Button
-              type="button"
-              onClick={() => setIsCreateOpen(true)}
-              className="mt-4 text-xs h-8 rounded-lg bg-foreground text-background hover:bg-foreground/90 font-medium gap-1.5 cursor-pointer"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>Assign a Quick Task</span>
-            </Button>
-          )}
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setIsCreateOpen(true)}
+            className="mt-5 text-xs h-9 rounded-lg gap-1.5 bg-foreground text-background hover:bg-foreground/90 cursor-pointer shadow-xs"
+          >
+            <Plus className="w-4 h-4" />
+            <span>{isAdmin ? 'Assign New Task' : 'Create Personal Task'}</span>
+          </Button>
         </div>
       ) : (
         <div
           className={
             viewMode === 'grid'
               ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5'
-              : 'flex flex-col gap-2.5 max-w-4xl'
+              : 'flex flex-col gap-2.5 max-w-3xl'
           }
         >
           {displayedTasks.map((task) => (
@@ -483,36 +515,41 @@ export function FullQuickTasksView({ user }: FullQuickTasksViewProps) {
               currentUserId={user.id}
               currentUserRole={user.role}
               onToggleComplete={handleToggleComplete}
-              onEditTask={isAdmin ? (t) => setEditingTask(t) : undefined}
-              onCancelTask={isAdmin ? handleCancelTask : undefined}
-              isCompact={false}
+              onEditTask={(t) => setEditingTask(t)}
+              onDeleteTask={handleDeleteTask}
+              onCancelTask={handleCancelTask}
+              isCompact={viewMode === 'list'}
             />
           ))}
         </div>
       )}
 
-      {/* Admin Create Task Modal */}
-      {isAdmin && (
-        <CreateQuickTaskModal
-          isOpen={isCreateOpen}
-          onClose={() => setIsCreateOpen(false)}
-          onTaskCreated={(newTasks) => {
-            setTasks((prev) => [...newTasks, ...prev])
-            setActiveTab('Pending')
-          }}
-        />
-      )}
+      {/* Create Task Modal */}
+      <CreateQuickTaskModal
+        isOpen={isCreateOpen}
+        onClose={() => setIsCreateOpen(false)}
+        onTaskCreated={(newTasks) => {
+          setTasks((prev) => [...newTasks, ...prev])
+          loadTasks()
+        }}
+        user={user}
+      />
 
-      {/* Admin Edit Task Modal */}
-      {isAdmin && editingTask && (
+      {/* Edit Task Modal */}
+      {editingTask && (
         <QuickTaskEditModal
           task={editingTask}
-          isOpen={!!editingTask}
+          isOpen={Boolean(editingTask)}
           onClose={() => setEditingTask(null)}
           onTaskUpdated={(updated) => {
             setTasks((prev) => prev.map((t) => (t.id === updated.id ? updated : t)))
             setEditingTask(null)
           }}
+          onTaskDeleted={(deletedId) => {
+            setTasks((prev) => prev.filter((t) => t.id !== deletedId))
+            setEditingTask(null)
+          }}
+          currentUserId={user.id}
         />
       )}
     </div>

@@ -88,7 +88,7 @@ export function canAccessProjectManagement(role?: AppRole | string | null, isHod
 }
 
 /** Public routes that don't require authentication */
-export const PUBLIC_ROUTES = ['/login', '/unauthorized']
+export const PUBLIC_ROUTES = ['/login', '/unauthorized', '/access-disabled']
 
 /**
  * Check if a given role has permission to access a specific pathname.

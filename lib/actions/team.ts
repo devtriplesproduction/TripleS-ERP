@@ -31,7 +31,7 @@ export async function getAssignableEmployees(): Promise<{ success: boolean; data
     // 1. Fetch profiles and employee_onboarding concurrently
     const [profilesRes, onboardingRes] = await Promise.all([
       admin.from('profiles').select('id, first_name, last_name, employee_id').order('first_name', { ascending: true }),
-      admin.from('employee_onboarding').select('employee_id_number, department, designation, profile_photo')
+      admin.from('employee_onboarding').select('employee_id_number, department, designation, profile_photo, employment_status')
     ])
 
     const profiles = profilesRes.data
@@ -40,7 +40,6 @@ export async function getAssignableEmployees(): Promise<{ success: boolean; data
     if (profilesRes.error || !profiles) {
       return { success: true, data: [] }
     }
-
 
     const onboardingMap = new Map<string, any>()
     if (onboarding) {
@@ -53,7 +52,24 @@ export async function getAssignableEmployees(): Promise<{ success: boolean; data
 
     const result: AssignableEmployee[] = profiles
       .filter(p => p.first_name?.toLowerCase() !== 'admin' && `${p.first_name || ''} ${p.last_name || ''}`.trim().toLowerCase() !== 'admin')
-      .filter(p => p.employee_id && onboardingMap.has(p.employee_id))
+      .filter(p => {
+        // Exclude profiles that are deactivated or inactive
+        const pAny = p as any
+        if (pAny.is_active === false || pAny.deactivated_at != null) {
+          return false
+        }
+        // Exclude profiles without matching onboarding record
+        if (!p.employee_id || !onboardingMap.has(p.employee_id)) {
+          return false
+        }
+        // Exclude inactive / terminated onboarding records
+        const emp = onboardingMap.get(p.employee_id)
+        const status = (emp?.employment_status || '').toLowerCase()
+        if (status === 'inactive' || status === 'terminated' || (status && status !== 'active') || emp?.deactivated_at != null) {
+          return false
+        }
+        return true
+      })
       .map(p => {
       const emp = p.employee_id ? onboardingMap.get(p.employee_id) : null
       const fullName = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Employee'

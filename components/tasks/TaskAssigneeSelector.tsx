@@ -73,6 +73,21 @@ export function TaskAssigneeSelector({
     }
   }, [propEmployees])
 
+  // Listen for employee status changes (deactivation / reactivation) across the ERP
+  useEffect(() => {
+    const handleStatusChanged = () => {
+      getAssignableEmployees().then((res) => {
+        if (res.success && res.data) {
+          setInternalEmployees(res.data)
+        }
+      })
+    }
+    window.addEventListener('employee-status-changed', handleStatusChanged)
+    return () => {
+      window.removeEventListener('employee-status-changed', handleStatusChanged)
+    }
+  }, [])
+
   const effectiveEmployees = propEmployees && propEmployees.length > 0 ? propEmployees : internalEmployees
 
   // Filtered employees by search query
@@ -138,11 +153,16 @@ export function TaskAssigneeSelector({
           const photoUrl = getProfilePhotoUrl(rawPhoto)
           const initials = name.substring(0, 2).toUpperCase()
 
+          const isInactive = !emp && !!fallback
+
           return (
             <div
               key={empId}
               className={cn(
-                'inline-flex items-center rounded-full bg-secondary/90 border border-border text-foreground font-medium shadow-xs animate-in fade-in-50 zoom-in-95 duration-150',
+                'inline-flex items-center rounded-full border font-medium shadow-xs animate-in fade-in-50 zoom-in-95 duration-150',
+                isInactive
+                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+                  : 'bg-secondary/90 border-border text-foreground',
                 compact ? 'gap-1.5 pl-1 pr-2 py-0.5 text-[11px]' : 'gap-2 pl-1.5 pr-2.5 py-1 text-xs'
               )}
             >
@@ -157,9 +177,14 @@ export function TaskAssigneeSelector({
                   {initials}
                 </AvatarFallback>
               </Avatar>
-              <span className={cn('truncate font-medium text-foreground', compact ? 'max-w-[110px]' : 'max-w-[140px]')}>
+              <span className={cn('truncate font-medium', isInactive ? 'text-amber-300' : 'text-foreground', compact ? 'max-w-[110px]' : 'max-w-[140px]')}>
                 {name}
               </span>
+              {isInactive && (
+                <span className="text-[9px] font-semibold text-amber-400 bg-amber-500/20 px-1 py-0.2 rounded shrink-0">
+                  Reassign
+                </span>
+              )}
               {!disabled && (
                 <button
                   type="button"

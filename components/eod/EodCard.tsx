@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Clock, AlertTriangle, Edit2, XCircle, CheckCircle2, Loader2, Save, X, Smile } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { formatOfficeHoursAsHHMM, parseHHMM, validateHHMM, formatHoursMinutes } from '@/lib/utils/time';
+import { formatOfficeHoursAsHHMM, parseHHMM, validateHHMM, formatHoursMinutes, formatCanonicalDuration } from '@/lib/utils/time';
 
 export function EodCard({
   eod,
@@ -113,7 +113,7 @@ export function EodCard({
           </div>
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Clock className="w-4 h-4 text-muted-foreground" />
-            <span>{formatHoursMinutes(Number(eod.office_hours))} logged</span>
+            <span>{formatCanonicalDuration(Number(eod.office_hours))} logged</span>
           </div>
 
           <div className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border ${eod.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :

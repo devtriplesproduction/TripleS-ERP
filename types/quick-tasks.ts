@@ -1,6 +1,6 @@
 /**
  * TripleS ERP — Quick Tasks Types
- * Lightweight casual task assignment data structures.
+ * Lightweight casual task assignment and personal tasks data structures.
  */
 
 export type QuickTaskPriority = 'Low' | 'Medium' | 'High'
@@ -12,6 +12,9 @@ export interface QuickTask {
   description?: string | null
   assigned_by: string
   assigned_to: string
+  is_personal?: boolean
+  is_read?: boolean
+  seen_at?: string | null
   due_date?: string | null
   priority: QuickTaskPriority
   status: QuickTaskStatus
@@ -29,16 +32,17 @@ export interface QuickTask {
 }
 
 export interface CreateQuickTaskInput {
-  title: string
-  description?: string
-  assigned_to: string[] // Array of profile IDs (single or multiple recipients)
+  description: string // Primary field: multiline task text or notes
+  title?: string // Optional fallback title
+  assigned_to?: string[] // Optional array of profile IDs. If omitted or empty, creates personal task
   due_date?: string
   priority?: QuickTaskPriority
 }
 
 export interface UpdateQuickTaskInput {
-  title?: string
   description?: string
+  title?: string
+  is_read?: boolean
   due_date?: string | null
   priority?: QuickTaskPriority
   status?: QuickTaskStatus
@@ -47,8 +51,15 @@ export interface UpdateQuickTaskInput {
 export interface QuickTaskFilterOptions {
   status?: 'All' | 'Pending' | 'Completed' | 'Cancelled'
   assigneeId?: string
+  type?: 'All' | 'Personal' | 'Assigned'
   dueDate?: string
   search?: string
+}
+
+export interface QuickTasksBadgeState {
+  pendingCount: number
+  hasUnreadAssignment: boolean
+  unreadAssignmentCount: number
 }
 
 export interface QuickTasksActionResponse<T = any> {
