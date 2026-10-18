@@ -537,6 +537,8 @@ export async function changeEmployeePasswordAction(params: ChangePasswordParams)
   })
 
   // 10. Revalidate Paths
+  revalidatePath('/employees')
+  revalidatePath(`/employees/${employee.id}`)
   revalidatePath('/hr/onboarding')
   revalidatePath(`/hr/onboarding/${employee.id}`)
 

@@ -63,6 +63,7 @@ export function NoteCard({
   // Handle Save
   const handleSave = async (e?: React.MouseEvent) => {
     if (e) e.stopPropagation()
+    if (isSaving) return
 
     const trimmedTitle = editTitle.trim()
     const trimmedContent = editContent.trim()

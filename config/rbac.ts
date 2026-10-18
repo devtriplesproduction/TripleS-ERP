@@ -15,21 +15,47 @@ export const ALL_ROLES: AppRole[] = ['HR', 'Admin', 'Employee', 'Manager']
  */
 export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
   HR: [
-    '/hr/onboarding',
-    '/hr/leave',
+    // Canonical Role-Neutral Business Modules
+    '/employees',
+    '/leave',
     '/eod',
-    '/hr/holidays',
-    '/hr/payroll',
-    '/hr/attendance',
+    '/attendance',
+    '/holidays',
+    '/payroll',
     '/dashboard',
     '/rulebook',
     '/announcements',
     '/my-tasks',
-    '/time-tracking',
     '/notes',
     '/quick-tasks',
+    '/settings',
+    // Legacy paths for seamless backward-compatible redirects
+    '/hr/onboarding',
+    '/hr/leave',
+    '/hr/holidays',
+    '/hr/payroll',
+    '/hr/attendance',
   ],
   Admin: [
+    // Canonical Role-Neutral Business Modules
+    '/employees',
+    '/leave',
+    '/eod',
+    '/attendance',
+    '/holidays',
+    '/payroll',
+    '/time-tracking',
+    '/projects',
+    '/tasks',
+    '/clients',
+    '/my-tasks',
+    '/dashboard',
+    '/rulebook',
+    '/announcements',
+    '/notes',
+    '/quick-tasks',
+    '/settings',
+    // Legacy paths for seamless backward-compatible redirects
     '/admin-eod',
     '/admin-holiday',
     '/admin-payroll',
@@ -37,22 +63,13 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/super-admin/attendance',
     '/hr/onboarding',
     '/hr/attendance',
-    '/dashboard',
-    '/rulebook',
-    '/announcements',
-    '/clients',
-    '/projects',
-    '/tasks',
-    '/my-tasks',
-    '/time-tracking',
-    '/notes',
-    '/quick-tasks',
   ],
   Employee: [
-    '/hr/employee-leave',
-    '/employee-eod',
-    '/employee-holiday',
+    // Canonical Role-Neutral Business Modules
+    '/leave',
+    '/eod',
     '/attendance',
+    '/holidays',
     '/dashboard',
     '/rulebook',
     '/announcements',
@@ -60,30 +77,44 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/projects',
     '/notes',
     '/quick-tasks',
-  ],
-  Manager: [
-    '/dashboard',
-    '/attendance',
+    '/settings',
+    // Legacy paths for seamless backward-compatible redirects
+    '/hr/employee-leave',
     '/employee-eod',
     '/employee-holiday',
+  ],
+  Manager: [
+    // Canonical Role-Neutral Business Modules
+    '/leave',
+    '/eod',
+    '/attendance',
+    '/holidays',
+    '/dashboard',
     '/rulebook',
     '/announcements',
     '/my-tasks',
-    '/hr/employee-leave',
+    '/projects',
+    '/tasks',
+    '/clients',
     '/notes',
     '/quick-tasks',
+    '/settings',
+    // Legacy paths for seamless backward-compatible redirects
+    '/hr/employee-leave',
+    '/employee-eod',
+    '/employee-holiday',
   ],
 }
 
 /**
  * Check if a user has Project Management access.
- * Admin has full access.
+ * Admin and Manager have full access.
  * HOD (is_hod = true) has access as an additional responsibility.
  * HR does NOT automatically get Project Management access.
- * Normal employees do NOT get access.
+ * Normal employees do NOT get access unless assigned.
  */
 export function canAccessProjectManagement(role?: AppRole | string | null, isHod?: boolean): boolean {
-  if (role === 'Admin') return true
+  if (role === 'Admin' || role === 'Manager') return true
   return !!isHod
 }
 
@@ -134,6 +165,45 @@ export function isPublicRoute(pathname: string): boolean {
  */
 export function getDefaultRedirect(role: AppRole | string | null | undefined): string {
   return '/dashboard'
+}
+
+/**
+ * Validate and sanitize an internal redirect destination to prevent open redirects and loops.
+ * Disallows external URLs, protocol-relative URLs, Windows backslash bypasses, and self-referencing loops.
+ */
+export function getSafeRedirectUrl(
+  target: string | null | undefined,
+  defaultUrl: string = '/dashboard'
+): string {
+  if (!target || typeof target !== 'string') {
+    return defaultUrl
+  }
+
+  const trimmed = target.trim()
+
+  // Must begin with a single '/' and not '//' or '/\'
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//') || trimmed.startsWith('/\\')) {
+    return defaultUrl
+  }
+
+  // Reject any backslashes or protocol schemes that could bypass origin validation
+  if (trimmed.includes('\\') || trimmed.includes(':')) {
+    return defaultUrl
+  }
+
+  // Prevent redirect loops: root '/' and auth routes fall back to defaultUrl
+  if (
+    trimmed === '/' ||
+    trimmed === '/login' ||
+    trimmed.startsWith('/login?') ||
+    trimmed.startsWith('/login/') ||
+    trimmed === '/unauthorized' ||
+    trimmed === '/access-disabled'
+  ) {
+    return defaultUrl
+  }
+
+  return trimmed
 }
 
 /**

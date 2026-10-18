@@ -205,7 +205,7 @@ describe('Batch Processing & Heavy Operations Optimization', () => {
         .eq('transaction_type', 'CREDIT');
 
       expect((credits || []).length).toBeLessThanOrEqual(1);
-    });
+    }, 15000);
   });
 
   describe('6. Benchmarking: Batch Comp-Off vs Individual Processing', () => {

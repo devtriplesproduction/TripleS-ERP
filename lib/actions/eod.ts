@@ -22,6 +22,22 @@ export function isSuperAdminOrHR(roles: string[] = []) {
   return canManageEOD(roles);
 }
 
+async function resolveCurrentEODUser(client: any) {
+  const { data: { user }, error } = await client.auth.getUser();
+  if (error || !user) return null;
+
+  const adminSupa = createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
+  const { data: profile } = await adminSupa.from('profiles').select('role').eq('id', user.id).single();
+  return {
+    id: user.id,
+    email: user.email || 'unknown',
+    roles: profile?.role ? [profile.role.toUpperCase()] : ['EMPLOYEE']
+  };
+}
+
 /**
  * Submit an EOD report
  * Handles self-submission (Pending) and proxy submission (Approved)
@@ -29,32 +45,8 @@ export function isSuperAdminOrHR(roles: string[] = []) {
 export async function submitEOD(payload: Omit<EODReport, 'id' | 'status' | 'submitted_at' | 'reviewed_by' | 'reviewed_at' | 'review_remarks'> & { role_context?: 'Employee' | 'HR' }) {
   try {
     const _authSupabase = await createClient();
-    const { data: { user } } = await _authSupabase.auth.getUser();
-    
-    // Attempt to get roles or fallback to super admin for testing if no user
-    // Since the system relies on role, we need to extract it
-    let currentUser: { id: string, roles: string[], email?: string } | null = null;
-    if (user) {
-      const adminSupa = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-        const { data: profile } = await adminSupa.from('profiles').select('role').eq('id', user.id).single();
-      currentUser = {
-        id: user.id,
-        email: user.email || 'unknown',
-        roles: profile?.role ? [profile.role.toUpperCase()] : ['EMPLOYEE']
-      };
-    } else {
-      // For local unauthenticated dev testing, fallback to a real existing employee ID
-      // so it matches the DB actually.
-      // TEST MODE: Mock Backend Identity
-      if (typeof payload !== 'undefined' && payload?.role_context === 'HR' || typeof payload === 'undefined' /* reviewEOD context */) {
-        currentUser = { id: '889bab81-e196-4f40-9793-7cdac9524ed3', email: 'omkar@test.com', roles: ['SUPER_ADMIN', 'HR'] };
-      } else {
-        currentUser = { id: 'a0ef8d37-d4fd-49c7-b20d-b8ed9a512379', email: 'michael@test.com', roles: ['EMPLOYEE'] };
-      }
-    }
-
-
-    if (!currentUser) return { success: false, error: "Unauthorized: " + (currentUser ? JSON.stringify(currentUser) : "No User") };
+    const currentUser = await resolveCurrentEODUser(_authSupabase);
+    if (!currentUser) return { success: false, error: "Unauthorized: Authentication required" };
     const supabase = _authSupabase;
 
     const canManage = canManageEOD(currentUser.roles);
@@ -130,27 +122,8 @@ export async function submitEOD(payload: Omit<EODReport, 'id' | 'status' | 'subm
 export async function reviewEOD(eodId: string, action: 'Approve' | 'Reject', rejectionReason?: string) {
   try {
     const _authSupabase = await createClient();
-    const { data: { user } } = await _authSupabase.auth.getUser();
-    
-    // Attempt to get roles or fallback to super admin for testing if no user
-    let currentUser: { id: string, roles: string[], email?: string } | null = null;
-    if (user) {
-      const adminSupa = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-      const { data: profile } = await adminSupa.from('profiles').select('role').eq('id', user.id).single();
-      currentUser = {
-        id: user.id,
-        email: user.email || 'unknown',
-        roles: profile?.role ? [profile.role.toUpperCase()] : ['EMPLOYEE']
-      };
-    } else {
-      if (typeof payload !== 'undefined' && payload?.role_context === 'HR' || typeof payload === 'undefined') {
-        currentUser = { id: '889bab81-e196-4f40-9793-7cdac9524ed3', email: 'omkar@test.com', roles: ['SUPER_ADMIN', 'HR'] };
-      } else {
-        currentUser = { id: 'a0ef8d37-d4fd-49c7-b20d-b8ed9a512379', email: 'michael@test.com', roles: ['EMPLOYEE'] };
-      }
-    }
-
-    if (!currentUser) return { success: false, error: "Unauthorized: " + (currentUser ? JSON.stringify(currentUser) : "No User") };
+    const currentUser = await resolveCurrentEODUser(_authSupabase);
+    if (!currentUser) return { success: false, error: "Unauthorized: Authentication required" };
     const supabase = _authSupabase;
 
     const isSuperAdmin = currentUser.roles.includes('SUPER_ADMIN');
@@ -233,23 +206,7 @@ export async function batchReviewEODs(
 
   try {
     const _authSupabase = await createClient();
-    const { data: { user } } = await _authSupabase.auth.getUser();
-
-    let currentUser: { id: string, roles: string[], email?: string } | null = null;
-    if (user) {
-      const adminSupa = createSupabaseClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-      const { data: profile } = await adminSupa.from('profiles').select('role').eq('id', user.id).single();
-      currentUser = {
-        id: user.id,
-        email: user.email || 'unknown',
-        roles: profile?.role ? [profile.role.toUpperCase()] : ['EMPLOYEE']
-      };
-    } else {
-      currentUser = { id: '889bab81-e196-4f40-9793-7cdac9524ed3', email: 'omkar@test.com', roles: ['SUPER_ADMIN', 'HR'] };
-    }
+    const currentUser = await resolveCurrentEODUser(_authSupabase);
 
     if (!currentUser || !canManageEOD(currentUser.roles)) {
       return { success: false, total: eodIds.length, succeeded: [], failed: [], error: "Insufficient permissions to review EODs" };
@@ -396,31 +353,8 @@ export async function getEODHistory(employeeId: string, roleContext: 'Employee' 
   const supabase = await createClient();
   try {
     const _authSupabase = await createClient();
-    const { data: { user } } = await _authSupabase.auth.getUser();
-    
-    // Attempt to get roles or fallback to super admin for testing if no user
-    // Since the system relies on role, we need to extract it
-    let currentUser: { id: string, roles: string[], email?: string } | null = null;
-    if (user) {
-      const adminSupa = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-        const { data: profile } = await adminSupa.from('profiles').select('role').eq('id', user.id).single();
-      currentUser = {
-        id: user.id,
-        email: user.email || 'unknown',
-        roles: profile?.role ? [profile.role.toUpperCase()] : ['EMPLOYEE']
-      };
-    } else {
-      // For local unauthenticated dev testing, fallback to a real existing employee ID
-      // so it matches the DB actually.
-      // TEST MODE: Mock Backend Identity
-      if (typeof payload !== 'undefined' && payload?.role_context === 'HR' || typeof payload === 'undefined' /* reviewEOD context */) {
-        currentUser = { id: '889bab81-e196-4f40-9793-7cdac9524ed3', email: 'omkar@test.com', roles: ['SUPER_ADMIN', 'HR'] };
-      } else {
-        currentUser = { id: 'a0ef8d37-d4fd-49c7-b20d-b8ed9a512379', email: 'michael@test.com', roles: ['EMPLOYEE'] };
-      }
-    }
-
-    if (!currentUser) return { success: false, error: "Unauthorized: " + (currentUser ? JSON.stringify(currentUser) : "No User") };
+    const currentUser = await resolveCurrentEODUser(_authSupabase);
+    if (!currentUser) return { success: false, error: "Unauthorized: Authentication required" };
     const supabase = _authSupabase;
 
     const isAuthorized = currentUser.id === employeeId || isSuperAdminOrHR(currentUser.roles);
@@ -451,31 +385,8 @@ export async function getEODHistory(employeeId: string, roleContext: 'Employee' 
 export async function getPendingEODs() {
   try {
     const _authSupabase = await createClient();
-    const { data: { user } } = await _authSupabase.auth.getUser();
-    
-    // Attempt to get roles or fallback to super admin for testing if no user
-    // Since the system relies on role, we need to extract it
-    let currentUser: { id: string, roles: string[], email?: string } | null = null;
-    if (user) {
-      const adminSupa = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-        const { data: profile } = await adminSupa.from('profiles').select('role').eq('id', user.id).single();
-      currentUser = {
-        id: user.id,
-        email: user.email || 'unknown',
-        roles: profile?.role ? [profile.role.toUpperCase()] : ['EMPLOYEE']
-      };
-    } else {
-      // For local unauthenticated dev testing, fallback to a real existing employee ID
-      // so it matches the DB actually.
-      // TEST MODE: Mock Backend Identity
-      if (typeof payload !== 'undefined' && payload?.role_context === 'HR' || typeof payload === 'undefined' /* reviewEOD context */) {
-        currentUser = { id: '889bab81-e196-4f40-9793-7cdac9524ed3', email: 'omkar@test.com', roles: ['SUPER_ADMIN', 'HR'] };
-      } else {
-        currentUser = { id: 'a0ef8d37-d4fd-49c7-b20d-b8ed9a512379', email: 'michael@test.com', roles: ['EMPLOYEE'] };
-      }
-    }
-
-    if (!currentUser) return { success: false, error: "Unauthorized: " + (currentUser ? JSON.stringify(currentUser) : "No User") };
+    const currentUser = await resolveCurrentEODUser(_authSupabase);
+    if (!currentUser) return { success: false, error: "Unauthorized: Authentication required" };
     const supabase = _authSupabase;
 
     const isSuperAdmin = currentUser.roles.includes('SUPER_ADMIN');
@@ -520,30 +431,7 @@ export async function getPendingEODs() {
 export async function getEODStreak(employeeId: string, roleContext: 'Employee' | 'HR' = 'Employee') {
   try {
     const _authSupabase = await createClient();
-    const { data: { user } } = await _authSupabase.auth.getUser();
-    
-    // Attempt to get roles or fallback to super admin for testing if no user
-    // Since the system relies on role, we need to extract it
-    let currentUser: { id: string, roles: string[], email?: string } | null = null;
-    if (user) {
-      const adminSupa = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-        const { data: profile } = await adminSupa.from('profiles').select('role').eq('id', user.id).single();
-      currentUser = {
-        id: user.id,
-        email: user.email || 'unknown',
-        roles: profile?.role ? [profile.role.toUpperCase()] : ['EMPLOYEE']
-      };
-    } else {
-      // For local unauthenticated dev testing, fallback to a real existing employee ID
-      // so it matches the DB actually.
-      // TEST MODE: Mock Backend Identity
-      if (typeof payload !== 'undefined' && payload?.role_context === 'HR' || typeof payload === 'undefined' /* reviewEOD context */) {
-        currentUser = { id: '889bab81-e196-4f40-9793-7cdac9524ed3', email: 'omkar@test.com', roles: ['SUPER_ADMIN', 'HR'] };
-      } else {
-        currentUser = { id: 'a0ef8d37-d4fd-49c7-b20d-b8ed9a512379', email: 'michael@test.com', roles: ['EMPLOYEE'] };
-      }
-    }
-
+    const currentUser = await resolveCurrentEODUser(_authSupabase);
     if (!currentUser) return { success: false, streak: 0 };
 
     const isAuthorized = currentUser.id === employeeId || isSuperAdminOrHR(currentUser.roles);
@@ -607,31 +495,8 @@ export async function getEODStreak(employeeId: string, roleContext: 'Employee' |
 export async function getAllEODs(filters?: { employeeId?: string; startDate?: string; endDate?: string; searchString?: string; branchId?: string; page?: number; limit?: number; roleContextFilter?: 'Employee' | 'HR'; }) {
   try {
     const _authSupabase = await createClient();
-    const { data: { user } } = await _authSupabase.auth.getUser();
-    
-    // Attempt to get roles or fallback to super admin for testing if no user
-    // Since the system relies on role, we need to extract it
-    let currentUser: { id: string, roles: string[], email?: string } | null = null;
-    if (user) {
-      const adminSupa = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-        const { data: profile } = await adminSupa.from('profiles').select('role').eq('id', user.id).single();
-      currentUser = {
-        id: user.id,
-        email: user.email || 'unknown',
-        roles: profile?.role ? [profile.role.toUpperCase()] : ['EMPLOYEE']
-      };
-    } else {
-      // For local unauthenticated dev testing, fallback to a real existing employee ID
-      // so it matches the DB actually.
-      // TEST MODE: Mock Backend Identity
-      if (typeof payload !== 'undefined' && payload?.role_context === 'HR' || typeof payload === 'undefined' /* reviewEOD context */) {
-        currentUser = { id: '889bab81-e196-4f40-9793-7cdac9524ed3', email: 'omkar@test.com', roles: ['SUPER_ADMIN', 'HR'] };
-      } else {
-        currentUser = { id: 'a0ef8d37-d4fd-49c7-b20d-b8ed9a512379', email: 'michael@test.com', roles: ['EMPLOYEE'] };
-      }
-    }
-
-    if (!currentUser) return { success: false, error: "Unauthorized: " + (currentUser ? JSON.stringify(currentUser) : "No User") };
+    const currentUser = await resolveCurrentEODUser(_authSupabase);
+    if (!currentUser) return { success: false, error: "Unauthorized: Authentication required" };
     const supabase = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false }, global: { fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' }) } });
 
     if (!canManageEOD(currentUser.roles)) {
@@ -683,12 +548,9 @@ export async function getAllEODs(filters?: { employeeId?: string; startDate?: st
 
     let data = rawData || [];
 
-    // If any EOD is missing its profile (because of mock user), patch it!
+    // If any EOD is missing its profile, patch it!
     data = data.map(eod => {
-      let fallbackProfile = { first_name: 'Omkar', last_name: 'Sawant', employee_id: 'EMP-001', branch_id: 'branch-1', department: 'Development' };
-      if (eod.employee_id === 'a0ef8d37-d4fd-49c7-b20d-b8ed9a512379') {
-        fallbackProfile = { first_name: 'Michael', last_name: 'Smith', employee_id: 'EMP-002', branch_id: 'branch-1', department: 'Content' };
-      }
+      const fallbackProfile = { first_name: 'Unknown', last_name: 'Employee', employee_id: '', branch_id: '', department: '' };
       return {
         ...eod,
         profiles: eod.profiles || fallbackProfile
@@ -714,31 +576,8 @@ export async function getEODByEmployeeAndDate(employeeId: string, reportDate: st
   const supabase = await createClient();
   try {
     const _authSupabase = await createClient();
-    const { data: { user } } = await _authSupabase.auth.getUser();
-    
-    // Attempt to get roles or fallback to super admin for testing if no user
-    // Since the system relies on role, we need to extract it
-    let currentUser: { id: string, roles: string[], email?: string } | null = null;
-    if (user) {
-      const adminSupa = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-        const { data: profile } = await adminSupa.from('profiles').select('role').eq('id', user.id).single();
-      currentUser = {
-        id: user.id,
-        email: user.email || 'unknown',
-        roles: profile?.role ? [profile.role.toUpperCase()] : ['EMPLOYEE']
-      };
-    } else {
-      // For local unauthenticated dev testing, fallback to a real existing employee ID
-      // so it matches the DB actually.
-      // TEST MODE: Mock Backend Identity
-      if (typeof payload !== 'undefined' && payload?.role_context === 'HR' || typeof payload === 'undefined' /* reviewEOD context */) {
-        currentUser = { id: '889bab81-e196-4f40-9793-7cdac9524ed3', email: 'omkar@test.com', roles: ['SUPER_ADMIN', 'HR'] };
-      } else {
-        currentUser = { id: 'a0ef8d37-d4fd-49c7-b20d-b8ed9a512379', email: 'michael@test.com', roles: ['EMPLOYEE'] };
-      }
-    }
-
-    if (!currentUser) return { success: false, error: "Unauthorized: " + (currentUser ? JSON.stringify(currentUser) : "No User") };
+    const currentUser = await resolveCurrentEODUser(_authSupabase);
+    if (!currentUser) return { success: false, error: "Unauthorized: Authentication required" };
     const supabase = _authSupabase;
 
     const isAuthorized = currentUser.id === employeeId || canManageEOD(currentUser.roles);
@@ -783,31 +622,8 @@ export async function updateEOD(payload: {
 }) {
   try {
     const _authSupabase = await createClient();
-    const { data: { user } } = await _authSupabase.auth.getUser();
-    
-    // Attempt to get roles or fallback to super admin for testing if no user
-    // Since the system relies on role, we need to extract it
-    let currentUser: { id: string, roles: string[], email?: string } | null = null;
-    if (user) {
-      const adminSupa = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-        const { data: profile } = await adminSupa.from('profiles').select('role').eq('id', user.id).single();
-      currentUser = {
-        id: user.id,
-        email: user.email || 'unknown',
-        roles: profile?.role ? [profile.role.toUpperCase()] : ['EMPLOYEE']
-      };
-    } else {
-      // For local unauthenticated dev testing, fallback to a real existing employee ID
-      // so it matches the DB actually.
-      // TEST MODE: Mock Backend Identity
-      if (typeof payload !== 'undefined' && payload?.role_context === 'HR' || typeof payload === 'undefined' /* reviewEOD context */) {
-        currentUser = { id: '889bab81-e196-4f40-9793-7cdac9524ed3', email: 'omkar@test.com', roles: ['SUPER_ADMIN', 'HR'] };
-      } else {
-        currentUser = { id: 'a0ef8d37-d4fd-49c7-b20d-b8ed9a512379', email: 'michael@test.com', roles: ['EMPLOYEE'] };
-      }
-    }
-
-    if (!currentUser) return { success: false, error: "Unauthorized: " + (currentUser ? JSON.stringify(currentUser) : "No User") };
+    const currentUser = await resolveCurrentEODUser(_authSupabase);
+    if (!currentUser) return { success: false, error: "Unauthorized: Authentication required" };
     const supabase = _authSupabase;
 
     if (!canManageEOD(currentUser.roles)) {

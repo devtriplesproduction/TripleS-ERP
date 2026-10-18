@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { invalidateNotificationCache } from '@/actions/notifications.actions';
+import { guardServerAction } from '@/lib/auth';
 
 export type ActionResponse = {
   success: boolean;
@@ -32,6 +33,7 @@ export async function createHolidayAction(payload: {
   holiday_type: 'PAID' | 'UNPAID';
 }): Promise<ActionResponse> {
   try {
+    await guardServerAction(['HR', 'Admin']);
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
     const { data, error } = await supabase
@@ -49,6 +51,7 @@ export async function createHolidayAction(payload: {
     if (error) throw error;
     
     await invalidateNotificationCache();
+    revalidatePath('/holidays');
     revalidatePath('/hr/holidays');
     revalidatePath('/admin-holiday');
     revalidatePath('/employee-holiday');
@@ -64,6 +67,7 @@ export async function createHolidayAction(payload: {
 
 export async function deleteHolidayAction(id: string): Promise<ActionResponse> {
   try {
+    await guardServerAction(['HR', 'Admin']);
     const supabase = await createClient();
     const { error } = await supabase
       .from('holidays')
@@ -73,6 +77,7 @@ export async function deleteHolidayAction(id: string): Promise<ActionResponse> {
     if (error) throw error;
 
     await invalidateNotificationCache();
+    revalidatePath('/holidays');
     revalidatePath('/hr/holidays');
     revalidatePath('/admin-holiday');
     revalidatePath('/employee-holiday');
@@ -93,6 +98,7 @@ export async function updateHolidayAction(
   }
 ): Promise<ActionResponse> {
   try {
+    await guardServerAction(['HR', 'Admin']);
     const supabase = await createClient();
     const { data, error } = await supabase
       .from('holidays')
@@ -109,6 +115,7 @@ export async function updateHolidayAction(
     if (error) throw error;
 
     await invalidateNotificationCache();
+    revalidatePath('/holidays');
     revalidatePath('/hr/holidays');
     revalidatePath('/admin-holiday');
     revalidatePath('/employee-holiday');

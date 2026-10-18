@@ -3,18 +3,15 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { invalidateNotificationCache } from '@/actions/notifications.actions'
+import { guardServerAction } from '@/lib/auth'
 
 export async function createAnnouncement(data: any) {
+  const user = await guardServerAction(['Admin', 'HR'])
   const supabase = await createClient()
-  const { data: userAuth } = await supabase.auth.getUser()
-  if (!userAuth.user) throw new Error('Not authenticated')
-  
-  const { data: profile } = await supabase.from('profiles').select('id').eq('id', userAuth.user.id).single()
-  if (!profile) throw new Error('Profile not found')
   
   const { error } = await supabase.from('announcements').insert({
     ...data,
-    created_by: profile.id,
+    created_by: user.id,
   })
   
   if (error) {
@@ -28,6 +25,7 @@ export async function createAnnouncement(data: any) {
 }
 
 export async function updateAnnouncement(id: string, data: any) {
+  await guardServerAction(['Admin', 'HR'])
   const supabase = await createClient()
   const { error } = await supabase.from('announcements').update(data).eq('id', id)
   if (error) {
@@ -47,6 +45,7 @@ export async function updateAnnouncement(id: string, data: any) {
 }
 
 export async function deleteAnnouncement(id: string) {
+  await guardServerAction(['Admin', 'HR'])
   const supabase = await createClient()
   const { error } = await supabase.from('announcements').delete().eq('id', id)
   if (error) {

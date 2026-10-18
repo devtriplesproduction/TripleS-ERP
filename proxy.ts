@@ -52,7 +52,9 @@ export async function proxy(request: NextRequest) {
   // Not authenticated → redirect to login
   if (!user) {
     const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('redirect', pathname)
+    if (pathname !== '/') {
+      loginUrl.searchParams.set('redirect', pathname)
+    }
     return NextResponse.redirect(loginUrl)
   }
 
@@ -61,9 +63,44 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(new URL('/access-disabled', request.url))
   }
 
-  // For root path, let the page handle redirect
+  // For root path, redirect authenticated users directly to dashboard
   if (pathname === '/') {
-    return response
+    return NextResponse.redirect(new URL('/dashboard', request.url))
+  }
+
+  // Canonical Route Migration Redirections
+  const legacyToCanonicalMap: Record<string, string> = {
+    '/hr/onboarding': '/employees',
+    '/hr/onboarding/add': '/employees/add',
+    '/hr/leave': '/leave',
+    '/super-admin/leave': '/leave',
+    '/hr/employee-leave': '/leave',
+    '/hr/holidays': '/holidays',
+    '/admin-holiday': '/holidays',
+    '/employee-holiday': '/holidays',
+    '/hr/payroll': '/payroll',
+    '/admin-payroll': '/payroll',
+    '/hr/attendance': '/attendance',
+    '/super-admin/attendance': '/attendance',
+    '/admin-eod': '/eod',
+    '/employee-eod': '/eod',
+  }
+
+  let targetCanonical: string | null = legacyToCanonicalMap[pathname] || null
+  if (!targetCanonical) {
+    if (pathname.startsWith('/hr/onboarding/')) {
+      targetCanonical = pathname.replace('/hr/onboarding/', '/employees/')
+    } else if (pathname.startsWith('/hr/attendance/')) {
+      targetCanonical = pathname.replace('/hr/attendance/', '/attendance/')
+    } else if (pathname.startsWith('/super-admin/attendance/')) {
+      targetCanonical = pathname.replace('/super-admin/attendance/', '/attendance/')
+    }
+  }
+
+  if (targetCanonical) {
+    const targetUrl = new URL(targetCanonical, request.url)
+    targetUrl.search = request.nextUrl.search
+    return NextResponse.redirect(targetUrl)
   }
 
   return response

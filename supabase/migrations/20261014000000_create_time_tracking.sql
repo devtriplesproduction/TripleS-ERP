@@ -1,4 +1,4 @@
--- Migration: Create Time Tracking Tables for TripleS Time Tracker
+-- Migration: Create Time Tracking Tables for TripleS Time Tracker (Idempotent & Safe)
 
 -- 1. Tracking Sessions table
 CREATE TABLE IF NOT EXISTS public.time_sessions (
@@ -10,9 +10,13 @@ CREATE TABLE IF NOT EXISTS public.time_sessions (
     status VARCHAR(50) NOT NULL DEFAULT 'working' CHECK (status IN ('working', 'on_break', 'completed', 'Working', 'On Break', 'Completed')),
     worked_minutes INTEGER NOT NULL DEFAULT 0,
     active_minutes INTEGER NOT NULL DEFAULT 0,
+    suspended_seconds INTEGER NOT NULL DEFAULT 0,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- Ensure suspended_seconds exists if table was already created
+ALTER TABLE public.time_sessions ADD COLUMN IF NOT EXISTS suspended_seconds INTEGER NOT NULL DEFAULT 0;
 
 -- Indexes for time_sessions
 CREATE INDEX IF NOT EXISTS idx_time_sessions_employee_date ON public.time_sessions (employee_id, session_date);
@@ -69,13 +73,14 @@ CREATE POLICY "Employees can update own sessions"
     USING (auth.uid() = employee_id);
 
 DROP POLICY IF EXISTS "Admin and HR can view all sessions" ON public.time_sessions;
-CREATE POLICY "Admin and HR can view all sessions"
+DROP POLICY IF EXISTS "Admin can view all sessions" ON public.time_sessions;
+CREATE POLICY "Admin can view all sessions"
     ON public.time_sessions FOR SELECT
     USING (
         EXISTS (
             SELECT 1 FROM public.profiles 
             WHERE profiles.id = auth.uid() 
-            AND (profiles.role = 'Admin' OR profiles.role = 'HR' OR profiles.role = 'Super Admin')
+            AND (profiles.role = 'Admin' OR profiles.role = 'Super Admin')
         )
     );
 
@@ -114,13 +119,14 @@ CREATE POLICY "Employees can update own session breaks"
     );
 
 DROP POLICY IF EXISTS "Admin and HR can view all session breaks" ON public.session_breaks;
-CREATE POLICY "Admin and HR can view all session breaks"
+DROP POLICY IF EXISTS "Admin can view all session breaks" ON public.session_breaks;
+CREATE POLICY "Admin can view all session breaks"
     ON public.session_breaks FOR SELECT
     USING (
         EXISTS (
             SELECT 1 FROM public.profiles 
             WHERE profiles.id = auth.uid() 
-            AND (profiles.role = 'Admin' OR profiles.role = 'HR' OR profiles.role = 'Super Admin')
+            AND (profiles.role = 'Admin' OR profiles.role = 'Super Admin')
         )
     );
 
@@ -136,12 +142,14 @@ CREATE POLICY "Employees can insert own activity logs"
     WITH CHECK (auth.uid() = employee_id);
 
 DROP POLICY IF EXISTS "Admin and HR can view all activity logs" ON public.activity_logs;
-CREATE POLICY "Admin and HR can view all activity logs"
+DROP POLICY IF EXISTS "Admin can view all activity logs" ON public.activity_logs;
+CREATE POLICY "Admin can view all activity logs"
     ON public.activity_logs FOR SELECT
     USING (
         EXISTS (
             SELECT 1 FROM public.profiles 
             WHERE profiles.id = auth.uid() 
-            AND (profiles.role = 'Admin' OR profiles.role = 'HR' OR profiles.role = 'Super Admin')
+            AND (profiles.role = 'Admin' OR profiles.role = 'Super Admin')
         )
     );
+

@@ -57,12 +57,12 @@ interface NavItem {
  * Followed by other modules (Project Management, Rulebook, Announcements) per RBAC.
  */
 function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: boolean, hasTasks?: boolean): NavItem[] {
-  const employeesHref = '/hr/onboarding'
-  const eodHref = userRole === 'Admin' ? '/admin-eod' : userRole === 'Employee' || userRole === 'Manager' ? '/employee-eod' : '/eod'
-  const leaveHref = userRole === 'Admin' ? '/super-admin/leave' : userRole === 'Employee' || userRole === 'Manager' ? '/hr/employee-leave' : '/hr/leave'
-  const attendanceHref = userRole === 'Admin' ? '/super-admin/attendance' : userRole === 'Employee' || userRole === 'Manager' ? '/attendance' : '/hr/attendance'
-  const holidayHref = userRole === 'Admin' ? '/admin-holiday' : userRole === 'Employee' || userRole === 'Manager' ? '/employee-holiday' : '/hr/holidays'
-  const payrollHref = userRole === 'Admin' ? '/admin-payroll' : '/hr/payroll'
+  const employeesHref = '/employees'
+  const eodHref = '/eod'
+  const leaveHref = '/leave'
+  const attendanceHref = '/attendance'
+  const holidayHref = '/holidays'
+  const payrollHref = '/payroll'
   
   const allItems: NavItem[] = []
 
@@ -70,14 +70,13 @@ function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: 
     if (hasTasks) {
       allItems.push({ label: 'My Tasks', href: '/my-tasks', icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
     }
-    if (hasTasks) {
+    if (hasProjectAccess) {
       allItems.push({ label: 'Projects', href: '/projects', icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" /> })
     }
-    if (isHod) {
+    if (isHod || userRole === 'Manager') {
       allItems.push({ label: 'Tasks Board', href: '/tasks', icon: <CheckSquare className="mr-3 h-5 w-5 shrink-0" /> })
       allItems.push({ label: 'Clients', href: '/clients', icon: <Briefcase className="mr-3 h-5 w-5 shrink-0" /> })
     }
-    allItems.push({ label: 'Time Tracking', href: '/time-tracking', icon: <Clock className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'EOD Reports', href: eodHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Request Leave / WFH', href: leaveHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Attendance', href: attendanceHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
@@ -86,10 +85,11 @@ function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: 
     allItems.push({ label: 'Rulebook', href: '/rulebook', icon: <Book className="mr-3 h-5 w-5 shrink-0" /> })
   } else if (userRole === 'HR') {
     allItems.push({ label: 'Employees', href: employeesHref, icon: <Users className="mr-3 h-5 w-5 shrink-0" /> })
-    allItems.push({ label: 'Projects', href: '/projects', icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" /> })
+    if (isHod || hasProjectAccess) {
+      allItems.push({ label: 'Projects', href: '/projects', icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" /> })
+    }
     allItems.push({ label: 'My Tasks', href: '/my-tasks', icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Payroll', href: payrollHref, icon: <CreditCard className="mr-3 h-5 w-5 shrink-0" /> })
-    allItems.push({ label: 'Time Tracking', href: '/time-tracking', icon: <Clock className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Review EOD', href: eodHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Leave | WFH | Credits', href: leaveHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Attendance', href: attendanceHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
@@ -98,6 +98,7 @@ function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: 
     allItems.push({ label: 'Rulebook', href: '/rulebook', icon: <Book className="mr-3 h-5 w-5 shrink-0" /> })
   } else if (userRole === 'Admin') {
     allItems.push({ label: 'Employees', href: employeesHref, icon: <Users className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Time Tracking', href: '/time-tracking', icon: <Clock className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Projects', href: '/projects', icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Tasks Board', href: '/tasks', icon: <CheckSquare className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Clients', href: '/clients', icon: <Briefcase className="mr-3 h-5 w-5 shrink-0" /> })

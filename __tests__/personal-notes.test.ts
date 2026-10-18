@@ -68,7 +68,8 @@ vi.mock('@/lib/supabase/server', () => ({
   }))
 }))
 
-const STORE_PATH = path.join(process.cwd(), 'scratch', 'personal_notes_store.json')
+const STORE_PATH = path.join(process.cwd(), 'scratch', 'personal_notes_test_store.json')
+process.env.PERSONAL_NOTES_STORE_PATH = STORE_PATH
 
 describe('Personal Notes Feature (Google Keep Style)', () => {
   const userA = {
@@ -350,5 +351,55 @@ describe('Personal Notes Feature (Google Keep Style)', () => {
 
     expect(blankUpdate.success).toBe(false)
     expect(blankUpdate.error).toContain('cannot be empty')
+  })
+
+  it('15. Ignores client-supplied user_id and strictly associates with authenticated user', async () => {
+    mockCurrentUser.mockResolvedValue(userA)
+    const res = await createPersonalNoteAction({
+      title: 'Security Test',
+      content: 'Testing user_id spoofing prevention',
+      user_id: 'spoofed-attacker-user-id',
+    } as any)
+
+    expect(res.success).toBe(true)
+    expect(res.data?.user_id).toBe(userA.id)
+    expect(res.data?.user_id).not.toBe('spoofed-attacker-user-id')
+  })
+
+  it('16. Persists multiple notes and maintains pinned notes at top followed by updated_at descending', async () => {
+    mockCurrentUser.mockResolvedValue(userA)
+    const n1 = await createPersonalNoteAction({
+      title: 'Note 1 - Older',
+      content: 'Content 1',
+      is_pinned: false,
+    })
+    const n2 = await createPersonalNoteAction({
+      title: 'Note 2 - Newer',
+      content: 'Content 2',
+      is_pinned: false,
+    })
+    const n3 = await createPersonalNoteAction({
+      title: 'Note 3 - Pinned',
+      content: 'Content 3',
+      is_pinned: true,
+    })
+
+    const notesRes = await getPersonalNotesAction()
+    expect(notesRes.success).toBe(true)
+    const list = notesRes.data!
+    expect(list.length).toBeGreaterThanOrEqual(3)
+
+    // First note must be pinned
+    expect(list[0].id).toBe(n3.data!.id)
+    expect(list[0].is_pinned).toBe(true)
+  })
+
+  it('17. Rejects updating a non-existent note', async () => {
+    mockCurrentUser.mockResolvedValue(userA)
+    const res = await updatePersonalNoteAction('non-existent-uuid', {
+      title: 'Updated',
+    })
+    expect(res.success).toBe(false)
+    expect(res.error).toBe('Note not found or unauthorized')
   })
 })

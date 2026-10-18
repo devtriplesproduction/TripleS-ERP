@@ -541,6 +541,8 @@ export async function deactivateEmployee({ employeeId, reason }: DeactivateParam
     }
 
     // 5. Revalidate Paths
+    revalidatePath('/employees')
+    revalidatePath(`/employees/${employee.id}`)
     revalidatePath('/hr/onboarding')
     revalidatePath(`/hr/onboarding/${employee.id}`)
     revalidatePath('/dashboard')
@@ -710,6 +712,8 @@ export async function reactivateEmployee({ employeeId, reason }: ReactivateParam
       console.warn('[reactivateEmployee] Audit logging non-blocking notice:', auditErr)
     }
 
+    revalidatePath('/employees')
+    revalidatePath(`/employees/${employee.id}`)
     revalidatePath('/hr/onboarding')
     revalidatePath(`/hr/onboarding/${employee.id}`)
     revalidatePath('/dashboard')

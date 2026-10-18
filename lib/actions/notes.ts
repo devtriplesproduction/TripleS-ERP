@@ -21,11 +21,16 @@ function safeRevalidatePath(pathUrl: string) {
   }
 }
 
-// Fallback persistence file in case table migration is pending on remote Supabase
-const FALLBACK_STORE_PATH = path.join(process.cwd(), 'scratch', 'personal_notes_store.json')
+function getFallbackStorePath(): string {
+  return (
+    process.env.PERSONAL_NOTES_STORE_PATH ||
+    path.join(process.cwd(), 'scratch', 'personal_notes_store.json')
+  )
+}
 
 function ensureStoreDir(): void {
-  const dir = path.dirname(FALLBACK_STORE_PATH)
+  const storePath = getFallbackStorePath()
+  const dir = path.dirname(storePath)
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true })
   }
@@ -34,10 +39,11 @@ function ensureStoreDir(): void {
 function readFallbackNotes(): PersonalNote[] {
   try {
     ensureStoreDir()
-    if (!fs.existsSync(FALLBACK_STORE_PATH)) {
+    const storePath = getFallbackStorePath()
+    if (!fs.existsSync(storePath)) {
       return []
     }
-    const raw = fs.readFileSync(FALLBACK_STORE_PATH, 'utf-8')
+    const raw = fs.readFileSync(storePath, 'utf-8')
     return JSON.parse(raw) as PersonalNote[]
   } catch (err) {
     console.error('[PersonalNotes] Failed to read fallback store:', err)
@@ -48,7 +54,8 @@ function readFallbackNotes(): PersonalNote[] {
 function writeFallbackNotes(notes: PersonalNote[]): void {
   try {
     ensureStoreDir()
-    fs.writeFileSync(FALLBACK_STORE_PATH, JSON.stringify(notes, null, 2), 'utf-8')
+    const storePath = getFallbackStorePath()
+    fs.writeFileSync(storePath, JSON.stringify(notes, null, 2), 'utf-8')
   } catch (err) {
     console.error('[PersonalNotes] Failed to write fallback store:', err)
   }

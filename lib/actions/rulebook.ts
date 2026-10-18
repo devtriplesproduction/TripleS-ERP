@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { invalidateNotificationCache } from "@/actions/notifications.actions";
+import { guardServerAction } from "@/lib/auth";
 
 export type RulebookCategory = 'Work Policy' | 'Security & IT' | 'Leave & PTO' | 'Attendance' | 'Human Resources';
 export type RulebookStatus = 'Draft' | 'Published' | 'Archived';
@@ -42,6 +43,7 @@ export async function getRules(role: 'Admin' | 'HR' | 'Employee') {
 }
 
 export async function createRule(rule: Omit<CompanyRule, 'id' | 'created_at' | 'updated_at' | 'version' | 'previous_version_id'>) {
+  await guardServerAction(['Admin', 'HR']);
   const supabase = await createClient();
   const { data, error } = await supabase.from('company_rules').insert({
     ...rule,
@@ -57,6 +59,7 @@ export async function createRule(rule: Omit<CompanyRule, 'id' | 'created_at' | '
 }
 
 export async function updateRule(ruleId: string, updates: Partial<CompanyRule>, createNewVersion: boolean = false, changeType: 'Minor' | 'Major' = 'Minor') {
+  await guardServerAction(['Admin', 'HR']);
   const supabase = await createClient();
   
   if (createNewVersion) {
@@ -154,6 +157,7 @@ export async function acknowledgeRule(employeeId: string, ruleId: string, versio
 }
 
 export async function deleteRule(ruleId: string) {
+  await guardServerAction(['Admin', 'HR']);
   const supabase = await createClient();
   const { error } = await supabase.from('company_rules').delete().eq('id', ruleId);
   if (error) throw error;

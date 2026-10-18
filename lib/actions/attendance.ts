@@ -141,7 +141,10 @@ export async function getAttendanceEmployees(month: number, year: number) {
 }
 
 export async function getAttendanceEmployeeProfile(employeeId: string) {
-  await guardServerAction(['HR', 'Admin', 'Super Admin', 'Employee'] as any);
+  const caller = await guardServerAction(['HR', 'Admin', 'Employee'] as any);
+  if (caller.role === 'Employee' && caller.id !== employeeId) {
+    throw new Error('Unauthorized: cannot view other employees profiles');
+  }
   const supabaseAdmin = await createAdminClient();
   
   const { data: profile } = await supabaseAdmin.from('profiles').select('id, first_name, last_name, employee_id').eq('id', employeeId).single();
@@ -159,7 +162,10 @@ export async function getAttendanceEmployeeProfile(employeeId: string) {
 }
 
 export async function getEmployeeAttendance(employeeId: string, month: number, year: number): Promise<DerivedAttendance[]> {
-  await guardServerAction(['HR', 'Admin', 'Super Admin', 'Employee'] as any);
+  const caller = await guardServerAction(['HR', 'Admin', 'Employee'] as any);
+  if (caller.role === 'Employee' && caller.id !== employeeId) {
+    throw new Error('Unauthorized: cannot view other employees attendance');
+  }
   const supabaseAdmin = await createAdminClient();
   return _calculateAttendance(employeeId, month, year, supabaseAdmin);
 }

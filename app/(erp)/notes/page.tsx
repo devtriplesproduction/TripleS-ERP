@@ -1,6 +1,7 @@
 import { Metadata } from 'next'
-import { requireAuth } from '@/lib/auth'
+import { requireRole } from '@/lib/auth'
 import { FullNotesView } from '@/components/notes/FullNotesView'
+import { getPersonalNotesAction } from '@/lib/actions/notes'
 
 export const metadata: Metadata = {
   title: 'Personal Notes | TripleS ERP',
@@ -8,7 +9,8 @@ export const metadata: Metadata = {
 }
 
 export default async function PersonalNotesPage() {
-  await requireAuth()
+  await requireRole('/notes')
+  const res = await getPersonalNotesAction({ includeArchived: true })
 
-  return <FullNotesView />
+  return <FullNotesView initialNotes={res.success && res.data ? res.data : []} />
 }

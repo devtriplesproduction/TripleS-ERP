@@ -678,7 +678,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
             <Button onClick={saveAsDraft} className="bg-foreground text-background hover:bg-foreground/90 h-8 text-xs">
               <Save className="w-4 h-4 mr-2" /> Save as Draft
             </Button>
-            <Button variant="ghost" size="icon" onClick={() => onClose ? onClose() : router.push('/hr/onboarding')} className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full">
+            <Button variant="ghost" size="icon" onClick={() => onClose ? onClose() : router.push('/employees')} className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted rounded-full">
               <X className="w-5 h-5" />
             </Button>
           </>
@@ -1252,7 +1252,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
 
                                 <Button type="button" onClick={() => {
                                   if (onClose) onClose()
-                                  else router.push('/hr/onboarding')
+                                  else router.push('/employees')
                                 }} className="w-full bg-muted text-foreground hover:bg-muted/80 font-bold h-9 text-xs transition-all active:scale-[0.98]">
                                   Finish & Close
                                 </Button>

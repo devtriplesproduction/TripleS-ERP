@@ -1,4 +1,4 @@
-import { getCurrentUser } from '@/lib/auth'
+import { requireRole } from '@/lib/auth'
 import { getDashboardAnnouncements } from '@/lib/actions/announcements'
 import { getMyTasks } from '@/lib/actions/tasks'
 import { getMyProjects } from '@/lib/actions/projects'
@@ -10,9 +10,8 @@ import { TopContributorCard } from '@/components/dashboard/TopContributorCard'
 import { PageHeader } from '@/components/PageHeader'
 
 export default async function DashboardPage() {
-  const user = await getCurrentUser()
-  const roleLower = (user?.role || '').toLowerCase()
-  const isAdmin = roleLower === 'admin' || roleLower === 'super admin' || roleLower === 'super_admin'
+  const user = await requireRole('/dashboard')
+  const isAdmin = user.role === 'Admin'
 
   const [announcementsRes, myTasksRes, myProjectsRes, topContributorRes] = await Promise.all([
     getDashboardAnnouncements(),

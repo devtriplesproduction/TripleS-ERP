@@ -154,17 +154,19 @@ export function formatMinutesAsHHMM(totalMinutes: number): string {
  * Convert a database office_hours decimal value to HH.MM display format.
  * 
  * Existing DB values are stored as decimal hours:
+ *   DB 8.4  → 504 minutes → "8.24"
  *   DB 8.5  → 510 minutes → "8.30"
  *   DB 7.2  → 432 minutes → "7.12"
  *   DB 9.75 → 585 minutes → "9.45"
  */
 export function formatOfficeHoursAsHHMM(decimalHours: number): string {
-  const totalMinutes = Math.round(decimalHours * 60);
+  const totalMinutes = canonicalOfficeHoursToMinutes(decimalHours);
   return formatMinutesAsHHMM(totalMinutes);
 }
 
 /**
  * Validate an HH.MM string input. Returns error message or null if valid.
+ * Enforces that minutes must be between 00 and 59.
  */
 export function validateHHMM(value: string): string | null {
   if (!value || !value.trim()) return 'Worked hours are required.';
@@ -175,6 +177,134 @@ export function validateHHMM(value: string): string | null {
   if (result === 0) return 'Worked time cannot be zero.';
   if (result > 24 * 60) return 'Worked time exceeds maximum (24.00).';
   return null;
+}
+
+/**
+ * Normalizes duration or tracker value into H.MM format.
+ * 
+ * Examples:
+ * - 1 hour 28 minutes → "1.28"
+ * - 8 hours 24 minutes → "8.24"
+ * - 3 hours 65 minutes is INVALID; normalizes duration → "4.05"
+ * - 8 hours 04 minutes → "8.04"
+ * - 10 hours 45 minutes → "10.45"
+ * - 3 hours 45 minutes → "3.45"
+ * - 88 minutes → "1.28"
+ * - 504 minutes → "8.24"
+ * - "1.28" → "1.28"
+ * - "8.24" → "8.24"
+ * - "1h 28m" → "1.28"
+ * - "8h 24m" → "8.24"
+ */
+export function normalizeTrackerToHHMM(
+  input: number | string | { hours?: number; minutes?: number } | null | undefined
+): string | null {
+  if (input === null || input === undefined) return null;
+
+  if (typeof input === 'number') {
+    if (isNaN(input) || input <= 0) return null;
+    return formatMinutesAsHHMM(input);
+  }
+
+  if (typeof input === 'object') {
+    const h = Number(input.hours) || 0;
+    const m = Number(input.minutes) || 0;
+    const total = h * 60 + m;
+    if (total <= 0) return null;
+    return formatMinutesAsHHMM(total);
+  }
+
+  if (typeof input === 'string') {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+
+    // Check "X hours Y minutes" or "Xh Ym" or "X hrs Y mins" or "X hour Y minute"
+    const textPattern = /^(\d+)\s*(?:hours?|hrs?|h)\s*(?:and\s*)?(\d+)\s*(?:minutes?|mins?|m)?$/i;
+    const textMatch = trimmed.match(textPattern);
+    if (textMatch) {
+      const h = parseInt(textMatch[1], 10);
+      const m = parseInt(textMatch[2], 10);
+      const total = h * 60 + m;
+      if (total <= 0) return null;
+      return formatMinutesAsHHMM(total);
+    }
+
+    // Check "X hours" or "Xh"
+    const hoursOnlyPattern = /^(\d+)\s*(?:hours?|hrs?|h)$/i;
+    const hoursMatch = trimmed.match(hoursOnlyPattern);
+    if (hoursMatch) {
+      const h = parseInt(hoursMatch[1], 10);
+      if (h <= 0) return null;
+      return formatMinutesAsHHMM(h * 60);
+    }
+
+    // Check "Y minutes" or "Ym"
+    const minsOnlyPattern = /^(\d+)\s*(?:minutes?|mins?|m)$/i;
+    const minsMatch = trimmed.match(minsOnlyPattern);
+    if (minsMatch) {
+      const m = parseInt(minsMatch[1], 10);
+      if (m <= 0) return null;
+      return formatMinutesAsHHMM(m);
+    }
+
+    // Check "H.MM" pattern: if minutes >= 60, normalize duration (e.g. "3.65" -> 3h 65m -> 4h 05m -> "4.05")
+    const dotPattern = /^(\d+)\.(\d{1,2})$/;
+    const dotMatch = trimmed.match(dotPattern);
+    if (dotMatch) {
+      const h = parseInt(dotMatch[1], 10);
+      const m = parseInt(dotMatch[2], 10);
+      const total = h * 60 + m;
+      if (total <= 0) return null;
+      return formatMinutesAsHHMM(total);
+    }
+
+    // Check "HH:MM"
+    const colonPattern = /^(\d+):(\d{1,2})$/;
+    const colonMatch = trimmed.match(colonPattern);
+    if (colonMatch) {
+      const h = parseInt(colonMatch[1], 10);
+      const m = parseInt(colonMatch[2], 10);
+      const total = h * 60 + m;
+      if (total <= 0) return null;
+      return formatMinutesAsHHMM(total);
+    }
+
+    // Integer only string (hours)
+    if (/^\d+$/.test(trimmed)) {
+      const h = parseInt(trimmed, 10);
+      if (h <= 0) return null;
+      return formatMinutesAsHHMM(h * 60);
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Convert valid HH.MM string to canonical decimal hours for database storage.
+ * e.g. "8.24" -> 504 minutes -> 8.4 decimal hours
+ * e.g. "1.28" -> 88 minutes -> 1.466667 decimal hours
+ * e.g. "3.45" -> 225 minutes -> 3.75 decimal hours
+ * e.g. "8.04" -> 484 minutes -> 8.066667 decimal hours
+ * e.g. "10.45" -> 645 minutes -> 10.75 decimal hours
+ * Returns null if the HH.MM string is invalid (e.g. "8.75", minutes > 59).
+ */
+export function hhmmToDecimalHours(value: string): number | null {
+  const totalMinutes = parseHHMM(value);
+  if (totalMinutes === null) return null;
+  return minutesToCanonicalDecimalHours(totalMinutes);
+}
+
+/**
+ * Convert canonical decimal hours back to HH.MM display string.
+ * e.g. 8.4 decimal hours -> 504 minutes -> "8.24"
+ * e.g. 1.466667 decimal hours -> 88 minutes -> "1.28"
+ * e.g. 3.75 decimal hours -> 225 minutes -> "3.45"
+ * e.g. 8.066667 decimal hours -> 484 minutes -> "8.04"
+ * e.g. 10.75 decimal hours -> 645 minutes -> "10.45"
+ */
+export function decimalHoursToHHMM(decimalHours: number): string {
+  return formatOfficeHoursAsHHMM(decimalHours);
 }
 
 // ─── Formatting ─────────────────────────────────────────────────────

@@ -71,6 +71,7 @@ export async function getEmployeeById(id: string): Promise<{ employee: Employee 
 }
 
 export async function createEmployee(formData: FormData) {
+  await guardServerAction(['HR', 'Admin'])
   const supabase = await createClient()
 
   const employeeData = {
@@ -112,11 +113,13 @@ export async function createEmployee(formData: FormData) {
     console.error('Failed to create default tasks:', taskError)
   }
 
+  revalidatePath('/employees')
   revalidatePath('/hr/onboarding')
-  redirect(`/hr/onboarding/${employee.id}`)
+  redirect(`/employees/${employee.id}`)
 }
 
 export async function updateEmployee(id: string, formData: FormData) {
+  await guardServerAction(['HR', 'Admin'])
   const supabase = await createClient()
 
   const employeeData = {
@@ -137,20 +140,26 @@ export async function updateEmployee(id: string, formData: FormData) {
     throw new Error(error.message)
   }
 
+  revalidatePath(`/employees/${id}`)
+  revalidatePath('/employees')
   revalidatePath(`/hr/onboarding/${id}`)
   revalidatePath('/hr/onboarding')
 }
 
 export async function updateEmployeeData(id: string, data: Partial<Employee>) {
+  await guardServerAction(['HR', 'Admin'])
   const supabase = await createClient()
   const { error } = await supabase.from('employee_onboarding').update(data).eq('id', id)
   if (error) throw new Error(error.message)
+  revalidatePath(`/employees/${id}`)
+  revalidatePath('/employees')
   revalidatePath(`/hr/onboarding/${id}`)
   revalidatePath('/hr/onboarding')
   return { success: true }
 }
 
 export async function deleteEmployee(id: string) {
+  await guardServerAction(['Admin'])
   const supabase = await createClient()
   
   const { error } = await supabase
@@ -162,11 +171,13 @@ export async function deleteEmployee(id: string) {
     throw new Error(error.message)
   }
 
+  revalidatePath('/employees')
   revalidatePath('/hr/onboarding')
-  redirect('/hr/onboarding')
+  redirect('/employees')
 }
 
 export async function deleteEmployeesBulk(ids: string[]) {
+  await guardServerAction(['Admin'])
   const supabase = await createClient()
   
   const { error } = await supabase
@@ -178,10 +189,12 @@ export async function deleteEmployeesBulk(ids: string[]) {
     throw new Error(error.message)
   }
 
+  revalidatePath('/employees')
   revalidatePath('/hr/onboarding')
 }
 
 export async function toggleTaskStatus(taskId: string, isCompleted: boolean, employeeId: string) {
+  await guardServerAction(['HR', 'Admin'])
   const supabase = await createClient()
 
   const { error } = await supabase
@@ -196,6 +209,8 @@ export async function toggleTaskStatus(taskId: string, isCompleted: boolean, emp
   // Calculate new status
   await updateEmployeeStatusFromTasks(employeeId)
   
+  revalidatePath(`/employees/${employeeId}`)
+  revalidatePath('/employees')
   revalidatePath(`/hr/onboarding/${employeeId}`)
   revalidatePath('/hr/onboarding')
 }
@@ -329,6 +344,7 @@ export async function onboardEmployeeAction(data: any) {
 
   await supabase.from('onboarding_tasks').insert(tasksToInsert)
 
+  revalidatePath('/employees')
   revalidatePath('/hr/onboarding')
   return {
     success: true,
@@ -341,6 +357,7 @@ export async function onboardEmployeeAction(data: any) {
 }
 
 export async function uploadEmployeeFileAction(formData: FormData) {
+  await guardServerAction(['HR', 'Admin'])
   const supabase = await createClient()
   const file = formData.get('file') as File
   if (!file) return { success: false, error: 'No file provided' }

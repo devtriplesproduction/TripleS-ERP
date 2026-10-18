@@ -37,12 +37,16 @@ import { NoteCard } from './NoteCard'
 import { toast } from 'sonner'
 import dayjs from 'dayjs'
 
-export function FullNotesView() {
+interface FullNotesViewProps {
+  initialNotes?: PersonalNote[]
+}
+
+export function FullNotesView({ initialNotes = [] }: FullNotesViewProps) {
   const [activeTab, setActiveTab] = useState<'active' | 'archive'>('active')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [searchQuery, setSearchQuery] = useState('')
-  const [notes, setNotes] = useState<PersonalNote[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [notes, setNotes] = useState<PersonalNote[]>(initialNotes)
+  const [isLoading, setIsLoading] = useState(initialNotes.length === 0)
 
   // Creation box state
   const [isCreatorExpanded, setIsCreatorExpanded] = useState(false)
@@ -68,9 +72,12 @@ export function FullNotesView() {
       })
       if (res.success && res.data) {
         setNotes(res.data)
+      } else if (!res.success) {
+        toast.error(res.error || 'Failed to load notes')
       }
     } catch (err) {
       console.error('[FullNotesView] Error loading notes:', err)
+      toast.error('Network error loading notes')
     } finally {
       setIsLoading(false)
     }
@@ -93,10 +100,12 @@ export function FullNotesView() {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [isCreatorExpanded, newTitle, newContent, isNewPinned])
+  }, [isCreatorExpanded, newTitle, newContent, isNewPinned, isCreating])
 
   // Create new note
   const handleSaveNewNote = async () => {
+    if (isCreating) return
+
     const titleTrim = newTitle.trim()
     const contentTrim = newContent.trim()
 
@@ -115,7 +124,7 @@ export function FullNotesView() {
       })
 
       if (res.success && res.data) {
-        setNotes((prev) => [res.data!, ...prev])
+        setNotes((prev) => [res.data!, ...prev.filter((n) => n.id !== res.data!.id)])
         setNewTitle('')
         setNewContent('')
         setIsNewPinned(false)
@@ -139,8 +148,18 @@ export function FullNotesView() {
       prev.map((n) => (n.id === note.id ? { ...n, is_pinned: nextPin } : n))
     )
     try {
-      await togglePinNoteAction(note.id, nextPin)
-      toast.success(nextPin ? 'Note pinned' : 'Note unpinned')
+      const res = await togglePinNoteAction(note.id, nextPin)
+      if (res.success && res.data) {
+        setNotes((prev) =>
+          prev.map((n) => (n.id === note.id ? res.data! : n))
+        )
+        toast.success(nextPin ? 'Note pinned' : 'Note unpinned')
+      } else {
+        setNotes((prev) =>
+          prev.map((n) => (n.id === note.id ? { ...n, is_pinned: !nextPin } : n))
+        )
+        toast.error(res.error || 'Failed to toggle pin')
+      }
     } catch {
       setNotes((prev) =>
         prev.map((n) => (n.id === note.id ? { ...n, is_pinned: !nextPin } : n))
@@ -153,6 +172,7 @@ export function FullNotesView() {
   const handleToggleArchive = async (e: React.MouseEvent, note: PersonalNote) => {
     e.stopPropagation()
     const nextArchived = !note.is_archived
+    const previousNotes = notes
     setNotes((prev) =>
       prev.map((n) =>
         n.id === note.id
@@ -161,25 +181,33 @@ export function FullNotesView() {
       )
     )
     try {
-      await toggleArchiveNoteAction(note.id, nextArchived)
-      toast.success(nextArchived ? 'Note archived' : 'Note restored to active')
+      const res = await toggleArchiveNoteAction(note.id, nextArchived)
+      if (res.success) {
+        toast.success(nextArchived ? 'Note archived' : 'Note restored to active')
+      } else {
+        setNotes(previousNotes)
+        toast.error(res.error || 'Failed to update note')
+      }
     } catch {
-      loadNotes()
+      setNotes(previousNotes)
       toast.error('Failed to update note')
     }
   }
 
   // Confirm Permanent Deletion
   const handleConfirmPermanentDelete = async (noteId: string) => {
+    const previousNotes = notes
+    setNotes((prev) => prev.filter((n) => n.id !== noteId))
     try {
       const res = await deletePersonalNoteAction(noteId, true)
       if (res.success) {
-        setNotes((prev) => prev.filter((n) => n.id !== noteId))
         toast.success('Note permanently deleted')
       } else {
+        setNotes(previousNotes)
         toast.error(res.error || 'Failed to delete note')
       }
     } catch {
+      setNotes(previousNotes)
       toast.error('Error deleting note')
     }
   }
@@ -187,14 +215,18 @@ export function FullNotesView() {
   // Soft Delete
   const handleSoftDelete = async (e: React.MouseEvent, noteId: string) => {
     e.stopPropagation()
+    const previousNotes = notes
     setNotes((prev) => prev.filter((n) => n.id !== noteId))
     try {
       const res = await deletePersonalNoteAction(noteId, false)
       if (res.success) {
         toast.success('Note moved to trash')
+      } else {
+        setNotes(previousNotes)
+        toast.error(res.error || 'Failed to delete note')
       }
     } catch {
-      loadNotes()
+      setNotes(previousNotes)
       toast.error('Failed to delete note')
     }
   }

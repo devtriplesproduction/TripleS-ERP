@@ -37,7 +37,9 @@ export async function addSalaryIncrementAction(employeeId: string, previousSalar
 
     if (updateError) throw updateError
 
+    revalidatePath('/employees')
     revalidatePath('/hr/onboarding')
+    revalidatePath('/payroll')
     return { success: true }
   } catch (error: any) {
     return { success: false, error: error.message }

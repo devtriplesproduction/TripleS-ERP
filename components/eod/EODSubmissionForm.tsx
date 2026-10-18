@@ -1,7 +1,7 @@
 // @ts-nocheck
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { submitEODAction, fetchEODAction, updateEODAction } from '@/actions/eod.actions';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
@@ -12,7 +12,7 @@ import { ImagePlus, Clock, X, Plus, User, Key } from 'lucide-react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { DatePicker } from '@/components/ui/date-picker';
-import { parseHHMM, validateHHMM, formatOfficeHoursAsHHMM } from '@/lib/utils/time';
+import { parseHHMM, validateHHMM, formatOfficeHoursAsHHMM, normalizeTrackerToHHMM, minutesToCanonicalDecimalHours } from '@/lib/utils/time';
 import { toast } from 'sonner';
 
 type EmployeeOption = { id: string; first_name: string; last_name: string; employee_id: string };
@@ -47,24 +47,73 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
     window.dispatchEvent(new CustomEvent('eod-tasks-changed', { detail: tasksCompleted }));
   }, [tasksAccomplished]);
   const [workedHoursInput, setWorkedHoursInput] = useState<string>('');
-  const [trackedHours, setTrackedHours] = useState<string | null>(null);
+  const [isManuallyEdited, setIsManuallyEdited] = useState(false);
+  const isManuallyEditedRef = useRef(false);
+  useEffect(() => {
+    isManuallyEditedRef.current = isManuallyEdited;
+  }, [isManuallyEdited]);
+
+  const [trackerLoading, setTrackerLoading] = useState(false);
+  const [trackerError, setTrackerError] = useState<string | null>(null);
 
   useEffect(() => {
+    // If it's an existing EOD update, don't overwrite with tracker hours
+    if (isUpdate) return;
+
+    let isMounted = true;
     async function loadTimeTrackerHours() {
+      setTrackerLoading(true);
+      setTrackerError(null);
       try {
         const res = await fetch(`/api/time-tracking/summary?employeeId=${selectedEmployeeId}&date=${reportDate}`);
+        if (!isMounted) return;
+
         if (res.ok) {
           const data = await res.json();
-          if (data.success && data.formattedActive) {
-            setTrackedHours(data.formattedActive);
-            if (!workedHoursInput && !isUpdate) {
-              setWorkedHoursInput(data.formattedActive);
+          if (data.success) {
+            if (data.isEmpty || data.totalActiveMinutes === 0) {
+              // No sessions exist: show 0.00 if user hasn't manually edited
+              if (!isManuallyEditedRef.current) {
+                setWorkedHoursInput('0.00');
+              }
+            } else {
+              const activeMins = typeof data.totalActiveMinutes === 'number' ? data.totalActiveMinutes : null;
+              const hhmm = activeMins !== null && activeMins > 0
+                ? normalizeTrackerToHHMM(activeMins)
+                : normalizeTrackerToHHMM(data.formattedHHMM || data.formattedActive || data.formattedDisplay);
+
+              if (hhmm && parseHHMM(hhmm) !== null) {
+                if (!isManuallyEditedRef.current) {
+                  setWorkedHoursInput(hhmm);
+                }
+              } else {
+                if (!isManuallyEditedRef.current) {
+                  setWorkedHoursInput('0.00');
+                }
+              }
             }
+          } else {
+            setTrackerError(data.error || 'Failed to retrieve tracker summary');
           }
+        } else {
+          const errData = await res.json().catch(() => null);
+          setTrackerError(errData?.error || 'Failed to retrieve tracker summary');
         }
-      } catch (e) {}
+      } catch (e: any) {
+        if (isMounted) {
+          setTrackerError('Failed to load Time Tracker data');
+        }
+      } finally {
+        if (isMounted) {
+          setTrackerLoading(false);
+        }
+      }
     }
     loadTimeTrackerHours();
+
+    return () => {
+      isMounted = false;
+    };
   }, [selectedEmployeeId, reportDate, isUpdate]);
   const [blockers, setBlockers] = useState('');
   const [jobCardNumbers, setJobCardNumbers] = useState<string[]>([]);
@@ -99,7 +148,7 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
       if (res.success && 'data' in res && res.data) {
         setIsUpdate(true);
         setTasksAccomplished(res.data.tasks_accomplished);
-        const { hours: h, minutes: m } = { hours: Math.floor(Math.round(Number(res.data.office_hours) * 60) / 60), minutes: Math.round(Number(res.data.office_hours) * 60) % 60 };
+
         setWorkedHoursInput(formatOfficeHoursAsHHMM(Number(res.data.office_hours)));
         setLocation(res.data.location as 'Office' | 'Field' | 'Work From Home');
         setBlockers(res.data.blockers || '');
@@ -174,6 +223,18 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
         throw new Error("Please select an employee.");
       }
 
+      const workedHoursError = validateHHMM(workedHoursInput);
+      if (workedHoursError) {
+        throw new Error(workedHoursError);
+      }
+
+      const totalMins = parseHHMM(workedHoursInput);
+      if (totalMins === null || totalMins <= 0) {
+        throw new Error("Please enter valid worked hours.");
+      }
+
+      const decimalHours = minutesToCanonicalDecimalHours(totalMins);
+
       if (location === 'Field' && !file && !existingPhotoUrl) {
         throw new Error("A field photo is required when submitting a Field report.");
       }
@@ -198,6 +259,8 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
 
       const formData = new FormData(e.currentTarget);
       formData.append('employee_id', selectedEmployeeId);
+      formData.set('office_hours', decimalHours.toString());
+      formData.set('worked_hours', workedHoursInput);
       if (photoPath) {
         formData.set('photo_url', photoPath);
       } else if (existingPhotoUrl) {
@@ -230,6 +293,8 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
         setLocation('Office');
         setTasksAccomplished('');
         setWorkedHoursInput('');
+        setIsManuallyEdited(false);
+        isManuallyEditedRef.current = false;
         setBlockers('');
         setJobCardNumbers([]);
         setTomorrowsPlan('');
@@ -340,7 +405,15 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
-                  <label className="block text-sm font-medium text-foreground">Worked Hours <span className="text-error">*</span></label>
+                  <div className="flex items-center gap-2">
+                    <label className="block text-sm font-medium text-foreground">Worked Hours <span className="text-error">*</span></label>
+                    {trackerLoading && (
+                      <span className="inline-flex items-center gap-1 text-xs text-muted-foreground animate-pulse">
+                        <Clock className="w-3 h-3 animate-spin text-primary" />
+                        <span>Syncing tracker...</span>
+                      </span>
+                    )}
+                  </div>
                   {(() => {
                     const totalMins = parseHHMM(workedHoursInput);
                     if (totalMins === null || totalMins === 0) return null;
@@ -357,18 +430,26 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
                 <input
                   type="text"
                   inputMode="decimal"
-                  placeholder="8.19"
+                  placeholder={trackerLoading ? "Syncing..." : "8.24"}
                   value={workedHoursInput}
-                  onChange={(e) => setWorkedHoursInput(e.target.value)}
+                  onChange={(e) => {
+                    setIsManuallyEdited(true);
+                    isManuallyEditedRef.current = true;
+                    setWorkedHoursInput(e.target.value);
+                  }}
                   className="flex w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
                 />
+                {trackerError && (
+                  <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">{trackerError}</p>
+                )}
                 {workedHoursInput && validateHHMM(workedHoursInput) && (
                   <p className="text-xs text-rose-500">{validateHHMM(workedHoursInput)}</p>
                 )}
                 <input type="hidden" name="office_hours" value={(() => {
                   const totalMins = parseHHMM(workedHoursInput);
-                  return totalMins !== null ? (totalMins / 60).toFixed(6) : '0';
+                  return totalMins !== null ? String(minutesToCanonicalDecimalHours(totalMins)) : '';
                 })()} />
+                <input type="hidden" name="worked_hours" value={workedHoursInput} />
               </div>
 
               <div className="space-y-1.5">

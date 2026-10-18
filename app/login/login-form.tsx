@@ -3,13 +3,19 @@
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { loginAction } from '@/actions/auth.actions'
+import { getSafeRedirectUrl } from '@/config/rbac'
 import { Eye, EyeOff, Loader2, Lock, Mail } from 'lucide-react'
 import Image from 'next/image'
 
-export function LoginForm() {
+interface LoginFormProps {
+  initialRedirect?: string
+}
+
+export function LoginForm({ initialRedirect }: LoginFormProps = {}) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const redirectTo = searchParams.get('redirect') || '/dashboard'
+  const rawRedirect = searchParams.get('redirect') || initialRedirect
+  const redirectTo = getSafeRedirectUrl(rawRedirect)
 
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')

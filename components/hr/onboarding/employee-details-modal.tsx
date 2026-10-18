@@ -693,7 +693,7 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
           {/* Back Button */}
           <button
             type="button"
-            onClick={() => router.push('/hr/onboarding')}
+            onClick={() => router.push('/employees')}
             className="shrink-0 inline-flex items-center gap-1.5 h-8 sm:h-9 px-[9px] sm:px-[11px] rounded-xl border border-border/50 dark:border-zinc-800/80 bg-card/40 dark:bg-zinc-950/60 text-xs font-medium text-foreground/80 hover:text-foreground hover:bg-muted/40 hover:border-border transition-all cursor-pointer select-none"
           >
             <ChevronLeft className="w-3.5 h-3.5 shrink-0 text-foreground/80" />

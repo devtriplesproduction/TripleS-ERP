@@ -1,13 +1,1 @@
-[
-  {
-    "id": "e78dbd97-12a9-495c-a8ec-092e17da8b5c",
-    "user_id": "user-aaa-1111",
-    "title": "Draft",
-    "content": "Valid content",
-    "is_pinned": false,
-    "is_archived": false,
-    "created_at": "2026-10-17T09:22:36.263Z",
-    "updated_at": "2026-10-17T09:22:36.263Z",
-    "deleted_at": null
-  }
-]
+[]

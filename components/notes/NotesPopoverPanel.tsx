@@ -66,9 +66,12 @@ export function NotesPopoverPanel({ onClose }: NotesPopoverPanelProps) {
       const res = await getPersonalNotesAction({ includeArchived: false })
       if (res.success && res.data) {
         setNotes(res.data)
+      } else if (!res.success) {
+        toast.error(res.error || 'Failed to load notes')
       }
     } catch (err) {
       console.error('[NotesPopoverPanel] Error loading notes:', err)
+      toast.error('Network error loading notes')
     } finally {
       setIsLoading(false)
     }
@@ -98,10 +101,12 @@ export function NotesPopoverPanel({ onClose }: NotesPopoverPanelProps) {
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [isExpanded, newTitle, newContent, isNewPinned])
+  }, [isExpanded, newTitle, newContent, isNewPinned, isCreating])
 
   // Create new note
   const handleSaveNewNote = async () => {
+    if (isCreating) return
+
     const titleTrim = newTitle.trim()
     const contentTrim = newContent.trim()
 
@@ -121,7 +126,7 @@ export function NotesPopoverPanel({ onClose }: NotesPopoverPanelProps) {
       })
 
       if (res.success && res.data) {
-        setNotes((prev) => [res.data!, ...prev])
+        setNotes((prev) => [res.data!, ...prev.filter((n) => n.id !== res.data!.id)])
         setNewTitle('')
         setNewContent('')
         setIsNewPinned(false)
@@ -145,7 +150,17 @@ export function NotesPopoverPanel({ onClose }: NotesPopoverPanelProps) {
       prev.map((n) => (n.id === note.id ? { ...n, is_pinned: nextPin } : n))
     )
     try {
-      await togglePinNoteAction(note.id, nextPin)
+      const res = await togglePinNoteAction(note.id, nextPin)
+      if (res.success && res.data) {
+        setNotes((prev) =>
+          prev.map((n) => (n.id === note.id ? res.data! : n))
+        )
+      } else {
+        setNotes((prev) =>
+          prev.map((n) => (n.id === note.id ? { ...n, is_pinned: !nextPin } : n))
+        )
+        toast.error(res.error || 'Failed to pin note')
+      }
     } catch {
       setNotes((prev) =>
         prev.map((n) => (n.id === note.id ? { ...n, is_pinned: !nextPin } : n))
@@ -157,12 +172,18 @@ export function NotesPopoverPanel({ onClose }: NotesPopoverPanelProps) {
   // Archive existing note
   const handleArchiveNote = async (e: React.MouseEvent, noteId: string) => {
     e.stopPropagation()
+    const previousNotes = notes
     setNotes((prev) => prev.filter((n) => n.id !== noteId))
-    toast.success('Note archived')
     try {
-      await toggleArchiveNoteAction(noteId, true)
+      const res = await toggleArchiveNoteAction(noteId, true)
+      if (res.success) {
+        toast.success('Note archived')
+      } else {
+        setNotes(previousNotes)
+        toast.error(res.error || 'Failed to archive note')
+      }
     } catch {
-      loadNotes()
+      setNotes(previousNotes)
       toast.error('Failed to archive note')
     }
   }
@@ -170,12 +191,18 @@ export function NotesPopoverPanel({ onClose }: NotesPopoverPanelProps) {
   // Delete existing note
   const handleDeleteNote = async (e: React.MouseEvent, noteId: string) => {
     e.stopPropagation()
+    const previousNotes = notes
     setNotes((prev) => prev.filter((n) => n.id !== noteId))
-    toast.success('Note deleted')
     try {
-      await deletePersonalNoteAction(noteId, false)
+      const res = await deletePersonalNoteAction(noteId, false)
+      if (res.success) {
+        toast.success('Note deleted')
+      } else {
+        setNotes(previousNotes)
+        toast.error(res.error || 'Failed to delete note')
+      }
     } catch {
-      loadNotes()
+      setNotes(previousNotes)
       toast.error('Failed to delete note')
     }
   }

@@ -5,6 +5,7 @@ import { z } from 'zod';
 import { submitEOD, reviewEOD, batchReviewEODs, updateEOD, getEODByEmployeeAndDate } from '@/lib/actions/eod';
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
+import { parseHHMM, minutesToCanonicalDecimalHours } from '@/lib/utils/time';
 
 
 
@@ -32,11 +33,20 @@ export async function submitEODAction(formData: FormData) {
   try {
     
 
+    let officeHours = Number(formData.get('office_hours'));
+    const workedHours = formData.get('worked_hours');
+    if (typeof workedHours === 'string' && workedHours.trim()) {
+      const parsedMins = parseHHMM(workedHours);
+      if (parsedMins !== null) {
+        officeHours = minutesToCanonicalDecimalHours(parsedMins);
+      }
+    }
+
     const rawData = {
       employee_id: formData.get('employee_id') as string,
       report_date: formData.get('report_date') as string,
       tasks_accomplished: formData.get('tasks_accomplished') as string,
-      office_hours: Number(formData.get('office_hours')),
+      office_hours: officeHours,
       location: formData.get('location') as "Office" | "Field" | "Work From Home",
       blockers: (formData.get('blockers') as string | null) ?? undefined,
       photo_url: (formData.get('photo_url') as string | null) ?? undefined,
@@ -176,11 +186,20 @@ export async function fetchEODAction(employeeId: string, reportDate: string, rol
 export async function updateEODAction(formData: FormData) {
   try {
     
+    let officeHours = Number(formData.get('office_hours'));
+    const workedHours = formData.get('worked_hours');
+    if (typeof workedHours === 'string' && workedHours.trim()) {
+      const parsedMins = parseHHMM(workedHours);
+      if (parsedMins !== null) {
+        officeHours = minutesToCanonicalDecimalHours(parsedMins);
+      }
+    }
+
     const rawData = {
       employee_id: formData.get('employee_id') as string,
       report_date: formData.get('report_date') as string,
       tasks_accomplished: formData.get('tasks_accomplished') as string,
-      office_hours: Number(formData.get('office_hours')),
+      office_hours: officeHours,
       location: formData.get('location') as "Office" | "Field" | "Work From Home",
       blockers: (formData.get('blockers') as string | null) ?? undefined,
       photo_url: (formData.get('photo_url') as string | null) ?? undefined,

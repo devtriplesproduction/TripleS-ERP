@@ -95,6 +95,8 @@ export async function assignHod(authUserId: string, employeeIdNumber: string, de
       console.warn('Failed to insert history:', assignError)
     }
 
+    revalidatePath('/employees')
+    revalidatePath('/employees', 'layout')
     revalidatePath('/hr/onboarding')
     revalidatePath('/hr/onboarding', 'layout')
     revalidatePath('/dashboard')
@@ -164,6 +166,8 @@ export async function removeHod(authUserId: string, employeeIdNumber: string, de
       console.warn('Failed to update history:', historyError)
     }
 
+    revalidatePath('/employees')
+    revalidatePath('/employees', 'layout')
     revalidatePath('/hr/onboarding')
     revalidatePath('/hr/onboarding', 'layout')
     revalidatePath('/dashboard')

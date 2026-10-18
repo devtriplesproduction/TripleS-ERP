@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { getCurrentUser } from '@/lib/auth'
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const { action, employeeId, sessionId, reason, clockInTime, workedMinutes, activeMinutes } = body
+    const user = await getCurrentUser()
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized: Authentication required' },
+        { status: 401 }
+      )
+    }
 
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const body = await req.json().catch(() => ({}))
+    const { action, sessionId, reason, clockInTime, workedMinutes, activeMinutes, suspendedSeconds } = body
 
-    // Enforce identity verification: use authenticated user id or verified employeeId
-    const targetEmployeeId = user?.id || employeeId || '3f1a7db7-0ebf-45a7-b5a9-f9a0a393c023'
+    // Enforce identity verification: session ALWAYS belongs to the authenticated user
+    const targetEmployeeId = user.id
 
     const adminSupa = createSupabaseAdmin(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -37,37 +42,47 @@ export async function POST(req: NextRequest) {
           status: 'working',
           worked_minutes: workedMinutes || 0,
           active_minutes: activeMinutes || 0,
+          suspended_seconds: suspendedSeconds || 0,
           updated_at: new Date().toISOString()
         })
         .select()
         .single()
 
       if (error) {
-        return NextResponse.json({ success: true, notice: error.message, sessionId: newSessionId })
+        return NextResponse.json({ success: false, error: error.message }, { status: 500 })
       }
       return NextResponse.json({ success: true, session: data })
     }
 
     if (action === 'break') {
+      if (!sessionId) {
+        return NextResponse.json({ success: false, error: 'Missing sessionId' }, { status: 400 })
+      }
       const breakId = crypto.randomUUID()
-      await adminSupa.from('session_breaks').insert({
+      const { error: breakErr } = await adminSupa.from('session_breaks').insert({
         id: breakId,
         session_id: sessionId,
         start_time: new Date().toISOString(),
         reason: reason || 'Break'
       })
+      if (breakErr) {
+        return NextResponse.json({ success: false, error: breakErr.message }, { status: 500 })
+      }
 
       await adminSupa
         .from('time_sessions')
         .update({ status: 'on_break', updated_at: new Date().toISOString() })
         .eq('id', sessionId)
+        .eq('employee_id', targetEmployeeId)
 
       return NextResponse.json({ success: true, breakId })
     }
 
     if (action === 'resume') {
+      if (!sessionId) {
+        return NextResponse.json({ success: false, error: 'Missing sessionId' }, { status: 400 })
+      }
       const now = new Date().toISOString()
-      // Close open break
       const { data: openBreak } = await adminSupa
         .from('session_breaks')
         .select('id, start_time')
@@ -86,13 +101,17 @@ export async function POST(req: NextRequest) {
 
       await adminSupa
         .from('time_sessions')
-        .update({ status: 'Working', updated_at: now })
+        .update({ status: 'working', updated_at: now })
         .eq('id', sessionId)
+        .eq('employee_id', targetEmployeeId)
 
       return NextResponse.json({ success: true })
     }
 
     if (action === 'end') {
+      if (!sessionId) {
+        return NextResponse.json({ success: false, error: 'Missing sessionId' }, { status: 400 })
+      }
       const now = new Date().toISOString()
       await adminSupa
         .from('time_sessions')
@@ -101,15 +120,17 @@ export async function POST(req: NextRequest) {
           status: 'completed',
           worked_minutes: workedMinutes || 0,
           active_minutes: activeMinutes || 0,
+          suspended_seconds: suspendedSeconds || 0,
           updated_at: now
         })
         .eq('id', sessionId)
+        .eq('employee_id', targetEmployeeId)
 
       return NextResponse.json({ success: true })
     }
 
     return NextResponse.json({ success: false, error: 'Invalid action' }, { status: 400 })
   } catch (err: any) {
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 })
+    return NextResponse.json({ success: false, error: err.message || 'Internal server error' }, { status: 500 })
   }
 }
