@@ -46,6 +46,16 @@ export function canEditProject(user: AuthUser | null, projectCreatedBy?: string 
 }
 
 /**
+ * Only authorized users (Admin, Manager, HOD, or assigned Project Manager) can assign or remove project members.
+ */
+export function canAssignProjectMembers(user: AuthUser | null, project?: { project_manager_id?: string | null; created_by?: string | null } | null): boolean {
+  if (!user) return false
+  if (isUserAdmin(user) || isUserManager(user) || isUserHOD(user)) return true
+  if (project?.project_manager_id && project.project_manager_id === user.id) return true
+  return false
+}
+
+/**
  * HOD / Project Manager can create and edit tasks.
  */
 export function canManageTasks(user: AuthUser | null): boolean {

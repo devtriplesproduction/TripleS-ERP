@@ -108,6 +108,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
       <PageHeader
         title="Attendance & Leaves"
         subtitle="Track team attendance, leaves, holidays, and working-day status."
+        icon={CalendarDays}
         actions={
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center bg-card border border-border rounded-lg p-1">

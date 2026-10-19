@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { User, Shield, Briefcase, Mail, Building, Key, CheckCircle2 } from 'lucide-react'
+import { Settings, User, Shield, Briefcase, Mail, Building, Key, CheckCircle2 } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Settings & Profile | TripleS ERP',
@@ -19,6 +19,7 @@ export default async function SettingsPage() {
       <PageHeader
         title="Settings & Profile"
         subtitle="Manage your profile information, system preferences, and security settings."
+        icon={Settings}
       />
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

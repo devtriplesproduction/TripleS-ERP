@@ -36,6 +36,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DatePicker } from '@/components/ui/date-picker'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/PageHeader'
 
 export interface RuleAcknowledgment {
   id?: string
@@ -306,35 +307,25 @@ export function RulebookClient({ initialRules, userRole, employeeId, acknowledge
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-card border border-border flex items-center justify-center shrink-0 shadow-xs">
-            <FileText className="w-6 h-6 text-foreground" />
-          </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight">
-              Company Rulebook
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-0.5">
-              View and acknowledge the latest company policies and rules.
-            </p>
-          </div>
-        </div>
-
-        {(userRole === 'Admin' || userRole === 'HR') && (
-          <Button
-            onClick={() => {
-              setEditingRuleId(null)
-              setNewRule({ status: 'Draft', category: activeCategory })
-              setIsAddOpen(true)
-            }}
-            className="h-10 px-4 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs flex items-center gap-2 transition-colors self-start sm:self-auto shrink-0 shadow-xs"
-          >
-            <Plus className="h-4 w-4" /> Add Rule
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Company Rulebook"
+        subtitle="View and acknowledge the latest company policies and rules."
+        icon={BookOpen}
+        actions={
+          (userRole === 'Admin' || userRole === 'HR') ? (
+            <Button
+              onClick={() => {
+                setEditingRuleId(null)
+                setNewRule({ status: 'Draft', category: activeCategory })
+                setIsAddOpen(true)
+              }}
+              className="h-10 px-4 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-semibold text-xs flex items-center gap-2 transition-colors self-start sm:self-auto shrink-0 shadow-xs"
+            >
+              <Plus className="h-4 w-4" /> Add Rule
+            </Button>
+          ) : null
+        }
+      />
 
       {/* Category Tabs */}
       <div className="border-b border-border overflow-x-auto no-scrollbar">

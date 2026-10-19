@@ -24,6 +24,7 @@ import { DatePicker } from '@/components/ui/date-picker';
 import { EodCard } from './EodCard';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { PageHeader } from '@/components/PageHeader';
 
 type Employee = { id: string; first_name: string; last_name: string; employee_id: string };
 type EnrichedEOD = EODReport & { profiles: Employee | null };
@@ -34,12 +35,16 @@ export function ReviewDashboard({
   currentUserId,
   showHeader = false,
   todayReportsCount: initialTodayReportsCount,
+  branchSelector,
+  reviewEodButton,
 }: {
   initialEods: EnrichedEOD[];
   employees: Employee[];
   currentUserId?: string;
   showHeader?: boolean;
   todayReportsCount?: number;
+  branchSelector?: React.ReactNode;
+  reviewEodButton?: React.ReactNode;
 }) {
   const [eods, setEods] = useState<EnrichedEOD[]>(initialEods);
   useEffect(() => { setEods(initialEods); }, [initialEods]);
@@ -238,85 +243,82 @@ export function ReviewDashboard({
     <div className="space-y-6 w-full">
       {/* Top Header matching reference image */}
       {showHeader && (
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-          {/* Left: Icon, Title & Subtitle */}
-          <div className="flex items-center gap-3.5 min-w-0">
-            <div className="w-12 h-12 rounded-xl bg-card border border-border/80 flex items-center justify-center shrink-0 shadow-xs">
-              <FileText className="w-6 h-6 text-foreground" />
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-2xl sm:text-[26px] font-bold tracking-tight text-foreground leading-tight truncate">
-                Review EOD
-              </h1>
-              <p className="text-xs sm:text-sm text-muted-foreground font-normal truncate mt-0.5">
-                Review employee and HR end-of-day reports.
-              </p>
-            </div>
-          </div>
+        <PageHeader
+          title="Review EOD"
+          subtitle="Review employee and HR end-of-day reports."
+          icon={FileText}
+          actions={
+            <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap justify-start sm:justify-end shrink-0">
+              {(reviewEodButton || branchSelector) && (
+                <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+                  {reviewEodButton}
+                  {branchSelector}
+                </div>
+              )}
+              <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap shrink-0">
+                {/* Reports */}
+                <div className="w-[130px] sm:w-[136px] h-[60px] rounded-xl border border-border/80 bg-card/60 px-3 py-2 flex items-center shrink-0 shadow-xs">
+                  <div className="w-8 h-8 rounded-lg bg-muted/50 border border-border/80 flex items-center justify-center shrink-0 mr-2.5">
+                    <FileText className="w-4 h-4 text-foreground/80" />
+                  </div>
+                  <div className="min-w-0 flex flex-col justify-center">
+                    <span className="text-[11px] font-medium text-muted-foreground leading-none truncate">
+                      Reports
+                    </span>
+                    <span className="text-lg font-bold text-foreground leading-tight mt-1">
+                      {totalReports}
+                    </span>
+                  </div>
+                </div>
 
-          {/* Right: Four compact statistic tags in one horizontal row */}
-          <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap lg:flex-nowrap shrink-0">
-            {/* Reports */}
-            <div className="w-[130px] sm:w-[136px] h-[60px] rounded-xl border border-border/80 bg-card/60 px-3 py-2 flex items-center shrink-0 shadow-xs">
-              <div className="w-8 h-8 rounded-lg bg-muted/50 border border-border/80 flex items-center justify-center shrink-0 mr-2.5">
-                <FileText className="w-4 h-4 text-foreground/80" />
-              </div>
-              <div className="min-w-0 flex flex-col justify-center">
-                <span className="text-[11px] font-medium text-muted-foreground leading-none truncate">
-                  Reports
-                </span>
-                <span className="text-lg font-bold text-foreground leading-tight mt-1">
-                  {totalReports}
-                </span>
-              </div>
-            </div>
+                {/* Approved */}
+                <div className="w-[130px] sm:w-[136px] h-[60px] rounded-xl border border-emerald-500/25 bg-emerald-950/20 px-3 py-2 flex items-center shrink-0 shadow-xs">
+                  <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0 mr-2.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  </div>
+                  <div className="min-w-0 flex flex-col justify-center">
+                    <span className="text-[11px] font-medium text-neutral-300 leading-none truncate">
+                      Approved
+                    </span>
+                    <span className="text-lg font-bold text-foreground leading-tight mt-1">
+                      {approved}
+                    </span>
+                  </div>
+                </div>
 
-            {/* Approved */}
-            <div className="w-[130px] sm:w-[136px] h-[60px] rounded-xl border border-emerald-500/25 bg-emerald-950/20 px-3 py-2 flex items-center shrink-0 shadow-xs">
-              <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0 mr-2.5">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-              </div>
-              <div className="min-w-0 flex flex-col justify-center">
-                <span className="text-[11px] font-medium text-neutral-300 leading-none truncate">
-                  Approved
-                </span>
-                <span className="text-lg font-bold text-foreground leading-tight mt-1">
-                  {approved}
-                </span>
-              </div>
-            </div>
+                {/* Pending */}
+                <div className="w-[130px] sm:w-[136px] h-[60px] rounded-xl border border-amber-500/25 bg-amber-950/20 px-3 py-2 flex items-center shrink-0 shadow-xs">
+                  <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0 mr-2.5">
+                    <Clock className="w-4 h-4 text-amber-400" />
+                  </div>
+                  <div className="min-w-0 flex flex-col justify-center">
+                    <span className="text-[11px] font-medium text-neutral-300 leading-none truncate">
+                      Pending
+                    </span>
+                    <span className="text-lg font-bold text-foreground leading-tight mt-1">
+                      {pending}
+                    </span>
+                  </div>
+                </div>
 
-            {/* Pending */}
-            <div className="w-[130px] sm:w-[136px] h-[60px] rounded-xl border border-amber-500/25 bg-amber-950/20 px-3 py-2 flex items-center shrink-0 shadow-xs">
-              <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0 mr-2.5">
-                <Clock className="w-4 h-4 text-amber-400" />
-              </div>
-              <div className="min-w-0 flex flex-col justify-center">
-                <span className="text-[11px] font-medium text-neutral-300 leading-none truncate">
-                  Pending
-                </span>
-                <span className="text-lg font-bold text-foreground leading-tight mt-1">
-                  {pending}
-                </span>
-              </div>
-            </div>
-
-            {/* Today */}
-            <div className="w-[130px] sm:w-[136px] h-[60px] rounded-xl border border-border/80 bg-card/60 px-3 py-2 flex items-center shrink-0 shadow-xs">
-              <div className="w-8 h-8 rounded-lg bg-muted/50 border border-border/80 flex items-center justify-center shrink-0 mr-2.5">
-                <BarChart2 className="w-4 h-4 text-foreground/80" />
-              </div>
-              <div className="min-w-0 flex flex-col justify-center">
-                <span className="text-[11px] font-medium text-muted-foreground leading-none truncate">
-                  Today
-                </span>
-                <span className="text-lg font-bold text-foreground leading-tight mt-1">
-                  {reportsToday}
-                </span>
+                {/* Today */}
+                <div className="w-[130px] sm:w-[136px] h-[60px] rounded-xl border border-border/80 bg-card/60 px-3 py-2 flex items-center shrink-0 shadow-xs">
+                  <div className="w-8 h-8 rounded-lg bg-muted/50 border border-border/80 flex items-center justify-center shrink-0 mr-2.5">
+                    <BarChart2 className="w-4 h-4 text-foreground/80" />
+                  </div>
+                  <div className="min-w-0 flex flex-col justify-center">
+                    <span className="text-[11px] font-medium text-muted-foreground leading-none truncate">
+                      Today
+                    </span>
+                    <span className="text-lg font-bold text-foreground leading-tight mt-1">
+                      {reportsToday}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
+          }
+        />
       )}
 
       {/* When showHeader is true: Filters row directly below header without surrounding grey panel */}

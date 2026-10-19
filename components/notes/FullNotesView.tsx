@@ -1,39 +1,32 @@
 'use client'
 
-import React, { useState, useEffect, useRef, useCallback } from 'react'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
 import {
-  Lightbulb,
   Search,
   LayoutGrid,
   List,
   Pin,
-  Archive,
-  ArchiveRestore,
   Trash2,
   Plus,
   X,
   Loader2,
-  MoreVertical,
-  Clock,
-  Sparkles,
+  StickyNote,
+  RefreshCw,
+  Pencil,
 } from 'lucide-react'
+import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { Input } from '@/components/ui/input'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import type { PersonalNote } from '@/types/notes'
 import {
   getPersonalNotesAction,
-  createPersonalNoteAction,
   togglePinNoteAction,
-  toggleArchiveNoteAction,
   deletePersonalNoteAction,
 } from '@/lib/actions/notes'
 import { NoteCard } from './NoteCard'
+import { CreatePersonalNoteModal } from './CreatePersonalNoteModal'
+import { EditPersonalNoteModal } from './EditPersonalNoteModal'
 import { toast } from 'sonner'
 import dayjs from 'dayjs'
 
@@ -42,33 +35,23 @@ interface FullNotesViewProps {
 }
 
 export function FullNotesView({ initialNotes = [] }: FullNotesViewProps) {
-  const [activeTab, setActiveTab] = useState<'active' | 'archive'>('active')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [searchQuery, setSearchQuery] = useState('')
   const [notes, setNotes] = useState<PersonalNote[]>(initialNotes)
   const [isLoading, setIsLoading] = useState(initialNotes.length === 0)
 
-  // Creation box state
-  const [isCreatorExpanded, setIsCreatorExpanded] = useState(false)
-  const [newTitle, setNewTitle] = useState('')
-  const [newContent, setNewContent] = useState('')
-  const [isNewPinned, setIsNewPinned] = useState(false)
-  const [isCreating, setIsCreating] = useState(false)
-
-  // Active inline editing note id
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null)
-
-  // Permanent Delete Modal State
+  // Modal states
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [editingNote, setEditingNote] = useState<PersonalNote | null>(null)
+  const [inlineEditingNoteId, setInlineEditingNoteId] = useState<string | null>(null)
   const [noteToDelete, setNoteToDelete] = useState<PersonalNote | null>(null)
-
-  const creatorRef = useRef<HTMLDivElement>(null)
 
   // Load notes
   const loadNotes = useCallback(async () => {
     setIsLoading(true)
     try {
       const res = await getPersonalNotesAction({
-        includeArchived: true,
+        includeArchived: false,
       })
       if (res.success && res.data) {
         setNotes(res.data)
@@ -86,59 +69,6 @@ export function FullNotesView({ initialNotes = [] }: FullNotesViewProps) {
   useEffect(() => {
     loadNotes()
   }, [loadNotes])
-
-  // Handle outside click on creation card
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (creatorRef.current && !creatorRef.current.contains(e.target as Node)) {
-        if (isCreatorExpanded) {
-          handleSaveNewNote()
-        }
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside)
-    }
-  }, [isCreatorExpanded, newTitle, newContent, isNewPinned, isCreating])
-
-  // Create new note
-  const handleSaveNewNote = async () => {
-    if (isCreating) return
-
-    const titleTrim = newTitle.trim()
-    const contentTrim = newContent.trim()
-
-    if (!titleTrim && !contentTrim) {
-      setIsCreatorExpanded(false)
-      setIsNewPinned(false)
-      return
-    }
-
-    setIsCreating(true)
-    try {
-      const res = await createPersonalNoteAction({
-        title: titleTrim,
-        content: newContent,
-        is_pinned: isNewPinned,
-      })
-
-      if (res.success && res.data) {
-        setNotes((prev) => [res.data!, ...prev.filter((n) => n.id !== res.data!.id)])
-        setNewTitle('')
-        setNewContent('')
-        setIsNewPinned(false)
-        setIsCreatorExpanded(false)
-        toast.success('Note created')
-      } else {
-        toast.error(res.error || 'Failed to create note')
-      }
-    } catch {
-      toast.error('Network error creating note')
-    } finally {
-      setIsCreating(false)
-    }
-  }
 
   // Toggle Pin
   const handleTogglePin = async (e: React.MouseEvent, note: PersonalNote) => {
@@ -168,32 +98,6 @@ export function FullNotesView({ initialNotes = [] }: FullNotesViewProps) {
     }
   }
 
-  // Toggle Archive
-  const handleToggleArchive = async (e: React.MouseEvent, note: PersonalNote) => {
-    e.stopPropagation()
-    const nextArchived = !note.is_archived
-    const previousNotes = notes
-    setNotes((prev) =>
-      prev.map((n) =>
-        n.id === note.id
-          ? { ...n, is_archived: nextArchived, is_pinned: nextArchived ? false : n.is_pinned }
-          : n
-      )
-    )
-    try {
-      const res = await toggleArchiveNoteAction(note.id, nextArchived)
-      if (res.success) {
-        toast.success(nextArchived ? 'Note archived' : 'Note restored to active')
-      } else {
-        setNotes(previousNotes)
-        toast.error(res.error || 'Failed to update note')
-      }
-    } catch {
-      setNotes(previousNotes)
-      toast.error('Failed to update note')
-    }
-  }
-
   // Confirm Permanent Deletion
   const handleConfirmPermanentDelete = async (noteId: string) => {
     const previousNotes = notes
@@ -212,7 +116,7 @@ export function FullNotesView({ initialNotes = [] }: FullNotesViewProps) {
     }
   }
 
-  // Soft Delete
+  // Soft Delete (move to trash)
   const handleSoftDelete = async (e: React.MouseEvent, noteId: string) => {
     e.stopPropagation()
     const previousNotes = notes
@@ -231,218 +135,143 @@ export function FullNotesView({ initialNotes = [] }: FullNotesViewProps) {
     }
   }
 
-  // Filter notes based on active tab & search query
-  const tabNotes = notes.filter((n) => {
-    if (activeTab === 'active') return !n.is_archived
-    return n.is_archived
-  })
+  // Filter notes based on search query
+  const filteredNotes = useMemo(() => {
+    let result = notes
 
-  const filteredNotes = tabNotes.filter((n) => {
-    if (!searchQuery.trim()) return true
-    const q = searchQuery.toLowerCase().trim()
-    return (
-      n.title?.toLowerCase().includes(q) ||
-      n.content?.toLowerCase().includes(q)
-    )
-  })
+    // Search query
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim()
+      result = result.filter(
+        (n) =>
+          n.title?.toLowerCase().includes(q) ||
+          n.content?.toLowerCase().includes(q)
+      )
+    }
 
-  const pinnedNotes = filteredNotes.filter((n) => n.is_pinned)
-  const otherNotes = filteredNotes.filter((n) => !n.is_pinned)
+    // Sort: Pinned first, then newest updated
+    return [...result].sort((a, b) => {
+      if (a.is_pinned !== b.is_pinned) {
+        return a.is_pinned ? -1 : 1
+      }
+      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    })
+  }, [notes, searchQuery])
+
+  const pinnedNotes = useMemo(
+    () => filteredNotes.filter((n) => n.is_pinned),
+    [filteredNotes]
+  )
+  const otherNotes = useMemo(
+    () => filteredNotes.filter((n) => !n.is_pinned),
+    [filteredNotes]
+  )
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-12 select-none">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border/50">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-muted border border-border/60 flex items-center justify-center text-foreground shadow-xs">
-            <Lightbulb className="w-5 h-5 stroke-[2]" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-                Personal Notes
-              </h1>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-muted font-medium text-muted-foreground">
-                {notes.filter((n) => !n.is_archived).length} notes
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Private personal notes, ideas, and checklists
-            </p>
-          </div>
-        </div>
+    <div className="max-w-7xl mx-auto space-y-6 select-none">
+      {/* Page Header (No count badge, standard icon container, title & subtitle) */}
+      <PageHeader
+        title="Personal Notes"
+        subtitle="Private personal notes, ideas, and checklists"
+        icon={StickyNote}
+        actions={
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={loadNotes}
+            className="h-9 px-3.5 text-xs font-medium rounded-lg gap-1.5 border-border/80 bg-card hover:bg-muted text-foreground cursor-pointer shadow-xs"
+            title="Refresh notes"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
+        }
+      />
 
-        {/* Search & View Controls */}
-        <div className="flex items-center gap-2">
-          {/* Search bar */}
-          <div className="relative flex-1 sm:w-64">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search notes..."
-              className="w-full pl-9 pr-8 py-1.5 text-xs bg-card border border-border/70 rounded-xl outline-none focus:border-foreground/50 transition-colors text-foreground placeholder:text-muted-foreground shadow-xs"
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
-          </div>
-
-          {/* Grid/List switch */}
-          <div className="flex items-center bg-card border border-border/70 rounded-xl p-1 shadow-xs">
+      {/* Standardized Header Toolbar:
+          Required order from left to right:
+          1. Search Notes input
+          2. Add Note button
+          3. Grid View / List View toggle
+      */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
+        {/* 1. Search Notes input */}
+        <div className="relative flex-1 min-w-0">
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search notes by title or content..."
+            className="!h-9 !min-h-[36px] !max-h-[36px] !pl-9 !pr-8 !text-xs rounded-lg border-border/80 bg-card font-normal shadow-xs focus-visible:ring-1 focus-visible:ring-foreground/20 text-foreground w-full placeholder:text-muted-foreground"
+          />
+          {searchQuery && (
             <button
               type="button"
-              onClick={() => setViewMode('grid')}
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Right cluster: 2. Add Note button, 3. Grid / List View toggle */}
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
+          {/* 2. Add Note Button */}
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="h-9 px-3.5 text-xs font-semibold rounded-lg bg-foreground text-background hover:bg-foreground/90 cursor-pointer gap-1.5 shadow-xs"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Note</span>
+          </Button>
+
+          {/* 3. Standardized Grid/List View Switcher */}
+          <div
+            role="radiogroup"
+            aria-label="Notes view options"
+            className="flex items-center h-9 p-0.5 rounded-lg border border-border/80 bg-card shadow-xs shrink-0"
+          >
+            <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === 'grid'}
+              aria-label="Grid view"
               title="Grid View"
-              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+              onClick={() => setViewMode('grid')}
+              className={`h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
                 viewMode === 'grid'
-                  ? 'bg-foreground text-background shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  ? 'bg-foreground text-background shadow-xs font-semibold'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
               }`}
             >
-              <LayoutGrid className="w-4 h-4" />
+              <LayoutGrid className="h-4 w-4" />
             </button>
+            <div className="w-px h-4 bg-border/60 mx-0.5 shrink-0" aria-hidden="true" />
             <button
               type="button"
-              onClick={() => setViewMode('list')}
+              role="radio"
+              aria-checked={viewMode === 'list'}
+              aria-label="List view"
               title="List View"
-              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+              onClick={() => setViewMode('list')}
+              className={`h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
                 viewMode === 'list'
-                  ? 'bg-foreground text-background shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  ? 'bg-foreground text-background shadow-xs font-semibold'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
               }`}
             >
-              <List className="w-4 h-4" />
+              <List className="h-4 w-4" />
             </button>
           </div>
         </div>
       </div>
 
-      {/* Tabs: Active Notes vs Archive */}
-      <div className="flex items-center gap-2 border-b border-border/40 pb-2">
-        <button
-          type="button"
-          onClick={() => setActiveTab('active')}
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-            activeTab === 'active'
-              ? 'bg-foreground text-background shadow-xs'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-          }`}
-        >
-          <Lightbulb className="w-3.5 h-3.5" />
-          <span>Notes</span>
-          <span className="opacity-70 text-[11px]">
-            ({notes.filter((n) => !n.is_archived).length})
-          </span>
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setActiveTab('archive')}
-          className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
-            activeTab === 'archive'
-              ? 'bg-foreground text-background shadow-xs'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-          }`}
-        >
-          <Archive className="w-3.5 h-3.5" />
-          <span>Archive</span>
-          <span className="opacity-70 text-[11px]">
-            ({notes.filter((n) => n.is_archived).length})
-          </span>
-        </button>
-      </div>
-
-      {/* Top Creation Widget (shown in Active Notes tab) */}
-      {activeTab === 'active' && (
-        <div className="flex justify-center pt-2">
-          <div ref={creatorRef} className="w-full max-w-xl">
-            {!isCreatorExpanded ? (
-              <div
-                onClick={() => setIsCreatorExpanded(true)}
-                className="flex items-center justify-between px-4 py-3 rounded-2xl bg-card hover:bg-card/90 border border-border/80 hover:border-foreground/30 text-muted-foreground hover:text-foreground cursor-pointer transition-all shadow-sm hover:shadow-md group"
-              >
-                <div className="flex items-center gap-2.5 text-sm font-medium">
-                  <Plus className="w-4 h-4 text-foreground transition-transform group-hover:rotate-90 duration-200" />
-                  <span>Take a note...</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-muted-foreground/60" />
-                </div>
-              </div>
-            ) : (
-              <div className="p-4 bg-card border border-border rounded-2xl shadow-xl transition-all space-y-3 animate-in fade-in-0 duration-150">
-                {/* Title & Pin */}
-                <div className="flex items-center justify-between gap-2">
-                  <input
-                    type="text"
-                    value={newTitle}
-                    onChange={(e) => setNewTitle(e.target.value)}
-                    placeholder="Title"
-                    autoFocus
-                    className="w-full text-base font-semibold bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground/60"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setIsNewPinned((prev) => !prev)}
-                    title={isNewPinned ? 'Unpin' : 'Pin note'}
-                    className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
-                      isNewPinned
-                        ? 'text-foreground bg-muted'
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                    }`}
-                  >
-                    <Pin className={`w-4 h-4 ${isNewPinned ? 'fill-current' : ''}`} />
-                  </button>
-                </div>
-
-                {/* Content */}
-                <textarea
-                  value={newContent}
-                  onChange={(e) => setNewContent(e.target.value)}
-                  placeholder="Take a note..."
-                  rows={4}
-                  className="w-full text-sm leading-relaxed bg-transparent border-none outline-none resize-none text-foreground placeholder:text-muted-foreground/60"
-                />
-
-                {/* Toolbar */}
-                <div className="flex items-center justify-between pt-2 border-t border-border/40 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setNewTitle('')
-                      setNewContent('')
-                      setIsCreatorExpanded(false)
-                    }}
-                    className="text-xs text-muted-foreground hover:text-foreground px-2 py-1 rounded"
-                  >
-                    Cancel
-                  </button>
-
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={isCreating}
-                    onClick={handleSaveNewNote}
-                    className="h-8 px-4 font-medium text-xs rounded-lg bg-foreground text-background hover:bg-foreground/90 cursor-pointer"
-                  >
-                    {isCreating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Done'}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Main Notes Content */}
+      {/* Main Notes Content (Starts immediately below the toolbar) */}
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
           <Loader2 className="w-8 h-8 animate-spin mb-3 text-muted-foreground" />
@@ -450,54 +279,53 @@ export function FullNotesView({ initialNotes = [] }: FullNotesViewProps) {
         </div>
       ) : filteredNotes.length === 0 ? (
         /* Empty State */
-        <div className="flex flex-col items-center justify-center py-20 px-4 text-center">
-          <div className="w-20 h-20 rounded-full bg-muted/60 border border-border/60 flex items-center justify-center mb-4 text-muted-foreground shadow-xs">
-            {activeTab === 'active' ? (
-              <Lightbulb className="w-10 h-10 stroke-[1.6]" />
-            ) : (
-              <Archive className="w-10 h-10 stroke-[1.6]" />
-            )}
+        <div className="flex flex-col items-center justify-center py-20 px-4 text-center bg-card rounded-2xl border border-border">
+          <div className="w-14 h-14 rounded-full bg-muted/60 flex items-center justify-center mb-3">
+            <StickyNote className="w-6 h-6 text-muted-foreground/70" />
           </div>
-          <h3 className="text-lg font-bold text-foreground">
-            {activeTab === 'active' ? 'No notes yet' : 'No archived notes'}
+          <h3 className="text-base font-semibold text-foreground">
+            {searchQuery ? 'No notes found' : 'No personal notes yet'}
           </h3>
-          <p className="text-xs text-muted-foreground mt-1 max-w-sm leading-relaxed">
-            {activeTab === 'active'
-              ? 'Capture quick ideas, task checklists, and reminders that are completely private to you.'
-              : 'Notes you archive appear here, keeping your main workspace clean.'}
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1 max-w-sm">
+            {searchQuery
+              ? 'No notes match your current search query.'
+              : 'Capture personal ideas, task checklists, and reminders completely private to you.'}
           </p>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="mt-5 text-xs h-9 rounded-lg gap-1.5 bg-foreground text-background hover:bg-foreground/90 cursor-pointer shadow-xs"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Note</span>
+          </Button>
         </div>
-      ) : (
-        <div className="space-y-8">
+      ) : viewMode === 'grid' ? (
+        /* ================= GRID VIEW ================= */
+        <div className="space-y-6">
           {/* Pinned Notes Section */}
-          {pinnedNotes.length > 0 && activeTab === 'active' && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">
+          {pinnedNotes.length > 0 && (
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 <Pin className="w-3.5 h-3.5 text-foreground fill-current" />
-                <span>PINNED ({pinnedNotes.length})</span>
+                <span>Pinned ({pinnedNotes.length})</span>
               </div>
-              <div
-                className={
-                  viewMode === 'grid'
-                    ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'
-                    : 'flex flex-col gap-3 max-w-2xl mx-auto'
-                }
-              >
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
                 {pinnedNotes.map((note) => (
                   <NoteCard
                     key={note.id}
                     note={note}
-                    viewMode={viewMode}
-                    isEditing={editingNoteId === note.id}
-                    onStartEdit={() => setEditingNoteId(note.id)}
-                    onCancelEdit={() => setEditingNoteId(null)}
+                    viewMode="grid"
+                    isEditing={inlineEditingNoteId === note.id}
+                    onStartEdit={() => setInlineEditingNoteId(note.id)}
+                    onCancelEdit={() => setInlineEditingNoteId(null)}
                     onSave={(updated) => {
                       setNotes((prev) =>
                         prev.map((n) => (n.id === updated.id ? updated : n))
                       )
                     }}
                     onTogglePin={(e) => handleTogglePin(e, note)}
-                    onArchive={(e) => handleToggleArchive(e, note)}
                     onDelete={(e) => handleSoftDelete(e, note.id)}
                     onPermanentDelete={() => setNoteToDelete(note)}
                   />
@@ -506,36 +334,29 @@ export function FullNotesView({ initialNotes = [] }: FullNotesViewProps) {
             </div>
           )}
 
-          {/* Other / Active Notes Section */}
+          {/* Other Notes Section */}
           {otherNotes.length > 0 && (
-            <div className="space-y-3">
-              {pinnedNotes.length > 0 && activeTab === 'active' && (
+            <div className="space-y-2.5">
+              {pinnedNotes.length > 0 && (
                 <div className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  OTHERS ({otherNotes.length})
+                  Others ({otherNotes.length})
                 </div>
               )}
-              <div
-                className={
-                  viewMode === 'grid'
-                    ? 'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4'
-                    : 'flex flex-col gap-3 max-w-2xl mx-auto'
-                }
-              >
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
                 {otherNotes.map((note) => (
                   <NoteCard
                     key={note.id}
                     note={note}
-                    viewMode={viewMode}
-                    isEditing={editingNoteId === note.id}
-                    onStartEdit={() => setEditingNoteId(note.id)}
-                    onCancelEdit={() => setEditingNoteId(null)}
+                    viewMode="grid"
+                    isEditing={inlineEditingNoteId === note.id}
+                    onStartEdit={() => setInlineEditingNoteId(note.id)}
+                    onCancelEdit={() => setInlineEditingNoteId(null)}
                     onSave={(updated) => {
                       setNotes((prev) =>
                         prev.map((n) => (n.id === updated.id ? updated : n))
                       )
                     }}
                     onTogglePin={(e) => handleTogglePin(e, note)}
-                    onArchive={(e) => handleToggleArchive(e, note)}
                     onDelete={(e) => handleSoftDelete(e, note.id)}
                     onPermanentDelete={() => setNoteToDelete(note)}
                   />
@@ -544,12 +365,120 @@ export function FullNotesView({ initialNotes = [] }: FullNotesViewProps) {
             </div>
           )}
         </div>
+      ) : (
+        /* ================= LIST VIEW (Clean structured table) ================= */
+        <div className="w-full overflow-x-auto rounded-xl border border-border/80 bg-card shadow-xs">
+          <table className="w-full text-left text-xs sm:text-sm whitespace-nowrap">
+            <thead className="bg-secondary/40 border-b border-border/70 text-[11px] text-muted-foreground uppercase font-semibold tracking-wider select-none">
+              <tr>
+                <th className="px-3.5 py-3 min-w-[200px]">Note Title</th>
+                <th className="px-3.5 py-3 min-w-[320px]">Content Preview</th>
+                <th className="px-3.5 py-3">Updated Date</th>
+                <th className="px-3.5 py-3 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-border/50">
+              {filteredNotes.map((note) => (
+                <tr
+                  key={note.id}
+                  onClick={() => setEditingNote(note)}
+                  className="hover:bg-accent/10 transition-colors cursor-pointer group"
+                >
+                  {/* Note Title */}
+                  <td className="px-3.5 py-3 font-medium text-foreground">
+                    <div className="flex items-center gap-2 max-w-[260px]">
+                      {note.is_pinned && (
+                        <Pin className="w-3.5 h-3.5 text-foreground fill-current shrink-0" />
+                      )}
+                      <span className="truncate font-semibold text-xs sm:text-sm">
+                        {note.title || 'Untitled Note'}
+                      </span>
+                    </div>
+                  </td>
+
+                  {/* Content Preview */}
+                  <td className="px-3.5 py-3 text-xs text-muted-foreground">
+                    <span className="max-w-[420px] truncate block font-normal">
+                      {note.content || <span className="italic text-muted-foreground/60">No content</span>}
+                    </span>
+                  </td>
+
+                  {/* Updated Date */}
+                  <td className="px-3.5 py-3 text-xs text-muted-foreground whitespace-nowrap">
+                    {dayjs(note.updated_at).format('DD MMM YYYY, h:mm A')}
+                  </td>
+
+                  {/* Actions */}
+                  <td className="px-3.5 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-end gap-1">
+                      {/* Pin toggle */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleTogglePin(e, note)}
+                        title={note.is_pinned ? 'Unpin note' : 'Pin note'}
+                        className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+                          note.is_pinned
+                            ? 'text-foreground bg-muted'
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                        }`}
+                      >
+                        <Pin className={`w-3.5 h-3.5 ${note.is_pinned ? 'fill-current' : ''}`} />
+                      </button>
+
+                      {/* Edit button */}
+                      <button
+                        type="button"
+                        onClick={() => setEditingNote(note)}
+                        title="Edit note"
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </button>
+
+                      {/* Delete button */}
+                      <button
+                        type="button"
+                        onClick={(e) => handleSoftDelete(e, note.id)}
+                        title="Delete note"
+                        className="p-1.5 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
+
+      {/* Add Note Centered Modal */}
+      <CreatePersonalNoteModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onNoteCreated={(newNote) => {
+          setNotes((prev) => [newNote, ...prev.filter((n) => n.id !== newNote.id)])
+        }}
+      />
+
+      {/* Edit Note Centered Modal */}
+      <EditPersonalNoteModal
+        note={editingNote}
+        isOpen={Boolean(editingNote)}
+        onClose={() => setEditingNote(null)}
+        onNoteUpdated={(updated) => {
+          setNotes((prev) => prev.map((n) => (n.id === updated.id ? updated : n)))}
+        }
+        onDeleteNote={(note) => {
+          setNoteToDelete(note)
+        }}
+      />
 
       {/* Permanent Delete Confirmation Dialog */}
       {noteToDelete && (
         <ConfirmModal
-          open={!!noteToDelete}
+          open={Boolean(noteToDelete)}
           onOpenChange={(isOpen) => {
             if (!isOpen) setNoteToDelete(null)
           }}

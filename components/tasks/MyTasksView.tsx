@@ -1,7 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Task, TaskStatus, Project } from '@/types/project-management'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -25,6 +26,10 @@ import {
   Paperclip,
   MessageSquare,
   ExternalLink,
+  Search,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react'
 import dayjs from 'dayjs'
 import { toast } from 'sonner'
@@ -43,6 +48,7 @@ interface MyTasksViewProps {
   projects?: Project[]
   userRole?: string
   isHod?: boolean
+  defaultViewMode?: 'list' | 'grid'
 }
 
 type TabType = 'today' | 'upcoming' | 'pending' | 'overdue' | 'completed' | 'projects'
@@ -58,11 +64,65 @@ export function MyTasksView({
   projects,
   userRole,
   isHod,
+  defaultViewMode = 'list',
 }: MyTasksViewProps) {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<TabType>('today')
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list')
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>(defaultViewMode)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [sortColumn, setSortColumn] = useState<string>('due_date')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
+
+  const [todayList, setTodayList] = useState<Task[]>(todayTasks)
+  const [upcomingList, setUpcomingList] = useState<Task[]>(upcomingTasks)
+  const [pendingList, setPendingList] = useState<Task[]>(pendingTasks)
+  const [overdueList, setOverdueList] = useState<Task[]>(overdueTasks)
+  const [completedList, setCompletedList] = useState<Task[]>(completedTasks)
+
+  useEffect(() => {
+    setTodayList(todayTasks)
+    setUpcomingList(upcomingTasks)
+    setPendingList(pendingTasks)
+    setOverdueList(overdueTasks)
+    setCompletedList(completedTasks)
+  }, [todayTasks, upcomingTasks, pendingTasks, overdueTasks, completedTasks])
+
+  const handleTaskUpdated = (updatedTask: Task) => {
+    const updateInList = (list: Task[]) =>
+      list.map((t) => (t.id === updatedTask.id ? { ...t, ...updatedTask } : t))
+
+    setTodayList(updateInList)
+    setUpcomingList(updateInList)
+    setPendingList(updateInList)
+    setOverdueList(updateInList)
+    setCompletedList(updateInList)
+
+    if (selectedTask?.id === updatedTask.id) {
+      setSelectedTask(updatedTask)
+    }
+  }
+
+  const handleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortColumn(column)
+      setSortDirection('asc')
+    }
+  }
+
+  const renderSortIcon = (column: string) => {
+    if (sortColumn !== column) {
+      return <ArrowUpDown className="h-3 w-3 opacity-40 ml-1 inline shrink-0" />
+    }
+    return sortDirection === 'asc' ? (
+      <ArrowUp className="h-3 w-3 text-primary ml-1 inline shrink-0" />
+    ) : (
+      <ArrowDown className="h-3 w-3 text-primary ml-1 inline shrink-0" />
+    )
+  }
 
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task)
@@ -70,16 +130,30 @@ export function MyTasksView({
   }
 
   const handleStatusChange = async (taskId: string, newStatus: TaskStatus) => {
+    // Optimistic local update
+    const updateStatus = (list: Task[]) =>
+      list.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t))
+    setTodayList(updateStatus)
+    setUpcomingList(updateStatus)
+    setPendingList(updateStatus)
+    setOverdueList(updateStatus)
+    setCompletedList(updateStatus)
+    if (selectedTask?.id === taskId) {
+      setSelectedTask((prev) => (prev ? { ...prev, status: newStatus } : null))
+    }
+
     try {
       const res = await updateTaskStatusAction(taskId, newStatus)
       if (!res.success) {
         toast.error(res.error || 'Failed to update task status.')
+        router.refresh()
       } else {
         toast.success(`Task moved to ${newStatus.replace('_', ' ')}`)
-        window.location.reload()
+        router.refresh()
       }
     } catch (err: any) {
       toast.error(err.message || 'Error updating status')
+      router.refresh()
     }
   }
 
@@ -124,6 +198,13 @@ export function MyTasksView({
       return 'No project'
     }
     return name
+  }
+
+  const truncateDescription = (text?: string | null, maxWords: number = 12): string => {
+    if (!text || !text.trim()) return ''
+    const words = text.trim().split(/\s+/)
+    if (words.length <= maxWords) return text.trim()
+    return words.slice(0, maxWords).join(' ') + '...'
   }
 
   const getCommentProgressText = (task: Task) => {
@@ -188,112 +269,405 @@ export function MyTasksView({
       )
     }
 
+    const filteredTasks = tasks.filter((t) => {
+      if (!searchQuery.trim()) return true
+      const q = searchQuery.toLowerCase()
+      return (
+        t.title.toLowerCase().includes(q) ||
+        t.task_id_display.toLowerCase().includes(q) ||
+        (t.project_name || '').toLowerCase().includes(q) ||
+        (t.description || '').toLowerCase().includes(q)
+      )
+    })
+
+    const sortedTasks = [...filteredTasks].sort((a, b) => {
+      let res = 0
+      if (sortColumn === 'task_id') {
+        res = a.task_id_display.localeCompare(b.task_id_display)
+      } else if (sortColumn === 'title') {
+        res = a.title.localeCompare(b.title)
+      } else if (sortColumn === 'project') {
+        res = (a.project_name || '').localeCompare(b.project_name || '')
+      } else if (sortColumn === 'priority') {
+        const priorityWeight: Record<string, number> = { URGENT: 4, HIGH: 3, MEDIUM: 2, LOW: 1 }
+        res = (priorityWeight[a.priority] || 0) - (priorityWeight[b.priority] || 0)
+      } else if (sortColumn === 'due_date') {
+        const dateA = a.due_date ? new Date(a.due_date).getTime() : Infinity
+        const dateB = b.due_date ? new Date(b.due_date).getTime() : Infinity
+        res = dateA - dateB
+      } else if (sortColumn === 'status') {
+        res = a.status.localeCompare(b.status)
+      } else if (sortColumn === 'hours') {
+        res = (a.worked_hours || 0) - (b.worked_hours || 0)
+      }
+      return sortDirection === 'asc' ? res : -res
+    })
+
     return (
-      <div className={viewMode === 'list' ? "grid grid-cols-1 md:grid-cols-2 gap-4" : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"}>
-        {tasks.map((task) => (
-          <Card
-            key={task.id}
-            className={cn(
-              "border-border/80 bg-card rounded-xl shadow-xs transition-all duration-200 hover:border-foreground/30 hover:shadow-sm cursor-pointer flex flex-col justify-between overflow-hidden group",
-              task.is_overdue && task.status !== 'DONE' && "border-destructive/40 hover:border-destructive/60"
-            )}
-            onClick={() => handleTaskClick(task)}
-          >
-            <CardContent className="p-4 sm:p-5 flex flex-col justify-between h-full gap-3">
-              {/* Top Row: Task ID, Priority, Project */}
-              <div className="flex items-center gap-2 flex-wrap text-xs">
-                <span className="font-mono text-xs font-semibold text-muted-foreground">
-                  {task.task_id_display}
-                </span>
-                <span className={cn(
-                  "text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full border",
-                  getPriorityBadgeStyle(task.priority)
-                )}>
-                  {task.priority}
-                </span>
-                <span className="text-muted-foreground/60">·</span>
-                <span className="text-xs text-muted-foreground truncate max-w-[200px]" title={getProjectDisplayName(task)}>
-                  {getProjectDisplayName(task)}
-                </span>
-              </div>
+      <div className="space-y-3">
+        {/* Search & Task Count Bar */}
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="relative flex-1 min-w-[200px] max-w-xs sm:max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search tasks by title, ID, project..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-9 pr-3 py-1.5 text-xs rounded-lg border border-border bg-card text-foreground placeholder:text-muted-foreground/60 focus:outline-hidden focus:ring-1 focus:ring-primary shadow-2xs"
+            />
+          </div>
+          <div className="text-xs text-muted-foreground shrink-0 font-medium">
+            Showing <span className="font-semibold text-foreground">{sortedTasks.length}</span> of {tasks.length} tasks
+          </div>
+        </div>
 
-              {/* Middle Section: Title/Desc (Left) & Due Date/Status/Arrow (Right) */}
-              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4 my-0.5 flex-1">
-                {/* Left: Title & Description */}
-                <div className="flex-1 min-w-0 pr-1">
-                  <h4 className="font-bold text-base sm:text-[17px] text-foreground leading-snug truncate" title={task.title}>
-                    {task.title}
-                  </h4>
-                  <p className="text-xs sm:text-[13px] text-muted-foreground mt-1.5 line-clamp-2 leading-relaxed break-words">
-                    {task.description?.trim() ? task.description : 'No description provided.'}
-                  </p>
-                </div>
+        {sortedTasks.length === 0 ? (
+          <div className="p-8 text-center text-muted-foreground bg-card border border-border rounded-xl">
+            <p className="text-xs">No tasks match your search query &quot;{searchQuery}&quot;.</p>
+          </div>
+        ) : viewMode === 'list' ? (
+          /* Table View for List Mode */
+          <div className="w-full overflow-x-auto rounded-xl border border-border/80 bg-card shadow-xs">
+            <table className="w-full text-left text-xs sm:text-sm whitespace-nowrap">
+              <thead className="bg-secondary/40 border-b border-border/70 text-[11px] text-muted-foreground uppercase font-semibold tracking-wider select-none">
+                <tr>
+                  <th
+                    className="px-3.5 py-3 cursor-pointer hover:text-foreground transition-colors"
+                    onClick={() => handleSort('task_id')}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Task ID</span>
+                      {renderSortIcon('task_id')}
+                    </div>
+                  </th>
+                  <th
+                    className="px-3.5 py-3 cursor-pointer hover:text-foreground transition-colors min-w-[200px] max-w-[320px]"
+                    onClick={() => handleSort('title')}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Task Title</span>
+                      {renderSortIcon('title')}
+                    </div>
+                  </th>
+                  <th
+                    className="px-3.5 py-3 cursor-pointer hover:text-foreground transition-colors"
+                    onClick={() => handleSort('project')}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Project</span>
+                      {renderSortIcon('project')}
+                    </div>
+                  </th>
+                  <th
+                    className="px-3.5 py-3 cursor-pointer hover:text-foreground transition-colors"
+                    onClick={() => handleSort('priority')}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Priority</span>
+                      {renderSortIcon('priority')}
+                    </div>
+                  </th>
+                  <th
+                    className="px-3.5 py-3 cursor-pointer hover:text-foreground transition-colors"
+                    onClick={() => handleSort('due_date')}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Due Date</span>
+                      {renderSortIcon('due_date')}
+                    </div>
+                  </th>
+                  <th
+                    className="px-3.5 py-3 cursor-pointer hover:text-foreground transition-colors"
+                    onClick={() => handleSort('status')}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Status</span>
+                      {renderSortIcon('status')}
+                    </div>
+                  </th>
+                  <th className="px-3.5 py-3">
+                    <span>Assignee</span>
+                  </th>
+                  <th
+                    className="px-3.5 py-3 cursor-pointer hover:text-foreground transition-colors"
+                    onClick={() => handleSort('hours')}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span>Metrics</span>
+                      {renderSortIcon('hours')}
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/50">
+                {sortedTasks.map((task) => {
+                  const isOverdue = task.is_overdue && task.status !== 'DONE'
+                  const assignees = task.assignees || []
 
-                {/* Right: Due Date, Status Dropdown, Arrow Button */}
-                <div
-                  className="flex items-center gap-2 sm:gap-3 shrink-0 self-start sm:self-center mt-1 sm:mt-0"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div className="text-right">
-                    <span className="text-[10px] text-muted-foreground block font-medium uppercase tracking-wider">
-                      Due Date
-                    </span>
+                  return (
+                    <tr
+                      key={task.id}
+                      onClick={() => handleTaskClick(task)}
+                      className="hover:bg-accent/10 transition-colors cursor-pointer group"
+                    >
+                      {/* Task ID */}
+                      <td className="px-3.5 py-3 font-mono text-xs font-semibold text-muted-foreground group-hover:text-foreground transition-colors">
+                        <span className="px-1.5 py-0.5 rounded bg-secondary/50 border border-border/60">
+                          {task.task_id_display}
+                        </span>
+                      </td>
+
+                      {/* Title & snippet */}
+                      <td className="px-3.5 py-3 min-w-[200px] max-w-[320px]">
+                        <div className="flex flex-col min-w-0 max-w-full overflow-hidden">
+                          <span
+                            className="font-semibold text-foreground text-xs sm:text-[13px] truncate group-hover:text-primary transition-colors block max-w-full"
+                            title={task.title}
+                          >
+                            {task.title}
+                          </span>
+                          {task.description?.trim() && (
+                            <span
+                              className="text-[11px] text-muted-foreground truncate block max-w-full"
+                              title={task.description}
+                            >
+                              {truncateDescription(task.description, 12)}
+                            </span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Project */}
+                      <td className="px-3.5 py-3 text-xs text-muted-foreground max-w-[180px] truncate" title={getProjectDisplayName(task)}>
+                        {getProjectDisplayName(task)}
+                      </td>
+
+                      {/* Priority */}
+                      <td className="px-3.5 py-3">
+                        <span className={cn(
+                          "text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full border inline-block whitespace-nowrap",
+                          getPriorityBadgeStyle(task.priority)
+                        )}>
+                          {task.priority}
+                        </span>
+                      </td>
+
+                      {/* Due Date */}
+                      <td className="px-3.5 py-3 text-xs">
+                        <div className={cn(
+                          "flex items-center gap-1.5 whitespace-nowrap",
+                          isOverdue
+                            ? "text-destructive font-semibold"
+                            : task.due_date
+                            ? "text-foreground font-medium"
+                            : "text-muted-foreground"
+                        )}>
+                          {isOverdue ? (
+                            <AlertCircle className="h-3.5 w-3.5 shrink-0 text-destructive" />
+                          ) : (
+                            <Calendar className="h-3.5 w-3.5 shrink-0 text-muted-foreground/70" />
+                          )}
+                          <span>
+                            {task.due_date ? dayjs(task.due_date).format('DD MMM YYYY') : 'No due date'}
+                          </span>
+                        </div>
+                      </td>
+
+                      {/* Status Dropdown */}
+                      <td className="px-3.5 py-2.5" onClick={(e) => e.stopPropagation()}>
+                        <Dropdown
+                          value={task.status}
+                          onChange={(val) => handleStatusChange(task.id, val as TaskStatus)}
+                          options={[
+                            { value: 'TODO', label: 'To Do' },
+                            { value: 'IN_PROGRESS', label: 'In Progress' },
+                            { value: 'IN_REVIEW', label: 'In Review' },
+                            ...(userRole === 'Admin' || isHod ? [{ value: 'DONE', label: 'Done' }] : []),
+                            { value: 'ON_HOLD', label: 'On Hold' },
+                          ]}
+                          buttonClassName={getStatusButtonClass(task.status, task.is_overdue)}
+                          className="w-auto"
+                        />
+                      </td>
+
+                      {/* Assignees */}
+                      <td className="px-3.5 py-3">
+                        <div className="flex items-center -space-x-1.5 overflow-hidden">
+                          {assignees.slice(0, 3).map((a, idx) => {
+                            const name = a.profile ? `${a.profile.first_name || ''} ${a.profile.last_name || ''}`.trim() : 'User'
+                            const initials = name.slice(0, 2).toUpperCase()
+                            return (
+                              <Avatar key={idx} title={name} className="h-6 w-6 border-2 border-card bg-secondary text-[9px] hover:z-10 transition-transform">
+                                {a.profile?.profile_photo && (
+                                  <AvatarImage src={getProfilePhotoUrl(a.profile.profile_photo) || undefined} alt={name} />
+                                )}
+                                <AvatarFallback>{initials}</AvatarFallback>
+                              </Avatar>
+                            )
+                          })}
+                          {assignees.length > 3 && (
+                            <div
+                              title={assignees.slice(3).map(a => a.profile ? `${a.profile.first_name} ${a.profile.last_name}`.trim() : 'User').join(', ')}
+                              className="h-6 w-6 rounded-full bg-secondary border-2 border-card flex items-center justify-center text-[9px] font-bold text-muted-foreground z-10 cursor-help"
+                            >
+                              +{assignees.length - 3}
+                            </div>
+                          )}
+                          {assignees.length === 0 && (
+                            <span className="text-xs text-muted-foreground italic">Unassigned</span>
+                          )}
+                        </div>
+                      </td>
+
+                      {/* Metrics: Hours, Attachments, Comments */}
+                      <td className="px-3.5 py-3 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center gap-1 font-mono font-medium text-foreground/80" title="Operational hours">
+                            <Clock className="h-3 w-3 text-muted-foreground shrink-0" />
+                            {task.worked_hours ? `${task.worked_hours}h` : '0h'}
+                          </span>
+                          {(task.attachments || []).length > 0 && (
+                            <span className="flex items-center gap-1 text-muted-foreground/80" title="Attachments">
+                              <Paperclip className="h-3 w-3 shrink-0" />
+                              {(task.attachments || []).length}
+                            </span>
+                          )}
+                          <span className="flex items-center gap-1 text-muted-foreground/80" title="Comments">
+                            <MessageSquare className="h-3 w-3 shrink-0" />
+                            {getCommentProgressText(task)}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          /* Card Grid View for Grid Mode */
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3.5">
+            {sortedTasks.map((task) => (
+              <Card
+                key={task.id}
+                className={cn(
+                  "border-border/80 bg-card rounded-xl shadow-xs transition-all duration-200 hover:border-foreground/30 hover:shadow-sm cursor-pointer flex flex-col justify-between overflow-hidden group",
+                  task.is_overdue && task.status !== 'DONE' && "border-destructive/40 hover:border-destructive/60"
+                )}
+                onClick={() => handleTaskClick(task)}
+              >
+                <CardContent className="p-3.5 sm:p-4 flex flex-col justify-between h-full gap-2.5">
+                  {/* Top Row: Task ID & Project (Left), Priority Badge (Top-Right Corner) */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 min-w-0 text-xs">
+                      <span className="font-mono text-xs font-semibold text-muted-foreground shrink-0">
+                        {task.task_id_display}
+                      </span>
+                      <span className="text-muted-foreground/50 shrink-0">·</span>
+                      <span className="text-xs text-muted-foreground truncate" title={getProjectDisplayName(task)}>
+                        {getProjectDisplayName(task)}
+                      </span>
+                    </div>
+
                     <span className={cn(
-                      "text-xs sm:text-[13px] block whitespace-nowrap",
-                      task.is_overdue && task.status !== 'DONE'
-                        ? "text-destructive font-bold"
-                        : task.due_date
-                        ? "text-foreground font-medium"
-                        : "text-muted-foreground"
+                      "text-[10px] uppercase tracking-wider font-semibold px-2 py-0.5 rounded-full border shrink-0",
+                      getPriorityBadgeStyle(task.priority)
                     )}>
-                      {task.due_date ? dayjs(task.due_date).format('DD MMM YYYY') : 'No due date'}
+                      {task.priority}
                     </span>
                   </div>
 
-                  <Dropdown
-                    value={task.status}
-                    onChange={(val) => handleStatusChange(task.id, val as TaskStatus)}
-                    options={[
-                      { value: 'TODO', label: 'To Do' },
-                      { value: 'IN_PROGRESS', label: 'In Progress' },
-                      { value: 'IN_REVIEW', label: 'In Review' },
-                      ...(userRole === 'Admin' || isHod ? [{ value: 'DONE', label: 'Done' }] : []),
-                      { value: 'ON_HOLD', label: 'On Hold' },
-                    ]}
-                    buttonClassName={getStatusButtonClass(task.status, task.is_overdue)}
-                    className="w-auto"
-                  />
+                  {/* Middle Section: Title/Desc (Left) & Due Date / Status (Right) */}
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4 my-0.5 flex-1">
+                    {/* Left: Title & Description */}
+                    <div className="flex-1 min-w-0 pr-1">
+                      <h4 className="font-bold text-base sm:text-[17px] text-foreground leading-snug truncate" title={task.title}>
+                        {task.title}
+                      </h4>
+                      <p className="text-xs sm:text-[13px] text-muted-foreground mt-1 line-clamp-2 leading-relaxed break-words">
+                        {task.description?.trim() ? task.description : 'No description provided.'}
+                      </p>
+                    </div>
 
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => handleTaskClick(task)}
-                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-secondary/60 rounded-lg shrink-0 transition-transform group-hover:translate-x-0.5"
-                    aria-label="View task details"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
+                    {/* Right: Due Date & Status Dropdown (Aligned vertically around same center) */}
+                    <div
+                      className="flex items-end gap-2.5 sm:gap-3 shrink-0 self-start sm:self-center"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <div className="text-right flex flex-col items-end">
+                        <span className="text-[10px] text-muted-foreground/80 font-semibold uppercase tracking-wider leading-none mb-1">
+                          Due Date
+                        </span>
+                        <div className="h-8 flex items-center justify-end">
+                          <span className={cn(
+                            "text-xs sm:text-[13px] whitespace-nowrap leading-none",
+                            task.is_overdue && task.status !== 'DONE'
+                              ? "text-destructive font-bold"
+                              : task.due_date
+                              ? "text-foreground font-semibold"
+                              : "text-muted-foreground"
+                          )}>
+                            {task.due_date ? dayjs(task.due_date).format('DD MMM YYYY') : 'No due date'}
+                          </span>
+                        </div>
+                      </div>
 
-              {/* Bottom Divider: Logged Hours, Attachments, Comments */}
-              <div className="pt-3 mt-auto border-t border-border/50 flex items-center gap-5 text-xs text-muted-foreground font-medium">
-                <div className="flex items-center gap-1.5" title="Operational hours logged">
-                  <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span>{task.worked_hours ? `${task.worked_hours} hrs` : '0 hrs'}</span>
-                </div>
-                <div className="flex items-center gap-1.5" title="Attachments count">
-                  <Paperclip className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span>{(task.attachments || []).length}</span>
-                </div>
-                <div className="flex items-center gap-1.5" title="Comments count">
-                  <MessageSquare className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                  <span>{getCommentProgressText(task)}</span>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+                      <Dropdown
+                        value={task.status}
+                        onChange={(val) => handleStatusChange(task.id, val as TaskStatus)}
+                        options={[
+                          { value: 'TODO', label: 'To Do' },
+                          { value: 'IN_PROGRESS', label: 'In Progress' },
+                          { value: 'IN_REVIEW', label: 'In Review' },
+                          ...(userRole === 'Admin' || isHod ? [{ value: 'DONE', label: 'Done' }] : []),
+                          { value: 'ON_HOLD', label: 'On Hold' },
+                        ]}
+                        buttonClassName={getStatusButtonClass(task.status, task.is_overdue)}
+                        className="w-auto"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Bottom Divider: Details Button (Bottom-Left) & Logged Hours, Attachments, Comments */}
+                  <div className="pt-2.5 mt-auto border-t border-border/50 flex items-center justify-between gap-3 text-xs text-muted-foreground font-medium">
+                    {/* Bottom-Left: Details Navigation Control */}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleTaskClick(task)
+                      }}
+                      className="h-7 w-7 rounded-lg border border-border/80 bg-secondary/40 hover:bg-secondary hover:text-foreground text-foreground/80 shrink-0 shadow-2xs transition-all hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer"
+                      title="Open task details"
+                      aria-label={`Open details for ${task.title}`}
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+
+                    {/* Right: Metrics (Hours, Attachments, Comments) */}
+                    <div className="flex items-center gap-3.5 sm:gap-4 text-xs text-muted-foreground font-medium shrink-0">
+                      <div className="flex items-center gap-1.5" title="Operational hours logged">
+                        <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span>{task.worked_hours ? `${task.worked_hours} hrs` : '0 hrs'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5" title="Attachments count">
+                        <Paperclip className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span>{(task.attachments || []).length}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5" title="Comments count">
+                        <MessageSquare className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span>{getCommentProgressText(task)}</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     )
   }
@@ -303,33 +677,48 @@ export function MyTasksView({
       {/* Header */}
       <PageHeader
         title="My Tasks & Daily View"
-        subtitle="Review your personal task schedule, pending deliverables, and assigned project workflows."
+        subtitle="Track your daily tasks, deliverables, and project workflows."
         icon={ListTodo}
         actions={
-          <div className="flex items-center bg-secondary/30 p-1 rounded-xl border border-border shrink-0">
+          <div
+            role="radiogroup"
+            aria-label="Tasks view options"
+            className="flex items-center h-9 p-0.5 rounded-lg border border-border/80 bg-card shadow-xs shrink-0"
+          >
             <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === 'grid'}
+              aria-label="Grid view"
+              title="Grid View"
               onClick={() => setViewMode('grid')}
               className={cn(
-                "flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors",
+                "h-7.5 px-3 flex items-center gap-1.5 justify-center rounded-md text-xs transition-colors cursor-pointer",
                 viewMode === 'grid'
-                  ? "bg-foreground text-background shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-foreground text-background shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium"
               )}
             >
               <LayoutGrid className="h-3.5 w-3.5" />
-              Grid
+              <span>Grid</span>
             </button>
+            <div className="w-px h-4 bg-border/60 mx-0.5 shrink-0" aria-hidden="true" />
             <button
+              type="button"
+              role="radio"
+              aria-checked={viewMode === 'list'}
+              aria-label="List view"
+              title="List View"
               onClick={() => setViewMode('list')}
               className={cn(
-                "flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-colors",
+                "h-7.5 px-3 flex items-center gap-1.5 justify-center rounded-md text-xs transition-colors cursor-pointer",
                 viewMode === 'list'
-                  ? "bg-foreground text-background shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-foreground text-background shadow-xs font-semibold"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium"
               )}
             >
               <List className="h-3.5 w-3.5" />
-              List
+              <span>List</span>
             </button>
           </div>
         }
@@ -346,7 +735,7 @@ export function MyTasksView({
           }`}
         >
           <Calendar className="h-3.5 w-3.5" />
-          Today ({todayTasks.length})
+          Today ({todayList.length})
         </button>
 
         <button
@@ -358,7 +747,7 @@ export function MyTasksView({
           }`}
         >
           <Clock className="h-3.5 w-3.5" />
-          Upcoming ({upcomingTasks.length})
+          Upcoming ({upcomingList.length})
         </button>
 
         <button
@@ -370,7 +759,7 @@ export function MyTasksView({
           }`}
         >
           <Layers className="h-3.5 w-3.5" />
-          Pending ({pendingTasks.length})
+          Pending ({pendingList.length})
         </button>
 
         <button
@@ -382,7 +771,7 @@ export function MyTasksView({
           }`}
         >
           <AlertCircle className="h-3.5 w-3.5" />
-          Overdue ({overdueTasks.length})
+          Overdue ({overdueList.length})
         </button>
 
         <button
@@ -394,7 +783,7 @@ export function MyTasksView({
           }`}
         >
           <CheckCircle2 className="h-3.5 w-3.5" />
-          Completed ({completedTasks.length})
+          Completed ({completedList.length})
         </button>
 
         <button
@@ -412,11 +801,11 @@ export function MyTasksView({
 
       {/* Tab Contents */}
       <div>
-        {activeTab === 'today' && renderTaskList(todayTasks, 'All clear for today!')}
-        {activeTab === 'upcoming' && renderTaskList(upcomingTasks, 'No upcoming tasks scheduled.')}
-        {activeTab === 'pending' && renderTaskList(pendingTasks, 'No pending tasks without deadlines.')}
-        {activeTab === 'overdue' && renderTaskList(overdueTasks, 'Great job! Zero overdue tasks.')}
-        {activeTab === 'completed' && renderTaskList(completedTasks, 'No completed tasks yet.')}
+        {activeTab === 'today' && renderTaskList(todayList, 'All clear for today!')}
+        {activeTab === 'upcoming' && renderTaskList(upcomingList, 'No upcoming tasks scheduled.')}
+        {activeTab === 'pending' && renderTaskList(pendingList, 'No pending tasks without deadlines.')}
+        {activeTab === 'overdue' && renderTaskList(overdueList, 'Great job! Zero overdue tasks.')}
+        {activeTab === 'completed' && renderTaskList(completedList, 'No completed tasks yet.')}
         {activeTab === 'projects' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {displayProjects.length === 0 ? (
@@ -564,7 +953,12 @@ export function MyTasksView({
             setIsDetailsOpen(false)
             setSelectedTask(null)
           }}
-          onUpdate={() => window.location.reload()}
+          onUpdate={(updatedTask) => {
+            if (updatedTask) {
+              handleTaskUpdated(updatedTask)
+            }
+            router.refresh()
+          }}
           canManage={false}
         />
       )}

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
-import { updateTaskStatusAction, addTaskCommentAction, logTaskHoursAction, toggleTaskChecklistItemAction } from '@/lib/actions/tasks'
+import { updateTaskStatusAction, addTaskCommentAction, logTaskHoursAction, toggleTaskChecklistItemAction, getTaskByIdAction } from '@/lib/actions/tasks'
 import { toast } from 'sonner'
 import { Calendar, Clock, AlertCircle, MessageSquare, Send, User, Loader2, Edit, CheckSquare, Check } from 'lucide-react'
 import dayjs from 'dayjs'
@@ -19,7 +19,7 @@ interface TaskDetailsModalProps {
   task: Task | null
   isOpen: boolean
   onClose: () => void
-  onUpdate: () => void
+  onUpdate?: (updatedTask?: Task) => void
   canManage: boolean
   onEditTask?: (task: Task) => void
 }
@@ -34,6 +34,7 @@ export function TaskDetailsModal({
   canManage,
   onEditTask,
 }: TaskDetailsModalProps) {
+  const [currentTask, setCurrentTask] = useState<Task | null>(task)
   const [commentText, setCommentText] = useState('')
   const [addingComment, setAddingComment] = useState(false)
   const [hoursToAdd, setHoursToAdd] = useState('')
@@ -42,22 +43,39 @@ export function TaskDetailsModal({
   const [localChecklist, setLocalChecklist] = useState<TaskChecklistItem[]>(task?.checklist || [])
 
   useEffect(() => {
-    setLocalChecklist(task?.checklist || [])
-  }, [task?.checklist])
+    if (task) {
+      setCurrentTask(task)
+      setLocalChecklist(task.checklist || [])
+    }
+  }, [task, isOpen])
 
-  if (!task) return null
+  if (!isOpen || !currentTask) return null
 
   const handleStatusChange = async (newStatus: TaskStatus) => {
+    if (!currentTask || updatingStatus) return
     setUpdatingStatus(true)
+    const previousTask = currentTask
+    const optimisticTask: Task = { ...currentTask, status: newStatus }
+    setCurrentTask(optimisticTask)
+    onUpdate?.(optimisticTask)
+
     try {
-      const res = await updateTaskStatusAction(task.id, newStatus)
+      const res = await updateTaskStatusAction(currentTask.id, newStatus)
       if (!res.success) {
+        setCurrentTask(previousTask)
+        onUpdate?.(previousTask)
         toast.error(res.error || 'Failed to update status.')
       } else {
         toast.success(`Task moved to ${newStatus.replace('_', ' ')}`)
-        onUpdate()
+        const fresh = await getTaskByIdAction(currentTask.id)
+        if (fresh.success && fresh.data) {
+          setCurrentTask(fresh.data)
+          onUpdate?.(fresh.data)
+        }
       }
     } catch (err: any) {
+      setCurrentTask(previousTask)
+      onUpdate?.(previousTask)
       toast.error(err.message || 'Error updating status')
     } finally {
       setUpdatingStatus(false)
@@ -66,18 +84,33 @@ export function TaskDetailsModal({
 
   const handleAddComment = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!currentTask || addingComment) return
     const trimmed = commentText.trim()
     if (!trimmed) return
 
     setAddingComment(true)
     try {
-      const res = await addTaskCommentAction(task.id, trimmed)
+      const res = await addTaskCommentAction(currentTask.id, trimmed)
       if (!res.success) {
         toast.error(res.error || 'Failed to add comment.')
       } else {
         setCommentText('')
         toast.success('Comment added.')
-        onUpdate()
+        if (res.data) {
+          const updatedComments = [res.data, ...(currentTask.comments || [])]
+          const updated: Task = {
+            ...currentTask,
+            comments: updatedComments,
+            comments_count: (currentTask.comments_count || 0) + 1,
+          }
+          setCurrentTask(updated)
+          onUpdate?.(updated)
+        }
+        const fresh = await getTaskByIdAction(currentTask.id)
+        if (fresh.success && fresh.data) {
+          setCurrentTask(fresh.data)
+          onUpdate?.(fresh.data)
+        }
       }
     } catch (err: any) {
       toast.error(err.message || 'Error adding comment')
@@ -88,6 +121,7 @@ export function TaskDetailsModal({
 
   const handleLogHours = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!currentTask || loggingHours) return
     const num = parseFloat(hoursToAdd)
     if (isNaN(num) || num <= 0) {
       toast.error('Please enter a valid positive number of hours.')
@@ -95,16 +129,30 @@ export function TaskDetailsModal({
     }
 
     setLoggingHours(true)
+    const previousTask = currentTask
+    const optimisticHours = Math.round(((currentTask.worked_hours || 0) + num) * 100) / 100
+    const optimisticTask: Task = { ...currentTask, worked_hours: optimisticHours }
+    setCurrentTask(optimisticTask)
+    onUpdate?.(optimisticTask)
+
     try {
-      const res = await logTaskHoursAction(task.id, num)
+      const res = await logTaskHoursAction(currentTask.id, num)
       if (!res.success) {
+        setCurrentTask(previousTask)
+        onUpdate?.(previousTask)
         toast.error(res.error || 'Failed to log hours.')
       } else {
         setHoursToAdd('')
         toast.success(`Logged ${num} operational hours.`)
-        onUpdate()
+        const fresh = await getTaskByIdAction(currentTask.id)
+        if (fresh.success && fresh.data) {
+          setCurrentTask(fresh.data)
+          onUpdate?.(fresh.data)
+        }
       }
     } catch (err: any) {
+      setCurrentTask(previousTask)
+      onUpdate?.(previousTask)
       toast.error(err.message || 'Error logging hours')
     } finally {
       setLoggingHours(false)
@@ -112,21 +160,26 @@ export function TaskDetailsModal({
   }
 
   const handleToggleChecklist = async (itemId: string, currentState: boolean) => {
+    if (!currentTask) return
     const newState = !currentState
     // Optimistic update
     setLocalChecklist((prev) =>
       prev.map((it) => (it.id === itemId ? { ...it, is_completed: newState } : it))
     )
     try {
-      const res = await toggleTaskChecklistItemAction(task.id, itemId, newState)
+      const res = await toggleTaskChecklistItemAction(currentTask.id, itemId, newState)
       if (!res.success) {
         toast.error(res.error || 'Failed to update checklist item')
-        // Revert
         setLocalChecklist((prev) =>
           prev.map((it) => (it.id === itemId ? { ...it, is_completed: currentState } : it))
         )
       } else {
-        onUpdate()
+        const fresh = await getTaskByIdAction(currentTask.id)
+        if (fresh.success && fresh.data) {
+          setCurrentTask(fresh.data)
+          setLocalChecklist(fresh.data.checklist || [])
+          onUpdate?.(fresh.data)
+        }
       }
     } catch {
       setLocalChecklist((prev) =>
@@ -135,8 +188,8 @@ export function TaskDetailsModal({
     }
   }
 
-  const assignees = task.assignees || []
-  const comments = task.comments || []
+  const assignees = currentTask.assignees || []
+  const comments = currentTask.comments || []
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -144,7 +197,7 @@ export function TaskDetailsModal({
         <DialogHeader className="px-5 sm:px-7 pt-5 sm:pt-6 pb-4 border-b border-border/50 shrink-0 pr-14 space-y-2 bg-card">
           <div className="flex items-center justify-between gap-3">
             <span className="font-mono text-xs font-semibold text-muted-foreground bg-secondary/50 px-2.5 py-1 rounded-md border border-border/50">
-              {task.task_id_display}
+              {currentTask.task_id_display}
             </span>
             <div className="flex items-center gap-2">
               {canManage && onEditTask && (
@@ -153,7 +206,7 @@ export function TaskDetailsModal({
                   size="sm"
                   onClick={() => {
                     onClose()
-                    onEditTask(task)
+                    onEditTask(currentTask)
                   }}
                   className="h-8 px-3 text-xs"
                 >
@@ -165,12 +218,12 @@ export function TaskDetailsModal({
           </div>
 
           <DialogTitle className="text-xl sm:text-2xl font-bold leading-tight text-foreground">
-            {task.title}
+            {currentTask.title}
           </DialogTitle>
 
-          {task.project_name && (
+          {currentTask.project_name && (
             <p className="text-xs text-muted-foreground">
-              Project: <span className="font-medium text-foreground">{task.project_name}</span>
+              Project: <span className="font-medium text-foreground">{currentTask.project_name}</span>
             </p>
           )}
         </DialogHeader>
@@ -181,7 +234,7 @@ export function TaskDetailsModal({
             <div className="flex items-center gap-3">
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Current Status</span>
               <Select
-                value={task.status}
+                value={currentTask.status}
                 onValueChange={(val) => handleStatusChange(val as TaskStatus)}
                 disabled={updatingStatus}
               >
@@ -201,17 +254,17 @@ export function TaskDetailsModal({
             <div className="flex items-center gap-2">
               <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Priority:</span>
               <Badge variant="outline" className="text-xs px-2.5 py-1 font-semibold">
-                {task.priority}
+                {currentTask.priority}
               </Badge>
             </div>
           </div>
 
           {/* Description */}
-          {task.description && (
+          {currentTask.description && (
             <div className="space-y-2">
               <h5 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Description</h5>
               <p className="text-sm text-foreground whitespace-pre-wrap break-words break-all bg-secondary/15 p-4 rounded-lg border border-border/50 leading-relaxed">
-                {task.description}
+                {currentTask.description}
               </p>
             </div>
           )}
@@ -225,13 +278,13 @@ export function TaskDetailsModal({
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Start Date:</span>
                   <span className="text-foreground font-medium">
-                    {task.start_date ? dayjs(task.start_date).format('DD MMM YYYY') : 'Unset'}
+                    {currentTask.start_date ? dayjs(currentTask.start_date).format('DD MMM YYYY') : 'Unset'}
                   </span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Due Date:</span>
-                  <span className={task.is_overdue ? 'text-destructive font-bold' : 'text-foreground font-medium'}>
-                    {task.due_date ? dayjs(task.due_date).format('DD MMM YYYY') : 'Unset'}
+                  <span className={currentTask.is_overdue ? 'text-destructive font-bold' : 'text-foreground font-medium'}>
+                    {currentTask.due_date ? dayjs(currentTask.due_date).format('DD MMM YYYY') : 'Unset'}
                   </span>
                 </div>
               </div>
@@ -243,11 +296,11 @@ export function TaskDetailsModal({
               <div className="space-y-2 pt-1">
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Estimated Hours:</span>
-                  <span className="font-mono font-medium text-foreground">{task.estimated_hours || 0} hrs</span>
+                  <span className="font-mono font-medium text-foreground">{currentTask.estimated_hours || 0} hrs</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground">Logged Hours:</span>
-                  <span className="font-mono font-bold text-foreground">{task.worked_hours || 0} hrs</span>
+                  <span className="font-mono font-bold text-foreground">{currentTask.worked_hours || 0} hrs</span>
                 </div>
               </div>
             </div>

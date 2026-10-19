@@ -18,8 +18,29 @@ export interface ProjectFileMetadata {
   profile?: {
     first_name: string
     last_name: string | null
+    employee_id?: string | null
     profile_photo?: string | null
   }
+}
+
+async function checkUserProjectAccess(admin: any, projectId: string, user: any): Promise<boolean> {
+  const isGlobalAdminOrManager = user.role === 'Admin' || user.is_hod
+  if (isGlobalAdminOrManager) return true
+
+  const { data: pCheck } = await admin.from('projects').select('project_manager_id').eq('id', projectId).single()
+  if (pCheck?.project_manager_id === user.id) return true
+
+  const { data: mCheck } = await admin.from('project_members').select('id').eq('project_id', projectId).eq('user_id', user.id)
+  if (mCheck && mCheck.length > 0) return true
+
+  const { data: tCheck } = await admin.from('tasks').select('id').eq('project_id', projectId)
+  if (tCheck && tCheck.length > 0) {
+    const taskIds = tCheck.map((t: any) => t.id)
+    const { data: taCheck } = await admin.from('task_assignees').select('id').in('task_id', taskIds).eq('user_id', user.id).limit(1)
+    if (taCheck && taCheck.length > 0) return true
+  }
+
+  return false
 }
 
 export async function uploadProjectFileAction(projectId: string, formData: FormData) {
@@ -46,6 +67,12 @@ export async function uploadProjectFileAction(projectId: string, formData: FormD
     }
 
     const admin = await createAdminClient()
+
+    // Authorization check
+    const isAuthorized = await checkUserProjectAccess(admin, projectId, user)
+    if (!isAuthorized) {
+      return { success: false, error: 'Unauthorized to upload files to this project' }
+    }
 
     // Create bucket if it doesn't exist
     const { data: buckets } = await admin.storage.listBuckets()
@@ -79,7 +106,10 @@ export async function uploadProjectFileAction(projectId: string, formData: FormD
         file_size: file.size,
         mime_type: file.type
       })
-      .select()
+      .select(`
+        *,
+        profile:profiles!project_files_uploaded_by_fkey(first_name, last_name, employee_id)
+      `)
       .single()
 
     if (insertError) {
@@ -91,6 +121,15 @@ export async function uploadProjectFileAction(projectId: string, formData: FormD
          return { success: false, error: 'The project_files table has not been created in the database. Please run the provided SQL migration.' }
       }
       return { success: false, error: insertError.message }
+    }
+
+    let prof = inserted?.profile
+    if (Array.isArray(prof)) prof = prof[0] || null
+    if (inserted) {
+      inserted.profile = prof
+      if (prof) {
+        await attachProfilePhotos(admin, [prof])
+      }
     }
 
     revalidatePath(`/projects/${projectId}`)
@@ -108,30 +147,7 @@ export async function getProjectFilesAction(projectId: string): Promise<{ succes
     const admin = await createAdminClient()
 
     // Authorization check
-    const isGlobalAdminOrManager = user.role === 'Admin' || user.is_hod
-    let isAuthorized = isGlobalAdminOrManager
-    
-    if (!isAuthorized) {
-      const { data: pCheck } = await admin.from('projects').select('project_manager_id').eq('id', projectId).single()
-      if (pCheck?.project_manager_id === user.id) {
-        isAuthorized = true
-      } else {
-        const { data: mCheck } = await admin.from('project_members').select('id').eq('project_id', projectId).eq('user_id', user.id)
-        if (mCheck && mCheck.length > 0) {
-          isAuthorized = true
-        } else {
-          const { data: tCheck } = await admin.from('tasks').select('id').eq('project_id', projectId)
-          if (tCheck && tCheck.length > 0) {
-            const taskIds = tCheck.map((t: any) => t.id)
-            const { data: taCheck } = await admin.from('task_assignees').select('id').in('task_id', taskIds).eq('user_id', user.id).limit(1)
-            if (taCheck && taCheck.length > 0) {
-              isAuthorized = true
-            }
-          }
-        }
-      }
-    }
-
+    const isAuthorized = await checkUserProjectAccess(admin, projectId, user)
     if (!isAuthorized) {
       return { success: false, error: 'Unauthorized to view these files' }
     }
@@ -140,7 +156,7 @@ export async function getProjectFilesAction(projectId: string): Promise<{ succes
       .from('project_files')
       .select(`
         *,
-        profile:profiles!project_files_uploaded_by_fkey(first_name, last_name, profile_photo)
+        profile:profiles!project_files_uploaded_by_fkey(first_name, last_name, employee_id)
       `)
       .eq('project_id', projectId)
       .order('created_at', { ascending: false })
@@ -151,12 +167,21 @@ export async function getProjectFilesAction(projectId: string): Promise<{ succes
     }
 
     const allProfiles: any[] = []
-    ;(data || []).forEach((row: any) => {
-      if (row.profile) allProfiles.push(row.profile)
+    const normalizedData = (data || []).map((row: any) => {
+      let prof = row.profile
+      if (Array.isArray(prof)) prof = prof[0] || null
+      if (prof) allProfiles.push(prof)
+      return {
+        ...row,
+        profile: prof
+      }
     })
-    await attachProfilePhotos(admin, allProfiles)
 
-    return { success: true, data }
+    if (allProfiles.length > 0) {
+      await attachProfilePhotos(admin, allProfiles)
+    }
+
+    return { success: true, data: normalizedData }
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to fetch project files' }
   }
@@ -191,13 +216,13 @@ export async function deleteProjectFileAction(fileId: string, storagePath: strin
     // Delete from storage first
     const { error: storageError } = await admin.storage.from('project-files').remove([storagePath])
     if (storageError) {
-      return { success: false, error: `Failed to remove from storage: ${storageError.message}` }
+      console.warn(`Storage file removal warning: ${storageError.message}`)
     }
 
     // Delete metadata
     const { error: dbError } = await admin.from('project_files').delete().eq('id', fileId)
     if (dbError) {
-      return { success: false, error: `Storage removed but metadata deletion failed: ${dbError.message}` }
+      return { success: false, error: `Metadata deletion failed: ${dbError.message}` }
     }
 
     revalidatePath(`/projects/${projectId}`)
@@ -215,36 +240,13 @@ export async function getProjectFileDownloadUrlAction(storagePath: string, proje
     const admin = await createAdminClient()
 
     // Authorization check
-    const isGlobalAdminOrManager = user.role === 'Admin' || user.is_hod
-    let isAuthorized = isGlobalAdminOrManager
-    
-    if (!isAuthorized) {
-      const { data: pCheck } = await admin.from('projects').select('project_manager_id').eq('id', projectId).single()
-      if (pCheck?.project_manager_id === user.id) {
-        isAuthorized = true
-      } else {
-        const { data: mCheck } = await admin.from('project_members').select('id').eq('project_id', projectId).eq('user_id', user.id)
-        if (mCheck && mCheck.length > 0) {
-          isAuthorized = true
-        } else {
-          const { data: tCheck } = await admin.from('tasks').select('id').eq('project_id', projectId)
-          if (tCheck && tCheck.length > 0) {
-            const taskIds = tCheck.map((t: any) => t.id)
-            const { data: taCheck } = await admin.from('task_assignees').select('id').in('task_id', taskIds).eq('user_id', user.id).limit(1)
-            if (taCheck && taCheck.length > 0) {
-              isAuthorized = true
-            }
-          }
-        }
-      }
-    }
-
+    const isAuthorized = await checkUserProjectAccess(admin, projectId, user)
     if (!isAuthorized) {
       return { success: false, error: 'Unauthorized to download this file' }
     }
 
-    // 60-second signed URL
-    const { data, error } = await admin.storage.from('project-files').createSignedUrl(storagePath, 60)
+    // 300-second (5 min) signed URL
+    const { data, error } = await admin.storage.from('project-files').createSignedUrl(storagePath, 300)
     
     if (error || !data) {
       return { success: false, error: error?.message || 'Failed to generate download URL' }

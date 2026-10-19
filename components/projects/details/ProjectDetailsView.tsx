@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import {
   Project,
   Task,
@@ -18,6 +19,7 @@ import { KanbanBoard } from '@/components/tasks/KanbanBoard'
 import { ProjectListTab } from './ProjectListTab'
 import { ProjectFilesTab } from './ProjectFilesTab'
 import { ProjectModal } from '../ProjectModal'
+import { EditProjectMembersModal } from './EditProjectMembersModal'
 import { TaskFormModal } from '@/components/tasks/TaskFormModal'
 import { TaskDetailsModal } from '@/components/tasks/TaskDetailsModal'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
@@ -49,15 +51,38 @@ export function ProjectDetailsView({
   currentUserId,
   currentUserDepartment,
 }: ProjectDetailsViewProps) {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState('overview')
   const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isMembersModalOpen, setIsMembersModalOpen] = useState(false)
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isTaskDetailsOpen, setIsTaskDetailsOpen] = useState(false)
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
+  const [projectTasks, setProjectTasks] = useState<Task[]>(tasks)
 
-  const handleSuccess = () => {
-    window.location.reload()
+  useEffect(() => {
+    setProjectTasks(tasks)
+  }, [tasks])
+
+  const handleTaskSuccess = (updatedOrNewTask?: Task) => {
+    if (updatedOrNewTask) {
+      setProjectTasks((prev) => {
+        const exists = prev.some((t) => t.id === updatedOrNewTask.id)
+        if (exists) {
+          return prev.map((t) => (t.id === updatedOrNewTask.id ? { ...t, ...updatedOrNewTask } : t))
+        }
+        return [updatedOrNewTask, ...prev]
+      })
+      if (selectedTask?.id === updatedOrNewTask.id) {
+        setSelectedTask(updatedOrNewTask)
+      }
+    }
+    router.refresh()
+  }
+
+  const handleModalSuccess = () => {
+    router.refresh()
   }
 
   const handleDelete = () => {
@@ -71,7 +96,7 @@ export function ProjectDetailsView({
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
         <ProjectHeader
           project={project}
-          tasks={tasks}
+          tasks={projectTasks}
           teamStats={teamStats}
           totalOperationalHours={totalOperationalHours}
           canEdit={canEdit}
@@ -89,9 +114,11 @@ export function ProjectDetailsView({
           <ProjectOverviewTab
             project={project}
             totalOperationalHours={totalOperationalHours}
-            tasks={tasks}
+            tasks={projectTasks}
             teamStats={teamStats}
             activities={activities}
+            canEdit={canEdit}
+            onEditMembers={() => setIsMembersModalOpen(true)}
             onSelectTab={setActiveTab}
             onTaskClick={(t: Task) => {
               setSelectedTask(t)
@@ -102,13 +129,19 @@ export function ProjectDetailsView({
 
         {/* Tab 2: List */}
         <TabsContent value="list">
-          <ProjectListTab tasks={tasks} />
+          <ProjectListTab
+            tasks={projectTasks}
+            onTaskClick={(t: Task) => {
+              setSelectedTask(t)
+              setIsTaskDetailsOpen(true)
+            }}
+          />
         </TabsContent>
 
         {/* Tab 3: Kanban */}
         <TabsContent value="kanban">
           <KanbanBoard
-            initialTasks={tasks}
+            initialTasks={projectTasks}
             projects={[{ id: project.id, name: project.name }]}
             employees={employees}
             canManage={canManageTasks}
@@ -120,7 +153,7 @@ export function ProjectDetailsView({
         <TabsContent value="gantt">
           <ProjectGanttTab
             project={project}
-            tasks={tasks}
+            tasks={projectTasks}
             canManageTasks={canManageTasks}
             onTaskClick={(t: Task) => {
               setSelectedTask(t)
@@ -137,7 +170,7 @@ export function ProjectDetailsView({
         <TabsContent value="timeline">
           <ProjectGanttTab
             project={project}
-            tasks={tasks}
+            tasks={projectTasks}
             canManageTasks={canManageTasks}
             onTaskClick={(t: Task) => {
               setSelectedTask(t)
@@ -152,7 +185,11 @@ export function ProjectDetailsView({
 
         {/* Tab 5: Team */}
         <TabsContent value="team">
-          <ProjectTeamTab teamStats={teamStats} />
+          <ProjectTeamTab
+            teamStats={teamStats}
+            canEdit={canEdit}
+            onEditMembers={() => setIsMembersModalOpen(true)}
+          />
         </TabsContent>
 
         {/* Tab 6: Files */}
@@ -176,7 +213,7 @@ export function ProjectDetailsView({
           }}
           task={selectedTask}
           canManage={canManageTasks}
-          onUpdate={handleSuccess}
+          onUpdate={handleTaskSuccess}
           onEditTask={(t) => {
             setSelectedTask(null)
             setIsTaskDetailsOpen(false)
@@ -186,12 +223,26 @@ export function ProjectDetailsView({
         />
       )}
 
+      {/* Edit Project Members Modal */}
+      {isMembersModalOpen && (
+        <EditProjectMembersModal
+          isOpen={isMembersModalOpen}
+          onClose={() => setIsMembersModalOpen(false)}
+          onSuccess={handleModalSuccess}
+          projectId={project.id}
+          projectName={project.name}
+          projectIdDisplay={project.project_id_display}
+          currentMembers={project.members || []}
+          employees={employees}
+        />
+      )}
+
       {/* Edit Project Modal */}
       {isEditModalOpen && (
         <ProjectModal
           isOpen={isEditModalOpen}
           onClose={() => setIsEditModalOpen(false)}
-          onSuccess={handleSuccess}
+          onSuccess={handleModalSuccess}
           clients={clients}
           employees={employees}
           projectToEdit={project}
@@ -208,7 +259,7 @@ export function ProjectDetailsView({
             setIsTaskModalOpen(false)
             setTaskToEdit(null)
           }}
-          onSuccess={handleSuccess}
+          onSuccess={handleTaskSuccess}
           projects={[{ id: project.id, name: project.name }]}
           employees={employees}
           defaultProjectId={project.id}

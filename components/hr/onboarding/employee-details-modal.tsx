@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input'
 import { useToast } from '@/hooks/use-toast'
 import { Loader2 } from 'lucide-react'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
+import { DocumentUploadSection } from '@/components/documents/DocumentUploadSection'
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DEPARTMENTS, DIVISIONS, DESIGNATIONS } from '@/config/roles'
@@ -38,11 +39,8 @@ import { DeactivateEmployeeAction } from '@/components/hr/onboarding/deactivate-
 export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
   const router = useRouter()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const docInputRef = useRef<HTMLInputElement>(null)
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
   const [isUploadingDoc, setIsUploadingDoc] = useState(false)
-  const [isDraggingDoc, setIsDraggingDoc] = useState(false)
-  const dragCounter = useRef(0)
   const [localPhotoUrl, setLocalPhotoUrl] = useState<string | null>(null)
   const [isHod, setIsHod] = useState<boolean>(Boolean(employee.is_hod))
   const [employmentStatus, setEmploymentStatus] = useState<string>(employee.employment_status || 'Active')
@@ -311,55 +309,14 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
       })
     } finally {
       setIsUploadingDoc(false)
-      if (docInputRef.current) docInputRef.current.value = ''
     }
   }
 
-  const handleDocumentUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      uploadFiles(Array.from(e.target.files))
+  const handleViewDocument = (e: React.MouseEvent | null | undefined, doc: any) => {
+    if (e) {
+      e.preventDefault()
+      e.stopPropagation()
     }
-  }
-
-  const handleDocDragEnter = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    dragCounter.current += 1
-    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-      setIsDraggingDoc(true)
-    }
-  }
-
-  const handleDocDragLeave = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    dragCounter.current -= 1
-    if (dragCounter.current <= 0) {
-      setIsDraggingDoc(false)
-      dragCounter.current = 0
-    }
-  }
-
-  const handleDocDragOver = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    e.dataTransfer.dropEffect = 'copy'
-  }
-
-  const handleDocDrop = (e: React.DragEvent) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setIsDraggingDoc(false)
-    dragCounter.current = 0
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      uploadFiles(Array.from(e.dataTransfer.files))
-      e.dataTransfer.clearData()
-    }
-  }
-
-  const handleViewDocument = (e: React.MouseEvent, doc: any) => {
-    e.preventDefault()
-    e.stopPropagation()
 
     let urlToOpen = '#'
     if (typeof doc === 'string') {
@@ -1236,157 +1193,30 @@ export function EmployeeDetailsClient({ employee }: { employee: Employee }) {
 
         {/* ============ DOCUMENTS TAB ============ */}
         <TabsContent value="documents" className="m-0 space-y-5">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-muted/50 dark:bg-zinc-900 border border-border/50 dark:border-zinc-800/80 text-foreground flex items-center justify-center shrink-0">
-                <FileText className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg text-foreground">Uploaded Documents</h3>
-                <p className="text-xs text-muted-foreground">Files and documents related to the employee.</p>
-              </div>
-            </div>
-            <div>
-              <input
-                type="file"
-                ref={docInputRef}
-                multiple
-                accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.zip"
-                className="hidden"
-                onChange={handleDocumentUpload}
-              />
-              <Button
-                variant="default"
-                size="sm"
-                className="h-8 px-4 text-xs font-semibold gap-1.5 shadow-sm"
-                onClick={() => docInputRef.current?.click()}
-                disabled={isUploadingDoc}
-              >
-                {isUploadingDoc ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
-                {isUploadingDoc ? 'Uploading...' : 'Upload'}
-              </Button>
-            </div>
-          </div>
-
-          <div
-            onDragEnter={handleDocDragEnter}
-            onDragLeave={handleDocDragLeave}
-            onDragOver={handleDocDragOver}
-            onDrop={handleDocDrop}
-            className={cn(
-              "relative bg-card/30 border rounded-2xl p-5 transition-all duration-200",
-              isDraggingDoc 
-                ? "border-foreground/80 dark:border-zinc-300 bg-muted/30 dark:bg-zinc-900/60 ring-2 ring-foreground/20" 
-                : "border-border/30"
-            )}
-          >
-            {/* Active Drop Backdrop Overlay */}
-            {isDraggingDoc && (
-              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-background/90 dark:bg-zinc-950/90 backdrop-blur-xs rounded-2xl border-2 border-dashed border-foreground/80 dark:border-zinc-300 pointer-events-none animate-in fade-in duration-150">
-                <div className="w-14 h-14 rounded-2xl bg-muted dark:bg-zinc-900 border border-border/50 dark:border-zinc-700 text-foreground flex items-center justify-center mb-3 scale-110 transition-transform">
-                  <UploadCloud className="w-7 h-7" />
-                </div>
-                <p className="text-base font-semibold text-foreground">Drop files here to upload</p>
-                <p className="text-xs text-muted-foreground mt-1">PDF, DOCX, XLSX, PNG, JPG (up to 10MB)</p>
-              </div>
-            )}
-
-            {/* Empty State / Interactive Drag & Drop Box */}
-            {(!employee.documents || employee.documents.length === 0) ? (
-              <div
-                onClick={() => docInputRef.current?.click()}
-                className={cn(
-                  "cursor-pointer text-center py-14 px-6 border-2 border-dashed rounded-xl transition-all duration-200 group select-none",
-                  isDraggingDoc
-                    ? "border-foreground/80 dark:border-zinc-300 bg-muted/40 dark:bg-zinc-900/60"
-                    : "border-border/60 bg-muted/10 dark:bg-zinc-950/40 hover:border-foreground/60 hover:bg-muted/20"
-                )}
-              >
-                {isUploadingDoc ? (
-                  <div className="flex flex-col items-center justify-center">
-                    <Loader2 className="w-10 h-10 animate-spin text-foreground mb-3" />
-                    <p className="font-semibold text-foreground text-sm">Uploading document(s)...</p>
-                    <p className="text-xs text-muted-foreground mt-1">Please wait while files are being securely stored</p>
-                  </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center">
-                    <div className="w-14 h-14 rounded-2xl bg-muted/60 dark:bg-zinc-900 border border-border/50 dark:border-zinc-800 text-foreground flex items-center justify-center mb-3 group-hover:scale-105 group-hover:border-foreground/40 transition-all">
-                      <UploadCloud className="w-7 h-7" />
-                    </div>
-                    <p className="font-semibold text-base text-foreground mb-1">
-                      Drag &amp; drop documents here, or <span className="text-foreground underline underline-offset-4 decoration-muted-foreground/60 hover:decoration-foreground font-semibold transition-colors">browse</span>
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Supports PDF, DOCX, XLSX, PNG, JPG, ZIP (Max 10MB per file)
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Compact Drag & Drop Strip above existing files */}
-                <div
-                  onClick={() => docInputRef.current?.click()}
-                  className={cn(
-                    "cursor-pointer border-2 border-dashed rounded-xl p-3.5 flex items-center justify-center gap-3 transition-all duration-200 group select-none",
-                    isDraggingDoc
-                      ? "border-foreground/80 dark:border-zinc-300 bg-muted/40 dark:bg-zinc-900/60"
-                      : "border-border/60 bg-muted/10 dark:bg-zinc-950/40 hover:border-foreground/60 hover:bg-muted/20"
-                  )}
-                >
-                  {isUploadingDoc ? (
-                    <div className="flex items-center gap-2 py-0.5">
-                      <Loader2 className="w-4 h-4 animate-spin text-foreground" />
-                      <span className="text-xs font-medium text-foreground">Uploading document(s)...</span>
-                    </div>
-                  ) : (
-                    <>
-                      <div className="w-8 h-8 rounded-lg bg-muted/60 dark:bg-zinc-900 border border-border/50 dark:border-zinc-800 text-foreground flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
-                        <UploadCloud className="w-4 h-4" />
-                      </div>
-                      <div className="text-xs">
-                        <span className="font-semibold text-foreground">Drag &amp; drop more documents here</span>
-                        <span className="text-muted-foreground">, or <span className="text-foreground underline underline-offset-2 decoration-muted-foreground/60 hover:decoration-foreground font-medium transition-colors">browse files</span> (up to 10MB)</span>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* Existing Documents Grid */}
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {employee.documents.map((doc: any, idx: number) => (
-                    <div key={idx} className="flex items-center justify-between p-3.5 border border-border/40 rounded-xl bg-card/60 hover:bg-card transition-colors">
-                      <div className="flex items-center gap-3 overflow-hidden">
-                        <div className="w-9 h-9 rounded-lg bg-muted/60 dark:bg-zinc-900 border border-border/50 dark:border-zinc-800 text-foreground flex items-center justify-center shrink-0">
-                          <FileText className="w-4 h-4" />
-                        </div>
-                        <div className="overflow-hidden">
-                          <div className="text-sm font-medium truncate" title={doc.name || (typeof doc === 'string' ? doc : 'Document')}>
-                            {(doc.name || (typeof doc === 'string' ? doc : 'Document')).replace(/\.[^/.]+$/, "")}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-foreground" onClick={(e) => handleViewDocument(e, doc)} title="View Document">
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <ConfirmModal
-                          title="Delete Document"
-                          description="Are you sure you want to delete this document? This action cannot be undone."
-                          onConfirm={() => handleDeleteDocument(idx)}
-                          confirmText="Delete"
-                        >
-                          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-red-400 hover:text-red-300 hover:bg-red-500/10" title="Delete Document" onClick={(e) => e.stopPropagation()}>
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </ConfirmModal>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
+          <DocumentUploadSection
+            title="Uploaded Documents"
+            description="Files and documents related to the employee."
+            documents={(employee.documents || []).map((doc: any, idx: number) => ({
+              id: String(idx),
+              name: typeof doc === 'string' ? doc : doc.name || 'Document',
+              url: typeof doc === 'string' ? doc : doc.url,
+              path: typeof doc === 'object' ? doc.path : undefined,
+              size: typeof doc === 'object' ? doc.size : undefined,
+              type: typeof doc === 'object' ? doc.type : undefined,
+              raw: doc,
+            }))}
+            onUpload={uploadFiles}
+            onView={(doc, idx) => {
+              const currentDocs = Array.isArray(employee.documents) ? employee.documents : []
+              handleViewDocument(null, currentDocs[idx] || doc.raw || doc)
+            }}
+            onDelete={(_, idx) => handleDeleteDocument(idx)}
+            isUploading={isUploadingDoc}
+            accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.zip"
+            maxSizeBytes={10 * 1024 * 1024}
+            maxSizeLabel="10MB"
+            uploadButtonText="Upload"
+          />
         </TabsContent>
 
         {/* ============ ONBOARDING TAB ============ */}

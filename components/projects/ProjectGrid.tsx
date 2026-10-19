@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { Plus, Search, FolderKanban, LayoutGrid, List, FolderGit2 } from 'lucide-react'
+import { PageHeader } from '@/components/PageHeader'
 
 interface ProjectGridProps {
   initialProjects: Project[]
@@ -56,34 +57,22 @@ export function ProjectGrid({
 
   return (
     <div className="space-y-6">
-      {/* Top Header Row matching Task Board reference */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        {/* Left: Icon, Title & Subtitle */}
-        <div className="flex items-center gap-3.5 min-w-0">
-          <div className="w-11 h-11 rounded-xl bg-card border border-border/80 flex items-center justify-center shrink-0 shadow-xs">
-            <FolderKanban className="w-5 h-5 text-foreground" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground leading-tight truncate">
-              Projects
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground font-normal truncate mt-0.5">
-              Track operational milestones, client delivery pipelines, and team assignments.
-            </p>
-          </div>
-        </div>
-
-        {/* Right: New Project Action Button */}
-        {canCreate && (
-          <Button
-            onClick={() => setIsModalOpen(true)}
-            className="h-9 px-4 bg-foreground text-background hover:bg-foreground/90 font-medium text-xs sm:text-sm rounded-lg shadow-xs shrink-0 self-start sm:self-auto"
-          >
-            <Plus className="mr-1.5 h-4 w-4" />
-            New Project
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Projects"
+        subtitle="Track operational milestones, client delivery pipelines, and team assignments."
+        icon={FolderKanban}
+        actions={
+          canCreate ? (
+            <Button
+              onClick={() => setIsModalOpen(true)}
+              className="h-9 px-4 bg-foreground text-background hover:bg-foreground/90 font-medium text-xs sm:text-sm rounded-lg shadow-xs shrink-0 self-start sm:self-auto"
+            >
+              <Plus className="mr-1.5 h-4 w-4" />
+              New Project
+            </Button>
+          ) : null
+        }
+      />
 
       {/* Compact Filters Row matching Task Board page styling */}
       <div className="flex flex-col lg:flex-row lg:items-center gap-2.5 sm:gap-3">

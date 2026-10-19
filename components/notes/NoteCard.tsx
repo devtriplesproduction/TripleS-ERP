@@ -7,6 +7,8 @@ import {
   Trash2,
   Pin,
   Loader2,
+  Archive,
+  ArchiveRestore,
 } from 'lucide-react'
 import type { PersonalNote } from '@/types/notes'
 import { updatePersonalNoteAction } from '@/lib/actions/notes'
@@ -20,7 +22,7 @@ interface NoteCardProps {
   onCancelEdit: () => void
   onSave: (updatedNote: PersonalNote) => void
   onTogglePin: (e: React.MouseEvent) => void
-  onArchive: (e: React.MouseEvent) => void
+  onArchive?: (e: React.MouseEvent) => void
   onDelete: (e: React.MouseEvent) => void
   onPermanentDelete?: () => void
   onOpenFullPage?: () => void
@@ -293,7 +295,7 @@ export function NoteCard({
         <span>{dayjs(note.updated_at).format('MMM D')}</span>
 
         <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
-          {/* Edit (Pencil) Icon replacing Archive */}
+          {/* Edit (Pencil) Icon */}
           <button
             type="button"
             onClick={(e) => {

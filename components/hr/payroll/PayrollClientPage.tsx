@@ -4,7 +4,7 @@ import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Loader2, IndianRupee, Clock, FileSpreadsheet, ChevronLeft, ChevronRight, Calendar, User, Download } from 'lucide-react'
+import { Loader2, IndianRupee, Clock, FileSpreadsheet, ChevronLeft, ChevronRight, Calendar, User, Download, CreditCard } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { getMonthlyPayrollAction } from '@/lib/actions/payroll'
 import { PayrollDetailModal } from './PayrollDetailModal'
@@ -117,6 +117,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
       <PageHeader
         title={title}
         subtitle="Calculate and review employee monthly payroll."
+        icon={CreditCard}
         actions={
           <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-full border border-border shadow-sm shrink-0 self-start sm:self-auto">
             <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 hover:bg-background hover:shadow-sm transition-all" onClick={handlePrevMonth} aria-label="Previous month">

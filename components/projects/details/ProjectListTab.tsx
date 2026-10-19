@@ -11,9 +11,10 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 interface ProjectListTabProps {
   tasks: Task[]
+  onTaskClick?: (task: Task) => void
 }
 
-export function ProjectListTab({ tasks }: ProjectListTabProps) {
+export function ProjectListTab({ tasks, onTaskClick }: ProjectListTabProps) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [priorityFilter, setPriorityFilter] = useState('ALL')
@@ -120,7 +121,11 @@ export function ProjectListTab({ tasks }: ProjectListTabProps) {
                     : 0;
 
                   return (
-                    <tr key={t.id} className="hover:bg-secondary/30 transition-colors group cursor-pointer h-14">
+                    <tr
+                      key={t.id}
+                      onClick={() => onTaskClick?.(t)}
+                      className="hover:bg-secondary/30 transition-colors group cursor-pointer h-14"
+                    >
                       <td className="px-5 py-2">
                         <div className="flex flex-col gap-0.5">
                           <span className="font-semibold text-foreground text-sm group-hover:text-primary transition-colors truncate max-w-[300px]">{t.title}</span>

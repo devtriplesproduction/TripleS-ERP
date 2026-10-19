@@ -1,19 +1,36 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Calendar, Clock, FileText, UploadCloud, Info, Loader2 } from "lucide-react"
+import { Calendar, Clock, FileText, UploadCloud, Info } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DatePicker } from "@/components/ui/date-picker"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { formatHoursMinutes } from "@/lib/utils/time"
+import { cn } from "@/lib/utils"
 
 import { submitLeaveAction } from "@/actions/leave.actions"
 
-export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatus = "Pending HR", compOffBalance = 0 }: { onCancel: () => void, currentEmployeeId: string, onSuccess: (leave: any) => void, initialStatus?: string, compOffBalance?: number }) {
-  const [requestType, setRequestType] = useState("LEAVE")
-  const [leaveType, setLeaveType] = useState("Sick Leave")
+export function LeaveForm({ 
+  onCancel, 
+  currentEmployeeId, 
+  onSuccess, 
+  initialStatus = "Pending HR", 
+  compOffBalance = 0,
+  initialRequestType = "LEAVE",
+  initialLeaveType = "Sick Leave"
+}: { 
+  onCancel: () => void, 
+  currentEmployeeId: string, 
+  onSuccess: (leave: any) => void, 
+  initialStatus?: string, 
+  compOffBalance?: number,
+  initialRequestType?: string,
+  initialLeaveType?: string
+}) {
+  const [requestType, setRequestType] = useState(initialRequestType)
+  const [leaveType, setLeaveType] = useState(initialLeaveType)
   const [duration, setDuration] = useState("Full Day")
   const [startDate, setStartDate] = useState<string>("")
   const [endDate, setEndDate] = useState<string>("")
@@ -21,6 +38,60 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
   const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
+
+  // Clear unsaved file if switching away from Sick Leave or if switching to WFH
+  useEffect(() => {
+    if (requestType !== 'LEAVE' || leaveType !== 'Sick Leave') {
+      setFile(null)
+    }
+  }, [requestType, leaveType])
+
+  const handleRequestTypeChange = (val: string | null) => {
+    if (!val) return
+    setRequestType(val)
+    if (val !== 'LEAVE' || leaveType !== 'Sick Leave') {
+      setFile(null)
+    }
+  }
+
+  const handleLeaveTypeChange = (val: string | null) => {
+    if (!val) return
+    setLeaveType(val)
+    if (val !== 'Sick Leave') {
+      setFile(null)
+    }
+  }
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0] || null
+    if (!selectedFile) {
+      setFile(null)
+      return
+    }
+
+    // 3MB limit (3 * 1024 * 1024 bytes)
+    const MAX_FILE_SIZE = 3 * 1024 * 1024
+    if (selectedFile.size > MAX_FILE_SIZE) {
+      toast.error("File size exceeds 3MB limit")
+      e.target.value = ""
+      setFile(null)
+      return
+    }
+
+    // Supported formats: PDF, JPG, PNG
+    const validExtensions = ['pdf', 'jpg', 'jpeg', 'png']
+    const fileExt = selectedFile.name.split('.').pop()?.toLowerCase() || ''
+    const validMimeTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg']
+    
+    if (!validExtensions.includes(fileExt) && !validMimeTypes.includes(selectedFile.type)) {
+      toast.error("Only PDF, JPG, and PNG files are supported")
+      e.target.value = ""
+      setFile(null)
+      return
+    }
+
+    setFile(selectedFile)
+  }
 
   const handleSubmit = async () => {
     if (!startDate || !endDate || !reason) {
@@ -52,7 +123,8 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
     setLoading(true)
     let fileUrl = null
 
-    if (requestType === 'LEAVE' && file) {
+    // Only upload medical certificate when request is Sick Leave and a file was provided
+    if (requestType === 'LEAVE' && leaveType === 'Sick Leave' && file) {
       const fileExt = file.name.split('.').pop()
       const fileName = `${currentEmployeeId}-${Date.now()}.${fileExt}`
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -77,7 +149,7 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
       is_half_day: duration === "Half Day",
       reason,
       status: initialStatus,
-      medical_certificate_url: fileUrl
+      medical_certificate_url: (requestType === 'LEAVE' && leaveType === 'Sick Leave') ? fileUrl : null
     }
 
     const res = await submitLeaveAction(newLeave)
@@ -104,47 +176,51 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
       </div>
 
       <div className="space-y-4 sm:space-y-5">
-        <div className="space-y-2">
-          <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground">
-            <FileText className="w-4 h-4 text-muted-foreground shrink-0" /> Request Type
-          </label>
-          <Select value={requestType} onValueChange={(val) => val && setRequestType(val)}>
-            <SelectTrigger className="w-full bg-background border-border h-10 text-xs sm:text-sm">
-              <SelectValue placeholder="Select Request Type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="LEAVE">Leave Request</SelectItem>
-              <SelectItem value="WFH">Work From Home (WFH)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {requestType === 'LEAVE' && (
+        {/* Request Type and Leave Type in one horizontal row */}
+        <div className={cn("grid gap-4 sm:gap-5", requestType === 'LEAVE' ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
           <div className="space-y-2">
             <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground">
-              <FileText className="w-4 h-4 text-muted-foreground shrink-0" /> Leave Type
+              <FileText className="w-4 h-4 text-muted-foreground shrink-0" /> Request Type
             </label>
-            <Select value={leaveType} onValueChange={(val) => val && setLeaveType(val)}>
+            <Select value={requestType} onValueChange={handleRequestTypeChange}>
               <SelectTrigger className="w-full bg-background border-border h-10 text-xs sm:text-sm">
-                <SelectValue placeholder="Select Leave Type" />
+                <SelectValue placeholder="Select Request Type" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="Sick Leave">Sick Leave</SelectItem>
-                <SelectItem value="Casual Leave">Casual Leave</SelectItem>
-                {compOffBalance >= 8 && (
-                  <SelectItem value="Compensatory Off">
-                    Compensatory Off ({formatHoursMinutes(compOffBalance)} • {Math.floor(compOffBalance / 8)} {Math.floor(compOffBalance / 8) === 1 ? 'day' : 'days'} available)
-                  </SelectItem>
-                )}
-                <SelectItem value="Unpaid Leave">Unpaid Leave</SelectItem>
+                <SelectItem value="LEAVE">Leave Request</SelectItem>
+                <SelectItem value="WFH">Work From Home (WFH)</SelectItem>
               </SelectContent>
             </Select>
           </div>
-        )}
 
+          {requestType === 'LEAVE' && (
+            <div className="space-y-2">
+              <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground">
+                <FileText className="w-4 h-4 text-muted-foreground shrink-0" /> Leave Type
+              </label>
+              <Select value={leaveType} onValueChange={handleLeaveTypeChange}>
+                <SelectTrigger className="w-full bg-background border-border h-10 text-xs sm:text-sm">
+                  <SelectValue placeholder="Select Leave Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Sick Leave">Sick Leave</SelectItem>
+                  <SelectItem value="Casual Leave">Casual Leave</SelectItem>
+                  {compOffBalance >= 8 && (
+                    <SelectItem value="Compensatory Off">
+                      Compensatory Off ({formatHoursMinutes(compOffBalance)} • {Math.floor(compOffBalance / 8)} {Math.floor(compOffBalance / 8) === 1 ? 'day' : 'days'} available)
+                    </SelectItem>
+                  )}
+                  <SelectItem value="Unpaid Leave">Unpaid Leave</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+
+        {/* Dynamic Duration Label Based on Request Type */}
         <div className="space-y-2">
           <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground">
-            <Clock className="w-4 h-4 text-muted-foreground shrink-0" /> Leave Duration
+            <Clock className="w-4 h-4 text-muted-foreground shrink-0" /> {requestType === 'WFH' ? 'WFH Duration' : 'Leave Duration'}
           </label>
           <Select value={duration} onValueChange={(val) => val && setDuration(val)}>
             <SelectTrigger className="w-full bg-background border-border h-10 text-xs sm:text-sm">
@@ -192,13 +268,14 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
           </label>
           <textarea 
             className="w-full min-h-[90px] p-3 text-xs sm:text-sm rounded-lg bg-background border border-border text-foreground outline-none focus:ring-1 focus:ring-foreground resize-y"
-            placeholder="Briefly explain your reason for leave..."
+            placeholder={requestType === 'WFH' ? 'Briefly explain your reason for work from home...' : 'Briefly explain your reason for leave...'}
             value={reason}
             onChange={(e) => setReason(e.target.value)}
           />
         </div>
 
-        {requestType === "LEAVE" && (
+        {/* Show Medical Certificate ONLY for Sick Leave */}
+        {requestType === "LEAVE" && leaveType === "Sick Leave" && (
           <div className="space-y-2 border border-border rounded-xl p-3 sm:p-4">
             <div className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground mb-3">
               <span className="flex items-center justify-center w-5 h-5 rounded-full border border-muted-foreground/50 text-[10px]">!</span>
@@ -210,11 +287,27 @@ export function LeaveForm({ onCancel, currentEmployeeId, onSuccess, initialStatu
                 type="file" 
                 accept=".pdf,.jpg,.png" 
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
-                onChange={(e) => setFile(e.target.files?.[0] || null)} 
+                onChange={handleFileChange} 
               />
               <UploadCloud className="w-7 h-7 sm:w-8 sm:h-8 text-muted-foreground mb-2 group-hover:text-foreground transition-colors" />
               <p className="text-xs sm:text-sm font-medium text-foreground">
-                {file ? <span className="text-emerald-500">{file.name}</span> : <>Click to upload <span className="text-muted-foreground font-normal">or drag and drop</span></>}
+                {file ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="text-emerald-500 font-medium">{file.name}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setFile(null)
+                      }}
+                      className="text-xs text-muted-foreground hover:text-rose-500 underline ml-1 cursor-pointer"
+                    >
+                      Remove
+                    </button>
+                  </span>
+                ) : (
+                  <>Click to upload <span className="text-muted-foreground font-normal">or drag and drop</span></>
+                )}
               </p>
               <p className="text-[11px] text-muted-foreground mt-1">PDF, JPG, PNG up to 3MB</p>
             </div>

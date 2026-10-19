@@ -2,10 +2,11 @@
 
 import { Project, Task, ProjectTeamMemberStats, ProjectActivity } from '@/types/project-management'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Target, FileText, CheckCircle2, Clock, AlertCircle, Layers, Activity, Calendar } from 'lucide-react'
+import { Target, FileText, CheckCircle2, Clock, AlertCircle, Layers, Activity, Calendar, Users, Pencil } from 'lucide-react'
 import dayjs from 'dayjs'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 
 interface ProjectOverviewTabProps {
   project: Project
@@ -13,11 +14,23 @@ interface ProjectOverviewTabProps {
   tasks: Task[]
   teamStats: ProjectTeamMemberStats[]
   activities: ProjectActivity[]
+  canEdit?: boolean
   onSelectTab?: (tab: string) => void
   onTaskClick?: (task: Task) => void
+  onEditMembers?: () => void
 }
 
-export function ProjectOverviewTab({ project, totalOperationalHours, tasks, teamStats, activities, onSelectTab, onTaskClick }: ProjectOverviewTabProps) {
+export function ProjectOverviewTab({
+  project,
+  totalOperationalHours,
+  tasks,
+  teamStats,
+  activities,
+  canEdit = false,
+  onSelectTab,
+  onTaskClick,
+  onEditMembers,
+}: ProjectOverviewTabProps) {
   const summary = project.task_summary || { total: 0, done: 0, in_progress: 0, in_review: 0, todo: 0, on_hold: 0 }
   const activeTasks = tasks.filter(t => t.status === 'IN_PROGRESS' || t.status === 'IN_REVIEW').slice(0, 5)
   const recentActivities = activities.slice(0, 5)
@@ -95,7 +108,11 @@ export function ProjectOverviewTab({ project, totalOperationalHours, tasks, team
               ) : (
                 <div className="divide-y divide-border/50">
                   {activeTasks.map(t => (
-                    <div key={t.id} className="p-4 hover:bg-secondary/20 transition-colors flex items-center justify-between gap-4">
+                    <div
+                      key={t.id}
+                      onClick={() => onTaskClick?.(t)}
+                      className="p-4 hover:bg-secondary/20 transition-colors flex items-center justify-between gap-4 cursor-pointer group"
+                    >
                       <div className="space-y-1 overflow-hidden">
                         <div className="font-semibold text-sm text-foreground truncate">{t.title}</div>
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -158,28 +175,54 @@ export function ProjectOverviewTab({ project, totalOperationalHours, tasks, team
           </Card>
 
           <Card className="border-border bg-card shadow-xs">
-            <CardHeader className="pb-3 border-b border-border/50">
+            <CardHeader className="pb-3 border-b border-border/50 flex flex-row items-center justify-between space-y-0">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
-                <Layers className="h-4 w-4 text-primary" />
-                Team
+                <Users className="h-4 w-4 text-primary" />
+                <span>Project Members</span>
+                <Badge variant="secondary" className="text-xs font-mono ml-1">{teamStats.length}</Badge>
               </CardTitle>
+              {canEdit && onEditMembers && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onEditMembers}
+                  className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer flex items-center gap-1 font-medium"
+                >
+                  <Pencil className="h-3 w-3" />
+                  <span>Edit</span>
+                </Button>
+              )}
             </CardHeader>
-            <CardContent className="pt-4 px-4 pb-4 space-y-3">
+            <CardContent className="pt-4 px-4 pb-4">
               {teamStats.length === 0 ? (
-                <div className="text-center text-sm text-muted-foreground py-2">No team assigned.</div>
+                <div className="text-center text-xs text-muted-foreground py-4">
+                  No project members assigned yet.
+                </div>
               ) : (
-                teamStats.map((member: any) => (
-                  <div key={member.userId} className="flex items-center gap-3">
-                    <Avatar className="h-8 w-8 border border-border">
-                      {member.profilePhoto && <AvatarImage src={member.profilePhoto} />}
-                      <AvatarFallback className="text-[10px]">{member.name.substring(0, 2).toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 overflow-hidden">
-                      <p className="text-sm font-semibold text-foreground truncate">{member.name}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{member.designation || 'Team Member'}</p>
-                    </div>
-                  </div>
-                ))
+                <div className="flex items-center gap-2 flex-wrap">
+                  {teamStats.map((member: any) => {
+                    const initials = member.name.slice(0, 2).toUpperCase()
+                    return (
+                      <div
+                        key={member.userId}
+                        className="flex items-center gap-2 py-1 px-3 bg-secondary/40 border border-border rounded-full text-xs shadow-2xs"
+                      >
+                        <Avatar className="h-6 w-6 border border-card bg-secondary text-[10px]">
+                          {member.profilePhoto && <AvatarImage src={member.profilePhoto} alt={member.name} />}
+                          <AvatarFallback>{initials}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-medium text-foreground truncate max-w-[130px]">{member.name}</span>
+                          {member.designation && (
+                            <span className="text-[10px] text-muted-foreground leading-tight truncate max-w-[130px]">
+                              {member.designation}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
               )}
             </CardContent>
           </Card>

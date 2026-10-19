@@ -2,8 +2,8 @@
 
 import { createAdminClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth'
-import { canCreateProjects, canEditProject, canViewRestrictedClientInfo } from '@/lib/permissions/project-management'
-import { Project, ProjectStatus, ProjectPriority, ProjectDashboardStats, ProjectTeamMemberStats, ProjectActivity } from '@/types/project-management'
+import { canCreateProjects, canEditProject, canViewRestrictedClientInfo, canAssignProjectMembers } from '@/lib/permissions/project-management'
+import { Project, ProjectStatus, ProjectPriority, ProjectDashboardStats, ProjectTeamMemberStats, ProjectActivity, ProjectMember } from '@/types/project-management'
 import { revalidatePath } from 'next/cache'
 import { attachProfilePhotos } from '@/lib/utils/profile-photos'
 import { validateActiveEmployees } from '@/lib/services/employee-eligibility'
@@ -88,7 +88,7 @@ export async function getProjects(filters?: {
         project_manager:profiles!projects_project_manager_id_fkey(id, first_name, last_name),
         members:project_members(
           id, user_id, role,
-          profile:profiles(id, first_name, last_name, employee_id)
+          profile:profiles(id, first_name, last_name, employee_id, designation, department)
         ),
         tasks(id, status, worked_hours, due_date)
       `)
@@ -462,7 +462,7 @@ export async function getProjectById(projectId: string): Promise<{
         project_manager:profiles!projects_project_manager_id_fkey(id, first_name, last_name, employee_id),
         members:project_members(
           id, user_id, role,
-          profile:profiles(id, first_name, last_name, employee_id)
+          profile:profiles(id, first_name, last_name, employee_id, designation, department)
         )
       `)
       .eq('id', projectId)
@@ -583,7 +583,7 @@ export async function getProjectById(projectId: string): Promise<{
           teamStatsMap.set(m.user_id, {
             userId: m.user_id,
             name: mName,
-            designation: m.role || 'Team Member',
+            designation: mProf.designation || m.role || 'Team Member',
             assignedTasks: 0,
             completedTasks: 0,
             operationalHours: 0,
@@ -887,12 +887,28 @@ export async function updateProjectAction(input: UpdateProjectInput): Promise<{ 
       return { success: false, error: updateErr.message }
     }
 
-    // Update members if provided
-    if (input.team_members) {
+    // Update members if provided with safe diffing
+    if (input.team_members !== undefined) {
       const uniqueMembers = Array.from(new Set(input.team_members))
-      await admin.from('project_members').delete().eq('project_id', input.id)
-      if (uniqueMembers.length > 0) {
-        const memberRows = uniqueMembers.map(uid => ({
+      const { data: existingMembers } = await admin
+        .from('project_members')
+        .select('id, user_id')
+        .eq('project_id', input.id)
+
+      const existingUserIds = (existingMembers || []).map((m: any) => m.user_id)
+      const toRemove = existingUserIds.filter(id => !uniqueMembers.includes(id))
+      const toAdd = uniqueMembers.filter(id => !existingUserIds.includes(id))
+
+      if (toRemove.length > 0) {
+        await admin
+          .from('project_members')
+          .delete()
+          .eq('project_id', input.id)
+          .in('user_id', toRemove)
+      }
+
+      if (toAdd.length > 0) {
+        const memberRows = toAdd.map(uid => ({
           project_id: input.id,
           user_id: uid,
           role: uid === updated.project_manager_id ? 'Project Manager' : 'Member',
@@ -960,4 +976,250 @@ export const checkEmployeeProjectAccess = cache(async (userId: string): Promise<
     return false
   }
 })
+
+/**
+ * Assign / update members for a project.
+ * Uses the canonical employee data model and validates active employees.
+ * Authorized for Admin, Manager, HOD, and the project's manager.
+ */
+export async function assignProjectMembersAction(
+  projectId: string,
+  memberIds: string[]
+): Promise<{ success: boolean; data?: ProjectMember[]; error?: string }> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return { success: false, error: 'Authentication required' }
+    }
+
+    const admin = await createAdminClient()
+
+    // 1. Fetch project to verify existence and check permissions
+    const { data: project, error: pErr } = await admin
+      .from('projects')
+      .select('id, name, project_manager_id, created_by')
+      .eq('id', projectId)
+      .single()
+
+    if (pErr || !project) {
+      return { success: false, error: 'Project not found.' }
+    }
+
+    // 2. Permission check: Admin, Manager, HOD, or assigned Project Manager
+    if (!canAssignProjectMembers(user, project)) {
+      return { success: false, error: 'Unauthorized: Only authorized users can manage project members.' }
+    }
+
+    // 3. Validate member UUIDs
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+    const rawIds = Array.isArray(memberIds) ? memberIds : []
+    const uniqueMemberIds = Array.from(new Set(rawIds.filter(Boolean)))
+
+    for (const uid of uniqueMemberIds) {
+      if (!uuidRegex.test(uid)) {
+        return { success: false, error: `Invalid employee ID format: ${uid}` }
+      }
+    }
+
+    // 4. Validate active employees server-side
+    if (uniqueMemberIds.length > 0) {
+      const validation = await validateActiveEmployees(uniqueMemberIds, admin)
+      if (!validation.allActive) {
+        return {
+          success: false,
+          error: `Cannot assign inactive or deactivated employee(s) to project: ${validation.inactiveNames.join(', ')}.`,
+        }
+      }
+    }
+
+    // 5. Query existing project members for safe diffing
+    const { data: existingMembers, error: exErr } = await admin
+      .from('project_members')
+      .select('id, user_id, role')
+      .eq('project_id', projectId)
+
+    if (exErr) {
+      return { success: false, error: exErr.message }
+    }
+
+    const existingUserIds = (existingMembers || []).map((m: any) => m.user_id)
+    const toRemove = existingUserIds.filter(id => !uniqueMemberIds.includes(id))
+    const toAdd = uniqueMemberIds.filter(id => !existingUserIds.includes(id))
+
+    // 6. Delete removed members
+    if (toRemove.length > 0) {
+      const { error: delErr } = await admin
+        .from('project_members')
+        .delete()
+        .eq('project_id', projectId)
+        .in('user_id', toRemove)
+
+      if (delErr) {
+        return { success: false, error: `Failed to remove member: ${delErr.message}` }
+      }
+    }
+
+    // 7. Insert added members
+    if (toAdd.length > 0) {
+      const rowsToInsert = toAdd.map(uid => ({
+        project_id: projectId,
+        user_id: uid,
+        role: uid === project.project_manager_id ? 'Project Manager' : 'Member',
+      }))
+      const { error: insErr } = await admin
+        .from('project_members')
+        .insert(rowsToInsert)
+
+      if (insErr) {
+        return { success: false, error: `Failed to add member: ${insErr.message}` }
+      }
+    }
+
+    // 8. Log project activity
+    await admin.from('project_activity').insert({
+      project_id: projectId,
+      user_id: user.id,
+      activity_type: 'PROJECT_MEMBERS_UPDATED',
+      details: {
+        updated_by: user.employee_name || user.email,
+        added_count: toAdd.length,
+        removed_count: toRemove.length,
+        total_members: uniqueMemberIds.length,
+      },
+    })
+
+    // 9. Revalidate cache
+    revalidatePath('/projects')
+    revalidatePath(`/projects/${projectId}`)
+
+    // 10. Fetch updated members with profiles and photos
+    const { data: updatedMembers } = await admin
+      .from('project_members')
+      .select(`
+        id, project_id, user_id, role, created_at,
+        profile:profiles(id, first_name, last_name, employee_id, designation, department)
+      `)
+      .eq('project_id', projectId)
+
+    const profilesList = (updatedMembers || []).map((m: any) => m.profile).filter(Boolean)
+    await attachProfilePhotos(admin, profilesList)
+
+    const mappedMembers: ProjectMember[] = (updatedMembers || []).map((m: any) => ({
+      id: m.id,
+      project_id: m.project_id,
+      user_id: m.user_id,
+      role: m.role,
+      created_at: m.created_at,
+      profile: Array.isArray(m.profile) ? m.profile[0] : m.profile,
+    }))
+
+    return {
+      success: true,
+      data: mappedMembers,
+    }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to update project members' }
+  }
+}
+
+/**
+ * Remove an individual member from a project.
+ */
+export async function removeProjectMemberAction(
+  projectId: string,
+  userId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return { success: false, error: 'Authentication required' }
+    }
+
+    const admin = await createAdminClient()
+    const { data: project } = await admin
+      .from('projects')
+      .select('id, project_manager_id, created_by')
+      .eq('id', projectId)
+      .single()
+
+    if (!project) return { success: false, error: 'Project not found.' }
+
+    if (!canAssignProjectMembers(user, project)) {
+      return { success: false, error: 'Unauthorized: Only authorized users can manage project members.' }
+    }
+
+    const { error: delErr } = await admin
+      .from('project_members')
+      .delete()
+      .eq('project_id', projectId)
+      .eq('user_id', userId)
+
+    if (delErr) {
+      return { success: false, error: delErr.message }
+    }
+
+    await admin.from('project_activity').insert({
+      project_id: projectId,
+      user_id: user.id,
+      activity_type: 'PROJECT_MEMBER_REMOVED',
+      details: {
+        removed_user_id: userId,
+        updated_by: user.employee_name || user.email,
+      },
+    })
+
+    revalidatePath('/projects')
+    revalidatePath(`/projects/${projectId}`)
+
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to remove project member' }
+  }
+}
+
+/**
+ * Fetch assigned members for a project.
+ */
+export async function getProjectMembers(projectId: string): Promise<{
+  success: boolean
+  data?: ProjectMember[]
+  error?: string
+}> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return { success: false, error: 'Authentication required' }
+    }
+
+    const admin = await createAdminClient()
+    const { data: members, error } = await admin
+      .from('project_members')
+      .select(`
+        id, project_id, user_id, role, created_at,
+        profile:profiles(id, first_name, last_name, employee_id, designation, department)
+      `)
+      .eq('project_id', projectId)
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    const profilesList = (members || []).map((m: any) => m.profile).filter(Boolean)
+    await attachProfilePhotos(admin, profilesList)
+
+    const mappedMembers: ProjectMember[] = (members || []).map((m: any) => ({
+      id: m.id,
+      project_id: m.project_id,
+      user_id: m.user_id,
+      role: m.role,
+      created_at: m.created_at,
+      profile: Array.isArray(m.profile) ? m.profile[0] : m.profile,
+    }))
+
+    return { success: true, data: mappedMembers }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to fetch project members' }
+  }
+}
+
 

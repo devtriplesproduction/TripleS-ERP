@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from "react"
 import { useForm, Controller, useWatch } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import {
-  User, Loader2, Camera, FileText, Trash2, CalendarIcon, CheckCircle2, Circle, Eye,
+  User, UserPlus, Loader2, Camera, FileText, Trash2, CalendarIcon, CheckCircle2, Circle, Eye,
   Save, X, MapPin, Phone, Mail, Lock, Copy, Edit2, UploadCloud
 } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -673,6 +673,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
       <PageHeader
         title="Create Employee Profile"
         subtitle="Add a new employee to the organization."
+        icon={UserPlus}
         actions={
           <>
             <Button onClick={saveAsDraft} className="bg-foreground text-background hover:bg-foreground/90 h-8 text-xs">

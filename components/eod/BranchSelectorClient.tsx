@@ -27,7 +27,7 @@ export function BranchSelectorClient({ branches }: { branches: { id: string; nam
           { label: 'All Branches', value: 'all' },
           ...branches.map(b => ({ label: b.name, value: b.id }))
         ]}
-        buttonClassName="h-[40px] rounded-xl bg-card text-card-foreground border-border border border-black dark:border-white hover:border-black dark:border-white text-black dark:text-white font-semibold"
+        buttonClassName="h-[48px] rounded-xl bg-card text-card-foreground border-border border border-black dark:border-white hover:border-black dark:border-white text-black dark:text-white font-semibold"
         iconClassName="text-black dark:text-white"
       />
     </div>

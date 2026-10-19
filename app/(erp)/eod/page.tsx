@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/server"
 import { EODSubmissionForm } from "@/components/eod/EODSubmissionForm"
 import { ReviewDashboard } from "@/components/eod/ReviewDashboard"
-import { BarChart2, CalendarDays, FileText } from "lucide-react"
+import { BarChart2, CalendarDays, FileText, ClipboardList } from "lucide-react"
 import { PageHeader } from "@/components/PageHeader"
 import { LiveTaskCounter } from "@/components/eod/LiveTaskCounter"
 import { countTasks } from "@/lib/utils"
@@ -118,37 +118,37 @@ export default async function EODPage({ searchParams }: PageProps) {
 
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto">
-      <PageHeader
-        title="EOD Reports"
-        subtitle={
-          canReview
-            ? 'Review team reports or submit your own daily end-of-day update.'
-            : 'Submit your daily end-of-day task summary.'
-        }
-        actions={
-          <div className="flex items-center gap-3">
-            {canReview && (
-              <EodTabsClient activeTab={activeTab} isSuperAdmin={isSuperAdmin} />
-            )}
+      {/* Top-level EOD Reports header is rendered for Employee and HR pages only */}
+      {!isSuperAdmin && (
+        <PageHeader
+          title="EOD Reports"
+          subtitle={
+            canReview
+              ? 'Review team reports or submit your own daily end-of-day update.'
+              : 'Submit your daily end-of-day task summary.'
+          }
+          icon={ClipboardList}
+          actions={
+            <div className="flex items-center gap-3">
+              {canReview && (
+                <EodTabsClient activeTab={activeTab} isSuperAdmin={isSuperAdmin} />
+              )}
 
-            {activeTab === 'review' ? (
-              isSuperAdmin ? (
-                <BranchSelectorClient branches={activeBranches} />
-              ) : (
+              {activeTab === 'review' ? (
                 <div className="bg-card text-card-foreground border-border text-foreground px-4 py-2.5 rounded-xl font-semibold border flex items-center gap-2 shadow-sm">
                   <BarChart2 className="w-4 h-4 text-foreground" />
                   <span>{todayReportsCount}</span>{' '}
                   <span className="text-foreground font-medium">Reports Today</span>
                 </div>
-              )
-            ) : (
-              <div className="bg-primary text-primary-foreground px-4 py-2 rounded-xl font-semibold border border-border flex items-center gap-2 whitespace-nowrap">
-                Current Streak: {streak} days 🔥
-              </div>
-            )}
-          </div>
-        }
-      />
+              ) : (
+                <div className="bg-primary text-primary-foreground px-4 py-2 rounded-xl font-semibold border border-border flex items-center gap-2 whitespace-nowrap">
+                  Current Streak: {streak} days 🔥
+                </div>
+              )}
+            </div>
+          }
+        />
+      )}
 
       {activeTab === 'review' && canReview ? (
         <ReviewDashboard
@@ -156,6 +156,8 @@ export default async function EODPage({ searchParams }: PageProps) {
           employees={allEmployees}
           showHeader={isSuperAdmin}
           todayReportsCount={todayReportsCount}
+          branchSelector={isSuperAdmin ? <BranchSelectorClient branches={activeBranches} /> : null}
+          reviewEodButton={isSuperAdmin ? <EodTabsClient activeTab={activeTab} isSuperAdmin={isSuperAdmin} /> : null}
         />
       ) : (
         <div className="max-w-[1280px] mx-auto space-y-4 w-full">

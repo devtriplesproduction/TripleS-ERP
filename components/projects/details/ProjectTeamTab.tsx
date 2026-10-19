@@ -4,13 +4,16 @@ import { ProjectTeamMemberStats } from '@/types/project-management'
 import { Card, CardContent } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
-import { Users, Clock, CheckCircle2, ListTodo, ShieldCheck } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Users, Clock, CheckCircle2, ListTodo, ShieldCheck, Pencil } from 'lucide-react'
 
 interface ProjectTeamTabProps {
   teamStats: ProjectTeamMemberStats[]
+  canEdit?: boolean
+  onEditMembers?: () => void
 }
 
-export function ProjectTeamTab({ teamStats }: ProjectTeamTabProps) {
+export function ProjectTeamTab({ teamStats, canEdit = false, onEditMembers }: ProjectTeamTabProps) {
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -19,7 +22,51 @@ export function ProjectTeamTab({ teamStats }: ProjectTeamTabProps) {
           Project Team
           <Badge variant="secondary" className="text-xs font-mono">{teamStats.length}</Badge>
         </h3>
+        {canEdit && onEditMembers && (
+          <Button
+            onClick={onEditMembers}
+            variant="outline"
+            size="sm"
+            className="h-8 px-3 text-xs flex items-center gap-1.5 border-border hover:bg-secondary cursor-pointer"
+          >
+            <Pencil className="h-3.5 w-3.5" />
+            <span>Edit Members</span>
+          </Button>
+        )}
       </div>
+
+      {/* Assigned Members Pill List */}
+      {teamStats.length > 0 && (
+        <div className="bg-card border border-border/60 rounded-xl p-4 space-y-2.5 shadow-2xs">
+          <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+            Assigned Members ({teamStats.length})
+          </div>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            {teamStats.map((member) => {
+              const initials = member.name.slice(0, 2).toUpperCase()
+              return (
+                <div
+                  key={member.userId}
+                  className="flex items-center gap-2 py-1 px-3 bg-secondary/40 border border-border rounded-full text-xs shadow-2xs"
+                >
+                  <Avatar className="h-6 w-6 border border-card bg-secondary text-[10px]">
+                    {member.profilePhoto && <AvatarImage src={member.profilePhoto} alt={member.name} />}
+                    <AvatarFallback>{initials}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-medium text-foreground truncate max-w-[130px]">{member.name}</span>
+                    {member.designation && (
+                      <span className="text-[10px] text-muted-foreground leading-tight truncate max-w-[130px]">
+                        {member.designation}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Privacy Notice Banner */}
       <div className="bg-secondary/30 border border-border/50 p-3.5 rounded-xl flex items-center justify-between text-[11px] text-muted-foreground flex-wrap gap-2">
@@ -48,7 +95,18 @@ export function ProjectTeamTab({ teamStats }: ProjectTeamTabProps) {
               <tr>
                 <td colSpan={5} className="px-5 py-12 text-center text-muted-foreground text-sm flex-col flex items-center justify-center">
                   <Users className="h-8 w-8 mb-2 opacity-20" />
-                  No team members assigned yet.
+                  <span>No team members assigned yet.</span>
+                  {canEdit && onEditMembers && (
+                    <Button
+                      onClick={onEditMembers}
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 text-xs border-border hover:bg-secondary cursor-pointer"
+                    >
+                      <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                      Assign Members
+                    </Button>
+                  )}
                 </td>
               </tr>
             ) : (
@@ -90,8 +148,19 @@ export function ProjectTeamTab({ teamStats }: ProjectTeamTabProps) {
       {/* Mobile Card Grid (< 768px) */}
       <div className="grid grid-cols-1 gap-3 md:hidden">
         {teamStats.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground bg-card border border-border rounded-lg">
-            No team members assigned to this project yet.
+          <div className="p-8 text-center text-muted-foreground bg-card border border-border rounded-lg space-y-3">
+            <p>No team members assigned to this project yet.</p>
+            {canEdit && onEditMembers && (
+              <Button
+                onClick={onEditMembers}
+                variant="outline"
+                size="sm"
+                className="text-xs border-border hover:bg-secondary cursor-pointer"
+              >
+                <Pencil className="h-3.5 w-3.5 mr-1.5" />
+                Assign Members
+              </Button>
+            )}
           </div>
         ) : (
           teamStats.map((member) => {

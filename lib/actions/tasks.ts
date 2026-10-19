@@ -331,6 +331,96 @@ export async function getTasks(filters?: {
 }
 
 /**
+ * Fetch a single task by ID with full relations (project, assignees, comments, checklist).
+ */
+export async function getTaskByIdAction(taskId: string): Promise<{
+  success: boolean
+  data?: Task
+  error?: string
+}> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return { success: false, error: 'Authentication required' }
+    }
+
+    const admin = await createAdminClient()
+
+    const { data: row, error } = await admin
+      .from('tasks')
+      .select(`
+        *,
+        project:projects(id, name),
+        assignees:task_assignees(
+          id, user_id, assigned_at,
+          profile:profiles!task_assignees_user_id_fkey(id, first_name, last_name, employee_id)
+        ),
+        comments:task_comments(
+          id, user_id, comment, created_at, updated_at,
+          user_profile:profiles(id, first_name, last_name)
+        )
+      `)
+      .eq('id', taskId)
+      .single()
+
+    if (error || !row) {
+      return { success: false, error: error?.message || 'Task not found' }
+    }
+
+    const allProfiles: any[] = []
+    ;(row.assignees || []).forEach((a: any) => {
+      if (a.profile) allProfiles.push(a.profile)
+    })
+    ;(row.comments || []).forEach((c: any) => {
+      if (c.user_profile) allProfiles.push(c.user_profile)
+    })
+    await attachProfilePhotos(admin, allProfiles)
+
+    const checklistMap = await fetchChecklistsForTasks(admin, [taskId], [row])
+    const taskChecklist = checklistMap.get(taskId) || []
+    const now = new Date()
+    const is_overdue = row.due_date && new Date(row.due_date) < now && row.status !== 'DONE'
+    const attachments = (row.attachments || []).filter((a: any) => a && a.name !== '__CHECKLIST__')
+
+    const sortedComments = (row.comments || []).sort(
+      (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    )
+
+    const taskData: Task = {
+      id: row.id,
+      task_id_display: row.task_id_display,
+      title: row.title,
+      description: row.description,
+      project_id: row.project_id,
+      project_name: row.projects?.name || row.project?.name || null,
+      priority: row.priority,
+      status: row.status,
+      start_date: row.start_date,
+      due_date: row.due_date,
+      estimated_hours: row.estimated_hours ? Number(row.estimated_hours) : null,
+      worked_hours: row.worked_hours ? Number(row.worked_hours) : null,
+      dependencies: row.dependencies || [],
+      attachments,
+      order_index: row.order_index || 0,
+      created_by: row.created_by,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      assignees: row.assignees || [],
+      comments: sortedComments,
+      comments_count: (row.comments || []).length,
+      is_overdue: !!is_overdue,
+      checklist: taskChecklist,
+      checklist_total: taskChecklist.length,
+      checklist_completed: taskChecklist.filter((c: any) => c.is_completed).length,
+    }
+
+    return { success: true, data: taskData }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to fetch task details' }
+  }
+}
+
+/**
  * Fetch tasks for the current logged-in employee:
  * Categorized into Today, Pending, Overdue, Recently Assigned, Completed, and associated Projects.
  */

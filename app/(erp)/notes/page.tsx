@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default async function PersonalNotesPage() {
   await requireRole('/notes')
-  const res = await getPersonalNotesAction({ includeArchived: true })
+  const res = await getPersonalNotesAction({ includeArchived: false })
 
   return <FullNotesView initialNotes={res.success && res.data ? res.data : []} />
 }

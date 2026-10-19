@@ -8,6 +8,7 @@ import { DashboardMyTasks } from '@/components/dashboard/DashboardMyTasks'
 import { DashboardMyProjects } from '@/components/dashboard/DashboardMyProjects'
 import { TopContributorCard } from '@/components/dashboard/TopContributorCard'
 import { PageHeader } from '@/components/PageHeader'
+import { LayoutDashboard } from 'lucide-react'
 
 export default async function DashboardPage() {
   const user = await requireRole('/dashboard')
@@ -30,6 +31,7 @@ export default async function DashboardPage() {
       <PageHeader 
         title="Dashboard"
         subtitle="Welcome to TripleS ERP. Here is your overview."
+        icon={LayoutDashboard}
       />
 
       {/* Admin Dashboard: Top Contributor Card */}

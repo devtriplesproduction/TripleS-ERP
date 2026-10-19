@@ -191,7 +191,7 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
                       return (
                         <div key={h.id} className="group flex items-center gap-3 sm:gap-4 px-3 sm:px-5 py-3.5 hover:bg-muted/30 transition-colors">
                           <div className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                            <span className="text-xs sm:text-sm font-extrabold text-primary">{d.getDate()}</span>
+                            <span className="text-xs sm:text-sm font-medium text-primary">{d.getDate()}</span>
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-semibold text-foreground truncate">{h.name}</p>
@@ -247,7 +247,7 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
                           <span className="text-[9px] sm:text-[10px] font-bold uppercase tracking-wide text-primary/70 leading-none">
                             {d.toLocaleString("default", { weekday: "short" })}
                           </span>
-                          <span className="text-sm sm:text-base font-extrabold text-primary leading-tight">{d.getDate()}</span>
+                          <span className="text-sm sm:text-base font-medium text-primary leading-tight">{d.getDate()}</span>
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-xs sm:text-sm font-semibold text-foreground truncate">{h.name}</p>

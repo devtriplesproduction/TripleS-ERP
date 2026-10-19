@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,8 +10,9 @@ import { Project, ProjectStatus, ProjectPriority, Client } from '@/types/project
 import { createProjectAction, updateProjectAction } from '@/lib/actions/projects'
 import { AssignableEmployee } from '@/lib/actions/team'
 import { toast } from 'sonner'
-import { Loader2, Check, Eye, EyeOff } from 'lucide-react'
+import { Loader2 } from 'lucide-react'
 import { DatePicker } from '@/components/ui/date-picker'
+import { TaskAssigneeSelector } from '@/components/tasks/TaskAssigneeSelector'
 
 interface ProjectModalProps {
   isOpen: boolean
@@ -57,15 +58,27 @@ export function ProjectModal({
   const [objective, setObjective] = useState(projectToEdit?.objective || '')
   const [notes, setNotes] = useState(projectToEdit?.notes || '')
 
-  const [showMembers, setShowMembers] = useState(false)
   const [loading, setLoading] = useState(false)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
-  const toggleMember = (empId: string) => {
-    setSelectedMembers((prev) =>
-      prev.includes(empId) ? prev.filter((id) => id !== empId) : [...prev, empId]
-    )
-  }
+  useEffect(() => {
+    if (isOpen) {
+      setName(projectToEdit?.name || '')
+      setClientId(projectToEdit?.client_id || '')
+      setDescription(projectToEdit?.description || '')
+      setStartDate(projectToEdit?.start_date || '')
+      setDeadline(projectToEdit?.deadline || '')
+      setStatus(projectToEdit?.status || 'PLANNED')
+      setPriority(projectToEdit?.priority || 'MEDIUM')
+      setDepartment(projectToEdit?.department || currentUserDepartment || 'Development')
+      const isEmployee = employees.some((emp) => emp.id === currentUserId)
+      setProjectManagerId(projectToEdit?.project_manager_id || (isEmployee ? currentUserId : ''))
+      setSelectedMembers((projectToEdit?.members || []).map((m) => m.user_id))
+      setObjective(projectToEdit?.objective || '')
+      setNotes(projectToEdit?.notes || '')
+      setErrorMsg(null)
+    }
+  }, [isOpen, projectToEdit, currentUserDepartment, currentUserId, employees])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -300,56 +313,18 @@ export function ProjectModal({
             buttonClassName="bg-input border-border w-full"
           />
 
-          {/* Team Members Multi-Select */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-sm font-medium">
-                Assign Team Members ({selectedMembers.length} selected)
-              </Label>
-              <button
-                type="button"
-                onClick={() => setShowMembers(!showMembers)}
-                className="flex items-center gap-1.5 text-[11px] font-medium text-muted-foreground hover:text-foreground transition-colors px-2 py-1 rounded-sm hover:bg-secondary"
-                aria-expanded={showMembers}
-              >
-                {showMembers ? (
-                  <>
-                    <EyeOff className="h-3.5 w-3.5" />
-                    Hide Members
-                  </>
-                ) : (
-                  <>
-                    <Eye className="h-3.5 w-3.5" />
-                    Show Members
-                  </>
-                )}
-              </button>
-            </div>
-            
-            {showMembers && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 bg-secondary/20 border border-border rounded-md animate-in slide-in-from-top-2 duration-200">
-                {employees.map((emp) => {
-                  const isSelected = selectedMembers.includes(emp.id)
-                  return (
-                    <div
-                      key={emp.id}
-                      onClick={() => toggleMember(emp.id)}
-                      className={`flex items-center justify-between p-2 rounded-md text-xs cursor-pointer border transition-colors ${
-                        isSelected
-                          ? 'bg-accent border-foreground/40 text-foreground font-medium'
-                          : 'border-transparent hover:bg-secondary/60 text-muted-foreground'
-                      }`}
-                    >
-                      <div className="truncate pr-2">
-                        <p className="font-semibold text-foreground truncate">{emp.name}</p>
-                        <p className="text-[10px] text-muted-foreground truncate">{emp.designation || 'Team Member'}</p>
-                      </div>
-                      {isSelected && <Check className="h-4 w-4 text-foreground shrink-0" />}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
+          {/* Project Members Multi-Select using reusable TaskAssigneeSelector */}
+          <div className="space-y-1.5 pt-1">
+            <TaskAssigneeSelector
+              employees={employees}
+              selectedAssignees={selectedMembers}
+              onChange={setSelectedMembers}
+              label="PROJECT MEMBERS"
+              placeholder="No project members assigned"
+              searchPlaceholder="Search project members..."
+              membersFallback={projectToEdit?.members}
+              disabled={loading}
+            />
           </div>
 
           </div>

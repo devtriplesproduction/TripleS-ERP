@@ -13,6 +13,7 @@ import { Kanban, Columns3, Workflow, Calendar } from 'lucide-react'
 import { toast } from 'sonner'
 import { TaskGanttView } from './TaskGanttView'
 import { TaskCalendarView } from './TaskCalendarView'
+import { PageHeader } from '@/components/PageHeader'
 
 interface KanbanBoardProps {
   initialTasks: Task[]
@@ -106,6 +107,7 @@ export function KanbanBoard({
 
   const handleSuccess = (updatedOrNewTask?: Task) => {
     if (updatedOrNewTask) {
+      const isExisting = tasks.some((t) => t.id === updatedOrNewTask.id)
       setTasks((prev) => {
         const exists = prev.some((t) => t.id === updatedOrNewTask.id)
         if (exists) {
@@ -114,7 +116,11 @@ export function KanbanBoard({
         return [updatedOrNewTask, ...prev]
       })
 
-      if (selectedStatus !== 'ALL' && selectedStatus !== 'TODO') {
+      if (selectedTask?.id === updatedOrNewTask.id) {
+        setSelectedTask(updatedOrNewTask)
+      }
+
+      if (!isExisting && selectedStatus !== 'ALL' && selectedStatus !== 'TODO') {
         setSelectedStatus('ALL')
       }
     }
@@ -123,128 +129,116 @@ export function KanbanBoard({
 
   return (
     <div className="space-y-6">
-      {/* Top Header Row matching the latest reference */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        {/* Left: Icon, Title & Subtitle */}
-        <div className="flex items-center gap-3.5 min-w-0">
-          <div className="w-11 h-11 rounded-xl bg-card border border-border/80 flex items-center justify-center shrink-0 shadow-xs">
-            <Kanban className="w-5 h-5 text-foreground" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground leading-tight truncate">
-              Tasks Board
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground font-normal truncate mt-0.5">
-              Manage project tasks with a visual workflow.
-            </p>
-          </div>
-        </div>
-
-        {/* Right: Compact Segmented View Switcher & Filters */}
-        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
-          {/* Segmented View Switcher: Kanban | Gantt | Calendar */}
-          <div
-            role="radiogroup"
-            aria-label="Tasks view options"
-            className="flex items-center h-9 p-0.5 rounded-lg border border-border/80 bg-card shadow-xs shrink-0"
-          >
-            <button
-              type="button"
-              role="radio"
-              aria-checked={viewMode === 'kanban'}
-              aria-label="Kanban board view"
-              title="Kanban Board"
-              onClick={() => setViewMode('kanban')}
-              className={`h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
-                viewMode === 'kanban'
-                  ? 'bg-secondary text-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
-              }`}
+      <PageHeader
+        title="Tasks Board"
+        subtitle="Manage project tasks with a visual workflow."
+        icon={Kanban}
+        actions={
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
+            {/* Segmented View Switcher: Kanban | Gantt | Calendar */}
+            <div
+              role="radiogroup"
+              aria-label="Tasks view options"
+              className="flex items-center h-9 p-0.5 rounded-lg border border-border/80 bg-card shadow-xs shrink-0"
             >
-              <Columns3 className="h-4 w-4" />
-            </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={viewMode === 'kanban'}
+                aria-label="Kanban board view"
+                title="Kanban Board"
+                onClick={() => setViewMode('kanban')}
+                className={`h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
+                  viewMode === 'kanban'
+                    ? 'bg-secondary text-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                }`}
+              >
+                <Columns3 className="h-4 w-4" />
+              </button>
 
-            <div className="w-px h-4 bg-border/60 mx-0.5 shrink-0" aria-hidden="true" />
+              <div className="w-px h-4 bg-border/60 mx-0.5 shrink-0" aria-hidden="true" />
 
-            <button
-              type="button"
-              role="radio"
-              aria-checked={viewMode === 'gantt'}
-              aria-label="Gantt chart view"
-              title="Gantt Chart"
-              onClick={() => setViewMode('gantt')}
-              className={`h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
-                viewMode === 'gantt'
-                  ? 'bg-secondary text-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
-              }`}
-            >
-              <Workflow className="h-4 w-4" />
-            </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={viewMode === 'gantt'}
+                aria-label="Gantt chart view"
+                title="Gantt Chart"
+                onClick={() => setViewMode('gantt')}
+                className={`h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
+                  viewMode === 'gantt'
+                    ? 'bg-secondary text-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                }`}
+              >
+                <Workflow className="h-4 w-4" />
+              </button>
 
-            <div className="w-px h-4 bg-border/60 mx-0.5 shrink-0" aria-hidden="true" />
+              <div className="w-px h-4 bg-border/60 mx-0.5 shrink-0" aria-hidden="true" />
 
-            <button
-              type="button"
-              role="radio"
-              aria-checked={viewMode === 'calendar'}
-              aria-label="Calendar view"
-              title="Calendar View"
-              onClick={() => setViewMode('calendar')}
-              className={`h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
-                viewMode === 'calendar'
-                  ? 'bg-secondary text-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
-              }`}
-            >
-              <Calendar className="h-4 w-4" />
-            </button>
+              <button
+                type="button"
+                role="radio"
+                aria-checked={viewMode === 'calendar'}
+                aria-label="Calendar view"
+                title="Calendar View"
+                onClick={() => setViewMode('calendar')}
+                className={`h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
+                  viewMode === 'calendar'
+                    ? 'bg-secondary text-foreground shadow-xs'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                }`}
+              >
+                <Calendar className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* All Assignees Filter */}
+            <Dropdown
+              value={selectedAssignee}
+              onChange={(val) => setSelectedAssignee(val || 'ALL')}
+              options={[
+                { value: 'ALL', label: 'All Assignees' },
+                ...employees.map((e) => ({ value: e.id, label: e.name })),
+              ]}
+              className="w-auto space-y-0 shrink-0"
+              buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[125px] shadow-xs hover:border-foreground/30 transition-colors"
+            />
+
+            {/* All Priority Filter */}
+            <Dropdown
+              value={selectedPriority}
+              onChange={(val) => setSelectedPriority(val || 'ALL')}
+              options={[
+                { value: 'ALL', label: 'All Priority' },
+                { value: 'LOW', label: 'Low' },
+                { value: 'MEDIUM', label: 'Medium' },
+                { value: 'HIGH', label: 'High' },
+                { value: 'URGENT', label: 'Urgent' },
+              ]}
+              className="w-auto space-y-0 shrink-0"
+              buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[110px] shadow-xs hover:border-foreground/30 transition-colors"
+            />
+
+            {/* All Status Filter */}
+            <Dropdown
+              value={selectedStatus}
+              onChange={(val) => setSelectedStatus(val || 'ALL')}
+              options={[
+                { value: 'ALL', label: 'All Status' },
+                { value: 'TODO', label: 'To Do' },
+                { value: 'IN_PROGRESS', label: 'In Progress' },
+                { value: 'IN_REVIEW', label: 'In Review' },
+                { value: 'DONE', label: 'Done' },
+                { value: 'ON_HOLD', label: 'On Hold' },
+              ]}
+              className="w-auto space-y-0 shrink-0"
+              buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[110px] shadow-xs hover:border-foreground/30 transition-colors"
+            />
           </div>
-
-          {/* All Assignees Filter */}
-          <Dropdown
-            value={selectedAssignee}
-            onChange={(val) => setSelectedAssignee(val || 'ALL')}
-            options={[
-              { value: 'ALL', label: 'All Assignees' },
-              ...employees.map((e) => ({ value: e.id, label: e.name })),
-            ]}
-            className="w-auto space-y-0 shrink-0"
-            buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[125px] shadow-xs hover:border-foreground/30 transition-colors"
-          />
-
-          {/* All Priority Filter */}
-          <Dropdown
-            value={selectedPriority}
-            onChange={(val) => setSelectedPriority(val || 'ALL')}
-            options={[
-              { value: 'ALL', label: 'All Priority' },
-              { value: 'LOW', label: 'Low' },
-              { value: 'MEDIUM', label: 'Medium' },
-              { value: 'HIGH', label: 'High' },
-              { value: 'URGENT', label: 'Urgent' },
-            ]}
-            className="w-auto space-y-0 shrink-0"
-            buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[110px] shadow-xs hover:border-foreground/30 transition-colors"
-          />
-
-          {/* All Status Filter */}
-          <Dropdown
-            value={selectedStatus}
-            onChange={(val) => setSelectedStatus(val || 'ALL')}
-            options={[
-              { value: 'ALL', label: 'All Status' },
-              { value: 'TODO', label: 'To Do' },
-              { value: 'IN_PROGRESS', label: 'In Progress' },
-              { value: 'IN_REVIEW', label: 'In Review' },
-              { value: 'DONE', label: 'Done' },
-              { value: 'ON_HOLD', label: 'On Hold' },
-            ]}
-            className="w-auto space-y-0 shrink-0"
-            buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[110px] shadow-xs hover:border-foreground/30 transition-colors"
-          />
-        </div>
-      </div>
+        }
+      />
 
       {/* Active View Container */}
       {viewMode === 'kanban' && (

@@ -26,12 +26,19 @@ export interface TaskAssigneeSelectorProps {
   hideLabel?: boolean
   compact?: boolean
   placeholder?: string
+  searchPlaceholder?: string
   popoverAlign?: 'start' | 'center' | 'end'
   className?: string
-  // Optional fallback for edit mode where existing task assignees may not be in employees list
+  // Optional fallback for edit mode where existing task assignees or project members may not be in employees list
   taskAssigneesFallback?: Array<{
     user_id: string
-    profile?: { first_name?: string | null; last_name?: string | null; profile_photo?: string | null } | null
+    profile?: { first_name?: string | null; last_name?: string | null; profile_photo?: string | null; designation?: string | null; department?: string | null } | null
+    employee_name?: string | null
+    avatar_url?: string | null
+  }>
+  membersFallback?: Array<{
+    user_id: string
+    profile?: { first_name?: string | null; last_name?: string | null; profile_photo?: string | null; designation?: string | null; department?: string | null } | null
     employee_name?: string | null
     avatar_url?: string | null
   }>
@@ -46,10 +53,13 @@ export function TaskAssigneeSelector({
   hideLabel = false,
   compact = false,
   placeholder = 'No members assigned',
+  searchPlaceholder = 'Search members...',
   popoverAlign = 'start',
   className,
   taskAssigneesFallback,
+  membersFallback,
 }: TaskAssigneeSelectorProps) {
+  const effectiveFallback = membersFallback || taskAssigneesFallback
   const [internalEmployees, setInternalEmployees] = useState<AssignableEmployee[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isPopoverOpen, setIsPopoverOpen] = useState(false)
@@ -108,7 +118,23 @@ export function TaskAssigneeSelector({
     if (selectedAssignees.includes(empId)) {
       onChange(selectedAssignees.filter((id) => id !== empId))
     } else {
-      onChange([...selectedAssignees, empId])
+      onChange(Array.from(new Set([...selectedAssignees, empId])))
+    }
+  }
+
+  const handleSelectAllFiltered = () => {
+    if (disabled) return
+    const idsToAdd = filteredEmployees.map((e) => e.id)
+    onChange(Array.from(new Set([...selectedAssignees, ...idsToAdd])))
+  }
+
+  const handleDeselectAll = () => {
+    if (disabled) return
+    if (searchQuery.trim()) {
+      const idsToRemove = new Set(filteredEmployees.map((e) => e.id))
+      onChange(selectedAssignees.filter((id) => !idsToRemove.has(id)))
+    } else {
+      onChange([])
     }
   }
 
@@ -118,15 +144,17 @@ export function TaskAssigneeSelector({
     onChange(selectedAssignees.filter((id) => id !== empId))
   }
 
+  const uniqueSelected = Array.from(new Set(selectedAssignees))
+
   return (
     <div className={cn('space-y-1.5 select-none', className)}>
       {!hideLabel && (
         <div className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
           <User className="h-3.5 w-3.5" />
           <span>{label}</span>
-          {selectedAssignees.length > 0 && (
+          {uniqueSelected.length > 0 && (
             <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-foreground text-background font-bold lowercase">
-              {selectedAssignees.length}
+              {uniqueSelected.length}
             </span>
           )}
         </div>
@@ -140,9 +168,9 @@ export function TaskAssigneeSelector({
         )}
       >
         {/* Selected Member Chips */}
-        {selectedAssignees.map((empId) => {
+        {uniqueSelected.map((empId) => {
           const emp = effectiveEmployees.find((e) => e.id === empId)
-          const fallback = taskAssigneesFallback?.find((a) => a.user_id === empId)
+          const fallback = effectiveFallback?.find((a) => a.user_id === empId)
           const name =
             emp?.name ||
             (fallback?.profile
@@ -223,15 +251,39 @@ export function TaskAssigneeSelector({
               className="w-72 sm:w-80 p-3 bg-popover/95 backdrop-blur-md border border-border/90 rounded-xl shadow-2xl z-[120]"
             >
               {/* Search Input */}
-              <div className="relative mb-2.5">
+              <div className="relative mb-2">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
-                  placeholder="Search members..."
+                  placeholder={searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-8 h-8 text-xs bg-input/70 border-border rounded-lg"
                   autoFocus
                 />
+              </div>
+
+              {/* Select All / Deselect All Controls */}
+              <div className="flex items-center justify-between pb-2 px-1 text-[11px] text-muted-foreground border-b border-border/40 mb-1.5">
+                <span>
+                  {filteredEmployees.length} {filteredEmployees.length === 1 ? 'member' : 'members'}
+                </span>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSelectAllFiltered}
+                    className="text-primary hover:underline font-medium cursor-pointer"
+                  >
+                    Select all
+                  </button>
+                  <span className="opacity-40">•</span>
+                  <button
+                    type="button"
+                    onClick={handleDeselectAll}
+                    className="hover:text-foreground font-medium cursor-pointer"
+                  >
+                    Clear all
+                  </button>
+                </div>
               </div>
 
               {/* Member List */}
@@ -285,7 +337,7 @@ export function TaskAssigneeSelector({
               {/* Done Button */}
               <div className="flex items-center justify-between pt-2.5 border-t border-border/50 mt-2">
                 <span className="text-[11px] text-muted-foreground">
-                  {selectedAssignees.length} selected
+                  {uniqueSelected.length} selected
                 </span>
                 <Button
                   type="button"
@@ -300,10 +352,13 @@ export function TaskAssigneeSelector({
         )}
 
         {/* Empty placeholder if no assignees selected and disabled */}
-        {selectedAssignees.length === 0 && disabled && (
+        {uniqueSelected.length === 0 && disabled && (
           <span className="text-xs text-muted-foreground italic px-1">{placeholder}</span>
         )}
       </div>
     </div>
   )
 }
+
+export const ProjectMemberSelector = TaskAssigneeSelector
+

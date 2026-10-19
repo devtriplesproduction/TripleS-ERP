@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { Search, ChevronRight, Loader2, Calendar } from "lucide-react"
+import { Search, ChevronRight, Loader2, Calendar, CalendarCheck2 } from "lucide-react"
 import { getAttendanceEmployees, DerivedAttendance, AttendanceStatus } from "@/lib/actions/attendance"
 import { PageHeader } from "@/components/PageHeader"
 
@@ -61,6 +61,7 @@ export function AttendanceList({ basePath = '/hr/attendance' }: { basePath?: str
       <PageHeader
         title="Employee Attendance"
         subtitle="Monitor attendance across the organization"
+        icon={CalendarCheck2}
         actions={
           <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
             <Select value={month.toString()} onValueChange={v => setMonth(parseInt(v || "1"))}>

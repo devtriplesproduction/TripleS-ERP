@@ -16,6 +16,7 @@ import {
   Users,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { PageHeader } from '@/components/PageHeader'
 import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
@@ -253,60 +254,52 @@ export function FullQuickTasksView({ user }: FullQuickTasksViewProps) {
   }, [tasks, activeTab, selectedType, selectedAssigneeId, isAdmin, searchQuery, user.id])
 
   return (
-    <div className="flex-1 space-y-6 p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto select-none">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/50 pb-5">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="p-2 rounded-xl bg-muted border border-border text-foreground">
-              <CheckSquare className="w-5 h-5" />
-            </span>
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-              Quick Tasks
-            </h1>
+    <div className="max-w-7xl mx-auto space-y-6 select-none">
+      <PageHeader
+        title="Quick Tasks"
+        subtitle={
+          isAdmin
+            ? 'Manage personal tasks and assign casual tasks across your team without project overhead.'
+            : 'Your personal quick tasks and assignments from management.'
+        }
+        icon={CheckSquare}
+        actions={
+          <div className="flex items-center gap-2 sm:gap-2.5">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={loadTasks}
+              className="h-9 px-3.5 text-xs font-medium rounded-lg gap-1.5 border-border/80 bg-card hover:bg-muted text-foreground cursor-pointer shadow-xs"
+              title="Refresh tasks"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
+
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setIsCreateOpen(true)}
+              className="h-9 px-3.5 text-xs font-semibold rounded-lg bg-foreground text-background hover:bg-foreground/90 cursor-pointer gap-1.5 shadow-xs"
+            >
+              <Plus className="w-4 h-4" />
+              <span>{isAdmin ? 'Assign Task' : 'New Task'}</span>
+            </Button>
           </div>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            {isAdmin
-              ? 'Manage personal tasks and assign casual tasks across your team without project overhead.'
-              : 'Your personal quick tasks and assignments from management.'}
-          </p>
-        </div>
+        }
+      />
 
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={loadTasks}
-            className="text-xs h-9 rounded-lg gap-1.5 border-border cursor-pointer hover:bg-muted"
-            title="Refresh tasks"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-            <span className="hidden sm:inline">Refresh</span>
-          </Button>
-
-          <Button
-            type="button"
-            size="sm"
-            onClick={() => setIsCreateOpen(true)}
-            className="text-xs h-9 rounded-lg font-medium bg-foreground text-background hover:bg-foreground/90 cursor-pointer gap-1.5 shadow-xs"
-          >
-            <Plus className="w-4 h-4" />
-            <span>{isAdmin ? 'Assign Task' : 'New Task'}</span>
-          </Button>
-        </div>
-      </div>
-
-      {/* Control Bar: Search, Tabs, Type Filter, View Switcher */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 bg-card p-3 rounded-xl border border-border">
+      {/* Standardized Control Bar: Search, Status Tabs, Ownership Filter, Assignee Dropdown, View Switcher */}
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 sm:gap-3">
         {/* Left: Search input */}
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 min-w-0">
           <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search tasks by description or person..."
-            className="pl-9 pr-8 text-xs bg-background h-9 rounded-lg border-border"
+            className="!h-9 !min-h-[36px] !max-h-[36px] !pl-9 !pr-8 !text-xs rounded-lg border-border/80 bg-card font-normal shadow-xs focus-visible:ring-1 focus-visible:ring-foreground/20 text-foreground w-full placeholder:text-muted-foreground"
           />
           {searchQuery && (
             <button
@@ -320,79 +313,80 @@ export function FullQuickTasksView({ user }: FullQuickTasksViewProps) {
         </div>
 
         {/* Right: Tabs & Filters */}
-        <div className="flex flex-wrap items-center gap-2">
-          {/* Tabs */}
-          <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border">
-            <button
-              type="button"
-              onClick={() => setActiveTab('Pending')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
-                activeTab === 'Pending'
-                  ? 'bg-foreground text-background shadow-xs font-semibold'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Pending ({pendingCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('Completed')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
-                activeTab === 'Completed'
-                  ? 'bg-foreground text-background shadow-xs font-semibold'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Completed ({completedCount})
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('All')}
-              className={`px-3 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
-                activeTab === 'All'
-                  ? 'bg-foreground text-background shadow-xs font-semibold'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              All ({tasks.length})
-            </button>
+        <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap shrink-0">
+          {/* Status Tabs */}
+          <div
+            role="radiogroup"
+            aria-label="Filter by status"
+            className="flex items-center h-9 p-0.5 rounded-lg border border-border/80 bg-card shadow-xs shrink-0"
+          >
+            {(['Pending', 'Completed', 'All'] as const).map((tab) => {
+              const count = tab === 'Pending' ? pendingCount : tab === 'Completed' ? completedCount : tasks.length
+              const isSelected = activeTab === tab
+              return (
+                <button
+                  key={tab}
+                  type="button"
+                  role="radio"
+                  aria-checked={isSelected}
+                  onClick={() => setActiveTab(tab)}
+                  className={`h-7.5 px-3 flex items-center justify-center rounded-md text-xs transition-colors cursor-pointer ${
+                    isSelected
+                      ? 'bg-foreground text-background shadow-xs font-semibold'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium'
+                  }`}
+                >
+                  {tab} ({count})
+                </button>
+              )
+            })}
           </div>
 
           {/* Type Filter: All / Personal / Assigned */}
-          <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border">
+          <div
+            role="radiogroup"
+            aria-label="Filter by ownership"
+            className="flex items-center h-9 p-0.5 rounded-lg border border-border/80 bg-card shadow-xs shrink-0"
+          >
             <button
               type="button"
+              role="radio"
+              aria-checked={selectedType === 'ALL'}
               onClick={() => setSelectedType('ALL')}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all cursor-pointer ${
+              className={`h-7.5 px-3 flex items-center justify-center rounded-md text-xs transition-colors cursor-pointer ${
                 selectedType === 'ALL'
                   ? 'bg-foreground text-background shadow-xs font-semibold'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium'
               }`}
             >
               All
             </button>
             <button
               type="button"
+              role="radio"
+              aria-checked={selectedType === 'PERSONAL'}
               onClick={() => setSelectedType('PERSONAL')}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+              className={`h-7.5 px-3 flex items-center gap-1.5 justify-center rounded-md text-xs transition-colors cursor-pointer ${
                 selectedType === 'PERSONAL'
                   ? 'bg-foreground text-background shadow-xs font-semibold'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium'
               }`}
             >
-              <User className="w-3 h-3" />
+              <User className="w-3.5 h-3.5" />
               <span>Personal</span>
             </button>
             <button
               type="button"
+              role="radio"
+              aria-checked={selectedType === 'ASSIGNED'}
               onClick={() => setSelectedType('ASSIGNED')}
-              className={`px-2.5 py-1 text-xs font-medium rounded-md transition-all cursor-pointer flex items-center gap-1 ${
+              className={`h-7.5 px-3 flex items-center gap-1.5 justify-center rounded-md text-xs transition-colors cursor-pointer ${
                 selectedType === 'ASSIGNED'
                   ? 'bg-foreground text-background shadow-xs font-semibold'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40 font-medium'
               }`}
             >
-              <Users className="w-3 h-3" />
+              <Users className="w-3.5 h-3.5" />
               <span>Assigned</span>
             </button>
           </div>
@@ -401,10 +395,10 @@ export function FullQuickTasksView({ user }: FullQuickTasksViewProps) {
           {isAdmin && (
             <DropdownMenu>
               <DropdownMenuTrigger
-                className={`flex items-center gap-1.5 h-9 px-3 text-xs font-medium rounded-lg border transition-colors outline-none cursor-pointer ${
+                className={`flex items-center gap-1.5 h-9 px-3 text-xs font-medium rounded-lg border border-border/80 bg-card shadow-xs transition-colors outline-none cursor-pointer ${
                   selectedAssigneeId !== 'ALL'
                     ? 'border-foreground bg-foreground text-background'
-                    : 'border-border bg-card text-foreground hover:bg-muted'
+                    : 'text-foreground hover:border-foreground/30 hover:bg-muted/40'
                 }`}
               >
                 <Filter className="w-3.5 h-3.5" />
@@ -443,27 +437,42 @@ export function FullQuickTasksView({ user }: FullQuickTasksViewProps) {
             </DropdownMenu>
           )}
 
-          {/* View mode toggle */}
-          <div className="flex items-center gap-0.5 bg-muted/40 p-1 rounded-lg border border-border">
+          {/* Standardized Segmented View Switcher: Grid | List */}
+          <div
+            role="radiogroup"
+            aria-label="Quick tasks view options"
+            className="flex items-center h-9 p-0.5 rounded-lg border border-border/80 bg-card shadow-xs shrink-0"
+          >
             <button
               type="button"
+              role="radio"
+              aria-checked={viewMode === 'grid'}
+              aria-label="Grid view"
+              title="Grid View"
               onClick={() => setViewMode('grid')}
-              title="Grid view"
-              className={`p-1.5 rounded-md transition-colors cursor-pointer ${
-                viewMode === 'grid' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+              className={`h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
+                viewMode === 'grid'
+                  ? 'bg-foreground text-background shadow-xs font-semibold'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
               }`}
             >
-              <LayoutGrid className="w-3.5 h-3.5" />
+              <LayoutGrid className="h-4 w-4" />
             </button>
+            <div className="w-px h-4 bg-border/60 mx-0.5 shrink-0" aria-hidden="true" />
             <button
               type="button"
+              role="radio"
+              aria-checked={viewMode === 'list'}
+              aria-label="List view"
+              title="List View"
               onClick={() => setViewMode('list')}
-              title="List view"
-              className={`p-1.5 rounded-md transition-colors cursor-pointer ${
-                viewMode === 'list' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+              className={`h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
+                viewMode === 'list'
+                  ? 'bg-foreground text-background shadow-xs font-semibold'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
               }`}
             >
-              <List className="w-3.5 h-3.5" />
+              <List className="h-4 w-4" />
             </button>
           </div>
         </div>
@@ -505,7 +514,7 @@ export function FullQuickTasksView({ user }: FullQuickTasksViewProps) {
           className={
             viewMode === 'grid'
               ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5'
-              : 'flex flex-col gap-2.5 max-w-3xl'
+              : 'flex flex-col gap-2.5 w-full'
           }
         >
           {displayedTasks.map((task) => (

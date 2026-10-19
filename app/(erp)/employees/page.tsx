@@ -35,6 +35,7 @@ export default async function EmployeesPage() {
       <PageHeader
         title="Employees"
         subtitle="Manage employee records, organizational roles, and onboarding workflows."
+        icon={Users}
         actions={<AddEmployeeModal />}
       />
 

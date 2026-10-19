@@ -697,98 +697,96 @@ export function TimeTrackingAdminDashboard() {
   return (
     <div className="space-y-8 max-w-7xl mx-auto pb-16">
       {/* Page Header & View Mode Switcher */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <PageHeader
-          title="Time Tracking & Activity Analytics"
-          subtitle="Real-time employee desktop time tracking and verified activity intervals (Admin Only)"
-          icon={Clock}
-          iconClassName="text-foreground"
-        />
+      <PageHeader
+        title="Time Tracking & Activity Analytics"
+        subtitle="Real-time employee desktop time tracking and verified activity intervals (Admin Only)"
+        icon={Clock}
+        iconClassName="text-foreground"
+        actions={
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Mode Toggle: Daily vs Monthly */}
+            <div className="flex items-center bg-muted/50 p-1 rounded-xl border border-border">
+              <button
+                onClick={() => setViewMode('daily')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  viewMode === 'daily'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Daily Tracking
+              </button>
+              <button
+                onClick={() => setViewMode('monthly')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  viewMode === 'monthly'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Monthly Summary
+              </button>
+            </div>
 
-        {/* Top Controls: Mode Switcher, Date/Month Picker, Auto-refresh */}
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Mode Toggle: Daily vs Monthly */}
-          <div className="flex items-center bg-muted/50 p-1 rounded-xl border border-border">
-            <button
-              onClick={() => setViewMode('daily')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                viewMode === 'daily'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Daily Tracking
-            </button>
-            <button
-              onClick={() => setViewMode('monthly')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                viewMode === 'monthly'
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              Monthly Summary
-            </button>
-          </div>
-
-          {/* Date Picker (Daily) or Month Picker (Monthly) */}
-          {viewMode === 'daily' ? (
-            <div className="flex items-center gap-2">
+            {/* Date Picker (Daily) or Month Picker (Monthly) */}
+            {viewMode === 'daily' ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="date"
+                  value={selectedDate}
+                  onChange={(e) => setSelectedDate(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl border border-border bg-card text-xs font-medium text-foreground outline-none cursor-pointer shadow-sm hover:border-foreground/30 focus:border-foreground transition-colors"
+                />
+                <div className="hidden sm:flex items-center gap-1 bg-muted/50 p-1 rounded-xl border border-border">
+                  <button
+                    onClick={() => setQuickDate('today')}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
+                      selectedDate === getTodayIST()
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    onClick={() => setQuickDate('yesterday')}
+                    className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    Yesterday
+                  </button>
+                </div>
+              </div>
+            ) : (
               <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
                 className="px-3 py-1.5 rounded-xl border border-border bg-card text-xs font-medium text-foreground outline-none cursor-pointer shadow-sm hover:border-foreground/30 focus:border-foreground transition-colors"
               />
-              <div className="hidden sm:flex items-center gap-1 bg-muted/50 p-1 rounded-xl border border-border">
-                <button
-                  onClick={() => setQuickDate('today')}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all ${
-                    selectedDate === getTodayIST()
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  Today
-                </button>
-                <button
-                  onClick={() => setQuickDate('yesterday')}
-                  className="px-2.5 py-1 rounded-lg text-[11px] font-medium text-muted-foreground hover:text-foreground"
-                >
-                  Yesterday
-                </button>
-              </div>
-            </div>
-          ) : (
-            <input
-              type="month"
-              value={selectedMonth}
-              onChange={(e) => setSelectedMonth(e.target.value)}
-              className="px-3 py-1.5 rounded-xl border border-border bg-card text-xs font-medium text-foreground outline-none cursor-pointer shadow-sm hover:border-foreground/30 focus:border-foreground transition-colors"
-            />
-          )}
+            )}
 
-          {/* Auto-Refresh Indicator / Toggle */}
-          <button
-            onClick={() => setAutoRefresh(!autoRefresh)}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-card text-xs font-medium text-foreground hover:bg-muted/50 transition-colors shadow-sm"
-            title={autoRefresh ? 'Auto-refresh active (30s)' : 'Auto-refresh paused'}
-          >
-            <span className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-foreground animate-pulse' : 'bg-muted-foreground/40'}`} />
-            <span className="hidden md:inline text-muted-foreground">Auto-Sync</span>
-          </button>
+            {/* Auto-Refresh Indicator / Toggle */}
+            <button
+              onClick={() => setAutoRefresh(!autoRefresh)}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border bg-card text-xs font-medium text-foreground hover:bg-muted/50 transition-colors shadow-sm"
+              title={autoRefresh ? 'Auto-refresh active (30s)' : 'Auto-refresh paused'}
+            >
+              <span className={`w-2 h-2 rounded-full ${autoRefresh ? 'bg-foreground animate-pulse' : 'bg-muted-foreground/40'}`} />
+              <span className="hidden md:inline text-muted-foreground">Auto-Sync</span>
+            </button>
 
-          {/* Manual Refresh Button */}
-          <button
-            onClick={() => viewMode === 'daily' ? fetchDailyReports() : fetchMonthlyReports()}
-            disabled={loading}
-            className="p-2 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors shadow-sm"
-            title="Refresh Data"
-          >
-            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-          </button>
-        </div>
-      </div>
+            {/* Manual Refresh Button */}
+            <button
+              onClick={() => viewMode === 'daily' ? fetchDailyReports() : fetchMonthlyReports()}
+              disabled={loading}
+              className="p-2 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors shadow-sm"
+              title="Refresh Data"
+            >
+              <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+            </button>
+          </div>
+        }
+      />
 
       {/* Error Banner */}
       {error && (
