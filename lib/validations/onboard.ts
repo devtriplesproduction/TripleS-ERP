@@ -80,6 +80,7 @@ export const onboardSchema = z.object({
   confirm_password: z.string().optional(),
   profile_photo: z.string().optional(),
   documents: z.any().optional(),
+  work_location: z.string().optional(),
 }).refine((data) => {
   if (data.employment_status === 'Probation' && data.employment_type !== 'Full Time') {
     return false;
@@ -156,3 +157,37 @@ export const STEP_2_FIELDS: (keyof OnboardFormData)[] = [
   'role',
   'is_hod',
 ]
+
+export const professionalEditSchema = z.object({
+  employee_id_number: z.string().trim().min(1, 'Employee ID is required.'),
+  department: z.string().trim().min(1, 'Department is required.'),
+  division: z.string().trim().min(1, 'Division is required.'),
+  designation: z.string().trim().min(1, 'Designation is required.'),
+  employment_type: z.string().trim().min(1, 'Employment type is required.'),
+  joining_date: z.string().trim().min(1, 'Joining date is required.'),
+  email: z.string().trim().email('Valid work email is required.'),
+  work_location: z.string().trim().min(1, 'Work location is required.'),
+  salary: z.union([z.number(), z.string(), z.null()]).optional(),
+  stipend: z.union([z.number(), z.string(), z.null()]).optional(),
+}).refine(data => {
+  if (data.employment_type === 'Intern') {
+    if (data.stipend === null || data.stipend === undefined || data.stipend === '') return false;
+    const num = Number(data.stipend);
+    return !isNaN(num) && num >= 0;
+  }
+  return true;
+}, {
+  message: 'Stipend is required for Interns and must be a valid non-negative number.',
+  path: ['stipend']
+}).refine(data => {
+  if (data.employment_type !== 'Intern' && data.salary !== null && data.salary !== undefined && data.salary !== '') {
+    const num = Number(data.salary);
+    return !isNaN(num) && num >= 0;
+  }
+  return true;
+}, {
+  message: 'Salary must be a valid non-negative number.',
+  path: ['salary']
+});
+
+export type ProfessionalEditFormData = z.infer<typeof professionalEditSchema>;

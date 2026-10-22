@@ -46,6 +46,7 @@ export interface Employee {
   deactivation_reason?: string | null
   reactivated_at?: string | null
   reactivated_by?: string | null
+  work_location?: string | null
 }
 
 export interface OnboardingTask {
