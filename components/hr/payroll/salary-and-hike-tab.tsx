@@ -28,8 +28,8 @@ export function SalaryAndHikeTab({ employee }: { employee: any }) {
   const fetchSalaryHistory = async () => {
     if (!employee?.id) return
     setIsLoadingHistory(true)
-    const res = await getSalaryHistoryAction(employee.id)
-    if (res.success && res.data) {
+    const res: any = await getSalaryHistoryAction(employee.id)
+    if (res?.success && res?.data) {
       setSalaryHistory(res.data)
       if (res.currentSalary !== undefined) {
         setCurrentSalary(res.currentSalary)

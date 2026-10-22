@@ -358,7 +358,7 @@ describe('Salary & Hike Management Tests', () => {
       expect(res.success).toBe(true)
       expect(res.data).toHaveLength(1)
       expect(res.currentSalary).toBe(22000)
-      expect(res.employee.first_name).toBe('Suraj')
+      expect(res.employee?.id).toBe(empId)
     })
 
     it('returns currentSalary as null when salary is genuinely missing', async () => {

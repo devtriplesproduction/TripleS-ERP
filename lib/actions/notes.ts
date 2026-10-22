@@ -21,17 +21,23 @@ function safeRevalidatePath(pathUrl: string) {
   }
 }
 
+const FALLBACK_DIR = path.join(process.cwd(), 'scratch')
+const DEFAULT_STORE_FILE = 'personal_notes_store.json'
+
 function getFallbackStorePath(): string {
-  return (
-    process.env.PERSONAL_NOTES_STORE_PATH ||
-    path.join(process.cwd(), 'scratch', 'personal_notes_store.json')
-  )
+  const customPath = process.env.PERSONAL_NOTES_STORE_PATH
+  if (customPath) {
+    // Statically scope filename to the safe scratch subfolder
+    const fileName = path.basename(customPath)
+    return path.join(FALLBACK_DIR, fileName)
+  }
+  return path.join(FALLBACK_DIR, DEFAULT_STORE_FILE)
 }
 
 function ensureStoreDir(): void {
   const storePath = getFallbackStorePath()
   const dir = path.dirname(storePath)
-  if (!fs.existsSync(dir)) {
+  if (!fs.existsSync(/*turbopackIgnore: true*/ dir)) {
     fs.mkdirSync(dir, { recursive: true })
   }
 }
@@ -40,10 +46,10 @@ function readFallbackNotes(): PersonalNote[] {
   try {
     ensureStoreDir()
     const storePath = getFallbackStorePath()
-    if (!fs.existsSync(storePath)) {
+    if (!fs.existsSync(/*turbopackIgnore: true*/ storePath)) {
       return []
     }
-    const raw = fs.readFileSync(storePath, 'utf-8')
+    const raw = fs.readFileSync(/*turbopackIgnore: true*/ storePath, 'utf-8')
     return JSON.parse(raw) as PersonalNote[]
   } catch (err) {
     console.error('[PersonalNotes] Failed to read fallback store:', err)
@@ -55,7 +61,7 @@ function writeFallbackNotes(notes: PersonalNote[]): void {
   try {
     ensureStoreDir()
     const storePath = getFallbackStorePath()
-    fs.writeFileSync(storePath, JSON.stringify(notes, null, 2), 'utf-8')
+    fs.writeFileSync(/*turbopackIgnore: true*/ storePath, JSON.stringify(notes, null, 2), 'utf-8')
   } catch (err) {
     console.error('[PersonalNotes] Failed to write fallback store:', err)
   }
