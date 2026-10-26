@@ -8,7 +8,7 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { IndianRupee, TrendingUp, Calendar, X, Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { addSalaryIncrementAction, getSalaryHistoryAction } from '@/lib/actions/payroll'
-import { calculateMonthlyBasicSalary } from '@/lib/utils/salary'
+import { calculateMonthlyBasicSalary, calculateIncrementPercentage, resolveCurrentSalary } from '@/lib/utils/salary'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
@@ -40,7 +40,8 @@ export function SalaryAndHikeTab({ employee }: { employee: any }) {
   }, [employee.id])
 
   const currentPackage = employee.salary || 0
-  const currentSalary = calculateMonthlyBasicSalary(currentPackage)
+  const resolvedSalary = resolveCurrentSalary(employee, salaryHistory)
+  const currentSalary = resolvedSalary !== null ? resolvedSalary : calculateMonthlyBasicSalary(currentPackage)
   const lastIncrement = salaryHistory[0]
 
   const baseDate = lastIncrement ? new Date(lastIncrement.effective_date) : (employee.joining_date ? new Date(employee.joining_date) : null)
@@ -50,13 +51,13 @@ export function SalaryAndHikeTab({ employee }: { employee: any }) {
 
   const handleApplyHike = async () => {
     const newSalaryInput = parseFloat(incrementInput)
-    if (isNaN(newSalaryInput) || newSalaryInput <= currentSalary) {
-      toast({ title: 'Error', description: 'New salary must be higher than current salary.', variant: 'destructive' })
+    if (isNaN(newSalaryInput) || newSalaryInput < 0 || (currentSalary > 0 && newSalaryInput < currentSalary)) {
+      toast({ title: 'Error', description: 'New salary cannot be lower than current salary.', variant: 'destructive' })
       return
     }
     
     setIsApplyingHike(true)
-    const incrementPercentage = ((newSalaryInput - currentSalary) / currentSalary) * 100
+    const incrementPercentage = calculateIncrementPercentage(currentSalary, newSalaryInput)
     const newPackage = newSalaryInput * 12
     
     const res = await addSalaryIncrementAction(employee.id, currentSalary, newSalaryInput, incrementPercentage, incrementEffectiveDate, newPackage)
@@ -68,6 +69,10 @@ export function SalaryAndHikeTab({ employee }: { employee: any }) {
       setIncrementInput('')
       setIncrementEffectiveDate('')
       employee.salary = newPackage // Optimistic update
+      employee.basic_salary = newSalaryInput
+      if (employee.employment_type?.toLowerCase() === 'intern') {
+        employee.stipend = newSalaryInput
+      }
       fetchSalaryHistory()
       router.refresh() // Refreshes server data so parent components update
     } else {
@@ -150,7 +155,7 @@ export function SalaryAndHikeTab({ employee }: { employee: any }) {
 
             <Button
               onClick={handleApplyHike}
-              disabled={isApplyingHike || !incrementInput || parseFloat(incrementInput) <= currentSalary}
+              disabled={isApplyingHike || !incrementInput || (currentSalary > 0 && parseFloat(incrementInput) < currentSalary)}
               className="w-full h-[46px] rounded-xl bg-foreground hover:bg-foreground/90 text-background text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-2 mb-[18px]"
             >
               {isApplyingHike ? <Loader2 className="w-4 h-4 animate-spin" /> : <TrendingUp className="w-4 h-4" />}

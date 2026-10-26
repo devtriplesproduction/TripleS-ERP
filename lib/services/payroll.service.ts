@@ -8,6 +8,7 @@ import {
   calculateCompOffMinutes,
   canonicalOfficeHoursToMinutes,
 } from '@/lib/utils/time';
+import { calculateMonthlyBasicSalary } from '@/lib/utils/salary';
 import { processEODCompOff } from '@/lib/actions/compoff';
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -48,11 +49,16 @@ export interface PayrollResult {
 
 // ─── Day context for classification ─────────────────────────────────
 
-type DayContext = 'normal' | 'sunday' | 'paid_holiday';
+type DayContext = 'normal' | 'sunday' | 'paid_holiday' | 'approved_leave';
 
-function getDayContext(dateStr: string, paidHolidayDates: Set<string>): DayContext {
+function getDayContext(
+  dateStr: string,
+  paidHolidayDates: Set<string>,
+  approvedLeaveDates?: Set<string>
+): DayContext {
   if (isSunday(dateStr)) return 'sunday';
   if (paidHolidayDates.has(dateStr)) return 'paid_holiday';
+  if (approvedLeaveDates?.has(dateStr)) return 'approved_leave';
   return 'normal';
 }
 
@@ -64,7 +70,7 @@ interface DayClassification {
   /** Minutes to credit as Comp Off */
   compOffMinutes: number;
   /** Classification label */
-  status: 'UNPAID' | 'HALF_DAY' | 'FULL_DAY' | 'HOLIDAY' | 'SUNDAY';
+  status: 'UNPAID' | 'HALF_DAY' | 'FULL_DAY' | 'HOLIDAY' | 'SUNDAY' | 'LEAVE';
 }
 
 /**
@@ -73,6 +79,7 @@ interface DayClassification {
  * Rules:
  * - Sunday: ALL worked hours → Comp Off. No payroll pay from work.
  * - Paid Holiday: Full daily pay regardless. ALL worked hours → Comp Off.
+ * - Approved Leave: Handled by leave quota. ALL worked hours → Comp Off.
  * - Normal <4h: Unpaid. ALL worked hours → Comp Off.
  * - Normal 4h–<8h: Half Day = 50% daily pay. 0 Comp Off.
  * - Normal 8h: Full Day = 100% daily pay. 0 Comp Off.
@@ -84,6 +91,11 @@ function classifyDay(workedMinutes: number, context: DayContext): DayClassificat
   if (context === 'sunday') {
     // Sunday: ALL worked time → Comp Off. No payroll pay from working.
     return { payFraction: 0, compOffMinutes: wm, status: 'SUNDAY' };
+  }
+
+  if (context === 'approved_leave') {
+    // Approved Leave Day: ALL worked time → Comp Off. Leave pay handled by leave system.
+    return { payFraction: 0, compOffMinutes: wm, status: 'LEAVE' };
   }
 
   if (context === 'paid_holiday') {
@@ -131,7 +143,7 @@ export async function calculateMonthlyPayroll(
   // 2. Fetch employees from employee_onboarding
   let query = supabase
     .from('employee_onboarding')
-    .select('id, first_name, last_name, department, salary, employee_id_number, employment_type, stipend');
+    .select('id, first_name, last_name, department, salary, basic_salary, employee_id_number, employment_type, stipend');
   if (employeeIds && employeeIds.length > 0) {
     query = query.in('id', employeeIds);
   }
@@ -204,8 +216,8 @@ export async function calculateMonthlyPayroll(
     }
   }
 
-  // Payable Days = Calendar Working Days + Paid Holidays
-  const payableDaysInMonth = calendarWorkingDays + paidHolidayDates.size;
+  // Payable days in month (Mon–Sat calendar days). Weekday holidays are already in calendarWorkingDays.
+  const payableDaysInMonth = calendarWorkingDays;
 
   // 9. Batch check existing Comp-Off credits for all EODs to avoid repeated individual queries
   const allEodIds = eods.map(e => e.id);
@@ -283,13 +295,31 @@ export async function calculateMonthlyPayroll(
     // Determine if this employee has any payroll-relevant data for this month
     const hasPayrollData = empEods.length > 0;
 
-    // Determine monthly pay base: Intern uses stipend, others use salary
+    // Determine monthly pay base: Intern uses stipend, others use basic_salary or annual CTC / 12
     const isIntern = emp.employment_type?.toLowerCase() === 'intern';
-    const monthlyPayBase = isIntern ? Number(emp.stipend || 0) : Number(emp.salary || 0);
+    let monthlyPayBase = 0;
+    if (isIntern) {
+      monthlyPayBase = Number(emp.stipend || 0);
+    } else if (emp.basic_salary !== null && emp.basic_salary !== undefined && Number(emp.basic_salary) > 0) {
+      monthlyPayBase = Number(emp.basic_salary);
+    } else if (emp.salary !== null && emp.salary !== undefined && Number(emp.salary) > 0) {
+      monthlyPayBase = calculateMonthlyBasicSalary(Number(emp.salary));
+    }
 
-    // Daily rate = monthly base / payable days in month
-    const fullDayRate = payableDaysInMonth > 0 ? monthlyPayBase / payableDaysInMonth : 0;
+    // Standard daily rate = monthly base / 26 standard working days (standard 208h / 26 days basis)
+    const fullDayRate = STANDARD_WORKING_DAYS > 0 ? monthlyPayBase / STANDARD_WORKING_DAYS : 0;
     const halfDayRate = fullDayRate / 2;
+
+    // Track dates of approved leaves for this employee
+    const approvedLeaveDates = new Set<string>();
+    empLeaves.forEach(l => {
+      let curr = new Date(l.start_date);
+      const end = new Date(l.end_date);
+      while (curr <= end) {
+        approvedLeaveDates.add(curr.toISOString().split('T')[0]);
+        curr.setDate(curr.getDate() + 1);
+      }
+    });
 
     // ─── Process EODs ───────────────────────────────────────────
     let totalWorkedMinutes = 0;
@@ -310,7 +340,7 @@ export async function calculateMonthlyPayroll(
       const wMins = canonicalOfficeHoursToMinutes(Number(eod.office_hours));
       totalWorkedMinutes += wMins;
 
-      const context = getDayContext(eod.report_date, paidHolidayDates);
+      const context = getDayContext(eod.report_date, paidHolidayDates, approvedLeaveDates);
       const classification = classifyDay(wMins, context);
 
       compOffMinutesEarned += classification.compOffMinutes;
@@ -353,62 +383,82 @@ export async function calculateMonthlyPayroll(
     let wfhMinutes = 0;
 
     empLeaves.forEach(l => {
-      const mins = l.is_half_day ? STANDARD_WORK_MINUTES / 2 : STANDARD_WORK_MINUTES;
+      // Calculate working days in leave range within the target month
+      const lStartStr = l.start_date < startDate ? startDate : l.start_date;
+      const lEndStr = l.end_date > endDate ? endDate : l.end_date;
+
+      let leaveDaysCount = 0;
+      let curr = new Date(lStartStr);
+      const endLimit = new Date(lEndStr);
+      while (curr <= endLimit) {
+        const dStr = curr.toISOString().split('T')[0];
+        // Only count Mon-Sat working days (excluding Sundays and holidays) as leave days
+        if (isWorkingDay(dStr) && !paidHolidayDates.has(dStr)) {
+          leaveDaysCount++;
+        }
+        curr.setDate(curr.getDate() + 1);
+      }
+
+      if (leaveDaysCount === 0 && l.start_date === l.end_date) {
+        leaveDaysCount = 1;
+      }
+
+      const dayMins = l.is_half_day ? STANDARD_WORK_MINUTES / 2 : STANDARD_WORK_MINUTES;
+      const totalMins = dayMins * leaveDaysCount;
+
       if (l.request_type === 'WFH') {
-        wfhMinutes += mins;
+        wfhMinutes += totalMins;
       } else if (l.leave_type === 'Unpaid') {
-        unpaidLeaveMinutes += mins;
+        unpaidLeaveMinutes += totalMins;
       } else {
-        creditedLeaveMinutes += mins;
+        creditedLeaveMinutes += totalMins;
       }
     });
 
     // ─── Financial calculation ──────────────────────────────────
 
-    // Determine how many working days were missed (no EOD, no leave, no holiday)
+    // Determine how many working days were missed (no EOD, no approved leave, not a holiday)
     let missingWorkingDays = 0;
     for (let d = 1; d <= lastDay; d++) {
       const dStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       if (isWorkingDay(dStr)) {
          const hasEod = empEods.some(e => e.report_date === dStr);
-         const hasLeave = empLeaves.some(l => l.start_date <= dStr && l.end_date >= dStr);
+         const hasPaidLeave = empLeaves.some(l => l.start_date <= dStr && l.end_date >= dStr && l.leave_type !== 'Unpaid');
+         const hasUnpaidLeave = empLeaves.some(l => l.start_date <= dStr && l.end_date >= dStr && l.leave_type === 'Unpaid');
          const isHoliday = paidHolidayDates.has(dStr);
-         if (!hasEod && !hasLeave && !isHoliday) {
+         if (!hasEod && !hasPaidLeave && !hasUnpaidLeave && !isHoliday) {
             missingWorkingDays++;
          }
       }
     }
 
-    // Equivalent payable days = Total Payable - Unpaid Leave EODs - (Half Days * 0.5) - Missing Working Days
-    const equivalentPayableDays = payableDaysInMonth - daysUnpaidLeaveEod - (daysHalfDay * 0.5) - missingWorkingDays;
+    // Approved unpaid leave days
+    const unpaidLeaveDaysFromLeaves = unpaidLeaveMinutes / STANDARD_WORK_MINUTES;
 
-    // Earned pay = equivalent payable days × full day rate
-    const earnedPay = equivalentPayableDays * fullDayRate;
+    // Total deducted days = EOD unpaid (<4h) + half-day fractions (0.5) + unexcused missing days + approved unpaid leaves
+    const totalDeductedDays = daysUnpaidLeaveEod + (daysHalfDay * 0.5) + missingWorkingDays + unpaidLeaveDaysFromLeaves;
 
-    // Deduction = full monthly base - earned pay
-    const deduction = hasPayrollData ? Math.max(0, monthlyPayBase - earnedPay) : 0;
+    // Deduction = total deducted days × standard daily rate (capped at monthly base)
+    const deduction = hasPayrollData ? Math.min(monthlyPayBase, Math.round(totalDeductedDays * fullDayRate * 100) / 100) : 0;
+
+    // Earned pay = monthly base - deduction
+    const earnedPay = hasPayrollData ? Math.max(0, monthlyPayBase - deduction) : 0;
 
     // Cash overtime is ALWAYS ₹0. Extra hours go to Comp Off, not cash.
     const overtimePay = 0;
 
     // Net Payable
-    const netPayable = hasPayrollData ? earnedPay : 0;
+    const netPayable = earnedPay;
 
     // ─── Display values ─────────────────────────────────────────
-    let actualWorkedHours = totalWorkedMinutes / 60;
+    const actualWorkedHours = totalWorkedMinutes / 60;
     const creditedLeaveHours = creditedLeaveMinutes / 60;
     const paidHolidayHours = paidHolidayMinutesNotWorked / 60;
     const wfhHoursValue = wfhMinutes / 60;
     const unpaidLeaveHours = unpaidLeaveMinutes / 60;
 
     // Extra hours = total comp off earned (for display purposes)
-    let extraHoursValue = compOffMinutesEarned / 60;
-
-    // Correct the 1-hour shift anomaly identified in the August records
-    if (actualWorkedHours === 183.5 && extraHoursValue === 39.5) {
-      actualWorkedHours = 182.5;
-      extraHoursValue = 40.5;
-    }
+    const extraHoursValue = compOffMinutesEarned / 60;
 
     const totalPaidMinutes = totalWorkedMinutes + creditedLeaveMinutes + paidHolidayMinutesNotWorked;
     const totalPaidHours = totalPaidMinutes / 60;

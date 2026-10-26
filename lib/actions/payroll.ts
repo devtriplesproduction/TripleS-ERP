@@ -4,9 +4,16 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { calculateMonthlyPayroll } from '@/lib/services/payroll.service'
 import { getCurrentUser } from '@/lib/auth'
-import { calculateMonthlyBasicSalary } from '@/lib/utils/salary'
+import { calculateMonthlyBasicSalary, calculateIncrementPercentage, resolveCurrentSalary } from '@/lib/utils/salary'
 
-export async function addSalaryIncrementAction(employeeId: string, previousSalary: number, newSalary: number, incrementPercentage: number, effectiveDate: string, newPackage: number) {
+export async function addSalaryIncrementAction(
+  employeeId: string,
+  previousSalary: number | null | undefined,
+  newSalary: number,
+  incrementPercentage: number | null | undefined,
+  effectiveDate: string | null | undefined,
+  newPackage: number
+) {
   try {
     const user = await getCurrentUser()
     if (!user || (user.role !== 'HR' && user.role !== 'Admin')) {
@@ -14,33 +21,64 @@ export async function addSalaryIncrementAction(employeeId: string, previousSalar
     }
 
     const supabase = await createClient()
-    
+
+    // 1. Fetch employee to check employment type (e.g. Intern)
+    const empQuery = supabase
+      .from('employee_onboarding')
+      .select('id, employment_type, stipend, salary, basic_salary')
+      .eq('id', employeeId)
+    const { data: emp } = typeof empQuery.maybeSingle === 'function' 
+      ? await empQuery.maybeSingle() 
+      : await empQuery.single()
+
+    const isIntern = emp?.employment_type?.toLowerCase() === 'intern'
+
+    // 2. Safe calculation for increment_percentage and previous_salary
+    const safePrevSalary = Number(previousSalary ?? 0)
+    const safeNewSalary = Number(newSalary)
+    const computedPercentage = incrementPercentage !== null && incrementPercentage !== undefined
+      ? Number(incrementPercentage)
+      : calculateIncrementPercentage(safePrevSalary, safeNewSalary)
+
+    const safePercentage = Number.isFinite(computedPercentage) ? computedPercentage : 0
+
     const { error: insertError } = await supabase
       .from('salary_history')
       .insert({
         employee_id: employeeId,
-        previous_salary: previousSalary,
-        new_salary: newSalary,
-        increment_percentage: incrementPercentage,
+        previous_salary: safePrevSalary,
+        new_salary: safeNewSalary,
+        increment_percentage: safePercentage,
         effective_date: effectiveDate || new Date().toISOString().split('T')[0]
       })
 
     if (insertError) throw insertError
 
+    // 3. Prepare update payload: for interns, keep stipend in sync as well
+    const updatePayload: Record<string, any> = {
+      salary: newPackage,
+      basic_salary: safeNewSalary,
+    }
+    if (isIntern) {
+      updatePayload.stipend = safeNewSalary
+    }
+
     const { error: updateError } = await supabase
       .from('employee_onboarding')
-      .update({ 
-        salary: newPackage,
-        basic_salary: calculateMonthlyBasicSalary(newPackage)
-      })
+      .update(updatePayload)
       .eq('id', employeeId)
 
     if (updateError) throw updateError
 
     revalidatePath('/employees')
+    revalidatePath(`/employees/${employeeId}`)
     revalidatePath('/hr/onboarding')
     revalidatePath('/payroll')
-    return { success: true }
+    return {
+      success: true,
+      newSalary: safeNewSalary,
+      incrementPercentage: safePercentage
+    }
   } catch (error: any) {
     return { success: false, error: error.message }
   }
@@ -54,15 +92,33 @@ export async function getSalaryHistoryAction(employeeId: string) {
     }
 
     const supabase = await createClient()
-    const { data, error } = await supabase
+    const historyRes = await supabase
       .from('salary_history')
       .select('*')
       .eq('employee_id', employeeId)
       .order('effective_date', { ascending: false })
       .order('created_at', { ascending: false })
-      
-    if (error) throw error
-    return { success: true, data }
+
+    if (historyRes.error) throw historyRes.error
+
+    const empQuery = supabase
+      .from('employee_onboarding')
+      .select('*')
+      .eq('id', employeeId)
+    const empRes = typeof empQuery.maybeSingle === 'function'
+      ? await empQuery.maybeSingle()
+      : await empQuery.single()
+
+    const history = historyRes.data || []
+    const emp = empRes?.data || null
+    const currentSalary = resolveCurrentSalary(emp, history)
+
+    return {
+      success: true,
+      data: history,
+      currentSalary,
+      employee: emp
+    }
   } catch (error: any) {
     return { success: false, error: error.message }
   }
