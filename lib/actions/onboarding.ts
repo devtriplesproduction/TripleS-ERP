@@ -7,7 +7,6 @@ import { redirect } from 'next/navigation'
 import { guardServerAction } from '@/lib/auth'
 import { calculateMonthlyBasicSalary } from '@/lib/utils/salary'
 import { onboardSchema, validatePhone } from '@/lib/validations/onboard'
-import { extractWorkLocation } from '@/lib/utils/work-location'
 
 const DEFAULT_TASKS = [
   { task_name: 'Collect Identity Documents', is_required: true },
@@ -17,7 +16,7 @@ const DEFAULT_TASKS = [
   { task_name: 'Office Tour & Introduction', is_required: false },
 ]
 
-export async function getEmployees(columns = 'id, first_name, last_name, email, phone, job_title, department, designation, division, joining_date, status, employee_id_number, employment_type, employment_status, probation_end_date, salary, stipend, profile_photo, created_at, is_hod, notes'): Promise<Employee[]> {
+export async function getEmployees(columns = 'id, first_name, last_name, email, phone, job_title, department, designation, division, joining_date, status, employee_id_number, employment_type, employment_status, probation_end_date, salary, stipend, profile_photo, created_at, is_hod'): Promise<Employee[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('employee_onboarding')
@@ -39,8 +38,7 @@ export async function getEmployees(columns = 'id, first_name, last_name, email, 
 
   const employees = (data || []).map((emp: any) => ({
     ...emp,
-    is_hod: Boolean(emp.is_hod || (emp.employee_id_number && hodEmpIdSet.has(emp.employee_id_number))),
-    work_location: extractWorkLocation(emp),
+    is_hod: Boolean(emp.is_hod || (emp.employee_id_number && hodEmpIdSet.has(emp.employee_id_number)))
   })) as Employee[]
 
   return employees
@@ -64,10 +62,6 @@ export async function getEmployeeById(id: string): Promise<{ employee: Employee 
     if (profile?.is_hod) {
       employee.is_hod = true
     }
-  }
-
-  if (employee) {
-    employee.work_location = extractWorkLocation(employee)
   }
 
   return {
@@ -155,117 +149,8 @@ export async function updateEmployee(id: string, formData: FormData) {
 export async function updateEmployeeData(id: string, data: Partial<Employee>) {
   await guardServerAction(['HR', 'Admin'])
   const supabase = await createClient()
-  const { createAdminClient } = await import('@/lib/supabase/server')
-  const adminClient = await createAdminClient()
-
-  // 1. Fetch current employee
-  const { data: currentEmployee, error: fetchError } = await adminClient
-    .from('employee_onboarding')
-    .select('*')
-    .eq('id', id)
-    .single()
-
-  if (fetchError || !currentEmployee) {
-    throw new Error('Employee not found')
-  }
-
-  const originalEmployeeIdNumber = currentEmployee.employee_id_number
-
-  // 2. Prepare payload
-  const updatePayload: any = { ...data }
-
-  // Recalculate basic salary if salary is modified
-  if (updatePayload.salary !== undefined) {
-    if (updatePayload.salary) {
-      updatePayload.basic_salary = calculateMonthlyBasicSalary(Number(updatePayload.salary))
-    } else {
-      updatePayload.basic_salary = null
-    }
-  }
-
-  // Ensure compensation fields align with employment type
-  if (updatePayload.employment_type !== undefined) {
-    if (updatePayload.employment_type === 'Intern') {
-      updatePayload.salary = null
-      updatePayload.basic_salary = null
-    } else {
-      updatePayload.stipend = null
-    }
-  }
-
-  // Handle work_location gracefully with database fallback
-  let workLocationValue: string | null = null
-  if (updatePayload.work_location !== undefined) {
-    workLocationValue = updatePayload.work_location
-  }
-
-  let directError = false
-  try {
-    const { error } = await supabase.from('employee_onboarding').update(updatePayload).eq('id', id)
-    if (error) {
-      if (error.code === '42703' || error.message?.includes('work_location')) {
-        directError = true
-      } else {
-        throw new Error(error.message)
-      }
-    }
-  } catch (err: any) {
-    if (err.message?.includes('work_location')) {
-      directError = true
-    } else {
-      throw err
-    }
-  }
-
-  if (directError) {
-    delete updatePayload.work_location
-    let existingNotes = currentEmployee.notes || ''
-    if (workLocationValue) {
-      existingNotes = existingNotes.replace(/\[WORK_LOCATION:\s*[^\]]+\]\n?/gi, '').trim()
-      const locTag = `[WORK_LOCATION: ${workLocationValue}]`
-      existingNotes = existingNotes ? `${existingNotes}\n${locTag}` : locTag
-      updatePayload.notes = existingNotes
-    }
-
-    const { error: retryError } = await supabase.from('employee_onboarding').update(updatePayload).eq('id', id)
-    if (retryError) throw new Error(retryError.message)
-  }
-
-  // 3. Keep profiles in sync if organizational fields change
-  try {
-    const profileUpdates: any = {}
-    if (data.employee_id_number) profileUpdates.employee_id = data.employee_id_number
-    if (data.department) profileUpdates.department = data.department
-    if (data.designation) profileUpdates.designation = data.designation
-    if (data.first_name) profileUpdates.first_name = data.first_name
-    if (data.last_name) profileUpdates.last_name = data.last_name
-
-    if (Object.keys(profileUpdates).length > 0 && originalEmployeeIdNumber) {
-      await (adminClient as any)
-        .from('profiles')
-        .update(profileUpdates)
-        .eq('employee_id', originalEmployeeIdNumber)
-    }
-  } catch (syncErr) {
-    console.warn('Profile sync warning:', syncErr)
-  }
-
-  // 4. Sync email in auth.users if changed and auth user exists
-  if (data.email && data.email !== currentEmployee.email) {
-    try {
-      const { data: usersData } = await adminClient.auth.admin.listUsers()
-      const authUser = usersData?.users?.find(u =>
-        u.email === currentEmployee.email ||
-        (currentEmployee.employee_id_number && u.user_metadata?.employee_id === currentEmployee.employee_id_number)
-      )
-      if (authUser) {
-        await adminClient.auth.admin.updateUserById(authUser.id, { email: data.email })
-      }
-    } catch (authErr) {
-      console.warn('Auth user email sync warning:', authErr)
-    }
-  }
-
+  const { error } = await supabase.from('employee_onboarding').update(data).eq('id', id)
+  if (error) throw new Error(error.message)
   revalidatePath(`/employees/${id}`)
   revalidatePath('/employees')
   revalidatePath(`/hr/onboarding/${id}`)

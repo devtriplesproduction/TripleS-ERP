@@ -14,7 +14,7 @@ export default async function EmployeeDetailsPage({
 }: {
   params: Promise<{ id: string }>
 }) {
-  const currentUser = await requireRole('/employees')
+  await requireRole('/employees')
   const { id } = await params
   const { employee } = await getEmployeeById(id)
 
@@ -24,7 +24,7 @@ export default async function EmployeeDetailsPage({
 
   return (
     <div className="w-full max-w-7xl mx-auto space-y-6 min-w-0 overflow-hidden">
-      <EmployeeDetailsClient employee={employee} currentUserRole={currentUser.role} />
+      <EmployeeDetailsClient employee={employee} />
     </div>
   )
 }

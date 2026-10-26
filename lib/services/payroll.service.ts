@@ -191,18 +191,21 @@ export async function calculateMonthlyPayroll(
     }
   });
 
-  // 8. Calculate standard working days for the month (Mon–Sat, excluding Sundays)
-  let standardWorkingDays = 0;
+  // 8. Standard payroll rule: 26 working days * 8 hours = 208 standard monthly working hours
+  const STANDARD_WORKING_DAYS = 26;
+  const standardHours = 208; // Fixed rule: 26 days * 8 hours = 208 standard hours
+
+  // Calendar working days for calendar proration (Mon–Sat, excluding Sundays)
+  let calendarWorkingDays = 0;
   for (let d = 1; d <= lastDay; d++) {
     const dStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
     if (isWorkingDay(dStr)) {
-      standardWorkingDays++;
+      calendarWorkingDays++;
     }
   }
 
-  // Payable Days = Normal Working Days + Paid Holidays
-  const payableDaysInMonth = standardWorkingDays + paidHolidayDates.size;
-  const standardHours = standardWorkingDays * 8;
+  // Payable Days = Calendar Working Days + Paid Holidays
+  const payableDaysInMonth = calendarWorkingDays + paidHolidayDates.size;
 
   // 9. Batch check existing Comp-Off credits for all EODs to avoid repeated individual queries
   const allEodIds = eods.map(e => e.id);
