@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache'
 import { calculateMonthlyPayroll } from '@/lib/services/payroll.service'
 import { getCurrentUser } from '@/lib/auth'
 import { calculateMonthlyBasicSalary, calculateIncrementPercentage, resolveCurrentSalary } from '@/lib/utils/salary'
+import type { PayrollDeduction, PayrollDeductionActionResponse } from '@/types/payroll'
 
 function safeRevalidatePath(pathUrl: string) {
   try {
@@ -165,7 +166,7 @@ export async function addPayrollDeductionAction(input: {
   amount: number
   reason: string
   notes?: string
-}) {
+}): Promise<PayrollDeductionActionResponse<PayrollDeduction>> {
   try {
     const user = await getCurrentUser()
     if (!user || (user.role !== 'HR' && user.role !== 'Admin')) {
@@ -187,7 +188,7 @@ export async function addPayrollDeductionAction(input: {
   }
 }
 
-export async function cancelPayrollDeductionAction(deductionId: string) {
+export async function cancelPayrollDeductionAction(deductionId: string): Promise<PayrollDeductionActionResponse<PayrollDeduction>> {
   try {
     const user = await getCurrentUser()
     if (!user || (user.role !== 'HR' && user.role !== 'Admin')) {
@@ -209,7 +210,7 @@ export async function cancelPayrollDeductionAction(deductionId: string) {
   }
 }
 
-export async function getPayrollDeductionsAction(year: number, month: number, employeeId?: string) {
+export async function getPayrollDeductionsAction(year: number, month: number, employeeId?: string): Promise<PayrollDeductionActionResponse<PayrollDeduction[]>> {
   try {
     const user = await getCurrentUser()
     if (!user || (user.role !== 'HR' && user.role !== 'Admin')) {
