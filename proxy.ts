@@ -47,6 +47,18 @@ export async function proxy(request: NextRequest) {
     }
   )
 
+  // Server Actions handling:
+  // If request is a Server Action (contains 'next-action' header), NEVER issue NextResponse.redirect().
+  // Next.js Server Actions communicate using Flight RSC protocol over POST requests.
+  // Returning an HTTP redirect (307/308) or HTML from middleware causes the client router
+  // to fail with: "An unexpected response was received from the server."
+  // All Server Actions enforce auth and authorization internally via getCurrentUser/requireAuth/requireRole.
+  const isServerAction = request.headers.has('next-action')
+  if (isServerAction) {
+    await supabase.auth.getUser()
+    return response
+  }
+
   const { data: { user } } = await supabase.auth.getUser()
 
   // Not authenticated → redirect to login

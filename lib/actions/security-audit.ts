@@ -9,7 +9,13 @@ import {
   updateSessionStatus,
   logSecurityEvent
 } from '@/lib/utils/audit-logger'
-import { getClientIpDetails, extractClientIp, extractApproxLocation, classifyIp } from '@/lib/utils/device-parser'
+import {
+  getClientIpDetails,
+  resolveClientMetadata,
+  extractClientIp,
+  extractApproxLocation,
+  classifyIp
+} from '@/lib/utils/device-parser'
 import { revalidatePath } from 'next/cache'
 
 export interface AuditLogFilter {
@@ -138,12 +144,6 @@ export async function getEmployeeAuditLogs(
 
   let allRecords = Array.from(recordMap.values())
 
-  // If no records exist yet for this employee, provide initial baseline demo security events
-  // so the user can immediately experience search, date filter, status filter, and pagination
-  if (allRecords.length === 0 && empOnboarding) {
-    allRecords = generateBaselineAuditLogs(empOnboarding, targetAuthUserId)
-  }
-
   // Ensure ip_classification is reliably populated on all records
   allRecords = allRecords.map(r => ({
     ...r,
@@ -246,7 +246,7 @@ export async function revokeSessionAction(
 
   try {
     const headerStore = await headers()
-    const { ip, sourceHeader, classification, location } = getClientIpDetails(headerStore)
+    const { ip, sourceHeader, classification, location } = await resolveClientMetadata(headerStore)
     const userAgent = headerStore.get('user-agent') || ''
 
     // Update session status in audit records
@@ -281,155 +281,3 @@ export async function revokeSessionAction(
   }
 }
 
-/**
- * Seed initial baseline audit records for an employee if brand new,
- * ensuring high fidelity demonstration matching real authentication events.
- */
-function generateBaselineAuditLogs(emp: any, authUserId: string | null): SecurityAuditRecord[] {
-  const empName = `${emp.first_name || ''} ${emp.last_name || ''}`.trim() || 'Employee'
-  const empNum = emp.employee_id_number || 'N/A'
-
-  const now = new Date()
-  const mkIso = (offsetHours: number) => new Date(now.getTime() - offsetHours * 3600 * 1000).toISOString()
-
-  return [
-    {
-      id: crypto.randomUUID(),
-      user_id: authUserId,
-      employee_id: emp.id,
-      employee_id_number: empNum,
-      employee_name: empName,
-      event_type: 'login_success',
-      status: 'Success',
-      auth_method: 'Password',
-      ip_address: '157.34.120.44',
-      ip_classification: 'Public IP',
-      location: 'Mumbai, India (Approximate)',
-      user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/129.0.0.0 Safari/537.36',
-      browser: 'Chrome 129',
-      os: 'Windows 11 / 10',
-      device: 'Desktop',
-      session_id: 'sess_9f82a17c',
-      session_status: 'Active',
-      is_suspicious: false,
-      flag_reason: null,
-      metadata: { role: 'Employee', client: 'Web App' },
-      created_at: mkIso(1.5),
-    },
-    {
-      id: crypto.randomUUID(),
-      user_id: authUserId,
-      employee_id: emp.id,
-      employee_id_number: empNum,
-      employee_name: empName,
-      event_type: 'login_success',
-      status: 'Success',
-      auth_method: 'Password',
-      ip_address: '157.34.120.44',
-      ip_classification: 'Public IP',
-      location: 'Mumbai, India (Approximate)',
-      user_agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_6 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148 Safari/604.1',
-      browser: 'Safari 17',
-      os: 'iOS',
-      device: 'Mobile',
-      session_id: 'sess_4b71c89e',
-      session_status: 'Active',
-      is_suspicious: true,
-      flag_reason: 'New Device',
-      metadata: { role: 'Employee', client: 'Mobile Safari' },
-      created_at: mkIso(18),
-    },
-    {
-      id: crypto.randomUUID(),
-      user_id: authUserId,
-      employee_id: emp.id,
-      employee_id_number: empNum,
-      employee_name: empName,
-      event_type: 'login_failed',
-      status: 'Failed',
-      auth_method: 'Password',
-      ip_address: '49.36.172.90',
-      ip_classification: 'Public IP',
-      location: 'Pune, India (Approximate)',
-      user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/128.0.0.0 Safari/537.36',
-      browser: 'Chrome 128',
-      os: 'Windows 11 / 10',
-      device: 'Desktop',
-      session_id: null,
-      session_status: 'Expired',
-      is_suspicious: true,
-      flag_reason: 'Multiple Failed Attempts',
-      metadata: { failure_reason: 'Invalid credentials provided', attempts_count: 3 },
-      created_at: mkIso(42),
-    },
-    {
-      id: crypto.randomUUID(),
-      user_id: authUserId,
-      employee_id: emp.id,
-      employee_id_number: empNum,
-      employee_name: empName,
-      event_type: 'login_success',
-      status: 'Success',
-      auth_method: 'Password',
-      ip_address: '157.34.120.44',
-      ip_classification: 'Public IP',
-      location: 'Mumbai, India (Approximate)',
-      user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/129.0.0.0 Safari/537.36',
-      browser: 'Chrome 129',
-      os: 'Windows 11 / 10',
-      device: 'Desktop',
-      session_id: 'sess_1a2b3c4d',
-      session_status: 'Logged Out',
-      is_suspicious: false,
-      flag_reason: null,
-      metadata: { role: 'Employee', client: 'Web App' },
-      created_at: mkIso(72),
-    },
-    {
-      id: crypto.randomUUID(),
-      user_id: authUserId,
-      employee_id: emp.id,
-      employee_id_number: empNum,
-      employee_name: empName,
-      event_type: 'logout',
-      status: 'Success',
-      auth_method: 'Session',
-      ip_address: '157.34.120.44',
-      ip_classification: 'Public IP',
-      location: 'Mumbai, India (Approximate)',
-      user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/129.0.0.0 Safari/537.36',
-      browser: 'Chrome 129',
-      os: 'Windows 11 / 10',
-      device: 'Desktop',
-      session_id: 'sess_1a2b3c4d',
-      session_status: 'Logged Out',
-      is_suspicious: false,
-      flag_reason: null,
-      metadata: { clean_signout: true },
-      created_at: mkIso(64),
-    },
-    {
-      id: crypto.randomUUID(),
-      user_id: authUserId,
-      employee_id: emp.id,
-      employee_id_number: empNum,
-      employee_name: empName,
-      event_type: 'password_change',
-      status: 'Success',
-      auth_method: 'Admin Action',
-      ip_address: '127.0.0.1',
-      ip_classification: 'Localhost',
-      location: 'Localhost (Development Environment)',
-      user_agent: 'Internal Server Action',
-      browser: 'Admin Console',
-      os: 'Server',
-      device: 'Desktop',
-      session_id: null,
-      session_status: 'Expired',
-      is_suspicious: false,
-      flag_reason: null,
-      metadata: { actor: 'admin@triples.com', note: 'Administrative credential update' },
-      created_at: mkIso(120),
-    },
-  ]
-}

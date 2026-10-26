@@ -48,16 +48,16 @@ This document defines the project coding standards for ConstroTrait.
 
 Use the existing ConstroTrait design system via the project's configured Tailwind CSS setup.
 
-- - **Primary**: `#FFFFFF`
-- **Accent**: `#FFFFFF`
-- **Background**: `#050505`
-- **Surface**: `#0F0F10`
-- **Surface Elevated**: `#151516`
-- **Border**: `#2A2A2A`
+- **Primary**: `#FFFFFF`
+- **Accent**: `#262931`
+- **Background**: `#111215`
+- **Surface**: `#181A20`
+- **Surface Elevated**: `#22252C`
+- **Border**: `#2C2F36`
 - **Foreground**: `#FFFFFF`
 - **Muted Foreground**: `#A1A1AA`
-- **Muted Background**: `#18181B`
-- **Input Background**: `#0B0B0C`
+- **Muted Background**: `#1F2228`
+- **Input Background**: `#14161A`
 - **Font**: `Inter`
 
 Do not introduce another design system or component library without explicit architectural necessity.

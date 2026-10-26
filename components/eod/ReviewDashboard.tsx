@@ -6,13 +6,12 @@ import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/Dropdown';
 import {
   Search,
-  SlidersHorizontal,
   CheckCircle2,
   Clock,
-  XCircle,
   AlertCircle,
   FileSearch,
   FileText,
+  ClipboardList,
   Calendar,
   Loader2,
   BarChart2,
@@ -33,10 +32,15 @@ export function ReviewDashboard({
   initialEods,
   employees,
   currentUserId,
-  showHeader = false,
+  showHeader = true,
   todayReportsCount: initialTodayReportsCount,
   branchSelector,
   reviewEodButton,
+  tabs,
+  title = "Review EOD",
+  subtitle = "Review employee and HR end-of-day reports.",
+  icon,
+  showTodayKpi = true,
 }: {
   initialEods: EnrichedEOD[];
   employees: Employee[];
@@ -45,6 +49,11 @@ export function ReviewDashboard({
   todayReportsCount?: number;
   branchSelector?: React.ReactNode;
   reviewEodButton?: React.ReactNode;
+  tabs?: React.ReactNode;
+  title?: string;
+  subtitle?: string;
+  icon?: any;
+  showTodayKpi?: boolean;
 }) {
   const [eods, setEods] = useState<EnrichedEOD[]>(initialEods);
   useEffect(() => { setEods(initialEods); }, [initialEods]);
@@ -237,210 +246,139 @@ export function ReviewDashboard({
       ? initialTodayReportsCount
       : eods.filter((e) => e.report_date === todayStr).length;
 
-  const filterInputStyles = "!h-11 filter-control w-full !bg-card !border !border-border !rounded-xl !text-sm transition-all focus:!ring-2 focus:!ring-orange-500/20 focus:!border-orange-400 !text-foreground !shadow-sm";
-
   return (
     <div className="space-y-6 w-full">
       {/* Top Header matching reference image */}
       {showHeader && (
         <PageHeader
-          title="Review EOD"
-          subtitle="Review employee and HR end-of-day reports."
-          icon={FileText}
+          title={title}
+          subtitle={subtitle}
+          icon={icon || (typeof title === 'string' && title.toLowerCase().includes('report') ? ClipboardList : FileText)}
+          className="gap-y-4 xl:flex-nowrap"
           actions={
-            <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap justify-start sm:justify-end shrink-0">
-              {(reviewEodButton || branchSelector) && (
-                <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-                  {reviewEodButton}
-                  {branchSelector}
-                </div>
-              )}
-              <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap shrink-0">
-                {/* Reports */}
-                <div className="w-[130px] sm:w-[136px] h-[60px] rounded-xl border border-border/80 bg-card/60 px-3 py-2 flex items-center shrink-0 shadow-xs">
-                  <div className="w-8 h-8 rounded-lg bg-muted/50 border border-border/80 flex items-center justify-center shrink-0 mr-2.5">
-                    <FileText className="w-4 h-4 text-foreground/80" />
-                  </div>
-                  <div className="min-w-0 flex flex-col justify-center">
-                    <span className="text-[11px] font-medium text-muted-foreground leading-none truncate">
-                      Reports
-                    </span>
-                    <span className="text-lg font-bold text-foreground leading-tight mt-1">
-                      {totalReports}
-                    </span>
-                  </div>
-                </div>
+            <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap sm:flex-nowrap justify-end">
+              {tabs && <div className="shrink-0">{tabs}</div>}
 
-                {/* Approved */}
-                <div className="w-[130px] sm:w-[136px] h-[60px] rounded-xl border border-emerald-500/25 bg-emerald-950/20 px-3 py-2 flex items-center shrink-0 shadow-xs">
-                  <div className="w-8 h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0 mr-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                  </div>
-                  <div className="min-w-0 flex flex-col justify-center">
-                    <span className="text-[11px] font-medium text-neutral-300 leading-none truncate">
-                      Approved
-                    </span>
-                    <span className="text-lg font-bold text-foreground leading-tight mt-1">
-                      {approved}
-                    </span>
-                  </div>
+              {/* Reports */}
+              <div className="w-[110px] sm:w-[118px] xl:w-[126px] h-[46px] sm:h-[48px] rounded-xl border border-border/80 bg-card/60 px-2.5 sm:px-3 py-1 sm:py-1.5 flex items-center shrink-0 shadow-xs">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-muted/50 border border-border/80 flex items-center justify-center shrink-0 mr-2 sm:mr-2.5">
+                  <FileText className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground/80" />
                 </div>
-
-                {/* Pending */}
-                <div className="w-[130px] sm:w-[136px] h-[60px] rounded-xl border border-amber-500/25 bg-amber-950/20 px-3 py-2 flex items-center shrink-0 shadow-xs">
-                  <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0 mr-2.5">
-                    <Clock className="w-4 h-4 text-amber-400" />
-                  </div>
-                  <div className="min-w-0 flex flex-col justify-center">
-                    <span className="text-[11px] font-medium text-neutral-300 leading-none truncate">
-                      Pending
-                    </span>
-                    <span className="text-lg font-bold text-foreground leading-tight mt-1">
-                      {pending}
-                    </span>
-                  </div>
+                <div className="min-w-0 flex flex-col justify-center">
+                  <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground leading-none truncate">
+                    Reports
+                  </span>
+                  <span className="text-base sm:text-lg font-bold text-foreground leading-tight mt-0.5 sm:mt-1">
+                    {totalReports}
+                  </span>
                 </div>
+              </div>
 
-                {/* Today */}
-                <div className="w-[130px] sm:w-[136px] h-[60px] rounded-xl border border-border/80 bg-card/60 px-3 py-2 flex items-center shrink-0 shadow-xs">
-                  <div className="w-8 h-8 rounded-lg bg-muted/50 border border-border/80 flex items-center justify-center shrink-0 mr-2.5">
-                    <BarChart2 className="w-4 h-4 text-foreground/80" />
+              {/* Approved */}
+              <div className="w-[110px] sm:w-[118px] xl:w-[126px] h-[46px] sm:h-[48px] rounded-xl border border-emerald-500/25 bg-emerald-950/20 px-2.5 sm:px-3 py-1 sm:py-1.5 flex items-center shrink-0 shadow-xs">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0 mr-2 sm:mr-2.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+                </div>
+                <div className="min-w-0 flex flex-col justify-center">
+                  <span className="text-[10px] sm:text-[11px] font-medium text-neutral-300 leading-none truncate">
+                    Approved
+                  </span>
+                  <span className="text-base sm:text-lg font-bold text-foreground leading-tight mt-0.5 sm:mt-1">
+                    {approved}
+                  </span>
+                </div>
+              </div>
+
+              {/* Pending */}
+              <div className="w-[110px] sm:w-[118px] xl:w-[126px] h-[46px] sm:h-[48px] rounded-xl border border-amber-500/25 bg-amber-950/20 px-2.5 sm:px-3 py-1 sm:py-1.5 flex items-center shrink-0 shadow-xs">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0 mr-2 sm:mr-2.5">
+                  <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+                </div>
+                <div className="min-w-0 flex flex-col justify-center">
+                  <span className="text-[10px] sm:text-[11px] font-medium text-neutral-300 leading-none truncate">
+                    Pending
+                  </span>
+                  <span className="text-base sm:text-lg font-bold text-foreground leading-tight mt-0.5 sm:mt-1">
+                    {pending}
+                  </span>
+                </div>
+              </div>
+
+              {/* Today */}
+              {showTodayKpi && (
+                <div className="w-[110px] sm:w-[118px] xl:w-[126px] h-[46px] sm:h-[48px] rounded-xl border border-border/80 bg-card/60 px-2.5 sm:px-3 py-1 sm:py-1.5 flex items-center shrink-0 shadow-xs">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-muted/50 border border-border/80 flex items-center justify-center shrink-0 mr-2 sm:mr-2.5">
+                    <BarChart2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-foreground/80" />
                   </div>
                   <div className="min-w-0 flex flex-col justify-center">
-                    <span className="text-[11px] font-medium text-muted-foreground leading-none truncate">
+                    <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground leading-none truncate">
                       Today
                     </span>
-                    <span className="text-lg font-bold text-foreground leading-tight mt-1">
+                    <span className="text-base sm:text-lg font-bold text-foreground leading-tight mt-0.5 sm:mt-1">
                       {reportsToday}
                     </span>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           }
         />
       )}
 
-      {/* When showHeader is true: Filters row directly below header without surrounding grey panel */}
-      {showHeader ? (
-        <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
-          {/* Employee search */}
-          <div className="relative flex-1 w-full min-w-0">
-            <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-            <Input
-              type="text"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search by employee name, department, or ID..."
-              className="!h-11 w-full !bg-muted/40 dark:!bg-[#141416] hover:!bg-muted/60 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border dark:hover:!border-border focus-visible:!border-neutral-500 !rounded-xl !pl-10 !pr-4 !text-sm !text-foreground placeholder:!text-muted-foreground !shadow-none transition-colors"
-            />
-          </div>
-
-          {/* All Employees dropdown */}
-          <div className="w-full sm:w-[190px] lg:w-[210px] shrink-0">
-            <Dropdown
-              className="!space-y-0 !w-full"
-              buttonClassName="!h-11 !w-full !rounded-xl !bg-muted/40 dark:!bg-[#141416] hover:!bg-muted/60 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border focus:!border-neutral-500 !text-sm !text-foreground !px-3.5 !shadow-none !justify-between transition-colors"
-              value={selectedEmployee}
-              onChange={(val) => setSelectedEmployee(val as string)}
-              placeholder="All Employees"
-              options={[
-                { label: 'All Employees', value: 'all' },
-                ...employees
-                  .filter((emp) => emp.first_name?.toLowerCase() !== 'admin')
-                  .map((emp) => ({
-                    label: `${emp.first_name} ${emp.last_name || ''}`.trim(),
-                    value: emp.id,
-                  })),
-              ]}
-            />
-          </div>
-
-          {/* Start Date */}
-          <div className="w-full sm:w-[150px] lg:w-[165px] shrink-0">
-            <DatePicker
-              placeholder="Start Date"
-              value={fromDate}
-              onChange={(date) => setFromDate(date)}
-              className="!h-11 !w-full !rounded-xl !bg-muted/40 dark:!bg-[#141416] hover:!bg-muted/60 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border focus-visible:!border-neutral-500 !text-sm !text-foreground !px-3.5 !justify-between !flex !items-center !shadow-none transition-colors"
-            />
-          </div>
-
-          {/* End Date */}
-          <div className="w-full sm:w-[150px] lg:w-[165px] shrink-0">
-            <DatePicker
-              placeholder="End Date"
-              value={toDate}
-              onChange={(date) => setToDate(date)}
-              className="!h-11 !w-full !rounded-xl !bg-muted/40 dark:!bg-[#141416] hover:!bg-muted/60 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border focus-visible:!border-neutral-500 !text-sm !text-foreground !px-3.5 !justify-between !flex !items-center !shadow-none transition-colors"
-            />
-          </div>
+      {/* Modern Filter Row */}
+      <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
+        {/* Employee search */}
+        <div className="relative flex-1 w-full min-w-0">
+          <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          <Input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by employee name, department, or ID..."
+            className="!h-11 w-full !bg-muted/40 dark:!bg-[#141416] hover:!bg-muted/60 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border dark:hover:!border-border focus-visible:!border-neutral-500 !rounded-xl !pl-10 !pr-4 !text-sm !text-foreground placeholder:!text-muted-foreground !shadow-none transition-colors"
+          />
         </div>
-      ) : (
-        /* Fallback filter section for other pages */
-        <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm p-6">
-          <div className="flex items-center gap-2 mb-4 text-foreground">
-            <SlidersHorizontal className="w-5 h-5 text-foreground" />
-            <h3 className="font-semibold">Filter Reports</h3>
-          </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 items-end">
-            <div className="space-y-3">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Search</label>
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="text"
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  placeholder="Search..."
-                  className={cn(filterInputStyles, "!pl-9 !pr-4 !py-2")}
-                />
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Employee</label>
-              <Dropdown
-                className="!space-y-0"
-                buttonClassName={cn(filterInputStyles, "!px-3 !py-2")}
-                value={selectedEmployee}
-                onChange={val => setSelectedEmployee(val as string)}
-                placeholder="All Employees"
-                options={[
-                  { label: 'All Employees', value: 'all' },
-                  ...employees
-                    .filter(emp => emp.first_name?.toLowerCase() !== 'admin')
-                    .map(emp => ({
-                    label: emp.first_name + ' ' + (emp.last_name || ''),
-                    value: emp.id
-                  }))
-                ]}
-              />
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">From</label>
-              <DatePicker
-                placeholder="Start Date"
-                value={fromDate}
-                onChange={(date) => setFromDate(date)}
-                className={cn(filterInputStyles, "!px-3 !py-2 !justify-between !flex !items-center")}
-              />
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">To</label>
-              <DatePicker
-                placeholder="End Date"
-                value={toDate}
-                onChange={(date) => setToDate(date)}
-                className={cn(filterInputStyles, "!px-3 !py-2 !justify-between !flex !items-center")}
-              />
-            </div>
-          </div>
+        {/* All Employees dropdown */}
+        <div className="w-full sm:w-[190px] lg:w-[210px] shrink-0">
+          <Dropdown
+            className="!space-y-0 !w-full"
+            buttonClassName="!h-11 !w-full !rounded-xl !bg-muted/40 dark:!bg-[#141416] hover:!bg-muted/60 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border focus:!border-neutral-500 !text-sm !text-foreground !px-3.5 !shadow-none !justify-between transition-colors"
+            value={selectedEmployee}
+            onChange={(val) => setSelectedEmployee(val as string)}
+            placeholder="All Employees"
+            options={[
+              { label: 'All Employees', value: 'all' },
+              ...employees
+                .filter((emp) => emp.first_name?.toLowerCase() !== 'admin')
+                .map((emp) => ({
+                  label: `${emp.first_name} ${emp.last_name || ''}`.trim(),
+                  value: emp.id,
+                })),
+            ]}
+          />
         </div>
-      )}
+
+        {/* Start Date */}
+        <div className="w-full sm:w-[150px] lg:w-[165px] shrink-0">
+          <DatePicker
+            placeholder="Start Date"
+            value={fromDate}
+            onChange={(date) => setFromDate(date)}
+            className="!h-11 !w-full !rounded-xl !bg-muted/40 dark:!bg-[#141416] hover:!bg-muted/60 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border focus-visible:!border-neutral-500 !text-sm !text-foreground !px-3.5 !justify-between !flex !items-center !shadow-none transition-colors"
+          />
+        </div>
+
+        {/* End Date */}
+        <div className="w-full sm:w-[150px] lg:w-[165px] shrink-0">
+          <DatePicker
+            placeholder="End Date"
+            value={toDate}
+            onChange={(date) => setToDate(date)}
+            className="!h-11 !w-full !rounded-xl !bg-muted/40 dark:!bg-[#141416] hover:!bg-muted/60 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border focus-visible:!border-neutral-500 !text-sm !text-foreground !px-3.5 !justify-between !flex !items-center !shadow-none transition-colors"
+          />
+        </div>
+      </div>
 
       {/* Batch approve action if pending > 0 */}
       {pending > 0 && (
@@ -461,53 +399,6 @@ export function ReviewDashboard({
         </div>
       )}
 
-      {/* Fallback stats section for other pages when !showHeader */}
-      {!showHeader && (
-        <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm p-4 sm:p-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6">
-            <div className="flex items-center gap-3 sm:gap-4 p-2 rounded-xl bg-muted/20 sm:bg-transparent">
-              <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-muted flex items-center justify-center border border-border flex-shrink-0">
-                <FileText className="w-5 h-5 sm:w-6 sm:h-6 text-foreground" />
-              </div>
-              <div>
-                <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Reports</div>
-                <div className="text-xl sm:text-3xl font-bold text-foreground">{totalReports}</div>
-                <div className="text-[10px] sm:text-xs text-muted-foreground font-medium">Selected range</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 sm:gap-4 p-2 rounded-xl bg-emerald-500/5 sm:bg-transparent">
-              <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-emerald-500/10 flex items-center justify-center border border-emerald-100 dark:border-emerald-500/20 flex-shrink-0">
-                <CheckCircle2 className="w-5 h-5 sm:w-6 sm:h-6 text-emerald-500" />
-              </div>
-              <div>
-                <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Approved</div>
-                <div className="text-xl sm:text-3xl font-bold text-foreground">{approved}</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 sm:gap-4 p-2 rounded-xl bg-amber-500/5 sm:bg-transparent">
-              <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-amber-500/10 flex items-center justify-center border border-amber-100 dark:border-amber-500/20 flex-shrink-0">
-                <Clock className="w-5 h-5 sm:w-6 sm:h-6 text-amber-600" />
-              </div>
-              <div>
-                <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Pending</div>
-                <div className="text-xl sm:text-3xl font-bold text-foreground">{pending}</div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 sm:gap-4 p-2 rounded-xl bg-rose-500/5 sm:bg-transparent">
-              <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-rose-500/10 flex items-center justify-center border border-rose-100 dark:border-rose-500/20 flex-shrink-0">
-                <XCircle className="w-5 h-5 sm:w-6 sm:h-6 text-rose-600" />
-              </div>
-              <div>
-                <div className="text-[10px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider">Rejected</div>
-                <div className="text-xl sm:text-3xl font-bold text-foreground">{rejected}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Data Section */}
       <div className="flex flex-col gap-4 min-h-[300px]">

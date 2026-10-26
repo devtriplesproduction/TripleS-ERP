@@ -107,13 +107,16 @@ export function EodCard({
         </div>
 
         <div className="flex items-center gap-4 sm:gap-6 shrink-0 mt-3 sm:mt-0 ml-14 sm:ml-0">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-            <span>{taskCount} completed</span>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Clock className="w-4 h-4 text-muted-foreground" />
-            <span>{formatCanonicalDuration(Number(eod.office_hours))} logged</span>
+          <div className="flex items-center gap-3 sm:gap-4 shrink-0">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground w-[120px] sm:w-[125px] shrink-0" title={`${taskCount} completed`}>
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+              <span className="truncate">{taskCount} completed</span>
+            </div>
+            <div className="w-px h-4 bg-border shrink-0" aria-hidden="true" />
+            <div className="flex items-center gap-2 text-sm text-muted-foreground w-[125px] sm:w-[135px] shrink-0" title={`${formatCanonicalDuration(Number(eod.office_hours))} logged`}>
+              <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
+              <span className="truncate">{formatCanonicalDuration(Number(eod.office_hours))} logged</span>
+            </div>
           </div>
 
           <div className={`flex items-center gap-1.5 px-3 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border ${eod.status === 'Approved' ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' :

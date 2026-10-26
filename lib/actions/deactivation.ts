@@ -4,7 +4,7 @@ import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
 import { headers } from 'next/headers'
-import { getClientIpDetails } from '@/lib/utils/device-parser'
+import { getClientIpDetails, resolveClientMetadata } from '@/lib/utils/device-parser'
 import { logSecurityEvent } from '@/lib/utils/audit-logger'
 
 export interface DeactivationImpact {
@@ -475,14 +475,14 @@ export async function deactivateEmployee({ employeeId, reason }: DeactivateParam
     const targetName = `${employee.first_name || ''} ${employee.last_name || ''}`.trim()
     try {
       let ip: string | null = null
-      let location = 'Localhost (Development Environment)'
+      let location = 'Unknown'
       let userAgent = 'Internal Server Action'
       let sourceHeader = 'internal-action'
-      let classification: any = 'Localhost'
+      let classification: any = 'Unavailable'
 
       try {
         const headerStore = await headers()
-        const details = getClientIpDetails(headerStore)
+        const details = await resolveClientMetadata(headerStore)
         ip = details.ip
         location = details.location
         sourceHeader = details.sourceHeader
@@ -654,14 +654,14 @@ export async function reactivateEmployee({ employeeId, reason }: ReactivateParam
     const targetName = `${employee.first_name || ''} ${employee.last_name || ''}`.trim()
     try {
       let ip: string | null = null
-      let location = 'Localhost (Development Environment)'
+      let location = 'Unknown'
       let userAgent = 'Internal Server Action'
       let sourceHeader = 'internal-action'
-      let classification: any = 'Localhost'
+      let classification: any = 'Unavailable'
 
       try {
         const headerStore = await headers()
-        const details = getClientIpDetails(headerStore)
+        const details = await resolveClientMetadata(headerStore)
         ip = details.ip
         location = details.location
         sourceHeader = details.sourceHeader

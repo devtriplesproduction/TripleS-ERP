@@ -543,13 +543,13 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
                   <div>
                     <span className="text-[11px] text-muted-foreground block">Total Earned</span>
                     <span className="text-sm font-bold text-emerald-400 mt-0.5 block">
-                      +{formatHoursMinutes(detailData.balance.earnedHours)}
+                      {detailData.balance.earnedHours > 0 ? `+${formatHoursMinutes(detailData.balance.earnedHours)}` : "0h"}
                     </span>
                   </div>
                   <div>
                     <span className="text-[11px] text-muted-foreground block">Total Used</span>
                     <span className="text-sm font-bold text-rose-400 mt-0.5 block">
-                      -{formatHoursMinutes(detailData.balance.usedHours)}
+                      {detailData.balance.usedHours > 0 ? `-${formatHoursMinutes(detailData.balance.usedHours)}` : "0h"}
                     </span>
                   </div>
                   <div>

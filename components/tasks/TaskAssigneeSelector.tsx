@@ -162,7 +162,7 @@ export function TaskAssigneeSelector({
 
       <div
         className={cn(
-          'w-full rounded-xl border border-border/80 bg-input/40 flex flex-wrap items-center gap-1.5 transition-colors focus-within:border-foreground/50',
+          'w-full rounded-xl border border-border/80 bg-background flex flex-wrap items-center gap-1.5 transition-colors focus-within:border-foreground/50',
           compact ? 'min-h-[40px] p-1.5' : 'min-h-[50px] p-2 sm:p-2.5',
           disabled && 'opacity-60 cursor-not-allowed'
         )}
@@ -257,7 +257,7 @@ export function TaskAssigneeSelector({
                   placeholder={searchPlaceholder}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-8 h-8 text-xs bg-input/70 border-border rounded-lg"
+                  className="pl-8 h-8 text-xs bg-background border-border rounded-lg"
                   autoFocus
                 />
               </div>

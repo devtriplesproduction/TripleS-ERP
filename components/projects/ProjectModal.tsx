@@ -184,7 +184,7 @@ export function ProjectModal({
                 placeholder="e.g. ERP Redesign & Migration"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="bg-input border-border"
+                className="bg-background border-border"
                 required
               />
             </div>
@@ -200,7 +200,7 @@ export function ProjectModal({
                 value: c.id,
                 label: `${c.name} (${c.location})`,
               }))}
-              buttonClassName="bg-input border-border w-full"
+              buttonClassName="bg-background border-border w-full"
             />
           </div>
 
@@ -214,7 +214,7 @@ export function ProjectModal({
               placeholder="Primary milestone or deliverable objective"
               value={objective}
               onChange={(e) => setObjective(e.target.value)}
-              className="bg-input border-border"
+              className="bg-background border-border"
             />
           </div>
 
@@ -228,7 +228,7 @@ export function ProjectModal({
               placeholder="Scope, constraints, architecture notes..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full text-sm bg-input border border-border rounded-md p-2.5 outline-hidden focus:border-foreground/50 transition-colors"
+              className="w-full text-sm bg-background border border-border rounded-md p-2.5 outline-hidden focus:border-foreground/50 transition-colors"
             />
           </div>
 
@@ -243,7 +243,7 @@ export function ProjectModal({
                 value: st,
                 label: st.replace('_', ' '),
               }))}
-              buttonClassName="bg-input border-border w-full"
+              buttonClassName="bg-background border-border w-full"
             />
 
             <Dropdown
@@ -255,7 +255,7 @@ export function ProjectModal({
                 value: pr,
                 label: pr,
               }))}
-              buttonClassName="bg-input border-border w-full"
+              buttonClassName="bg-background border-border w-full"
             />
 
             <div className="space-y-1.5">
@@ -267,7 +267,7 @@ export function ProjectModal({
                 placeholder="e.g. Development, Content"
                 value={department}
                 onChange={(e) => setDepartment(e.target.value)}
-                className="bg-input border-border"
+                className="bg-background border-border"
               />
             </div>
           </div>
@@ -282,7 +282,7 @@ export function ProjectModal({
                 value={startDate}
                 onChange={setStartDate}
                 placeholder="Select start date"
-                className="h-10 text-xs sm:text-sm bg-input border-border"
+                className="h-10 text-xs sm:text-sm bg-background border-border"
               />
             </div>
 
@@ -294,7 +294,7 @@ export function ProjectModal({
                 value={deadline}
                 onChange={setDeadline}
                 placeholder="Select target deadline"
-                className="h-10 text-xs sm:text-sm bg-input border-border"
+                className="h-10 text-xs sm:text-sm bg-background border-border"
               />
             </div>
           </div>
@@ -310,7 +310,7 @@ export function ProjectModal({
               value: emp.id,
               label: `${emp.name}${emp.designation ? ` (${emp.designation})` : ''}`,
             }))}
-            buttonClassName="bg-input border-border w-full"
+            buttonClassName="bg-background border-border w-full"
           />
 
           {/* Project Members Multi-Select using reusable TaskAssigneeSelector */}

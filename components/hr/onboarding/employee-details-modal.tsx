@@ -13,7 +13,8 @@ import {
   Droplet, Heart, Map, Hash, Contact, ShieldAlert,
   Building2, CreditCard, Banknote, CalendarCheck2, Activity,
   ChevronLeft, ChevronRight, Zap, UserX, Code2, Globe, Trash2,
-  Clock, BarChart3, Bell, Calendar, UploadCloud
+  Clock, BarChart3, Bell, Calendar, UploadCloud,
+  Sparkles, AlertCircle
 } from 'lucide-react'
 import { Employee } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/client'
@@ -27,6 +28,14 @@ import { DocumentUploadSection } from '@/components/documents/DocumentUploadSect
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DEPARTMENTS, DIVISIONS, DESIGNATIONS } from '@/config/roles'
+import { DatePicker } from '@/components/ui/date-picker'
+import {
+  calculateProbationEndDate,
+  parseMonthsFromDuration,
+  getDurationForDates,
+  formatProbationDateDisplay,
+  getProbationStatus,
+} from '@/lib/utils/probation'
 
 import { SalaryAndHikeTab } from '@/components/hr/payroll/salary-and-hike-tab'
 import { HodAssignmentAction } from '@/components/hr/onboarding/hod-assignment-action'
@@ -47,10 +56,17 @@ export function EmployeeDetailsClient({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
   const [isUploadingDoc, setIsUploadingDoc] = useState(false)
+  const [documentsList, setDocumentsList] = useState<any[]>(
+    Array.isArray(employee.documents) ? employee.documents : []
+  )
   const [localPhotoUrl, setLocalPhotoUrl] = useState<string | null>(null)
   const [isHod, setIsHod] = useState<boolean>(Boolean(employee.is_hod))
   const [employmentStatus, setEmploymentStatus] = useState<string>(employee.employment_status || 'Active')
   const [role, setRole] = useState<string | null>(currentUserRole || null)
+
+  useEffect(() => {
+    setDocumentsList(Array.isArray(employee.documents) ? employee.documents : [])
+  }, [employee.documents])
 
   useEffect(() => {
     if (currentUserRole) {
@@ -398,8 +414,117 @@ export function EmployeeDetailsClient({
     }
   }
 
+  // --- Probation Period Management ---
+  const [isEditingProbation, setIsEditingProbation] = useState(false)
+  const [isSavingProbation, setIsSavingProbation] = useState(false)
+  const [probationForm, setProbationForm] = useState({
+    probation_period: employee.probation_period || '',
+    probation_end_date: employee.probation_end_date ? employee.probation_end_date.split('T')[0] : '',
+  })
+
+  useEffect(() => {
+    setProbationForm({
+      probation_period: employee.probation_period || '',
+      probation_end_date: employee.probation_end_date ? employee.probation_end_date.split('T')[0] : '',
+    })
+  }, [employee.probation_period, employee.probation_end_date])
+
+  const handleDurationChange = (val: string | null) => {
+    if (!val || val === 'none') {
+      setProbationForm({
+        probation_period: '',
+        probation_end_date: '',
+      })
+      return
+    }
+
+    if (val === 'custom') {
+      setProbationForm(prev => ({
+        ...prev,
+        probation_period: 'Custom',
+      }))
+      return
+    }
+
+    const months = parseMonthsFromDuration(val)
+    if (months) {
+      if (employee.joining_date) {
+        const calculatedEnd = calculateProbationEndDate(employee.joining_date, months)
+        setProbationForm({
+          probation_period: val,
+          probation_end_date: calculatedEnd || '',
+        })
+      } else {
+        // When joining date is missing, show clear empty state instead of inventing a date
+        setProbationForm(prev => ({
+          ...prev,
+          probation_period: val,
+          probation_end_date: '',
+        }))
+      }
+    }
+  }
+
+  const handleEndDateChange = (newDate: string) => {
+    if (!newDate) {
+      setProbationForm(prev => ({
+        ...prev,
+        probation_end_date: '',
+        probation_period: prev.probation_period === 'Custom' ? '' : prev.probation_period,
+      }))
+      return
+    }
+
+    const matchedDuration = getDurationForDates(employee.joining_date, newDate)
+    setProbationForm({
+      probation_end_date: newDate,
+      probation_period: matchedDuration !== 'none' ? matchedDuration : 'Custom',
+    })
+  }
+
+  const handleCancelProbation = () => {
+    setProbationForm({
+      probation_period: employee.probation_period || '',
+      probation_end_date: employee.probation_end_date ? employee.probation_end_date.split('T')[0] : '',
+    })
+    setIsEditingProbation(false)
+  }
+
+  const handleSaveProbation = async () => {
+    if (!isAdminOrHr) {
+      toast({
+        title: 'Unauthorized',
+        description: 'Only Admin and HR roles are permitted to update probation details.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    setIsSavingProbation(true)
+    try {
+      const dataToSave: Partial<Employee> = {
+        probation_period: probationForm.probation_period ? probationForm.probation_period.trim() : null,
+        probation_end_date: probationForm.probation_end_date ? probationForm.probation_end_date.trim() : null,
+        probation_start_date: employee.joining_date ? employee.joining_date.split('T')[0] : null,
+      }
+
+      await updateEmployeeData(employee.id, dataToSave)
+      setIsEditingProbation(false)
+      toast({ title: 'Success', description: 'Probation details updated successfully!' })
+      router.refresh()
+    } catch (e: any) {
+      toast({
+        title: 'Error',
+        description: e.message || 'Failed to update probation details',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSavingProbation(false)
+    }
+  }
+
   const uploadFiles = async (files: File[]) => {
-    if (!files || files.length === 0) return
+    if (!files || files.length === 0 || isUploadingDoc) return
 
     setIsUploadingDoc(true)
     try {
@@ -415,25 +540,35 @@ export function EmployeeDetailsClient({
         formData.append('file', file)
         const res = await uploadEmployeeFileAction(formData)
 
-        if (res.success && res.path) {
+        if (res && res.success && res.path) {
           const { data } = supabase.storage.from('employee-documents').getPublicUrl(res.path)
           newDocs.push({
+            id: crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
             name: file.name,
             url: data.publicUrl,
             size: file.size,
             type: file.type,
-            path: res.path
+            path: res.path,
+            created_at: new Date().toISOString()
           })
         } else {
-          throw new Error(res.error || `Failed to upload "${file.name}"`)
+          throw new Error(res?.error || `Failed to upload "${file.name}"`)
         }
       }
 
       if (newDocs.length > 0) {
-        const currentDocs = Array.isArray(employee.documents) ? employee.documents : []
+        const currentDocs = Array.isArray(documentsList) ? documentsList : []
         const updatedDocs = [...currentDocs, ...newDocs]
 
-        await updateEmployeeData(employee.id, { documents: updatedDocs })
+        // Immediate optimistic UI update
+        setDocumentsList(updatedDocs)
+
+        const updateRes = await updateEmployeeData(employee.id, { documents: updatedDocs })
+        if (updateRes && !updateRes.success) {
+          // Rollback on failure
+          setDocumentsList(currentDocs)
+          throw new Error((updateRes as any)?.error || 'Failed to update employee documents metadata')
+        }
 
         toast({
           title: newDocs.length > 1 ? `${newDocs.length} Documents Uploaded` : "Document Uploaded",
@@ -483,20 +618,36 @@ export function EmployeeDetailsClient({
   }
 
   const handleDeleteDocument = async (idx: number) => {
-    try {
-      const currentDocs = Array.isArray(employee.documents) ? [...employee.documents] : []
-      currentDocs.splice(idx, 1)
+    const currentDocs = Array.isArray(documentsList) ? [...documentsList] : []
+    const removedDoc = currentDocs[idx]
+    currentDocs.splice(idx, 1)
 
-      await updateEmployeeData(employee.id, { documents: currentDocs })
+    // Immediate optimistic UI update
+    setDocumentsList(currentDocs)
+
+    try {
+      const updateRes = await updateEmployeeData(employee.id, { documents: currentDocs })
+      if (updateRes && !updateRes.success) {
+        // Rollback
+        if (removedDoc) {
+          currentDocs.splice(idx, 0, removedDoc)
+          setDocumentsList([...currentDocs])
+        }
+        throw new Error((updateRes as any)?.error || 'Failed to delete document')
+      }
+
       toast({
         title: "Document Deleted",
         description: "The document has been deleted successfully.",
       })
       router.refresh()
     } catch (error: any) {
+      if (removedDoc) {
+        setDocumentsList([...currentDocs.slice(0, idx), removedDoc, ...currentDocs.slice(idx)])
+      }
       toast({
         title: "Delete Failed",
-        description: error.message,
+        description: error.message || 'Failed to delete document',
         variant: "destructive",
       })
     }
@@ -546,8 +697,9 @@ export function EmployeeDetailsClient({
     : null
 
   const profileCompletion = 100
-  const joinedDate = new Date(employee.joining_date)
-  const formattedJoined = joinedDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  const formattedJoined = employee.joining_date
+    ? formatProbationDateDisplay(employee.joining_date, '-')
+    : '-'
 
   // ec is now parsed at the top using initialEc, but we can reuse it here for any other purposes if needed, though it's already in personalForm.
 
@@ -1430,18 +1582,19 @@ export function EmployeeDetailsClient({
           <DocumentUploadSection
             title="Uploaded Documents"
             description="Files and documents related to the employee."
-            documents={(employee.documents || []).map((doc: any, idx: number) => ({
-              id: String(idx),
+            documents={(documentsList || []).map((doc: any, idx: number) => ({
+              id: doc.id || String(idx),
               name: typeof doc === 'string' ? doc : doc.name || 'Document',
               url: typeof doc === 'string' ? doc : doc.url,
               path: typeof doc === 'object' ? doc.path : undefined,
               size: typeof doc === 'object' ? doc.size : undefined,
               type: typeof doc === 'object' ? doc.type : undefined,
+              created_at: typeof doc === 'object' ? doc.created_at : undefined,
               raw: doc,
             }))}
             onUpload={uploadFiles}
             onView={(doc, idx) => {
-              const currentDocs = Array.isArray(employee.documents) ? employee.documents : []
+              const currentDocs = Array.isArray(documentsList) ? documentsList : []
               handleViewDocument(null, currentDocs[idx] || doc.raw || doc)
             }}
             onDelete={(_, idx) => handleDeleteDocument(idx)}
@@ -1482,19 +1635,181 @@ export function EmployeeDetailsClient({
             </div>
 
             <div className="bg-card/30 border border-border/30 rounded-2xl p-6">
-              <div className="font-semibold mb-6 flex items-center gap-2">
-                <CalendarDays className="w-5 h-5" />
-                Important Dates
+              <div className="flex items-center justify-between mb-6 gap-2">
+                <div className="font-semibold flex items-center gap-2 text-foreground">
+                  <CalendarDays className="w-5 h-5 text-indigo-400" />
+                  Important Dates
+                </div>
+                {isAdminOrHr && !isEditingProbation && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditingProbation(true)}
+                    className="h-8 px-3 rounded-xl border-border/60 hover:bg-muted/60 text-xs font-medium gap-1.5 cursor-pointer"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    Edit Details
+                  </Button>
+                )}
+                {isAdminOrHr && isEditingProbation && (
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancelProbation}
+                      disabled={isSavingProbation}
+                      className="h-8 px-3 rounded-full text-xs hover:bg-muted/50 cursor-pointer"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSaveProbation}
+                      disabled={isSavingProbation}
+                      className="h-8 px-3.5 rounded-full bg-foreground text-background hover:bg-foreground/90 text-xs font-medium cursor-pointer"
+                    >
+                      {isSavingProbation ? (
+                        <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                      )}
+                      Save Changes
+                    </Button>
+                  </div>
+                )}
               </div>
+
+              {isEditingProbation && !employee.joining_date && (
+                <div className="mb-4 flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-semibold">Date of Joining is missing</span>
+                    <p className="text-[11px] text-amber-400/80 mt-0.5">
+                      To auto-calculate the probation end date, please specify a joining date in the Professional tab. You can also manually select an end date below.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="space-y-3">
+                {/* Date of Joining */}
                 <div className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-card/60">
                   <div className="text-sm text-muted-foreground">Date of Joining</div>
-                  <div className="text-sm font-semibold">{formattedJoined}</div>
+                  <div className="text-sm font-semibold">
+                    {employee.joining_date ? (
+                      formattedJoined
+                    ) : (
+                      <span className="text-xs text-muted-foreground italic">Not set</span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-card/60">
-                  <div className="text-sm text-muted-foreground">Probation End Date</div>
-                  <div className="text-sm font-semibold">{employee.probation_end_date ? new Date(employee.probation_end_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-'}</div>
+
+                {/* Probation Duration */}
+                <div className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-card/60 gap-4">
+                  <div className="min-w-0">
+                    <div className="text-sm text-muted-foreground">Probation Duration</div>
+                    {isEditingProbation && (
+                      <div className="text-[11px] text-muted-foreground/70">e.g. 3, 6, or 12 months</div>
+                    )}
+                  </div>
+                  {isEditingProbation ? (
+                    <div className="shrink-0 w-44">
+                      <Select
+                        value={
+                          probationForm.probation_period
+                            ? ['1 Month', '2 Months', '3 Months', '6 Months', '9 Months', '12 Months'].includes(probationForm.probation_period)
+                              ? probationForm.probation_period
+                              : 'custom'
+                            : 'none'
+                        }
+                        onValueChange={handleDurationChange}
+                      >
+                        <SelectTrigger className="h-8 text-xs bg-background/50 border-border/60">
+                          <SelectValue placeholder="Select duration" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">None / No Probation</SelectItem>
+                          <SelectItem value="1 Month">1 Month</SelectItem>
+                          <SelectItem value="2 Months">2 Months</SelectItem>
+                          <SelectItem value="3 Months">3 Months</SelectItem>
+                          <SelectItem value="6 Months">6 Months</SelectItem>
+                          <SelectItem value="9 Months">9 Months</SelectItem>
+                          <SelectItem value="12 Months">12 Months (1 Year)</SelectItem>
+                          <SelectItem value="custom">Custom</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ) : (
+                    <div>
+                      {employee.probation_period ? (
+                        <Badge variant="outline" className="text-xs font-semibold bg-indigo-500/10 text-indigo-400 border-indigo-500/20">
+                          {employee.probation_period}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">Not set</span>
+                      )}
+                    </div>
+                  )}
                 </div>
+
+                {/* Probation End Date */}
+                <div className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-card/60 gap-4">
+                  <div className="min-w-0">
+                    <div className="text-sm text-muted-foreground">Probation End Date</div>
+                    {isEditingProbation && (
+                      <div className="text-[11px] text-muted-foreground/70">Pick or adjust date</div>
+                    )}
+                  </div>
+                  {isEditingProbation ? (
+                    <div className="shrink-0 w-48">
+                      <DatePicker
+                        value={probationForm.probation_end_date}
+                        onChange={handleEndDateChange}
+                        placeholder="Pick end date"
+                        className="h-8 text-xs bg-background/50 border-border/60"
+                        isClearable={true}
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      {employee.probation_end_date ? (
+                        <>
+                          <span className="text-sm font-semibold">
+                            {formatProbationDateDisplay(employee.probation_end_date)}
+                          </span>
+                          {(() => {
+                            const status = getProbationStatus(employee.probation_end_date)
+                            if (status.status === 'none') return null
+                            return (
+                              <Badge
+                                className={cn(
+                                  "text-[10px] px-2 py-0.5 h-5 font-semibold",
+                                  status.status === 'active'
+                                    ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
+                                    : "bg-emerald-500/15 text-emerald-400 border-emerald-500/25"
+                                )}
+                              >
+                                {status.label}
+                              </Badge>
+                            )
+                          })()}
+                        </>
+                      ) : (
+                        <span className="text-xs text-muted-foreground italic">Not set</span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Helper hint when auto-calculated */}
+                {isEditingProbation && employee.joining_date && probationForm.probation_period && probationForm.probation_period !== 'Custom' && probationForm.probation_end_date && (
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground px-1">
+                    <Sparkles className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                    <span>Auto-calculated: {formattedJoined} + {probationForm.probation_period}. You can also adjust manually.</span>
+                  </div>
+                )}
+
+                {/* Employment Type */}
                 <div className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-card/60">
                   <div className="text-sm text-muted-foreground">Employment Type</div>
                   <div className="text-sm font-semibold">{employee.employment_type || '-'}</div>

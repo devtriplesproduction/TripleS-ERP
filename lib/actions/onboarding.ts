@@ -17,7 +17,7 @@ const DEFAULT_TASKS = [
   { task_name: 'Office Tour & Introduction', is_required: false },
 ]
 
-export async function getEmployees(columns = 'id, first_name, last_name, email, phone, job_title, department, designation, division, joining_date, status, employee_id_number, employment_type, employment_status, probation_end_date, salary, stipend, profile_photo, created_at, is_hod, notes'): Promise<Employee[]> {
+export async function getEmployees(columns = 'id, first_name, last_name, email, phone, job_title, department, designation, division, joining_date, status, employee_id_number, employment_type, employment_status, probation_start_date, probation_end_date, probation_period, salary, stipend, profile_photo, created_at, is_hod, notes'): Promise<Employee[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('employee_onboarding')
@@ -29,19 +29,78 @@ export async function getEmployees(columns = 'id, first_name, last_name, email, 
     return []
   }
 
-  // Cross-reference profiles.is_hod to ensure consistent source of truth
-  const { data: hodProfiles } = await supabase
-    .from('profiles')
-    .select('employee_id, is_hod')
-    .eq('is_hod', true)
+  // Cross-reference profiles.is_hod and active department_hod_assignments to ensure consistent source of truth
+  let hodProfiles: any[] | null = null
+  let activeAssignments: any[] | null = null
 
-  const hodEmpIdSet = new Set(hodProfiles?.map((p: any) => p.employee_id).filter(Boolean))
+  try {
+    const [profRes, assignRes] = await Promise.all([
+      supabase.from('profiles').select('id, employee_id, is_hod'),
+      supabase.from('department_hod_assignments').select('employee_id, department').eq('is_active', true)
+    ])
+    hodProfiles = profRes.data
+    activeAssignments = assignRes.data
+  } catch (err) {
+    console.warn('Error fetching HOD cross-references:', err)
+  }
+
+  const hodEmpIdSet = new Set<string>()
+  const profileIdToEmpId = new Map<string, string>()
+
+  if (hodProfiles) {
+    hodProfiles.forEach((p: any) => {
+      if (p.employee_id) {
+        profileIdToEmpId.set(p.id, p.employee_id)
+        if (p.is_hod) {
+          hodEmpIdSet.add(p.employee_id)
+        }
+      }
+    })
+  }
+
+  if (activeAssignments) {
+    activeAssignments.forEach((assign: any) => {
+      const empId = profileIdToEmpId.get(assign.employee_id)
+      if (empId) {
+        hodEmpIdSet.add(empId)
+      }
+    })
+  }
+
+  const isHodTitle = (str?: string | null) => {
+    if (!str) return false
+    return /\b(hod|head of department)\b/i.test(str)
+  }
 
   const employees = (data || []).map((emp: any) => ({
     ...emp,
-    is_hod: Boolean(emp.is_hod || (emp.employee_id_number && hodEmpIdSet.has(emp.employee_id_number))),
+    is_hod: Boolean(
+      emp.is_hod ||
+      (emp.employee_id_number && hodEmpIdSet.has(emp.employee_id_number)) ||
+      isHodTitle(emp.job_title) ||
+      isHodTitle(emp.designation)
+    ),
     work_location: extractWorkLocation(emp),
   })) as Employee[]
+
+  // Default sorting: HODs at top (tier 1), Active regular in middle (tier 2), Inactive at bottom (tier 3)
+  // Within each group: joining-date descending, fallback to created_at descending
+  employees.sort((a, b) => {
+    const isInactiveA = a.employment_status === 'Inactive' || a.employment_status === 'Terminated'
+    const isInactiveB = b.employment_status === 'Inactive' || b.employment_status === 'Terminated'
+    const tierA = isInactiveA ? 3 : (a.is_hod ? 1 : 2)
+    const tierB = isInactiveB ? 3 : (b.is_hod ? 1 : 2)
+
+    if (tierA !== tierB) return tierA - tierB
+
+    const dateA = a.joining_date ? new Date(a.joining_date).getTime() : 0
+    const dateB = b.joining_date ? new Date(b.joining_date).getTime() : 0
+    if (dateA !== dateB) return dateB - dateA
+
+    const createdA = a.created_at ? new Date(a.created_at).getTime() : 0
+    const createdB = b.created_at ? new Date(b.created_at).getTime() : 0
+    return createdB - createdA
+  })
 
   return employees
 }
@@ -58,15 +117,29 @@ export async function getEmployeeById(id: string): Promise<{ employee: Employee 
   if (employee && employee.employee_id_number) {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('is_hod')
+      .select('id, is_hod')
       .eq('employee_id', employee.employee_id_number)
       .maybeSingle()
     if (profile?.is_hod) {
       employee.is_hod = true
+    } else if (profile?.id) {
+      const { data: assign } = await supabase
+        .from('department_hod_assignments')
+        .select('id')
+        .eq('employee_id', profile.id)
+        .eq('is_active', true)
+        .maybeSingle()
+      if (assign) {
+        employee.is_hod = true
+      }
     }
   }
 
   if (employee) {
+    const isHodTitle = (str?: string | null) => str ? /\b(hod|head of department)\b/i.test(str) : false
+    if (isHodTitle(employee.job_title) || isHodTitle(employee.designation)) {
+      employee.is_hod = true
+    }
     employee.work_location = extractWorkLocation(employee)
   }
 
@@ -152,7 +225,7 @@ export async function updateEmployee(id: string, formData: FormData) {
   revalidatePath('/hr/onboarding')
 }
 
-export async function updateEmployeeData(id: string, data: Partial<Employee>) {
+export async function updateEmployeeData(id: string, data: Partial<Employee>): Promise<{ success: boolean; error?: string }> {
   await guardServerAction(['HR', 'Admin'])
   const supabase = await createClient()
   const { createAdminClient } = await import('@/lib/supabase/server')
@@ -206,14 +279,20 @@ export async function updateEmployeeData(id: string, data: Partial<Employee>) {
       if (error.code === '42703' || error.message?.includes('work_location')) {
         directError = true
       } else {
-        throw new Error(error.message)
+        const { error: adminErr } = await adminClient.from('employee_onboarding').update(updatePayload).eq('id', id)
+        if (adminErr) {
+          throw new Error(adminErr.message)
+        }
       }
     }
   } catch (err: any) {
     if (err.message?.includes('work_location')) {
       directError = true
     } else {
-      throw err
+      const { error: adminErr } = await adminClient.from('employee_onboarding').update(updatePayload).eq('id', id)
+      if (adminErr) {
+        throw new Error(adminErr.message)
+      }
     }
   }
 
@@ -228,7 +307,10 @@ export async function updateEmployeeData(id: string, data: Partial<Employee>) {
     }
 
     const { error: retryError } = await supabase.from('employee_onboarding').update(updatePayload).eq('id', id)
-    if (retryError) throw new Error(retryError.message)
+    if (retryError) {
+      const { error: adminRetryErr } = await adminClient.from('employee_onboarding').update(updatePayload).eq('id', id)
+      if (adminRetryErr) throw new Error(adminRetryErr.message)
+    }
   }
 
   // 3. Keep profiles in sync if organizational fields change
@@ -472,25 +554,38 @@ export async function onboardEmployeeAction(data: any) {
 }
 
 export async function uploadEmployeeFileAction(formData: FormData) {
-  await guardServerAction(['HR', 'Admin'])
-  const supabase = await createClient()
-  const file = formData.get('file') as File
-  if (!file) return { success: false, error: 'No file provided' }
+  try {
+    await guardServerAction(['HR', 'Admin'])
+    const { createAdminClient } = await import('@/lib/supabase/server')
+    const admin = await createAdminClient()
+    const file = formData.get('file') as File
+    if (!file) return { success: false, error: 'No file provided' }
 
-  const fileExt = file.name.split('.').pop()
-  const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`
-  const filePath = `onboarding/${fileName}`
+    if (file.size > 10 * 1024 * 1024) {
+      return { success: false, error: 'File size exceeds 10MB limit' }
+    }
 
-  const { error } = await supabase.storage
-    .from('employee-documents')
-    .upload(filePath, file, {
-      contentType: file.type,
-      upsert: false
-    })
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`
+    const filePath = `onboarding/${fileName}`
 
-  if (error) {
-    return { success: false, error: error.message }
+    const fileBuffer = Buffer.from(await file.arrayBuffer())
+
+    const { error } = await admin.storage
+      .from('employee-documents')
+      .upload(filePath, fileBuffer, {
+        contentType: file.type || 'application/octet-stream',
+        upsert: false
+      })
+
+    if (error) {
+      return { success: false, error: error.message }
+    }
+
+    return { success: true, path: filePath }
+  } catch (err: any) {
+    console.error('uploadEmployeeFileAction error:', err)
+    return { success: false, error: err.message || 'Failed to upload document' }
   }
-
-  return { success: true, path: filePath }
 }
+

@@ -6,6 +6,14 @@ import { calculateMonthlyPayroll } from '@/lib/services/payroll.service'
 import { getCurrentUser } from '@/lib/auth'
 import { calculateMonthlyBasicSalary, calculateIncrementPercentage, resolveCurrentSalary } from '@/lib/utils/salary'
 
+function safeRevalidatePath(pathUrl: string) {
+  try {
+    revalidatePath(pathUrl)
+  } catch {
+    // In test runner or non-request contexts, ignore static generation store invariant
+  }
+}
+
 export async function addSalaryIncrementAction(
   employeeId: string,
   previousSalary: number | null | undefined,
@@ -144,6 +152,78 @@ export async function getMonthlyPayrollAction(year: number, month: number, emplo
 
     const results = await calculateMonthlyPayroll(year, month, employeeIds)
     return { success: true, data: results }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+}
+
+export async function addPayrollDeductionAction(input: {
+  employee_id: string
+  payroll_year: number
+  payroll_month: number
+  deduction_type: string
+  amount: number
+  reason: string
+  notes?: string
+}) {
+  try {
+    const user = await getCurrentUser()
+    if (!user || (user.role !== 'HR' && user.role !== 'Admin')) {
+      return { success: false, error: 'Unauthorized: Deductions can only be managed by HR or Admin.' }
+    }
+
+    const { createPayrollDeduction } = await import('@/lib/services/payroll-deductions.service')
+    const result = await createPayrollDeduction(input, user.id)
+
+    if (result.success) {
+      safeRevalidatePath('/payroll')
+      safeRevalidatePath('/hr/payroll')
+      safeRevalidatePath('/admin-payroll')
+    }
+
+    return result
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+}
+
+export async function cancelPayrollDeductionAction(deductionId: string) {
+  try {
+    const user = await getCurrentUser()
+    if (!user || (user.role !== 'HR' && user.role !== 'Admin')) {
+      return { success: false, error: 'Unauthorized: Deductions can only be managed by HR or Admin.' }
+    }
+
+    const { cancelPayrollDeduction } = await import('@/lib/services/payroll-deductions.service')
+    const result = await cancelPayrollDeduction(deductionId)
+
+    if (result.success) {
+      safeRevalidatePath('/payroll')
+      safeRevalidatePath('/hr/payroll')
+      safeRevalidatePath('/admin-payroll')
+    }
+
+    return result
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+}
+
+export async function getPayrollDeductionsAction(year: number, month: number, employeeId?: string) {
+  try {
+    const user = await getCurrentUser()
+    if (!user || (user.role !== 'HR' && user.role !== 'Admin')) {
+      return { success: false, error: 'Unauthorized: Financial data access is restricted to HR and Admin.' }
+    }
+
+    const { getDeductionsForMonth, getDeductionsForEmployee } = await import('@/lib/services/payroll-deductions.service')
+    if (employeeId) {
+      const data = await getDeductionsForEmployee(employeeId, year, month)
+      return { success: true, data }
+    }
+
+    const data = await getDeductionsForMonth(year, month)
+    return { success: true, data }
   } catch (error: any) {
     return { success: false, error: error.message }
   }

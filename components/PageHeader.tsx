@@ -74,7 +74,7 @@ export function PageHeader({
 
   return (
     <div className={cn("flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 w-full min-w-0 select-none", className)}>
-      <div className="flex items-center gap-3.5 sm:gap-4 min-w-0">
+      <div className="flex items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
         <div
           suppressHydrationWarning
           className={cn(
@@ -89,14 +89,14 @@ export function PageHeader({
             {title}
           </h1>
           {subtitle && (
-            <div className="text-xs sm:text-sm text-muted-foreground font-normal mt-0.5 line-clamp-2 sm:line-clamp-none">
+            <div className="text-xs sm:text-sm text-muted-foreground font-normal mt-0.5 leading-snug">
               {subtitle}
             </div>
           )}
         </div>
       </div>
       {actions && (
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap w-full sm:w-auto shrink-0 mt-1 sm:mt-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0 justify-end sm:ml-auto">
           {actions}
         </div>
       )}

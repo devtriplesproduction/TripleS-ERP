@@ -856,6 +856,59 @@ export type Database = {
           }
         ]
       }
+      payroll_deductions: {
+        Row: {
+          id: string
+          employee_id: string
+          payroll_year: number
+          payroll_month: number
+          deduction_type: string
+          amount: number
+          reason: string
+          notes: string | null
+          status: string
+          created_by: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          employee_id: string
+          payroll_year: number
+          payroll_month: number
+          deduction_type: string
+          amount: number
+          reason: string
+          notes?: string | null
+          status?: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          employee_id?: string
+          payroll_year?: number
+          payroll_month?: number
+          deduction_type?: string
+          amount?: number
+          reason?: string
+          notes?: string | null
+          status?: string
+          created_by?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_deductions_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employee_onboarding"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
       salary_slips: {
         Row: {
           id: string

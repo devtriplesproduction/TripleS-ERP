@@ -268,7 +268,7 @@ export function TaskFormModal({
                 placeholder="e.g. Implement Authentication and RBAC"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="bg-input border-border"
+                className="bg-background border-border"
                 required
               />
             </div>
@@ -284,7 +284,7 @@ export function TaskFormModal({
                 onChange={setProjectId}
                 disabled={isEditing || !!defaultProjectId}
                 options={projects.map((p) => ({ value: p.id, label: p.name }))}
-                buttonClassName="bg-input border-border w-full"
+                buttonClassName="bg-background border-border w-full"
               />
 
               <Dropdown
@@ -293,7 +293,7 @@ export function TaskFormModal({
                 value={priority}
                 onChange={(val) => setPriority(val as TaskPriority)}
                 options={ALL_PRIORITIES.map((pr) => ({ value: pr, label: priorityLabels[pr] }))}
-                buttonClassName="bg-input border-border w-full"
+                buttonClassName="bg-background border-border w-full"
               />
             </div>
 
@@ -308,7 +308,7 @@ export function TaskFormModal({
                 placeholder="Task details, requirements, acceptance criteria..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full text-sm bg-input border border-border rounded-md p-2.5 outline-hidden focus:border-foreground/50 transition-colors"
+                className="w-full text-sm bg-background border border-border rounded-md p-2.5 outline-hidden focus:border-foreground/50 transition-colors"
               />
             </div>
 
@@ -325,7 +325,7 @@ export function TaskFormModal({
                       value: st,
                       label: statusLabels[st],
                     }))}
-                    buttonClassName="bg-input border-border w-full"
+                    buttonClassName="bg-background border-border w-full"
                   />
 
                   <div className="space-y-1.5">
@@ -340,7 +340,7 @@ export function TaskFormModal({
                       placeholder="e.g. 8"
                       value={estimatedHours}
                       onChange={(e) => setEstimatedHours(e.target.value)}
-                      className="bg-input border-border"
+                      className="bg-background border-border"
                     />
                   </div>
                 </div>
@@ -354,7 +354,7 @@ export function TaskFormModal({
                       value={startDate}
                       onChange={setStartDate}
                       placeholder="Select start date"
-                      className="h-10 text-xs sm:text-sm bg-input border-border"
+                      className="h-10 text-xs sm:text-sm bg-background border-border"
                     />
                   </div>
 
@@ -366,7 +366,7 @@ export function TaskFormModal({
                       value={dueDate}
                       onChange={setDueDate}
                       placeholder="Select due date"
-                      className="h-10 text-xs sm:text-sm bg-input border-border"
+                      className="h-10 text-xs sm:text-sm bg-background border-border"
                     />
                   </div>
                 </div>
@@ -385,7 +385,7 @@ export function TaskFormModal({
                     placeholder="e.g. 8"
                     value={estimatedHours}
                     onChange={(e) => setEstimatedHours(e.target.value)}
-                    className="bg-input border-border"
+                    className="bg-background border-border"
                   />
                 </div>
 
@@ -397,7 +397,7 @@ export function TaskFormModal({
                     value={startDate}
                     onChange={setStartDate}
                     placeholder="Select start date"
-                    className="h-10 text-xs sm:text-sm bg-input border-border"
+                    className="h-10 text-xs sm:text-sm bg-background border-border"
                   />
                 </div>
 
@@ -409,7 +409,7 @@ export function TaskFormModal({
                     value={dueDate}
                     onChange={setDueDate}
                     placeholder="Select due date"
-                    className="h-10 text-xs sm:text-sm bg-input border-border"
+                    className="h-10 text-xs sm:text-sm bg-background border-border"
                   />
                 </div>
               </div>
@@ -451,7 +451,7 @@ export function TaskFormModal({
                       handleAddChecklistItem()
                     }
                   }}
-                  className="h-10 text-xs sm:text-sm bg-input border-border/80 rounded-xl focus:border-foreground/50 text-foreground placeholder:text-muted-foreground"
+                  className="h-10 text-xs sm:text-sm bg-background border-border/80 rounded-xl focus:border-foreground/50 text-foreground placeholder:text-muted-foreground"
                 />
                 <Button
                   type="button"
@@ -474,7 +474,7 @@ export function TaskFormModal({
                       <div
                         key={item.id}
                         className={cn(
-                          "flex items-center justify-between gap-3 p-2.5 rounded-lg border bg-input/20 transition-colors group",
+                          "flex items-center justify-between gap-3 p-2.5 rounded-lg border bg-background/50 transition-colors group",
                           item.is_completed ? "border-border/40 bg-muted/20" : "border-border/70 hover:border-border"
                         )}
                       >
@@ -508,7 +508,7 @@ export function TaskFormModal({
                               }}
                               onBlur={() => saveEditChecklistItem(item.id)}
                               autoFocus
-                              className="flex-1 bg-input px-2 py-0.5 text-xs rounded border border-foreground/50 text-foreground outline-none"
+                              className="flex-1 bg-background px-2 py-0.5 text-xs rounded border border-foreground/50 text-foreground outline-none"
                             />
                           ) : (
                             <span

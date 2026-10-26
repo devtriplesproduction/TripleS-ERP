@@ -1,0 +1,16 @@
+[
+  {
+    "id": "3b471ff0-6ab1-4588-a5b6-b9404a957c5e",
+    "employee_id": "2b22862a-3817-4d87-9c60-9ecdb4e0a6c6",
+    "payroll_year": 2026,
+    "payroll_month": 10,
+    "deduction_type": "Damage Recovery",
+    "amount": 100,
+    "reason": "nn",
+    "notes": null,
+    "status": "ACTIVE",
+    "created_by": "6eaa69b5-833e-44ff-9b5e-e52fd3963839",
+    "created_at": "2026-10-26T12:08:27.143Z",
+    "updated_at": "2026-10-26T12:08:27.143Z"
+  }
+]

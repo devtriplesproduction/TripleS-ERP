@@ -57,6 +57,8 @@ export async function getCompOffBalance(employeeId: string): Promise<number> {
   return Math.round(Math.max(0, total) * 100) / 100;
 }
 
+const inFlightEodCompOff = new Map<string, Promise<void>>();
+
 export async function processEODCompOff(
   eodId: string,
   employeeId: string,
@@ -72,77 +74,103 @@ export async function processEODCompOff(
   // Only process approved EODs
   if (status !== 'Approved') return;
 
-  const supabase = options?.supabaseClient || await createAdminClient();
-
-  const resolvedId = options?.onboardingId || await resolveOnboardingId(employeeId, supabase);
-  if (!resolvedId) return;
-
-  // Idempotency: check if credit already exists for this EOD
-  const { data: existing } = await supabase
-    .from('comp_off_ledger')
-    .select('id')
-    .eq('reference_id', eodId)
-    .eq('transaction_type', 'CREDIT')
-    .limit(1)
-    .maybeSingle();
-
-  if (existing) return; // Already credited, do not duplicate
-
-  // 1. Fetch EOD details to know the date if not passed directly
-  let reportDate: string = options?.reportDate || '';
-  if (!reportDate) {
-    const { data: eod } = await supabase.from('eod_reports').select('report_date').eq('id', eodId).single();
-    if (!eod || !eod.report_date) return;
-    reportDate = eod.report_date;
+  // Deduplicate concurrent calls in-flight for the exact same EOD ID
+  if (inFlightEodCompOff.has(eodId)) {
+    await inFlightEodCompOff.get(eodId);
+    return;
   }
 
-  // 2. Determine context (Sunday, Holiday, Approved Leave)
-  let context: 'normal' | 'sunday' | 'paid_holiday' | 'approved_leave' = options?.context || 'normal';
+  const promise = (async () => {
+    const supabase = options?.supabaseClient || await createAdminClient();
 
-  if (!options?.context) {
-    if (isSunday(reportDate)) {
-      context = 'sunday';
-    } else {
-      // Check holiday and leave concurrently in parallel with specific column projections
-      const [holidayRes, leaveRes] = await Promise.all([
-        supabase.from('holidays').select('holiday_type').eq('date', reportDate).maybeSingle(),
-        supabase.from('leave_requests')
-          .select('id, is_half_day')
-          .eq('employee_id', employeeId)
-          .lte('start_date', reportDate)
-          .gte('end_date', reportDate)
-          .in('status', ['Approved', 'Approved HR'])
-          .maybeSingle()
-      ]);
+    const resolvedId = options?.onboardingId || await resolveOnboardingId(employeeId, supabase);
+    if (!resolvedId) return;
 
-      if (holidayRes.data && holidayRes.data.holiday_type === 'PAID') {
-        context = 'paid_holiday';
-      } else if (leaveRes.data && !leaveRes.data.is_half_day) {
-        context = 'approved_leave';
+    // Idempotency: check if credit already exists for this EOD
+    const { data: existing } = await supabase
+      .from('comp_off_ledger')
+      .select('id')
+      .eq('reference_id', eodId)
+      .eq('transaction_type', 'CREDIT')
+      .limit(1)
+      .maybeSingle();
+
+    if (existing) return; // Already credited, do not duplicate
+
+    // 1. Fetch EOD details to know the date if not passed directly
+    let reportDate: string = options?.reportDate || '';
+    if (!reportDate) {
+      const { data: eod } = await supabase.from('eod_reports').select('report_date').eq('id', eodId).single();
+      if (!eod || !eod.report_date) return;
+      reportDate = eod.report_date;
+    }
+
+    // 2. Determine context (Sunday, Holiday, Approved Leave)
+    let context: 'normal' | 'sunday' | 'paid_holiday' | 'approved_leave' = options?.context || 'normal';
+
+    if (!options?.context) {
+      if (isSunday(reportDate)) {
+        context = 'sunday';
+      } else {
+        // Check holiday and leave concurrently in parallel with specific column projections
+        const [holidayRes, leaveRes] = await Promise.all([
+          supabase.from('holidays').select('holiday_type').eq('date', reportDate).maybeSingle(),
+          supabase.from('leave_requests')
+            .select('id, is_half_day')
+            .eq('employee_id', employeeId)
+            .lte('start_date', reportDate)
+            .gte('end_date', reportDate)
+            .in('status', ['Approved', 'Approved HR'])
+            .maybeSingle()
+        ]);
+
+        if (holidayRes.data && holidayRes.data.holiday_type === 'PAID') {
+          context = 'paid_holiday';
+        } else if (leaveRes.data && !leaveRes.data.is_half_day) {
+          context = 'approved_leave';
+        }
       }
     }
-  }
 
-  // 3. Use centralized classification to determine comp off minutes
-  const workedMinutes = canonicalOfficeHoursToMinutes(Number(workedHours));
-  const compOffMinutes = calculateCompOffMinutes(workedMinutes, context, 'Approved');
+    // 3. Use centralized classification to determine comp off minutes
+    const workedMinutes = canonicalOfficeHoursToMinutes(Number(workedHours));
+    const compOffMinutes = calculateCompOffMinutes(workedMinutes, context, 'Approved');
 
-  // CRITICAL: Never create negative comp off. Only credit positive amounts.
-  if (compOffMinutes <= 0) return;
+    // CRITICAL: Never create negative or zero comp off. Only credit positive amounts exceeding 8h threshold (or non-working days).
+    if (compOffMinutes <= 0) return;
 
-  // Convert to hours for backward-compatible storage in existing ledger
-  const creditHours = Math.round((compOffMinutes / 60) * 100) / 100;
+    // Convert to hours for backward-compatible storage in existing ledger
+    const creditHours = Math.round((compOffMinutes / 60) * 100) / 100;
 
-  const { error: insertError } = await supabase.from('comp_off_ledger').insert({
-    employee_id: resolvedId,
-    transaction_type: 'CREDIT',
-    hours: creditHours,
-    reference_id: eodId
-  });
+    // Double-check immediately before insertion to prevent race conditions
+    const { data: secondCheck } = await supabase
+      .from('comp_off_ledger')
+      .select('id')
+      .eq('reference_id', eodId)
+      .eq('transaction_type', 'CREDIT')
+      .limit(1)
+      .maybeSingle();
 
-  // Handle unique constraint violation gracefully on concurrent review/retry
-  if (insertError && (insertError.code === '23505' || insertError.message?.includes('unique'))) {
-    return;
+    if (secondCheck) return;
+
+    const { error: insertError } = await supabase.from('comp_off_ledger').insert({
+      employee_id: resolvedId,
+      transaction_type: 'CREDIT',
+      hours: creditHours,
+      reference_id: eodId
+    });
+
+    // Handle unique constraint violation gracefully on concurrent review/retry
+    if (insertError && (insertError.code === '23505' || insertError.message?.includes('unique'))) {
+      return;
+    }
+  })();
+
+  inFlightEodCompOff.set(eodId, promise);
+  try {
+    await promise;
+  } finally {
+    inFlightEodCompOff.delete(eodId);
   }
 }
 
@@ -222,7 +250,14 @@ export async function batchProcessEODCompOff(
     supabaseClient?: any;
   }
 ): Promise<{ processed: number; credited: number }> {
-  const approvedItems = eodItems.filter(e => e.status === 'Approved' && Number(e.office_hours) > 0);
+  // Deduplicate input items by unique ID
+  const uniqueItemsMap = new Map<string, BatchEODCompOffItem>();
+  for (const item of eodItems) {
+    if (item.status === 'Approved' && Number(item.office_hours) > 0) {
+      uniqueItemsMap.set(item.id, item);
+    }
+  }
+  const approvedItems = Array.from(uniqueItemsMap.values());
   if (approvedItems.length === 0) return { processed: 0, credited: 0 };
 
   const supabase = options?.supabaseClient || await createAdminClient();
@@ -338,54 +373,63 @@ export async function batchProcessEODCompOff(
   };
 }
 
+const inFlightLeaveCompOff = new Map<string, Promise<void>>();
+
 export async function processLeaveCompOff(leaveId: string, employeeId: string, durationDays: number, status: string) {
-  const supabase = await createAdminClient();
-  const resolvedId = await resolveOnboardingId(employeeId, supabase);
-  if (!resolvedId) return;
+  // Deduplicate concurrent calls in-flight for the exact same leave request
+  if (inFlightLeaveCompOff.has(leaveId)) {
+    await inFlightLeaveCompOff.get(leaveId);
+    return;
+  }
 
-  if (status === 'Approved') {
-    const { data: existing } = await supabase
+  const promise = (async () => {
+    const supabase = await createAdminClient();
+    const resolvedId = await resolveOnboardingId(employeeId, supabase);
+    if (!resolvedId) return;
+
+    // Fetch existing ledger records for this leave request
+    const { data: existingRows } = await supabase
       .from('comp_off_ledger')
-      .select('id')
-      .eq('reference_id', leaveId)
-      .eq('transaction_type', 'DEBIT')
-      .maybeSingle();
-      
-    if (!existing) {
+      .select('id, transaction_type, hours')
+      .eq('reference_id', leaveId);
+
+    const rows = existingRows || [];
+    const totalDebited = rows
+      .filter((r: any) => r.transaction_type === 'DEBIT')
+      .reduce((sum: number, r: any) => sum + (Number(r.hours) || 0), 0);
+    const totalReversed = rows
+      .filter((r: any) => r.transaction_type === 'REVERSAL')
+      .reduce((sum: number, r: any) => sum + (Number(r.hours) || 0), 0);
+    const netActiveDebit = Math.max(0, Math.round((totalDebited - totalReversed) * 100) / 100);
+
+    if (status === 'Approved') {
       const hoursRequired = durationDays * 8;
-      await supabase.from('comp_off_ledger').insert({
-        employee_id: resolvedId,
-        transaction_type: 'DEBIT',
-        hours: hoursRequired,
-        reference_id: leaveId
-      });
-    }
-  } else if (status === 'Rejected' || status === 'Cancelled') {
-    // If a debit was previously created for this approved leave, reverse it
-    const { data: debitEntry } = await supabase
-      .from('comp_off_ledger')
-      .select('hours')
-      .eq('reference_id', leaveId)
-      .eq('transaction_type', 'DEBIT')
-      .maybeSingle();
-
-    if (debitEntry) {
-      const { data: existingReversal } = await supabase
-        .from('comp_off_ledger')
-        .select('id')
-        .eq('reference_id', leaveId)
-        .eq('transaction_type', 'REVERSAL')
-        .maybeSingle();
-
-      if (!existingReversal) {
+      const hoursToDebit = Math.round((hoursRequired - netActiveDebit) * 100) / 100;
+      if (hoursToDebit > 0) {
+        await supabase.from('comp_off_ledger').insert({
+          employee_id: resolvedId,
+          transaction_type: 'DEBIT',
+          hours: hoursToDebit,
+          reference_id: leaveId
+        });
+      }
+    } else if (status === 'Rejected' || status === 'Cancelled') {
+      if (netActiveDebit > 0) {
         await supabase.from('comp_off_ledger').insert({
           employee_id: resolvedId,
           transaction_type: 'REVERSAL',
-          hours: debitEntry.hours,
+          hours: netActiveDebit,
           reference_id: leaveId
         });
       }
     }
+  })();
+
+  inFlightLeaveCompOff.set(leaveId, promise);
+  try {
+    await promise;
+  } finally {
+    inFlightLeaveCompOff.delete(leaveId);
   }
 }
 

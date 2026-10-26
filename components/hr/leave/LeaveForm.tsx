@@ -19,7 +19,7 @@ export function LeaveForm({
   initialStatus = "Pending HR", 
   compOffBalance = 0,
   initialRequestType = "LEAVE",
-  initialLeaveType = "Sick Leave"
+  initialLeaveType = "Casual Leave"
 }: { 
   onCancel: () => void, 
   currentEmployeeId: string, 
@@ -203,8 +203,8 @@ export function LeaveForm({
                   <SelectValue placeholder="Select Leave Type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Sick Leave">Sick Leave</SelectItem>
                   <SelectItem value="Casual Leave">Casual Leave</SelectItem>
+                  <SelectItem value="Sick Leave">Sick Leave</SelectItem>
                   {compOffBalance >= 8 && (
                     <SelectItem value="Compensatory Off">
                       Compensatory Off ({formatHoursMinutes(compOffBalance)} • {Math.floor(compOffBalance / 8)} {Math.floor(compOffBalance / 8) === 1 ? 'day' : 'days'} available)

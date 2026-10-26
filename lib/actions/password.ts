@@ -64,15 +64,15 @@ async function recordPasswordAuditLog(options: AuditLogOptions) {
 
     // Also record in dedicated security audit trail
     let ip: string | null = null
-    let location = 'Localhost (Development Environment)'
+    let location = 'Unknown'
     let userAgent = 'Internal Server Action'
     let sourceHeader = 'internal-action'
-    let classification: any = 'Localhost'
+    let classification: any = 'Unavailable'
     try {
       const { headers } = await import('next/headers')
       const headerStore = await headers()
-      const { getClientIpDetails } = await import('@/lib/utils/device-parser')
-      const details = getClientIpDetails(headerStore)
+      const { resolveClientMetadata } = await import('@/lib/utils/device-parser')
+      const details = await resolveClientMetadata(headerStore)
       ip = details.ip
       location = details.location
       sourceHeader = details.sourceHeader

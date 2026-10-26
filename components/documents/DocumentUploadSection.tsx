@@ -221,18 +221,22 @@ export function DocumentUploadSection({
           </div>
         </div>
 
+        {canUpload && (
+          <input
+            type="file"
+            ref={fileInputRef}
+            multiple
+            accept={accept}
+            className="hidden"
+            onChange={handleFileInputChange}
+            disabled={isUploading}
+          />
+        )}
+
         {canUpload && showUploadButtonInHeader && (
           <div>
-            <input
-              type="file"
-              ref={fileInputRef}
-              multiple
-              accept={accept}
-              className="hidden"
-              onChange={handleFileInputChange}
-              disabled={isUploading}
-            />
             <Button
+              type="button"
               variant="default"
               size="sm"
               className="h-8 px-4 text-xs font-semibold gap-1.5 shadow-xs"
@@ -360,7 +364,15 @@ export function DocumentUploadSection({
                 const extMatch = displayName.lastIndexOf('.') !== -1 ? displayName.substring(displayName.lastIndexOf('.') + 1).toUpperCase() : ''
                 const cleanName = displayName.includes('.') ? displayName.substring(0, displayName.lastIndexOf('.')) : displayName
                 const formattedSize = formatBytes(doc.size)
-                const formattedDate = doc.created_at ? format(new Date(doc.created_at), 'MMM dd, yyyy') : null
+                const formattedDate = (() => {
+                  if (!doc.created_at) return null
+                  try {
+                    const d = new Date(doc.created_at)
+                    return isNaN(d.getTime()) ? null : format(d, 'MMM dd, yyyy')
+                  } catch {
+                    return null
+                  }
+                })()
 
                 const uploaderName =
                   typeof doc.uploaded_by === 'object' && doc.uploaded_by?.name

@@ -2,12 +2,12 @@
 
 import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
-import { Loader2, IndianRupee, Clock, FileSpreadsheet, ChevronLeft, ChevronRight, Calendar, User, Download, CreditCard } from 'lucide-react'
+import { Loader2, IndianRupee, Clock, FileSpreadsheet, ChevronLeft, ChevronRight, Calendar, Download, CreditCard, Plus } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { getMonthlyPayrollAction } from '@/lib/actions/payroll'
 import { PayrollDetailModal } from './PayrollDetailModal'
+import { AddDeductionModal } from './AddDeductionModal'
 import { PayrollResult } from '@/lib/services/payroll.service'
 import { PageHeader } from '@/components/PageHeader'
 
@@ -16,15 +16,17 @@ interface PayrollData extends PayrollResult {
 }
 
 export function PayrollClientPage({ title, initialEmployees = [] }: { title: string, initialEmployees?: any[] }) {
-  const [employees, setEmployees] = useState<any[]>(initialEmployees)
-  const [loading, setLoading] = useState(false)
+  const [employees] = useState<any[]>(initialEmployees)
+  const [loading] = useState(false)
   const [calculating, setCalculating] = useState(false)
   const [calculationTime, setCalculationTime] = useState<number | null>(null)
   const [payrollResults, setPayrollResults] = useState<PayrollData[]>([])
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [year, setYear] = useState(new Date().getFullYear())
   const [selectedPayroll, setSelectedPayroll] = useState<any | null>(null)
-  
+  const [isAddDeductionOpen, setIsAddDeductionOpen] = useState(false)
+  const [preselectedEmpId, setPreselectedEmpId] = useState<string | undefined>(undefined)
+
   const { toast } = useToast()
 
   const months = [
@@ -32,7 +34,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
     "July", "August", "September", "October", "November", "December"
   ]
 
-  const calculatePayroll = async () => {
+  const calculatePayroll = async (showToast: boolean = true) => {
     setCalculating(true)
     const start = performance.now()
     try {
@@ -41,10 +43,16 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
       setCalculationTime(duration);
       if (result.success && result.data) {
         setPayrollResults(result.data.map((d: any) => ({ ...d, isLocked: false })));
-        toast({
-          title: 'Calculation Completed',
-          description: `Processed ${result.data.length} employees in ${duration}ms for ${months[month-1]} ${year}`
-        });
+        if (selectedPayroll) {
+          const updated = result.data.find((d: any) => d.employeeId === selectedPayroll.employeeId);
+          if (updated) setSelectedPayroll(updated);
+        }
+        if (showToast) {
+          toast({
+            title: 'Calculation Completed',
+            description: `Processed ${result.data.length} employees in ${duration}ms for ${months[month - 1]} ${year}`
+          });
+        }
       } else {
         throw new Error(result.error || 'Unknown error');
       }
@@ -60,7 +68,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
     const headers = [
       'Employee Name', 'Department', 'Monthly Base (₹)', 'Standard Hrs',
       'Worked Hrs', 'Half Days', 'Unpaid Days (<4h)', 'Comp-Off Earned (mins)',
-      'Overtime (₹)', 'Unpaid Deduction (₹)', 'Short Hrs Deduction (₹)',
+      'Overtime (₹)', 'Unpaid Attendance Deduction (₹)', 'Custom Employee Deductions (₹)',
       'Total Deductions (₹)', 'Gross Pay (₹)', 'Net Payable (₹)'
     ];
 
@@ -75,7 +83,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
       r.compOffMinutesEarned || 0,
       r.overtimePay || 0,
       r.unpaidLeaveDeduction || 0,
-      r.shortHoursDeduction || 0,
+      r.manualDeductions || 0,
       r.totalDeductions || 0,
       r.grossPay || 0,
       r.netPayable || 0
@@ -86,12 +94,12 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `payroll-report-${months[month-1]}-${year}.csv`);
+    link.setAttribute('download', `payroll-report-${months[month - 1]}-${year}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    toast({ title: 'Report Exported', description: `Saved payroll-report-${months[month-1]}-${year}.csv` });
+    toast({ title: 'Report Exported', description: `Saved payroll-report-${months[month - 1]}-${year}.csv` });
   };
 
   const handlePrevMonth = () => {
@@ -111,6 +119,36 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
     setYear(newY)
     setPayrollResults([])
   }
+
+  // Ensure all employees have resolved names and departments
+  const resolvedEmployees = React.useMemo(() => {
+    const map = new Map<string, any>()
+    for (const emp of employees) {
+      map.set(emp.id, { ...emp })
+    }
+    for (const res of payrollResults) {
+      if (!map.has(res.employeeId)) {
+        map.set(res.employeeId, {
+          id: res.employeeId,
+          first_name: res.name?.split(' ')[0] || res.name,
+          last_name: res.name?.split(' ').slice(1).join(' ') || '',
+          department: res.department,
+          name: res.name,
+        })
+      } else {
+        const existing = map.get(res.employeeId)
+        if (!existing.first_name && res.name) {
+          existing.first_name = res.name.split(' ')[0]
+          existing.last_name = res.name.split(' ').slice(1).join(' ')
+          existing.name = res.name
+        }
+        if (!existing.department && res.department) {
+          existing.department = res.department
+        }
+      }
+    }
+    return Array.from(map.values())
+  }, [employees, payrollResults])
 
   return (
     <div className="space-y-6 w-full min-w-0">
@@ -156,7 +194,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
           </CardContent>
         </Card>
         <div className="sm:col-span-2 lg:col-span-1 flex items-center">
-          <Button size="lg" className="w-full h-11 sm:h-full min-h-[44px] text-sm sm:text-base font-semibold" onClick={calculatePayroll} disabled={loading || calculating}>
+          <Button size="lg" className="w-full h-11 sm:h-full min-h-[44px] text-sm sm:text-base font-semibold" onClick={() => calculatePayroll(true)} disabled={loading || calculating}>
             {calculating ? <Loader2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />}
             {calculating ? 'Calculating...' : 'Calculate Monthly Payroll'}
           </Button>
@@ -173,17 +211,30 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
               </p>
             )}
           </div>
-          {payrollResults.length > 0 && (
+          <div className="flex items-center gap-2 self-start sm:self-auto">
             <Button
-              variant="outline"
               size="sm"
-              onClick={handleExportCSV}
-              className="h-8 gap-1.5 text-xs font-medium self-start sm:self-auto"
+              onClick={() => {
+                setPreselectedEmpId(undefined)
+                setIsAddDeductionOpen(true)
+              }}
+              className="h-8 gap-1.5 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-sm"
             >
-              <Download className="h-3.5 w-3.5" />
-              Export Report (CSV)
+              <Plus className="h-3.5 w-3.5" />
+              Add Deduction
             </Button>
-          )}
+            {payrollResults.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportCSV}
+                className="h-8 gap-1.5 text-xs font-medium"
+              >
+                <Download className="h-3.5 w-3.5" />
+                Export Report (Excel)
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-0 sm:p-6">
           {loading ? (
@@ -192,7 +243,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
             </div>
           ) : payrollResults.length === 0 ? (
             <div className="text-center p-8 text-sm text-muted-foreground">
-              Click &quot;Calculate Monthly Payroll&quot; to generate data for {months[month-1]} {year}.
+              Click &quot;Calculate Monthly Payroll&quot; to generate data for {months[month - 1]} {year}.
             </div>
           ) : (
             <>
@@ -226,10 +277,23 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
                           ₹{Number(res.salary || 0).toFixed(2)}
                         </td>
                         <td className="px-6 py-4 text-right text-rose-500 font-medium whitespace-nowrap">
-                          {res.hasPayrollData ? (res.totalDeductions > 0 ? `-₹${res.totalDeductions.toFixed(2)}` : '₹0.00') : '—'}
+                          {res.totalDeductions > 0 ? (
+                            <div className="flex flex-col items-end">
+                              <span>-₹{Number(res.totalDeductions).toFixed(2)}</span>
+                              {res.manualDeductions > 0 && (
+                                <span className="text-[10px] text-muted-foreground font-normal">
+                                  (incl. ₹{Number(res.manualDeductions).toFixed(2)} custom)
+                                </span>
+                              )}
+                            </div>
+                          ) : res.hasPayrollData ? (
+                            '₹0.00'
+                          ) : (
+                            '—'
+                          )}
                         </td>
                         <td className="px-6 py-4 text-right font-bold text-foreground whitespace-nowrap">
-                          {res.hasPayrollData ? `₹${res.netPayable.toFixed(2)}` : '—'}
+                          {res.hasPayrollData ? `₹${Number(res.netPayable).toFixed(2)}` : '—'}
                         </td>
                       </tr>
                     ))}
@@ -251,7 +315,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
                         <p className="text-xs text-muted-foreground mt-0.5">{res.department || 'Employee'}</p>
                       </div>
                       <span className="text-xs font-bold text-foreground bg-muted px-2.5 py-1 rounded-md shrink-0">
-                        {res.hasPayrollData ? `₹${res.netPayable.toFixed(2)}` : 'No Data'}
+                        {res.hasPayrollData ? `₹${Number(res.netPayable).toFixed(2)}` : 'No Data'}
                       </span>
                     </div>
 
@@ -279,7 +343,11 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
                       <div>
                         <span className="text-muted-foreground">Deduction: </span>
                         <span className="font-medium text-rose-500">
-                          {res.hasPayrollData ? (res.totalDeductions > 0 ? `₹${res.totalDeductions.toFixed(2)}` : '₹0.00') : '—'}
+                          {res.totalDeductions > 0
+                            ? `-₹${Number(res.totalDeductions).toFixed(2)}${res.manualDeductions > 0 ? ` (₹${Number(res.manualDeductions).toFixed(2)} custom)` : ''}`
+                            : res.hasPayrollData
+                            ? '₹0.00'
+                            : '—'}
                         </span>
                       </div>
                     </div>
@@ -287,7 +355,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
                     <div className="flex items-center justify-between pt-1">
                       <span className="text-xs font-semibold text-foreground">Net Payable:</span>
                       <span className="text-sm font-bold text-foreground">
-                        {res.hasPayrollData ? `₹${res.netPayable.toFixed(2)}` : '—'}
+                        {res.hasPayrollData ? `₹${Number(res.netPayable).toFixed(2)}` : '—'}
                       </span>
                     </div>
                   </div>
@@ -297,7 +365,31 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
           )}
         </CardContent>
       </Card>
-      <PayrollDetailModal isOpen={!!selectedPayroll} onClose={() => setSelectedPayroll(null)} payroll={selectedPayroll} />
+
+      <PayrollDetailModal
+        isOpen={!!selectedPayroll}
+        onClose={() => setSelectedPayroll(null)}
+        payroll={selectedPayroll}
+        onAddDeductionClick={(empId) => {
+          setPreselectedEmpId(empId)
+          setIsAddDeductionOpen(true)
+        }}
+        onDeductionsUpdated={() => calculatePayroll(false)}
+      />
+
+      <AddDeductionModal
+        isOpen={isAddDeductionOpen}
+        onClose={() => {
+          setIsAddDeductionOpen(false)
+          setPreselectedEmpId(undefined)
+        }}
+        employees={resolvedEmployees}
+        currentMonth={month}
+        currentYear={year}
+        preselectedEmployeeId={preselectedEmpId}
+        onDeductionAdded={() => calculatePayroll(false)}
+      />
     </div>
   )
 }
+

@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Loader2, ChevronLeft, ChevronRight, Calendar as CalendarIcon, User as UserIcon, BarChart3, Clock, Home, CalendarDays, UserX, UserCheck, Briefcase } from "lucide-react"
 import { getEmployeeAttendance, getAttendanceEmployeeProfile, DerivedAttendance, AttendanceStatus } from "@/lib/actions/attendance"
 import { calculateAttendanceSummary } from "@/lib/utils/attendance-summary"
+import { getEmploymentNavigationBounds } from "@/lib/utils/attendance-builder"
 import { getISTDateString, formatMinutesAsHHMM, formatOfficeHoursAsHHMM } from "@/lib/utils/time"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
@@ -39,6 +40,16 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
     }
     loadData()
   }, [currentDate, employeeId])
+
+  const bounds = employee ? getEmploymentNavigationBounds(employee) : null;
+  const isPrevDisabled = bounds ? (
+    currentDate.getFullYear() < bounds.startYear ||
+    (currentDate.getFullYear() === bounds.startYear && currentDate.getMonth() + 1 <= bounds.startMonth)
+  ) : false;
+  const isNextDisabled = bounds ? (
+    currentDate.getFullYear() > bounds.endYear ||
+    (currentDate.getFullYear() === bounds.endYear && currentDate.getMonth() + 1 >= bounds.endMonth)
+  ) : false;
 
   const getStatusColor = (status: string) => {
     switch(status) {
@@ -112,17 +123,31 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
         actions={
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center bg-card border border-border rounded-lg p-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted" onClick={() => {
-                const d = new Date(currentDate); d.setMonth(d.getMonth() - 1); setCurrentDate(d);
-              }}>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={isPrevDisabled}
+                className="h-8 w-8 hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+                onClick={() => {
+                  if (isPrevDisabled) return
+                  const d = new Date(currentDate); d.setMonth(d.getMonth() - 1); setCurrentDate(d);
+                }}
+              >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
               <div className="w-[140px] flex items-center justify-center text-sm font-medium">
                 {currentDate.toLocaleString('default', { month: 'long', year: 'numeric' })}
               </div>
-              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-muted" onClick={() => {
-                const d = new Date(currentDate); d.setMonth(d.getMonth() + 1); setCurrentDate(d);
-              }}>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={isNextDisabled}
+                className="h-8 w-8 hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed"
+                onClick={() => {
+                  if (isNextDisabled) return
+                  const d = new Date(currentDate); d.setMonth(d.getMonth() + 1); setCurrentDate(d);
+                }}
+              >
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>

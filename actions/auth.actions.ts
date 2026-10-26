@@ -66,7 +66,7 @@ export async function generateEmployeeId(): Promise<string> {
 }
 
 import { headers } from 'next/headers'
-import { getClientIpDetails, parseUserAgent } from '@/lib/utils/device-parser'
+import { getClientIpDetails, resolveClientMetadata, parseUserAgent } from '@/lib/utils/device-parser'
 import { logSecurityEvent } from '@/lib/utils/audit-logger'
 
 /**
@@ -75,7 +75,7 @@ import { logSecurityEvent } from '@/lib/utils/audit-logger'
 export async function loginAction(email: string, password: string): Promise<{ success: boolean; error?: string }> {
   const supabase = await createClient()
   const headerStore = await headers()
-  const { ip, sourceHeader, classification, location } = getClientIpDetails(headerStore)
+  const { ip, sourceHeader, classification, location, isProxy } = await resolveClientMetadata(headerStore)
   const userAgent = headerStore.get('user-agent') || ''
   const { browser, os, device } = parseUserAgent(userAgent)
 
@@ -208,7 +208,7 @@ export async function logoutAction() {
   const supabase = await createClient()
   try {
     const headerStore = await headers()
-    const { ip, sourceHeader, classification, location } = getClientIpDetails(headerStore)
+    const { ip, sourceHeader, classification, location } = await resolveClientMetadata(headerStore)
     const userAgent = headerStore.get('user-agent') || ''
 
     const { data: { user } } = await supabase.auth.getUser()

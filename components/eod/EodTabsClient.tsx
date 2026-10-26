@@ -3,13 +3,15 @@
 import { useState, useTransition, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { BarChart2, Send, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface EodTabsClientProps {
   activeTab: string;
   isSuperAdmin: boolean;
+  className?: string;
 }
 
-export function EodTabsClient({ activeTab, isSuperAdmin }: EodTabsClientProps) {
+export function EodTabsClient({ activeTab, isSuperAdmin, className }: EodTabsClientProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
@@ -35,11 +37,11 @@ export function EodTabsClient({ activeTab, isSuperAdmin }: EodTabsClientProps) {
   };
 
   return (
-    <div className="flex bg-card text-card-foreground border border-border p-1 rounded-xl h-[48px] items-center">
+    <div className={cn("flex bg-card text-card-foreground border border-border p-1 rounded-xl h-[46px] sm:h-[48px] items-center shrink-0 shadow-xs", className)}>
       <button
         onClick={() => handleTabChange('review')}
         disabled={isPending}
-        className={`px-4 h-full rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 ${
+        className={`px-3 sm:px-3.5 h-full rounded-lg text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 sm:gap-2 ${
           activeTab === 'review' ? 'bg-foreground text-background shadow' : 'text-muted-foreground hover:text-foreground'
         } ${isPending ? 'opacity-70 cursor-not-allowed' : ''}`}
       >
@@ -50,7 +52,7 @@ export function EodTabsClient({ activeTab, isSuperAdmin }: EodTabsClientProps) {
         <button
           onClick={() => handleTabChange('submit')}
           disabled={isPending}
-          className={`px-4 h-full rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 ${
+          className={`px-3 sm:px-3.5 h-full rounded-lg text-xs sm:text-sm font-semibold transition-colors flex items-center gap-1.5 sm:gap-2 ${
             activeTab === 'submit' ? 'bg-foreground text-background shadow' : 'text-muted-foreground hover:text-foreground'
           } ${isPending ? 'opacity-70 cursor-not-allowed' : ''}`}
         >

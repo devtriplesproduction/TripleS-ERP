@@ -20,7 +20,7 @@ export interface DerivedAttendance {
 }
 
 import { calculateAttendanceSummary } from "@/lib/utils/attendance-summary"
-import { buildAttendanceRecords } from "@/lib/utils/attendance-builder"
+import { buildAttendanceRecords, extractOffboardingDate } from "@/lib/utils/attendance-builder"
 
 export async function getAttendanceEmployees(month: number, year: number) {
   // Enforce role-based access for this action
@@ -31,7 +31,7 @@ export async function getAttendanceEmployees(month: number, year: number) {
   // Parallel fetch: profiles and employee_onboarding
   const [profilesRes, onboardingRes] = await Promise.all([
     supabaseAdmin.from('profiles').select('id, first_name, last_name, employee_id').order('first_name'),
-    supabaseAdmin.from('employee_onboarding').select('id, employee_id_number, department, profile_photo, designation, employment_type')
+    supabaseAdmin.from('employee_onboarding').select('id, employee_id_number, department, profile_photo, designation, employment_type, joining_date, employment_status, notes, updated_at')
   ]);
 
   const profiles = profilesRes.data || [];
@@ -61,7 +61,11 @@ export async function getAttendanceEmployees(month: number, year: number) {
         department: ob.department || 'General',
         designation: ob.designation || '',
         profile_photo: ob.profile_photo || null,
-        employment_type: ob.employment_type || ''
+        employment_type: ob.employment_type || '',
+        joining_date: ob.joining_date || null,
+        employment_status: ob.employment_status || 'Active',
+        notes: ob.notes || null,
+        updated_at: ob.updated_at || null,
       };
     });
 
@@ -118,7 +122,10 @@ export async function getAttendanceEmployees(month: number, year: number) {
     const empsWithSummary = data.map(emp => {
       const empEods = eodsByAuthId.get(emp.id) || [];
       const empLeaves = leavesByEmpId.get(emp.onboarding_id) || [];
-      const attendance = _buildAttendanceRecords(year, month, empEods, empLeaves, holidays);
+      const attendance = _buildAttendanceRecords(year, month, empEods, empLeaves, holidays, {
+        joiningDate: emp.joining_date,
+        offboardingDate: extractOffboardingDate(emp)
+      });
       const summary = calculateAttendanceSummary(attendance);
 
       const hasActivity = attendance.some(a =>
@@ -150,14 +157,22 @@ export async function getAttendanceEmployeeProfile(employeeId: string) {
   const { data: profile } = await supabaseAdmin.from('profiles').select('id, first_name, last_name, employee_id').eq('id', employeeId).single();
   if (!profile) return null;
 
-  const { data: obData } = await supabaseAdmin.from('employee_onboarding').select('department, designation, profile_photo, employment_type').eq('employee_id_number', profile.employee_id).maybeSingle();
+  const { data: obData } = await supabaseAdmin
+    .from('employee_onboarding')
+    .select('department, designation, profile_photo, employment_type, joining_date, employment_status, notes, updated_at')
+    .eq('employee_id_number', profile.employee_id)
+    .maybeSingle();
 
   return {
     ...profile,
     department: obData?.department || 'General',
     designation: obData?.designation || '',
     profile_photo: obData?.profile_photo || null,
-    employment_type: obData?.employment_type || ''
+    employment_type: obData?.employment_type || '',
+    joining_date: obData?.joining_date || null,
+    employment_status: obData?.employment_status || 'Active',
+    notes: obData?.notes || null,
+    updated_at: obData?.updated_at || null,
   };
 }
 
@@ -176,30 +191,93 @@ async function _calculateAttendance(employeeId: string, month: number, year: num
   const endDate = new Date(year, month, 0);
   const endDateStr = `${year}-${String(month).padStart(2, '0')}-${String(endDate.getDate()).padStart(2, '0')}`;
 
-  const authUserPromise = supabase.from('employee_onboarding').select('employee_id_number').eq('id', employeeId).single()
-    .then(async (empOnboarding: any) => {
-      let authId = employeeId;
-      if (empOnboarding.data && empOnboarding.data.employee_id_number) {
-        const prof = await supabase.from('profiles').select('id').eq('employee_id', empOnboarding.data.employee_id_number).single();
-        if (prof.data) authId = prof.data.id;
-      }
-      return authId;
-    });
+  // Robust employee mapping: handles onboarding id (UUID), profiles id (auth UUID), or employee_id_number (EMP-xxx)
+  let onboardingRecord: any = null;
+  let profileRecord: any = null;
 
-  const [authUserId, holidaysRes, leaveRequestsRes] = await Promise.all([
-    authUserPromise,
-    supabase.from('holidays').select('id, date, name, holiday_type').gte('date', startDateStr).lte('date', endDateStr),
-    supabase.from('leave_requests').select('id, employee_id, start_date, end_date, status, request_type, is_half_day, reason').eq('employee_id', employeeId).in('status', ['Approved', 'Approved HR', 'Approved (Auto)']).lte('start_date', endDateStr).gte('end_date', startDateStr)
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(employeeId);
+
+  if (isUuid) {
+    const { data: obData } = await supabase
+      .from('employee_onboarding')
+      .select('id, employee_id_number, joining_date, employment_status, notes, updated_at, created_at')
+      .eq('id', employeeId)
+      .maybeSingle();
+
+    if (obData) {
+      onboardingRecord = obData;
+      if (obData.employee_id_number) {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('id, employee_id')
+          .eq('employee_id', obData.employee_id_number)
+          .maybeSingle();
+        profileRecord = prof;
+      }
+    } else {
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('id, employee_id')
+        .eq('id', employeeId)
+        .maybeSingle();
+      if (prof) {
+        profileRecord = prof;
+        if (prof.employee_id) {
+          const { data: ob } = await supabase
+            .from('employee_onboarding')
+            .select('id, employee_id_number, joining_date, employment_status, notes, updated_at, created_at')
+            .eq('employee_id_number', prof.employee_id)
+            .maybeSingle();
+          onboardingRecord = ob;
+        }
+      }
+    }
+  } else {
+    const { data: ob } = await supabase
+      .from('employee_onboarding')
+      .select('id, employee_id_number, joining_date, employment_status, notes, updated_at, created_at')
+      .eq('employee_id_number', employeeId)
+      .maybeSingle();
+    onboardingRecord = ob;
+    const { data: prof } = await supabase
+      .from('profiles')
+      .select('id, employee_id')
+      .eq('employee_id', employeeId)
+      .maybeSingle();
+    profileRecord = prof;
+  }
+
+  const authUserId = profileRecord?.id || employeeId;
+  const onboardingId = onboardingRecord?.id || employeeId;
+  const joiningDate = onboardingRecord?.joining_date || null;
+  const offboardingDate = extractOffboardingDate(onboardingRecord);
+
+  const [holidaysRes, leaveRequestsRes] = await Promise.all([
+    supabase
+      .from('holidays')
+      .select('id, date, name, holiday_type')
+      .gte('date', startDateStr)
+      .lte('date', endDateStr),
+    supabase
+      .from('leave_requests')
+      .select('id, employee_id, start_date, end_date, status, request_type, is_half_day, reason')
+      .or(`employee_id.eq.${onboardingId},employee_id.eq.${authUserId}`)
+      .in('status', ['Approved', 'Approved HR', 'Approved (Auto)'])
+      .lte('start_date', endDateStr)
+      .gte('end_date', startDateStr)
   ]);
 
   const { data: eods } = await supabase
     .from('eod_reports')
     .select('id, employee_id, report_date, office_hours, status, tasks_accomplished, location, rejection_reason, approved_at, approved_by')
-    .eq('employee_id', authUserId)
+    .or(`employee_id.eq.${authUserId},employee_id.eq.${onboardingId}`)
     .gte('report_date', startDateStr)
     .lte('report_date', endDateStr);
 
-  return _buildAttendanceRecords(year, month, eods || [], leaveRequestsRes.data || [], holidaysRes.data || []);
+  return _buildAttendanceRecords(year, month, eods || [], leaveRequestsRes.data || [], holidaysRes.data || [], {
+    joiningDate,
+    offboardingDate
+  });
 }
 
 const _buildAttendanceRecords = buildAttendanceRecords;

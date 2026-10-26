@@ -593,7 +593,7 @@ export function classifyWorkDay(workedMinutes: number, context: WorkDayContext):
       workedMinutes: wm,
       payrollStatus: 'UNPAID_LEAVE',
       isPayableDay: false, // Excluded from payroll
-      compOffMinutes: wm, // ALL worked time → Comp Off
+      compOffMinutes: 0, // No Comp Off under 8h threshold on normal days
       attendanceStatus: 'Unpaid Leave',
     };
   }

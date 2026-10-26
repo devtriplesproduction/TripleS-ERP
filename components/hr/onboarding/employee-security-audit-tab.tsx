@@ -265,6 +265,12 @@ export function EmployeeSecurityAuditTab({ employee }: EmployeeSecurityAuditTabP
             Public IP
           </span>
         )
+      case 'VPN / Proxy':
+        return (
+          <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/25">
+            VPN / Proxy
+          </span>
+        )
       case 'Unavailable':
       default:
         return (
@@ -273,6 +279,13 @@ export function EmployeeSecurityAuditTab({ employee }: EmployeeSecurityAuditTabP
           </span>
         )
     }
+  }
+
+  const formatLocationDisplay = (loc?: string | null) => {
+    if (!loc || loc === 'Approximate Location Unavailable' || loc === 'Local / Office Network') {
+      return 'Unknown'
+    }
+    return loc
   }
 
   return (
@@ -531,7 +544,7 @@ export function EmployeeSecurityAuditTab({ employee }: EmployeeSecurityAuditTabP
                         </div>
                         <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
                           <MapPin className="w-3 h-3 shrink-0 text-muted-foreground/70" />
-                          <span className="truncate max-w-[160px]">{record.location || 'Local / Office Network'}</span>
+                          <span className="truncate max-w-[160px]">{formatLocationDisplay(record.location)}</span>
                         </div>
                       </td>
 
@@ -695,7 +708,7 @@ export function EmployeeSecurityAuditTab({ employee }: EmployeeSecurityAuditTabP
                   <div className="flex items-center gap-1.5">
                     <MapPin className="w-3.5 h-3.5 text-muted-foreground/70 shrink-0" />
                     <span className="font-semibold text-foreground text-xs">
-                      {selectedRecord.location || 'Local / Office Network'}
+                      {formatLocationDisplay(selectedRecord.location)}
                     </span>
                   </div>
                 </div>

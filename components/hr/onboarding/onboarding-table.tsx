@@ -17,13 +17,22 @@ import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { DatePicker } from '@/components/ui/date-picker'
-import { ChevronLeft, ChevronRight, Trash2, Search, Filter, Loader2, Eye, Calendar, Building2, Briefcase, Star } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Trash2, Search, Filter, Loader2, Eye, Calendar, Building2, Briefcase, Star, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 import { Employee } from '@/lib/supabase/types'
 import { createClient } from '@/lib/supabase/client'
 import { deleteEmployee, deleteEmployeesBulk } from '@/lib/actions/onboarding'
 import { useToast } from '@/hooks/use-toast'
+import { useAnimatedPlaceholder } from '@/hooks/use-animated-placeholder'
+
+const SEARCH_PHRASES = [
+  'Search by name...',
+  'Search by email...',
+  'Search by department...',
+  'Search by employee ID...',
+  'Search by status...',
+]
 
 export function OnboardingTable({ employees }: { employees: Employee[] }) {
   const supabase = createClient()
@@ -31,15 +40,30 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
   const { toast } = useToast()
 
   const [searchQuery, setSearchQuery] = useState('')
+  const animatedPlaceholder = useAnimatedPlaceholder(SEARCH_PHRASES, {
+    enabled: !searchQuery,
+  })
   const [departmentFilter, setDepartmentFilter] = useState('')
   const [jobTitleFilter, setJobTitleFilter] = useState('')
   const [joiningDateFilter, setJoiningDateFilter] = useState('')
   const [statusFilter, setStatusFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
   const itemsPerPage = 10
 
   const uniqueDepartments = Array.from(new Set(employees.map(e => e.department))).filter(Boolean)
   const uniqueJobTitles = Array.from(new Set(employees.map(e => e.job_title))).filter(Boolean)
+
+  const isEmployeeInactive = (emp: Employee) => {
+    const status = (emp.employment_status || '').trim().toLowerCase()
+    return status === 'inactive' || status === 'terminated'
+  }
+
+  const isEmployeeHod = (emp: Employee) => {
+    if (emp.is_hod) return true
+    const title = `${emp.job_title || ''} ${emp.designation || ''}`
+    return /\b(hod|head of department)\b/i.test(title)
+  }
 
   const filteredEmployees = employees.filter(emp => {
     if (searchQuery) {
@@ -63,8 +87,39 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
     return true
   })
 
-  const totalPages = Math.ceil(filteredEmployees.length / itemsPerPage)
-  const currentEmployees = filteredEmployees.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+  // Sorting rules:
+  // 1. HOD employees: Display HODs at the top (tier 1)
+  // 2. Active regular employees: In the middle (tier 2)
+  // 3. Inactive employees: Always display inactive employees at the bottom (tier 3)
+  // 4. Within each group: Preserve joining-date sorting behavior (desc/asc), with created_at fallback
+  const sortedEmployees = [...filteredEmployees].sort((a, b) => {
+    const tierA = isEmployeeInactive(a) ? 3 : (isEmployeeHod(a) ? 1 : 2)
+    const tierB = isEmployeeInactive(b) ? 3 : (isEmployeeHod(b) ? 1 : 2)
+
+    if (tierA !== tierB) {
+      return tierA - tierB
+    }
+
+    const dateA = a.joining_date ? new Date(a.joining_date).getTime() : 0
+    const dateB = b.joining_date ? new Date(b.joining_date).getTime() : 0
+
+    if (dateA !== dateB) {
+      return sortDirection === 'asc' ? dateA - dateB : dateB - dateA
+    }
+
+    const createdA = a.created_at ? new Date(a.created_at).getTime() : 0
+    const createdB = b.created_at ? new Date(b.created_at).getTime() : 0
+    if (createdA !== createdB) {
+      return createdB - createdA
+    }
+
+    const nameA = `${a.first_name || ''} ${a.last_name || ''}`.trim().toLowerCase()
+    const nameB = `${b.first_name || ''} ${b.last_name || ''}`.trim().toLowerCase()
+    return nameA.localeCompare(nameB)
+  })
+
+  const totalPages = Math.ceil(sortedEmployees.length / itemsPerPage)
+  const currentEmployees = sortedEmployees.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
 
   const handleDelete = async (id: string) => {
     setIsDeleting(true)
@@ -86,14 +141,24 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
       <div className="flex flex-col lg:flex-row flex-wrap items-start lg:items-center gap-2.5 sm:gap-3 bg-card p-3 rounded-xl border border-border">
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-2.5 sm:gap-3 flex-1 w-full">
           <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input 
-            placeholder="Search by name, email, department..." 
-            className="w-full bg-input/50 border-border pl-9 filter-control text-sm"
-            value={searchQuery}
-            onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
-          />
-        </div>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input 
+              placeholder={animatedPlaceholder} 
+              className="w-full bg-input/50 border-border pl-9 pr-8 filter-control text-sm truncate"
+              value={searchQuery}
+              onChange={(e) => { setSearchQuery(e.target.value); setCurrentPage(1); }}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => { setSearchQuery(''); setCurrentPage(1); }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-0.5 rounded transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
         
         <Select value={departmentFilter} onValueChange={(val) => { setDepartmentFilter(val ?? ""); setCurrentPage(1); }}>
           <SelectTrigger className="w-full filter-control bg-input/50 border-border text-sm shrink-0">
@@ -155,13 +220,27 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
                 <TableHead className="text-muted-foreground font-medium">Employee Name</TableHead>
                 <TableHead className="text-muted-foreground font-medium">Department</TableHead>
                 <TableHead className="text-muted-foreground font-medium">Job Title</TableHead>
-                <TableHead className="text-muted-foreground font-medium">Joining Date ↕</TableHead>
+                <TableHead 
+                  className="text-muted-foreground font-medium cursor-pointer select-none hover:text-foreground transition-colors group"
+                  onClick={() => {
+                    setSortDirection(prev => prev === 'desc' ? 'asc' : 'desc')
+                    setCurrentPage(1)
+                  }}
+                  title="Click to toggle joining date sort order"
+                >
+                  <span className="inline-flex items-center gap-1">
+                    Joining Date
+                    <span className="text-[11px] font-mono text-muted-foreground group-hover:text-foreground">
+                      {sortDirection === 'asc' ? '↑' : '↓'}
+                    </span>
+                  </span>
+                </TableHead>
                 <TableHead className="text-muted-foreground font-medium">Status</TableHead>
                 <TableHead className="text-right text-muted-foreground font-medium pr-6">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredEmployees.length === 0 ? (
+              {sortedEmployees.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center h-32 text-muted-foreground">
                     No onboarding records found.
@@ -189,17 +268,16 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
                             <span className="font-medium text-foreground transition-all truncate">
                               {emp.first_name} {emp.last_name}
                             </span>
-                            {emp.is_hod && (
-                              <span 
-                                className="relative inline-flex items-center group/hod shrink-0 cursor-default" 
+                            {isEmployeeHod(emp) && (
+                              <Badge 
+                                variant="outline"
+                                className="bg-amber-500/15 text-amber-400 border-amber-500/25 hover:bg-amber-500/20 text-[10px] px-1.5 py-0 h-4.5 sm:h-5 font-semibold inline-flex items-center gap-1 shrink-0 select-none cursor-default"
                                 title="Head of Department (HOD)"
-                                onClick={(e) => e.stopPropagation()}
+                                onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                               >
-                                <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 drop-shadow-[0_0_2px_rgba(251,191,36,0.4)] shrink-0" />
-                                <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 opacity-0 group-hover/hod:opacity-100 transition-opacity duration-150 flex items-center whitespace-nowrap rounded-md bg-zinc-900 dark:bg-zinc-800 text-zinc-100 px-2 py-0.5 text-[11px] font-medium shadow-lg border border-border/60 z-50">
-                                  Head of Department (HOD)
-                                </span>
-                              </span>
+                                <Star className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-amber-400 text-amber-400 shrink-0" />
+                                <span>HOD</span>
+                              </Badge>
                             )}
                           </div>
                           <div className="text-xs text-muted-foreground truncate">{emp.email}</div>
@@ -251,7 +329,7 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
 
         {/* Mobile Cards View */}
         <div className="block md:hidden divide-y divide-border">
-          {filteredEmployees.length === 0 ? (
+          {sortedEmployees.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground text-sm">
               No onboarding records found.
             </div>
@@ -277,17 +355,16 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
                         <Link href={`/hr/onboarding/${emp.id}`} className="font-semibold text-foreground text-sm truncate">
                           {emp.first_name} {emp.last_name}
                         </Link>
-                        {emp.is_hod && (
-                          <span 
-                            className="relative inline-flex items-center group/hod shrink-0 cursor-default" 
+                        {isEmployeeHod(emp) && (
+                          <Badge 
+                            variant="outline"
+                            className="bg-amber-500/15 text-amber-400 border-amber-500/25 hover:bg-amber-500/20 text-[10px] px-1.5 py-0 h-4 font-semibold inline-flex items-center gap-1 shrink-0 select-none cursor-default"
                             title="Head of Department (HOD)"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
                           >
-                            <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400 drop-shadow-[0_0_2px_rgba(251,191,36,0.4)] shrink-0" />
-                            <span className="pointer-events-none absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 opacity-0 group-hover/hod:opacity-100 transition-opacity duration-150 flex items-center whitespace-nowrap rounded-md bg-zinc-900 dark:bg-zinc-800 text-zinc-100 px-2 py-0.5 text-[11px] font-medium shadow-lg border border-border/60 z-50">
-                              Head of Department (HOD)
-                            </span>
-                          </span>
+                            <Star className="w-2.5 h-2.5 fill-amber-400 text-amber-400 shrink-0" />
+                            <span>HOD</span>
+                          </Badge>
                         )}
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
@@ -362,7 +439,7 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
         {totalPages > 0 && (
           <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-border bg-card">
             <p className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
-              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, filteredEmployees.length)} of {filteredEmployees.length} results
+              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, sortedEmployees.length)} of {sortedEmployees.length} results
             </p>
             <div className="flex items-center gap-1.5 sm:gap-2">
               <Button 

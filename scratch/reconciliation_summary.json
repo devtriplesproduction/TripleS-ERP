@@ -1,0 +1,1076 @@
+[
+  {
+    "onboardingId": "ec90434e-901b-4dfa-b000-dca45d46cf71",
+    "profileId": "ba210f01-f9f9-4fe2-8b8d-af9c7285884e",
+    "employee_id_number": "EMP-002",
+    "name": "Harishchandra Nanavare",
+    "department": "Content",
+    "job_title": "Digital Marketing Executive",
+    "ledgerCount": 5,
+    "approvedEodCount": 14,
+    "pendingEodCount": 2,
+    "current": {
+      "earned": 6.5,
+      "used": 0,
+      "available": 6.5,
+      "days": 0,
+      "debits": 0,
+      "reversals": 0
+    },
+    "expectedCanonical": {
+      "earned": 6.5,
+      "used": 0,
+      "available": 6.5,
+      "days": 0,
+      "diffEarned": 0,
+      "diffAvailable": 0
+    },
+    "expectedSept30Normal": {
+      "earned": 6.5,
+      "used": 0,
+      "available": 6.5,
+      "days": 0,
+      "diffEarned": 0,
+      "diffAvailable": 0
+    },
+    "eodBreakdown": [
+      {
+        "eodId": "10dd42af-c80f-4d51-a9e7-9c159965b372",
+        "date": "2026-10-01",
+        "context": "normal",
+        "rawOfficeHours": 10.5,
+        "canonicalMins": 630,
+        "compOffMins": 150,
+        "compOffHours": 2.5,
+        "actualCreditHours": 2.5,
+        "ledgerEntryId": "2f1d6ec0-7004-4dbd-b29a-f6a4dddb7b09"
+      },
+      {
+        "eodId": "f4197380-230b-4a3b-a9b8-bedab1d9fa0d",
+        "date": "2026-10-07",
+        "context": "normal",
+        "rawOfficeHours": 9,
+        "canonicalMins": 540,
+        "compOffMins": 60,
+        "compOffHours": 1,
+        "actualCreditHours": 1,
+        "ledgerEntryId": "89bf6aea-dc71-4a3f-9016-da36e7065147"
+      },
+      {
+        "eodId": "e3a727fc-d31c-4205-95b7-bea8ac1d5867",
+        "date": "2026-10-08",
+        "context": "normal",
+        "rawOfficeHours": 9,
+        "canonicalMins": 540,
+        "compOffMins": 60,
+        "compOffHours": 1,
+        "actualCreditHours": 1,
+        "ledgerEntryId": "f564d187-bace-4303-a087-75eb8fea834b"
+      },
+      {
+        "eodId": "5676551f-3ac9-4a00-9b25-d0180cadfefb",
+        "date": "2026-10-09",
+        "context": "normal",
+        "rawOfficeHours": 9,
+        "canonicalMins": 540,
+        "compOffMins": 60,
+        "compOffHours": 1,
+        "actualCreditHours": 1,
+        "ledgerEntryId": "23ea1b16-d053-4273-b253-c6820d785410"
+      },
+      {
+        "eodId": "61ec6b19-7105-47bd-8515-f548f94d9e02",
+        "date": "2026-10-10",
+        "context": "normal",
+        "rawOfficeHours": 9,
+        "canonicalMins": 540,
+        "compOffMins": 60,
+        "compOffHours": 1,
+        "actualCreditHours": 1,
+        "ledgerEntryId": "db2e8e5f-929e-469f-bf2e-35df554df6bd"
+      },
+      {
+        "eodId": "ff1a715b-3ebc-439d-983c-b78b6159b48f",
+        "date": "2026-10-12",
+        "context": "normal",
+        "rawOfficeHours": 8,
+        "canonicalMins": 480,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      },
+      {
+        "eodId": "67ac9a12-6558-4ce7-8536-2a03cad2c1ce",
+        "date": "2026-10-13",
+        "context": "normal",
+        "rawOfficeHours": 8,
+        "canonicalMins": 480,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      },
+      {
+        "eodId": "cc3a435b-ee51-4720-8777-1e9050f58fb8",
+        "date": "2026-10-14",
+        "context": "normal",
+        "rawOfficeHours": 4,
+        "canonicalMins": 240,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      },
+      {
+        "eodId": "0f13c2f1-0fb1-4951-aff1-de890d4c95b7",
+        "date": "2026-10-15",
+        "context": "normal",
+        "rawOfficeHours": 3.8833333333333333,
+        "canonicalMins": 233,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      },
+      {
+        "eodId": "abf2f7f2-d580-42f6-8ffb-0c8e7389cb70",
+        "date": "2026-10-16",
+        "context": "normal",
+        "rawOfficeHours": 4.25,
+        "canonicalMins": 255,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      },
+      {
+        "eodId": "a6e3d0e1-917c-41ed-8f14-7bc25e42392f",
+        "date": "2026-10-17",
+        "context": "normal",
+        "rawOfficeHours": 4.2,
+        "canonicalMins": 252,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      },
+      {
+        "eodId": "33751d7a-4b18-4ef4-b83a-9cc91f0deed6",
+        "date": "2026-10-19",
+        "context": "normal",
+        "rawOfficeHours": 8,
+        "canonicalMins": 480,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      },
+      {
+        "eodId": "82ac8450-5cad-40c8-aa10-2100d35c205d",
+        "date": "2026-10-21",
+        "context": "normal",
+        "rawOfficeHours": 4,
+        "canonicalMins": 240,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      },
+      {
+        "eodId": "d0a12c17-f66e-4703-8f38-0354c91e4675",
+        "date": "2026-10-22",
+        "context": "normal",
+        "rawOfficeHours": 5,
+        "canonicalMins": 300,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      }
+    ]
+  },
+  {
+    "onboardingId": "2b22862a-3817-4d87-9c60-9ecdb4e0a6c6",
+    "profileId": "3f1a7db7-0ebf-45a7-b5a9-f9a0a393c023",
+    "employee_id_number": "EMP-003",
+    "name": "Omkar Sawant",
+    "department": "Development",
+    "job_title": "Full-Stack Developer",
+    "ledgerCount": 16,
+    "approvedEodCount": 18,
+    "pendingEodCount": 0,
+    "current": {
+      "earned": 25.7,
+      "used": 8,
+      "available": 17.7,
+      "days": 2,
+      "debits": 8,
+      "reversals": 0
+    },
+    "expectedCanonical": {
+      "earned": 34.68,
+      "used": 8,
+      "available": 26.68,
+      "days": 3,
+      "diffEarned": 8.98,
+      "diffAvailable": 8.98
+    },
+    "expectedSept30Normal": {
+      "earned": 26.68,
+      "used": 8,
+      "available": 18.68,
+      "days": 2,
+      "diffEarned": 0.98,
+      "diffAvailable": 0.98
+    },
+    "eodBreakdown": [
+      {
+        "eodId": "693a1c02-d25e-4bc2-a3cd-e66cbf477b1b",
+        "date": "2026-09-30",
+        "context": "paid_holiday",
+        "rawOfficeHours": 11.3,
+        "canonicalMins": 690,
+        "compOffMins": 690,
+        "compOffHours": 11.5,
+        "actualCreditHours": 3.3,
+        "ledgerEntryId": "0340b18e-168d-491e-acfa-d1cd19e5c47b"
+      },
+      {
+        "eodId": "3bef9726-d06b-49b6-a872-374dabc5456a",
+        "date": "2026-10-01",
+        "context": "normal",
+        "rawOfficeHours": 10.47,
+        "canonicalMins": 647,
+        "compOffMins": 167,
+        "compOffHours": 2.78,
+        "actualCreditHours": 2.47,
+        "ledgerEntryId": "017a1399-e45c-4c8f-b389-0fc0e34ef683"
+      },
+      {
+        "eodId": "7451a7a4-eba6-4b01-b546-e4c99e5f5e8d",
+        "date": "2026-10-02",
+        "context": "normal",
+        "rawOfficeHours": 8.15,
+        "canonicalMins": 495,
+        "compOffMins": 15,
+        "compOffHours": 0.25,
+        "actualCreditHours": 0.15,
+        "ledgerEntryId": "d5ca57b4-429e-4621-9517-49ddb13f4e35"
+      },
+      {
+        "eodId": "3435137d-f92c-4d8e-9051-6a9f2f26b869",
+        "date": "2026-10-03",
+        "context": "normal",
+        "rawOfficeHours": 8.05,
+        "canonicalMins": 485,
+        "compOffMins": 5,
+        "compOffHours": 0.08,
+        "actualCreditHours": 0.05,
+        "ledgerEntryId": "849a16d6-cac5-4119-a705-adb3a9679ddc"
+      },
+      {
+        "eodId": "1a0e3778-20aa-4c6b-b96e-5b3081fe4456",
+        "date": "2026-10-04",
+        "context": "sunday",
+        "rawOfficeHours": 8,
+        "canonicalMins": 480,
+        "compOffMins": 480,
+        "compOffHours": 8,
+        "actualCreditHours": 8,
+        "ledgerEntryId": "2ff8e7ff-bffb-4e4e-af5c-347803d20bc5"
+      },
+      {
+        "eodId": "4dd973d0-efbf-4cbc-934e-90bb1bef62ed",
+        "date": "2026-10-06",
+        "context": "normal",
+        "rawOfficeHours": 8.05,
+        "canonicalMins": 485,
+        "compOffMins": 5,
+        "compOffHours": 0.08,
+        "actualCreditHours": 0.05,
+        "ledgerEntryId": "dac9d9c3-a088-42bd-a627-d6be88cf4b84"
+      },
+      {
+        "eodId": "43d7facc-5e07-475b-a062-cd35ff6fa3cc",
+        "date": "2026-10-07",
+        "context": "normal",
+        "rawOfficeHours": 8.016667,
+        "canonicalMins": 481,
+        "compOffMins": 1,
+        "compOffHours": 0.02,
+        "actualCreditHours": 0.02,
+        "ledgerEntryId": "0737f275-14f1-4733-abc1-25da20ccff45"
+      },
+      {
+        "eodId": "42f5b5be-b296-4193-ab9a-c1ca1e141883",
+        "date": "2026-10-08",
+        "context": "normal",
+        "rawOfficeHours": 8.283333,
+        "canonicalMins": 497,
+        "compOffMins": 17,
+        "compOffHours": 0.28,
+        "actualCreditHours": 0.28,
+        "ledgerEntryId": "88d70789-d1be-4a13-8adc-8f0be50b46b1"
+      },
+      {
+        "eodId": "eaa189c0-d22e-44bb-8e9a-09677bf75724",
+        "date": "2026-10-09",
+        "context": "normal",
+        "rawOfficeHours": 8.033333,
+        "canonicalMins": 482,
+        "compOffMins": 2,
+        "compOffHours": 0.03,
+        "actualCreditHours": 0.03,
+        "ledgerEntryId": "47d9992f-1359-4502-aefb-f6ccec880bd6"
+      },
+      {
+        "eodId": "943709c1-b5f4-4eca-8470-3de81cf4e2dc",
+        "date": "2026-10-10",
+        "context": "normal",
+        "rawOfficeHours": 8.233333,
+        "canonicalMins": 494,
+        "compOffMins": 14,
+        "compOffHours": 0.23,
+        "actualCreditHours": 0.23,
+        "ledgerEntryId": "cf41698f-9680-4843-aaf4-7bf4eef4b396"
+      },
+      {
+        "eodId": "7e67b707-9f1c-4d60-baf0-628084725bd5",
+        "date": "2026-10-12",
+        "context": "normal",
+        "rawOfficeHours": 8.45,
+        "canonicalMins": 525,
+        "compOffMins": 45,
+        "compOffHours": 0.75,
+        "actualCreditHours": 0.45,
+        "ledgerEntryId": "e6ea7418-70e5-444f-b63b-20ab2b7e2f15"
+      },
+      {
+        "eodId": "3afabc75-058e-46eb-a137-2db4bd4cd199",
+        "date": "2026-10-13",
+        "context": "normal",
+        "rawOfficeHours": 8.416667,
+        "canonicalMins": 505,
+        "compOffMins": 25,
+        "compOffHours": 0.42,
+        "actualCreditHours": 0.42,
+        "ledgerEntryId": "06ce7447-2a74-4542-a60d-e86852988370"
+      },
+      {
+        "eodId": "2be52e25-48af-4c62-a7c9-9335b7526f80",
+        "date": "2026-10-14",
+        "context": "normal",
+        "rawOfficeHours": 9.5,
+        "canonicalMins": 570,
+        "compOffMins": 90,
+        "compOffHours": 1.5,
+        "actualCreditHours": 1.5,
+        "ledgerEntryId": "b0b345cb-7092-4b59-a2df-2d2e3dc41a39"
+      },
+      {
+        "eodId": "62576252-77df-4463-b237-3519985f6dc8",
+        "date": "2026-10-15",
+        "context": "normal",
+        "rawOfficeHours": 8,
+        "canonicalMins": 480,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      },
+      {
+        "eodId": "3104d045-ba65-4aa2-a6d3-6ea9f0ba2555",
+        "date": "2026-10-17",
+        "context": "normal",
+        "rawOfficeHours": 4.25,
+        "canonicalMins": 255,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      },
+      {
+        "eodId": "b141c9c5-518e-4735-907e-a2577539d1f4",
+        "date": "2026-10-18",
+        "context": "sunday",
+        "rawOfficeHours": 8.25,
+        "canonicalMins": 495,
+        "compOffMins": 495,
+        "compOffHours": 8.25,
+        "actualCreditHours": 8.25,
+        "ledgerEntryId": "ab0ed1ed-ffab-4bec-ad22-4cec733e1b6d"
+      },
+      {
+        "eodId": "9714b582-4713-4367-9460-45146f975001",
+        "date": "2026-10-19",
+        "context": "normal",
+        "rawOfficeHours": 8.5,
+        "canonicalMins": 510,
+        "compOffMins": 30,
+        "compOffHours": 0.5,
+        "actualCreditHours": 0.5,
+        "ledgerEntryId": "4955bd28-1452-4d11-a404-ec8da944c1b9"
+      },
+      {
+        "eodId": "6fcd882d-56e2-40bb-ae91-5de706c36271",
+        "date": "2026-10-22",
+        "context": "normal",
+        "rawOfficeHours": 2.25,
+        "canonicalMins": 135,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      }
+    ]
+  },
+  {
+    "onboardingId": "7af58e74-a246-4db0-bf2e-8d05736ec259",
+    "profileId": "be5f1a2b-63ae-4cfd-a2c3-75aba7992a78",
+    "employee_id_number": "EMP-006",
+    "name": "H R",
+    "department": "Management",
+    "job_title": "HR",
+    "ledgerCount": 0,
+    "approvedEodCount": 0,
+    "pendingEodCount": 0,
+    "current": {
+      "earned": 0,
+      "used": 0,
+      "available": 0,
+      "days": 0,
+      "debits": 0,
+      "reversals": 0
+    },
+    "expectedCanonical": {
+      "earned": 0,
+      "used": 0,
+      "available": 0,
+      "days": 0,
+      "diffEarned": 0,
+      "diffAvailable": 0
+    },
+    "expectedSept30Normal": {
+      "earned": 0,
+      "used": 0,
+      "available": 0,
+      "days": 0,
+      "diffEarned": 0,
+      "diffAvailable": 0
+    },
+    "eodBreakdown": []
+  },
+  {
+    "onboardingId": "dd30b88a-2d4f-407d-b37b-baaad4c9db72",
+    "profileId": "6af63eb6-12a6-4809-97c6-ef0792eeab53",
+    "employee_id_number": "EMP-001",
+    "name": "Prince Nandagawali",
+    "department": "Content",
+    "job_title": "Video Editor",
+    "ledgerCount": 17,
+    "approvedEodCount": 20,
+    "pendingEodCount": 2,
+    "current": {
+      "earned": 47.73,
+      "used": 0,
+      "available": 47.73,
+      "days": 5,
+      "debits": 0,
+      "reversals": 0
+    },
+    "expectedCanonical": {
+      "earned": 48.28,
+      "used": 0,
+      "available": 48.28,
+      "days": 6,
+      "diffEarned": 0.55,
+      "diffAvailable": 0.55
+    },
+    "expectedSept30Normal": {
+      "earned": 48.28,
+      "used": 0,
+      "available": 48.28,
+      "days": 6,
+      "diffEarned": 0.55,
+      "diffAvailable": 0.55
+    },
+    "eodBreakdown": [
+      {
+        "eodId": "1cde83b0-5909-4e88-96e2-f49cd927a800",
+        "date": "2026-10-01",
+        "context": "normal",
+        "rawOfficeHours": 9.5,
+        "canonicalMins": 570,
+        "compOffMins": 90,
+        "compOffHours": 1.5,
+        "actualCreditHours": 1.5,
+        "ledgerEntryId": "d859aaa8-cd74-498f-94e1-6d390541a655"
+      },
+      {
+        "eodId": "f33e5e1c-3ecc-40b8-b61f-a30c9816d553",
+        "date": "2026-10-02",
+        "context": "normal",
+        "rawOfficeHours": 9.5,
+        "canonicalMins": 570,
+        "compOffMins": 90,
+        "compOffHours": 1.5,
+        "actualCreditHours": 1.5,
+        "ledgerEntryId": "a42ecb3c-dd2b-478d-b825-477518de1b30"
+      },
+      {
+        "eodId": "ee605315-7173-42f2-87ba-8d4d4c32cd95",
+        "date": "2026-10-03",
+        "context": "normal",
+        "rawOfficeHours": 9,
+        "canonicalMins": 540,
+        "compOffMins": 60,
+        "compOffHours": 1,
+        "actualCreditHours": 1,
+        "ledgerEntryId": "31185163-ec55-4e80-a2ff-2ecc6f8f6394"
+      },
+      {
+        "eodId": "2217dd4d-8b28-4bb3-962b-b054a9c6de79",
+        "date": "2026-10-04",
+        "context": "sunday",
+        "rawOfficeHours": 7,
+        "canonicalMins": 420,
+        "compOffMins": 420,
+        "compOffHours": 7,
+        "actualCreditHours": 7,
+        "ledgerEntryId": "55d53c83-ef2e-442c-8ff1-f55b80248b99"
+      },
+      {
+        "eodId": "9e503b92-6678-4519-9d1c-c566e8fe6a9e",
+        "date": "2026-10-05",
+        "context": "normal",
+        "rawOfficeHours": 8.2833333333,
+        "canonicalMins": 497,
+        "compOffMins": 17,
+        "compOffHours": 0.28,
+        "actualCreditHours": 0.28,
+        "ledgerEntryId": "370a546c-9fc4-4693-a055-747774f0efab"
+      },
+      {
+        "eodId": "dbd1c5c4-3397-4275-8046-3214bbedf56f",
+        "date": "2026-10-06",
+        "context": "normal",
+        "rawOfficeHours": 8,
+        "canonicalMins": 480,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      },
+      {
+        "eodId": "331efca6-1cd2-4cd3-aa17-d2ce86b99245",
+        "date": "2026-10-07",
+        "context": "normal",
+        "rawOfficeHours": 8.283333,
+        "canonicalMins": 497,
+        "compOffMins": 17,
+        "compOffHours": 0.28,
+        "actualCreditHours": 0.28,
+        "ledgerEntryId": "1fa412b2-0ad1-47cc-ba5b-5352b6a3fcc3"
+      },
+      {
+        "eodId": "e8b8e04a-88f5-40e0-a2ee-8c0f09939a41",
+        "date": "2026-10-08",
+        "context": "normal",
+        "rawOfficeHours": 9.816667,
+        "canonicalMins": 589,
+        "compOffMins": 109,
+        "compOffHours": 1.82,
+        "actualCreditHours": 1.82,
+        "ledgerEntryId": "d213d21a-8dd6-4c7b-8572-a0571916c1ce"
+      },
+      {
+        "eodId": "f4f004dc-b131-4e7f-912a-42b1f90f7f74",
+        "date": "2026-10-09",
+        "context": "normal",
+        "rawOfficeHours": 10.5,
+        "canonicalMins": 630,
+        "compOffMins": 150,
+        "compOffHours": 2.5,
+        "actualCreditHours": 2.5,
+        "ledgerEntryId": "6c718c05-fa7c-4b50-aab3-1ec297e9886d"
+      },
+      {
+        "eodId": "3a3479e4-16bc-4ef1-94ba-aec2b9122ffb",
+        "date": "2026-10-10",
+        "context": "normal",
+        "rawOfficeHours": 10,
+        "canonicalMins": 600,
+        "compOffMins": 120,
+        "compOffHours": 2,
+        "actualCreditHours": 2,
+        "ledgerEntryId": "232bcf32-b933-4f33-ac18-73424a4a869b"
+      },
+      {
+        "eodId": "af05e19c-6013-461a-ba2b-8c64b2f54fce",
+        "date": "2026-10-11",
+        "context": "sunday",
+        "rawOfficeHours": 6,
+        "canonicalMins": 360,
+        "compOffMins": 360,
+        "compOffHours": 6,
+        "actualCreditHours": 6,
+        "ledgerEntryId": "c0e673e0-c2fd-43c0-84a6-dbf82f7197d8"
+      },
+      {
+        "eodId": "e9ad0ed4-2d50-44c2-80e2-2b1a2e1ed37e",
+        "date": "2026-10-12",
+        "context": "normal",
+        "rawOfficeHours": 8,
+        "canonicalMins": 480,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      },
+      {
+        "eodId": "985420c5-effb-4649-a7a1-067284916caa",
+        "date": "2026-10-13",
+        "context": "normal",
+        "rawOfficeHours": 8.833333,
+        "canonicalMins": 530,
+        "compOffMins": 50,
+        "compOffHours": 0.83,
+        "actualCreditHours": 0.83,
+        "ledgerEntryId": "66339e2d-cf27-4cd3-af0e-dd30cc04786f"
+      },
+      {
+        "eodId": "0a36316d-febe-47b0-9a85-dda719a24a1e",
+        "date": "2026-10-15",
+        "context": "normal",
+        "rawOfficeHours": 9.216667,
+        "canonicalMins": 553,
+        "compOffMins": 73,
+        "compOffHours": 1.22,
+        "actualCreditHours": 1.22,
+        "ledgerEntryId": "5b5e162c-b0c8-4727-8c01-867dea832ec1"
+      },
+      {
+        "eodId": "f9698635-f8cd-4cb5-a8b2-aea1cb1be4fd",
+        "date": "2026-10-16",
+        "context": "normal",
+        "rawOfficeHours": 10.733333,
+        "canonicalMins": 644,
+        "compOffMins": 164,
+        "compOffHours": 2.73,
+        "actualCreditHours": 2.73,
+        "ledgerEntryId": "ade9b54d-52b3-41aa-9364-bc2eb7a2ca10"
+      },
+      {
+        "eodId": "9c1d130f-e45f-4dc4-895b-a7c4494782b2",
+        "date": "2026-10-17",
+        "context": "normal",
+        "rawOfficeHours": 8,
+        "canonicalMins": 480,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      },
+      {
+        "eodId": "4d9246f5-9876-4f86-a3de-ea90ca48efe4",
+        "date": "2026-10-18",
+        "context": "sunday",
+        "rawOfficeHours": 10.55,
+        "canonicalMins": 655,
+        "compOffMins": 655,
+        "compOffHours": 10.92,
+        "actualCreditHours": 10.55,
+        "ledgerEntryId": "dc1d82b2-a599-4e7c-8cce-28730ab76096"
+      },
+      {
+        "eodId": "3edf3dcf-c9aa-4d37-8e64-389ce81bbe1d",
+        "date": "2026-10-19",
+        "context": "normal",
+        "rawOfficeHours": 8.27,
+        "canonicalMins": 507,
+        "compOffMins": 27,
+        "compOffHours": 0.45,
+        "actualCreditHours": 0.27,
+        "ledgerEntryId": "e8356bd8-e5a5-43b6-8cbb-e8efc5f19a0f"
+      },
+      {
+        "eodId": "3af82a8e-1a66-4604-a6a7-fbc4e832f25f",
+        "date": "2026-10-20",
+        "context": "paid_holiday",
+        "rawOfficeHours": 8,
+        "canonicalMins": 480,
+        "compOffMins": 480,
+        "compOffHours": 8,
+        "actualCreditHours": 8,
+        "ledgerEntryId": "fa34cbde-2521-442a-962c-6a05f7a483aa"
+      },
+      {
+        "eodId": "656eabe5-c2e7-4062-bc46-53f90beb88a4",
+        "date": "2026-10-21",
+        "context": "normal",
+        "rawOfficeHours": 8.25,
+        "canonicalMins": 495,
+        "compOffMins": 15,
+        "compOffHours": 0.25,
+        "actualCreditHours": 0.25,
+        "ledgerEntryId": "c65e25d4-4610-4ec0-be46-45fe6202192d"
+      }
+    ]
+  },
+  {
+    "onboardingId": "6a7dc32e-2d11-4a05-8be6-956b0a288354",
+    "profileId": "ca706582-629a-4630-9fbf-efa0ada8ba81",
+    "employee_id_number": "EMP-004",
+    "name": "Shital Khulape",
+    "department": "Development",
+    "job_title": "Full-Stack Developer",
+    "ledgerCount": 15,
+    "approvedEodCount": 18,
+    "pendingEodCount": 2,
+    "current": {
+      "earned": 17.4,
+      "used": 8,
+      "available": 9.4,
+      "days": 1,
+      "debits": 8,
+      "reversals": 0
+    },
+    "expectedCanonical": {
+      "earned": 18.13,
+      "used": 8,
+      "available": 10.13,
+      "days": 1,
+      "diffEarned": 0.73,
+      "diffAvailable": 0.73
+    },
+    "expectedSept30Normal": {
+      "earned": 18.13,
+      "used": 8,
+      "available": 10.13,
+      "days": 1,
+      "diffEarned": 0.73,
+      "diffAvailable": 0.73
+    },
+    "eodBreakdown": [
+      {
+        "eodId": "3b6fa824-53bd-46b9-8f92-5d210990a686",
+        "date": "2026-10-01",
+        "context": "normal",
+        "rawOfficeHours": 9,
+        "canonicalMins": 540,
+        "compOffMins": 60,
+        "compOffHours": 1,
+        "actualCreditHours": 1,
+        "ledgerEntryId": "756730f2-6632-4d5b-89d1-9fc0b276e4bb"
+      },
+      {
+        "eodId": "47e2041f-86dd-480d-98ed-815d916af451",
+        "date": "2026-10-02",
+        "context": "normal",
+        "rawOfficeHours": 8,
+        "canonicalMins": 480,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      },
+      {
+        "eodId": "1e515674-59fa-4b81-8e17-a08e9df90bb0",
+        "date": "2026-10-03",
+        "context": "normal",
+        "rawOfficeHours": 8,
+        "canonicalMins": 480,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      },
+      {
+        "eodId": "12fdd796-a8fe-43b9-bd24-6537c93bbdfb",
+        "date": "2026-10-04",
+        "context": "sunday",
+        "rawOfficeHours": 3.7,
+        "canonicalMins": 222,
+        "compOffMins": 222,
+        "compOffHours": 3.7,
+        "actualCreditHours": 3.7,
+        "ledgerEntryId": "c3a3535b-5f74-41cb-9cc0-4d0ebd2ff147"
+      },
+      {
+        "eodId": "e44cfb65-f7dd-4cc2-89fd-21f705e665da",
+        "date": "2026-10-05",
+        "context": "normal",
+        "rawOfficeHours": 11,
+        "canonicalMins": 660,
+        "compOffMins": 180,
+        "compOffHours": 3,
+        "actualCreditHours": 3,
+        "ledgerEntryId": "acdb9312-823f-4fab-9d16-16db883f0814"
+      },
+      {
+        "eodId": "c373bc04-3387-4418-a91d-99057297595c",
+        "date": "2026-10-06",
+        "context": "normal",
+        "rawOfficeHours": 8.3,
+        "canonicalMins": 510,
+        "compOffMins": 30,
+        "compOffHours": 0.5,
+        "actualCreditHours": 0.3,
+        "ledgerEntryId": "ce91c737-f2fb-4622-b0a4-46c267688781"
+      },
+      {
+        "eodId": "93649091-4d31-46d9-82c8-5dcab4980f6f",
+        "date": "2026-10-07",
+        "context": "normal",
+        "rawOfficeHours": 8.3,
+        "canonicalMins": 510,
+        "compOffMins": 30,
+        "compOffHours": 0.5,
+        "actualCreditHours": 0.3,
+        "ledgerEntryId": "a07644e1-8564-4936-8965-67850c55c3fb"
+      },
+      {
+        "eodId": "80e05c68-3283-4dd9-a2c0-1dc9017f3770",
+        "date": "2026-10-08",
+        "context": "normal",
+        "rawOfficeHours": 10,
+        "canonicalMins": 600,
+        "compOffMins": 120,
+        "compOffHours": 2,
+        "actualCreditHours": 2,
+        "ledgerEntryId": "d354355b-f3b1-4b98-93a4-a06e84b26e3e"
+      },
+      {
+        "eodId": "e1fcde9d-a297-4468-886a-781e9977cab9",
+        "date": "2026-10-09",
+        "context": "normal",
+        "rawOfficeHours": 11.3,
+        "canonicalMins": 690,
+        "compOffMins": 210,
+        "compOffHours": 3.5,
+        "actualCreditHours": 3.3,
+        "ledgerEntryId": "baedcb56-6136-4be2-a326-85ded5f1e8f0"
+      },
+      {
+        "eodId": "442b9dbe-c411-411c-bd1c-c9a0940362b6",
+        "date": "2026-10-10",
+        "context": "normal",
+        "rawOfficeHours": 8.05,
+        "canonicalMins": 485,
+        "compOffMins": 5,
+        "compOffHours": 0.08,
+        "actualCreditHours": 0.05,
+        "ledgerEntryId": "198807a3-dd1b-447a-8464-b1710b61b2d0"
+      },
+      {
+        "eodId": "b4e3289d-c2b1-4e1c-b7ce-8aef6c00bd3a",
+        "date": "2026-10-12",
+        "context": "normal",
+        "rawOfficeHours": 8.15,
+        "canonicalMins": 495,
+        "compOffMins": 15,
+        "compOffHours": 0.25,
+        "actualCreditHours": 0.15,
+        "ledgerEntryId": "58e2b1de-8ef2-4d21-be87-adc073760053"
+      },
+      {
+        "eodId": "6d97f8ac-2cbe-44d1-babd-be403e4214f9",
+        "date": "2026-10-13",
+        "context": "normal",
+        "rawOfficeHours": 8.333333,
+        "canonicalMins": 500,
+        "compOffMins": 20,
+        "compOffHours": 0.33,
+        "actualCreditHours": 0.33,
+        "ledgerEntryId": "c58f2fa0-3e24-4e3e-9a85-13a37b551072"
+      },
+      {
+        "eodId": "5cfe2770-f547-417f-bb0b-ac7f4839f38c",
+        "date": "2026-10-14",
+        "context": "normal",
+        "rawOfficeHours": 8,
+        "canonicalMins": 480,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      },
+      {
+        "eodId": "c6ce163e-f927-4d65-a7db-0708f04bcf37",
+        "date": "2026-10-15",
+        "context": "normal",
+        "rawOfficeHours": 8.183333,
+        "canonicalMins": 491,
+        "compOffMins": 11,
+        "compOffHours": 0.18,
+        "actualCreditHours": 0.18,
+        "ledgerEntryId": "50188470-8928-4c25-8f04-ae93078a002d"
+      },
+      {
+        "eodId": "cc2d32ea-f03f-444c-9831-326bebaeebe6",
+        "date": "2026-10-16",
+        "context": "normal",
+        "rawOfficeHours": 8.5,
+        "canonicalMins": 510,
+        "compOffMins": 30,
+        "compOffHours": 0.5,
+        "actualCreditHours": 0.5,
+        "ledgerEntryId": "99daf826-05bc-4d70-9f36-2acca1d78e42"
+      },
+      {
+        "eodId": "0f81d0c8-07e3-4001-ae7b-1d2354134462",
+        "date": "2026-10-17",
+        "context": "normal",
+        "rawOfficeHours": 10.366667,
+        "canonicalMins": 622,
+        "compOffMins": 142,
+        "compOffHours": 2.37,
+        "actualCreditHours": 2.37,
+        "ledgerEntryId": "e52d3ffd-9dd4-4c94-92bb-8ee86c7c202b"
+      },
+      {
+        "eodId": "c87b1f14-9f18-4509-9189-a2c304bda652",
+        "date": "2026-10-19",
+        "context": "normal",
+        "rawOfficeHours": 8.216667,
+        "canonicalMins": 493,
+        "compOffMins": 13,
+        "compOffHours": 0.22,
+        "actualCreditHours": 0.22,
+        "ledgerEntryId": "b9b7ad69-58d2-45e7-aca9-f07138fb7e87"
+      },
+      {
+        "eodId": "d088fdc6-60af-46c9-82bc-6619ccd38d6a",
+        "date": "2026-10-22",
+        "context": "normal",
+        "rawOfficeHours": 8,
+        "canonicalMins": 480,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      }
+    ]
+  },
+  {
+    "onboardingId": "95b644b9-d765-4099-95bf-2746f2a15d78",
+    "profileId": "fc0681ea-c242-4e11-a797-6408af99f4e8",
+    "employee_id_number": "EMP-007",
+    "name": "Prachi Thorat",
+    "department": "Development",
+    "job_title": "Full-Stack Developer",
+    "ledgerCount": 0,
+    "approvedEodCount": 1,
+    "pendingEodCount": 2,
+    "current": {
+      "earned": 0,
+      "used": 0,
+      "available": 0,
+      "days": 0,
+      "debits": 0,
+      "reversals": 0
+    },
+    "expectedCanonical": {
+      "earned": 0,
+      "used": 0,
+      "available": 0,
+      "days": 0,
+      "diffEarned": 0,
+      "diffAvailable": 0
+    },
+    "expectedSept30Normal": {
+      "earned": 0,
+      "used": 0,
+      "available": 0,
+      "days": 0,
+      "diffEarned": 0,
+      "diffAvailable": 0
+    },
+    "eodBreakdown": [
+      {
+        "eodId": "c4a33ebd-9f54-4270-ac86-10c8a246b19d",
+        "date": "2026-10-22",
+        "context": "normal",
+        "rawOfficeHours": 8,
+        "canonicalMins": 480,
+        "compOffMins": 0,
+        "compOffHours": 0,
+        "actualCreditHours": 0,
+        "ledgerEntryId": null
+      }
+    ]
+  },
+  {
+    "onboardingId": "7fd6f01e-f75d-49ae-b6a9-515c4420a0dd",
+    "profileId": "e956c43d-cdd0-45f7-aeca-6e8b4e6d2e71",
+    "employee_id_number": "EMP-008",
+    "name": "raviraj ravi",
+    "department": "Management",
+    "job_title": "Sales Executive",
+    "ledgerCount": 0,
+    "approvedEodCount": 0,
+    "pendingEodCount": 0,
+    "current": {
+      "earned": 0,
+      "used": 0,
+      "available": 0,
+      "days": 0,
+      "debits": 0,
+      "reversals": 0
+    },
+    "expectedCanonical": {
+      "earned": 0,
+      "used": 0,
+      "available": 0,
+      "days": 0,
+      "diffEarned": 0,
+      "diffAvailable": 0
+    },
+    "expectedSept30Normal": {
+      "earned": 0,
+      "used": 0,
+      "available": 0,
+      "days": 0,
+      "diffEarned": 0,
+      "diffAvailable": 0
+    },
+    "eodBreakdown": []
+  },
+  {
+    "onboardingId": "f2f15da0-80e6-4b8c-8095-6fc433ec6fbb",
+    "profileId": "ee284db8-bc2a-4ca6-b195-917e9dc5781c",
+    "employee_id_number": "EMP-005",
+    "name": "Suraj Mane",
+    "department": "Development",
+    "job_title": "UI/UX Designer",
+    "ledgerCount": 0,
+    "approvedEodCount": 0,
+    "pendingEodCount": 0,
+    "current": {
+      "earned": 0,
+      "used": 0,
+      "available": 0,
+      "days": 0,
+      "debits": 0,
+      "reversals": 0
+    },
+    "expectedCanonical": {
+      "earned": 0,
+      "used": 0,
+      "available": 0,
+      "days": 0,
+      "diffEarned": 0,
+      "diffAvailable": 0
+    },
+    "expectedSept30Normal": {
+      "earned": 0,
+      "used": 0,
+      "available": 0,
+      "days": 0,
+      "diffEarned": 0,
+      "diffAvailable": 0
+    },
+    "eodBreakdown": []
+  }
+]

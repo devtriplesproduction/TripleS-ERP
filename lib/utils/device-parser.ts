@@ -4,7 +4,7 @@
  * Never throws and handles malformed or missing headers gracefully.
  */
 
-export type IpClassification = 'Localhost' | 'Private Network' | 'Public IP' | 'Unavailable'
+export type IpClassification = 'Localhost' | 'Private Network' | 'Public IP' | 'VPN / Proxy' | 'Unavailable'
 
 export interface ClientIpDetails {
   ip: string | null
@@ -157,8 +157,37 @@ export function classifyIp(rawIp: string | null | undefined): IpClassification {
 }
 
 /**
+ * Detects whether an IP belongs to Vercel's server Anycast or edge proxy infrastructure.
+ * These server IPs must never be recorded as the end-user's client IP.
+ */
+export function isVercelServerIp(rawIp: string | null | undefined): boolean {
+  if (!rawIp) return false
+  const ip = normalizeIp(rawIp)
+  if (!ip) return false
+  // Vercel Anycast edge / origin ranges (76.76.21.0/24 or other 76.76.*.* infrastructure)
+  if (ip.startsWith('76.76.21.')) return true
+  return false
+}
+
+/**
+ * Detects loopback IP addresses (127.0.0.0/8, ::1, localhost).
+ */
+export function isLoopbackIp(rawIp: string | null | undefined): boolean {
+  if (!rawIp) return false
+  const ip = normalizeIp(rawIp)
+  if (!ip) return false
+  return (
+    ip === '::1' ||
+    ip === 'localhost' ||
+    ip === '127.0.0.1' ||
+    (isValidIpv4(ip) && ip.startsWith('127.'))
+  )
+}
+
+/**
  * Comprehensive client IP extraction with trusted metadata header tracing.
  * Captures the actual client IP on the server side using platform-provided proxy headers.
+ * Never treats Vercel server Anycast IPs or loopback (127.0.0.1) as the user's IP in production.
  */
 export function getClientIpDetails(
   headers: Headers | Record<string, string | string[] | undefined>
@@ -172,12 +201,14 @@ export function getClientIpDetails(
     return val || null
   }
 
+  const isProduction = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL)
+
   // Candidate headers in strict trust hierarchy:
-  // 1. x-vercel-forwarded-for: Vercel edge proxy (trusted, cannot be spoofed by client)
+  // 1. x-vercel-forwarded-for: Vercel edge proxy (trusted, set by Vercel edge)
   // 2. cf-connecting-ip: Cloudflare edge proxy
   // 3. true-client-ip: Akamai / Cloudflare Enterprise
   // 4. x-real-ip: Reverse proxy client IP
-  // 5. x-forwarded-for: Standard proxy header (first non-internal hop)
+  // 5. x-forwarded-for: Standard proxy header (hops inspected, server/loopback filtered)
   const headerKeys = [
     'x-vercel-forwarded-for',
     'cf-connecting-ip',
@@ -193,20 +224,30 @@ export function getClientIpDetails(
     const rawVal = getHeader(key)
     if (!rawVal) continue
 
-    // Handle comma-separated list of proxies (e.g. client, proxy1, proxy2): take first hop
-    const firstHop = rawVal.split(',')[0].trim()
-    const normalized = normalizeIp(firstHop)
+    // Handle comma-separated list of hops (e.g. client, proxy1, proxy2)
+    const hops = rawVal
+      .split(',')
+      .map(h => normalizeIp(h.trim()))
+      .filter((h): h is string => Boolean(h))
 
-    if (normalized) {
-      resolvedIp = normalized
+    for (const hop of hops) {
+      // In production: NEVER treat Vercel server IP or 127.0.0.1 as the user's IP!
+      if (isProduction) {
+        if (isLoopbackIp(hop) || isVercelServerIp(hop)) {
+          continue
+        }
+      }
+
+      resolvedIp = hop
       sourceHeader = key
       break
     }
+
+    if (resolvedIp) break
   }
 
   // Fallback behavior:
   // In production (Vercel): do NOT invent an address if trusted headers are absent; return null
-  const isProduction = process.env.NODE_ENV === 'production' || Boolean(process.env.VERCEL)
   if (!resolvedIp) {
     if (isProduction) {
       resolvedIp = null
@@ -226,6 +267,59 @@ export function getClientIpDetails(
     sourceHeader,
     classification,
     location,
+  }
+}
+
+/**
+ * Resolved client metadata including async geolocation resolution and VPN/Proxy detection.
+ */
+export interface ResolvedClientMetadata extends ClientIpDetails {
+  isProxy: boolean
+  isHosting: boolean
+}
+
+/**
+ * Asynchronously resolves client IP, proxy headers, approximate geolocation via provider/edge,
+ * and VPN/Proxy classification.
+ */
+export async function resolveClientMetadata(
+  headers: Headers | Record<string, string | string[] | undefined>
+): Promise<ResolvedClientMetadata> {
+  const basic = getClientIpDetails(headers)
+
+  if (!basic.ip || basic.classification === 'Unavailable') {
+    return {
+      ...basic,
+      location: 'Unknown',
+      isProxy: false,
+      isHosting: false,
+    }
+  }
+
+  try {
+    const { resolveIpGeolocation } = await import('./ip-geolocation')
+    const geo = await resolveIpGeolocation(basic.ip, headers)
+
+    let classification = basic.classification
+    if (geo.isProxy && classification === 'Public IP') {
+      classification = 'VPN / Proxy'
+    }
+
+    return {
+      ip: basic.ip,
+      sourceHeader: basic.sourceHeader,
+      classification,
+      location: geo.location,
+      isProxy: geo.isProxy,
+      isHosting: geo.isHosting,
+    }
+  } catch {
+    return {
+      ...basic,
+      location: basic.location || 'Unknown',
+      isProxy: false,
+      isHosting: false,
+    }
   }
 }
 

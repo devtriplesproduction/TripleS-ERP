@@ -57,12 +57,12 @@ describe('TripleS ERP — Canonical Time Format and Comp-Off Reconciliation', ()
   });
 
   describe('2. Comp-Off Credit Rules (Centralized Classification)', () => {
-    it('Normal working day under 4 hours: credits all worked minutes as Unpaid Leave', () => {
+    it('Normal working day under 4 hours: Unpaid Leave with 0 Comp-Off credit', () => {
       const minutes = 210; // 3h 30m
       const result = classifyWorkDay(minutes, 'normal');
       expect(result.payrollStatus).toBe('UNPAID_LEAVE');
       expect(result.isPayableDay).toBe(false);
-      expect(result.compOffMinutes).toBe(210);
+      expect(result.compOffMinutes).toBe(0);
     });
 
     it('Normal working day from 4 hours to under 8 hours: Half Day with 0 Comp-Off credit', () => {

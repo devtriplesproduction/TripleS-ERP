@@ -21,6 +21,7 @@ import {
 import { Employee } from '@/lib/supabase/types'
 import { getEmployeeAttendance, DerivedAttendance, AttendanceStatus } from '@/lib/actions/attendance'
 import { calculateAttendanceSummary } from '@/lib/utils/attendance-summary'
+import { getEmploymentNavigationBounds } from '@/lib/utils/attendance-builder'
 import { getISTDateString, formatMinutesAsHHMM, formatOfficeHoursAsHHMM } from '@/lib/utils/time'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -141,24 +142,44 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
   const todayIST = getISTDateString()
   const [todayYear, todayMonth] = todayIST.split('-').map(Number)
 
-  const [currentYear, setCurrentYear] = useState<number>(todayYear)
-  const [currentMonth, setCurrentMonth] = useState<number>(todayMonth)
-  const [selectedDateStr, setSelectedDateStr] = useState<string>(todayIST)
+  // Calculate employment navigation bounds from employee database records
+  const bounds = useMemo(() => {
+    return getEmploymentNavigationBounds(employee, todayIST)
+  }, [employee, todayIST])
+
+  // Default to current month/year clamped within the valid employment period
+  const [currentYear, setCurrentYear] = useState<number>(bounds.initialYear)
+  const [currentMonth, setCurrentMonth] = useState<number>(bounds.initialMonth)
+  const [selectedDateStr, setSelectedDateStr] = useState<string>(() => {
+    if (bounds.initialYear === todayYear && bounds.initialMonth === todayMonth) {
+      return todayIST
+    }
+    return `${bounds.initialYear}-${String(bounds.initialMonth).padStart(2, '0')}-01`
+  })
 
   const [attendance, setAttendance] = useState<DerivedAttendance[]>([])
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
 
-  // Generate Year options around current year (e.g. 2023 to 2030)
-  const years = useMemo(() => {
-    const list: number[] = []
-    const startYear = Math.min(todayYear - 3, 2023)
-    const endYear = Math.max(todayYear + 3, 2030)
-    for (let y = startYear; y <= endYear; y++) {
-      list.push(y)
+  // Sync state if bounds change (e.g. employee prop updates)
+  useEffect(() => {
+    setCurrentYear(bounds.initialYear)
+    setCurrentMonth(bounds.initialMonth)
+    if (bounds.initialYear === todayYear && bounds.initialMonth === todayMonth) {
+      setSelectedDateStr(todayIST)
+    } else {
+      setSelectedDateStr(`${bounds.initialYear}-${String(bounds.initialMonth).padStart(2, '0')}-01`)
     }
-    return list
-  }, [todayYear])
+  }, [bounds.initialYear, bounds.initialMonth, todayYear, todayMonth, todayIST])
+
+  // Filter months to only those within the employee's valid employment period for currentYear
+  const availableMonths = useMemo(() => {
+    return MONTHS.filter(m => {
+      if (currentYear === bounds.startYear && m.value < bounds.startMonth) return false
+      if (currentYear === bounds.endYear && m.value > bounds.endMonth) return false
+      return true
+    })
+  }, [currentYear, bounds.startYear, bounds.startMonth, bounds.endYear, bounds.endMonth])
 
   // Fetch attendance for the selected employee, month, and year
   const fetchAttendance = useCallback(async (empId: string, m: number, y: number) => {
@@ -181,18 +202,30 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
     }
   }, [employee?.id, currentMonth, currentYear, fetchAttendance])
 
-  // Month navigation helpers that also sync selected date
+  // Month navigation helpers with strict bounds clamping
   const changeMonthYear = (newMonth: number, newYear: number) => {
-    setCurrentMonth(newMonth)
-    setCurrentYear(newYear)
-    if (newYear === todayYear && newMonth === todayMonth) {
+    const targetYear = Math.max(bounds.startYear, Math.min(bounds.endYear, newYear))
+    const minMonth = (targetYear === bounds.startYear) ? bounds.startMonth : 1
+    const maxMonth = (targetYear === bounds.endYear) ? bounds.endMonth : 12
+    const targetMonth = Math.max(minMonth, Math.min(maxMonth, newMonth))
+
+    setCurrentMonth(targetMonth)
+    setCurrentYear(targetYear)
+
+    if (targetYear === todayYear && targetMonth === todayMonth) {
       setSelectedDateStr(todayIST)
     } else {
-      setSelectedDateStr(`${newYear}-${String(newMonth).padStart(2, '0')}-01`)
+      setSelectedDateStr(`${targetYear}-${String(targetMonth).padStart(2, '0')}-01`)
     }
   }
 
+  const isPrevDisabled = (currentYear < bounds.startYear) ||
+    (currentYear === bounds.startYear && currentMonth <= bounds.startMonth)
+  const isNextDisabled = (currentYear > bounds.endYear) ||
+    (currentYear === bounds.endYear && currentMonth >= bounds.endMonth)
+
   const handlePrevMonth = () => {
+    if (isPrevDisabled) return
     let newM = currentMonth - 1
     let newY = currentYear
     if (newM === 0) {
@@ -203,6 +236,7 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
   }
 
   const handleNextMonth = () => {
+    if (isNextDisabled) return
     let newM = currentMonth + 1
     let newY = currentYear
     if (newM === 13) {
@@ -213,9 +247,7 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
   }
 
   const handleToday = () => {
-    const [y, m] = todayIST.split('-').map(Number)
-    changeMonthYear(m, y)
-    setSelectedDateStr(todayIST)
+    changeMonthYear(bounds.initialMonth, bounds.initialYear)
   }
 
   // Monday-Sunday calendar grid construction
@@ -254,14 +286,24 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
     return attendanceMap.get(selectedDateStr)
   }, [attendanceMap, selectedDateStr])
 
-  // Monthly Summary Insights
+  // Monthly Summary Insights calculated strictly on eligible employment dates (exclude pre-joining and post-offboarding)
+  const eligibleAttendance = useMemo(() => {
+    return attendance.filter(a => {
+      if (bounds.joiningDate && a.date < bounds.joiningDate) return false
+      if (bounds.offboardingDate && a.date > bounds.offboardingDate) {
+        return Boolean(a.eod || a.leave || a.wfh)
+      }
+      return true
+    })
+  }, [attendance, bounds.joiningDate, bounds.offboardingDate])
+
   const summary = useMemo(() => {
-    return calculateAttendanceSummary(attendance)
-  }, [attendance])
+    return calculateAttendanceSummary(eligibleAttendance)
+  }, [eligibleAttendance])
 
   // Check if month has any active records
   const hasMonthlyActivity = useMemo(() => {
-    return attendance.some(a =>
+    return eligibleAttendance.some(a =>
       a.status === 'Present' ||
       a.status === 'Holiday Work' ||
       a.status === 'WFH' ||
@@ -272,7 +314,7 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
       a.status === 'Half Day + WFH' ||
       a.status === 'Absent'
     )
-  }, [attendance])
+  }, [eligibleAttendance])
 
   // Formatted selected date label
   const formattedSelectedDate = useMemo(() => {
@@ -302,9 +344,21 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
               <Calendar className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h3 className="font-bold text-base md:text-lg text-foreground leading-tight truncate">
-                {employee.first_name} {employee.last_name}
-              </h3>
+              <div className="flex flex-wrap items-center gap-2">
+                <h3 className="font-bold text-base md:text-lg text-foreground leading-tight truncate">
+                  {employee.first_name} {employee.last_name}
+                </h3>
+                {bounds.joiningDate && (
+                  <span className="px-2 py-0.5 rounded-md bg-blue-500/10 text-blue-400 border border-blue-500/20 text-[10.5px] font-medium tracking-tight">
+                    Joined: {bounds.joiningDate}
+                  </span>
+                )}
+                {bounds.isOffboarded && (
+                  <span className="px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10.5px] font-medium tracking-tight">
+                    Offboarded: {bounds.offboardingDate}
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
                 <span className="font-mono">{employee.employee_id_number || 'N/A'}</span>
                 {employee.department && (
@@ -334,7 +388,7 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
                 <SelectValue placeholder="Select Month" />
               </SelectTrigger>
               <SelectContent>
-                {MONTHS.map(m => (
+                {availableMonths.map(m => (
                   <SelectItem key={m.value} value={String(m.value)} className="text-xs">
                     {m.label}
                   </SelectItem>
@@ -351,7 +405,7 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
                 <SelectValue placeholder="Year" />
               </SelectTrigger>
               <SelectContent>
-                {years.map(y => (
+                {bounds.years.map(y => (
                   <SelectItem key={y} value={String(y)} className="text-xs font-mono">
                     {y}
                   </SelectItem>
@@ -364,8 +418,14 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
               <button
                 type="button"
                 onClick={handlePrevMonth}
+                disabled={isPrevDisabled}
                 title="Previous Month"
-                className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors cursor-pointer"
+                className={cn(
+                  "h-8 w-8 flex items-center justify-center transition-colors cursor-pointer",
+                  isPrevDisabled
+                    ? "opacity-30 cursor-not-allowed text-muted-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                )}
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -373,8 +433,14 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
               <button
                 type="button"
                 onClick={handleNextMonth}
+                disabled={isNextDisabled}
                 title="Next Month"
-                className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors cursor-pointer"
+                className={cn(
+                  "h-8 w-8 flex items-center justify-center transition-colors cursor-pointer",
+                  isNextDisabled
+                    ? "opacity-30 cursor-not-allowed text-muted-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                )}
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -468,8 +534,12 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
                   const isToday = todayIST === dateStr
                   const isSunday = new Date(currentYear, currentMonth - 1, dayNum).getDay() === 0
 
+                  const isPreJoining = Boolean(bounds.joiningDate && dateStr < bounds.joiningDate)
+                  const isPostOffboarding = Boolean(bounds.offboardingDate && dateStr > bounds.offboardingDate)
+                  const isEligibleDate = !isPreJoining && !isPostOffboarding
+
                   const statusConfig = att && att.status ? getAttendanceStatusConfig(att.status, att.holiday?.name) : null
-                  const shouldShowBadge = att && att.status !== 'Not Marked' && att.status !== 'Weekend'
+                  const shouldShowBadge = isEligibleDate && att && att.status !== 'Not Marked' && att.status !== 'Weekend'
 
                   return (
                     <div
@@ -481,7 +551,7 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
                           ? "bg-muted/60 dark:bg-zinc-900/80 ring-2 ring-foreground/70 dark:ring-zinc-400 ring-inset z-10"
                           : isToday
                           ? "bg-muted/30 dark:bg-zinc-900/40 ring-1 ring-border/80 dark:ring-zinc-700 ring-inset hover:bg-muted/50"
-                          : isSunday
+                          : isSunday && isEligibleDate
                           ? "bg-muted/10 dark:bg-zinc-950/30 hover:bg-muted/30 dark:hover:bg-zinc-900/40"
                           : "hover:bg-muted/30 dark:hover:bg-zinc-900/40"
                       )}
@@ -495,7 +565,7 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
                               ? "text-foreground font-bold"
                               : isSelected
                               ? "text-foreground font-bold"
-                              : isSunday
+                              : isSunday && isEligibleDate
                               ? "text-muted-foreground/80"
                               : "text-foreground/90"
                           )}
@@ -533,7 +603,7 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
                                 : statusConfig.shortLabel || statusConfig.label}
                             </span>
                           </div>
-                        ) : isSunday ? (
+                        ) : isSunday && isEligibleDate ? (
                           <span className="text-[10px] text-muted-foreground/60 font-medium">Off</span>
                         ) : null}
                       </div>
@@ -605,6 +675,28 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
                 <div className="flex items-center justify-between p-2.5 rounded-xl border border-border/40 bg-card/60 dark:bg-zinc-900/50">
                   <span className="text-muted-foreground font-medium">Status</span>
                   {(() => {
+                    const isSelectedPreJoining = Boolean(bounds.joiningDate && selectedDateStr < bounds.joiningDate)
+                    const isSelectedPostOffboarding = Boolean(bounds.offboardingDate && selectedDateStr > bounds.offboardingDate)
+                    const hasHistoricalRecord = Boolean(selectedAtt.eod || selectedAtt.leave || selectedAtt.wfh)
+
+                    if (isSelectedPreJoining) {
+                      return (
+                        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border font-semibold bg-muted/40 text-muted-foreground border-border/40">
+                          <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-muted-foreground" />
+                          <span>Pre-Employment</span>
+                        </div>
+                      )
+                    }
+
+                    if (isSelectedPostOffboarding && !hasHistoricalRecord) {
+                      return (
+                        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border font-semibold bg-muted/40 text-muted-foreground border-border/40">
+                          <span className="w-1.5 h-1.5 rounded-full shrink-0 bg-muted-foreground" />
+                          <span>Offboarded</span>
+                        </div>
+                      )
+                    }
+
                     const cfg = getAttendanceStatusConfig(selectedAtt.status, selectedAtt.holiday?.name)
                     return (
                       <div className={cn("flex items-center gap-1.5 px-2.5 py-0.5 rounded-full border font-semibold", cfg.bg)}>
@@ -641,7 +733,10 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
                   <div className="flex items-center justify-between py-1 border-b border-border/30 dark:border-zinc-800/60">
                     <span className="text-muted-foreground">EOD Report</span>
                     <span className="font-medium">
-                      {selectedAtt.eod ? (
+                      {Boolean(bounds.joiningDate && selectedDateStr < bounds.joiningDate) ||
+                      Boolean(bounds.offboardingDate && selectedDateStr > bounds.offboardingDate && !selectedAtt.eod) ? (
+                        <span className="text-muted-foreground">Not Applicable</span>
+                      ) : selectedAtt.eod ? (
                         <span
                           className={cn(
                             "font-semibold",
@@ -666,7 +761,15 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
                   <div className="flex items-start justify-between py-1 border-b border-border/30 dark:border-zinc-800/60 gap-2">
                     <span className="text-muted-foreground shrink-0">Schedule / Notes</span>
                     <span className="font-medium text-right break-words max-w-[190px]">
-                      {selectedAtt.holiday ? (
+                      {Boolean(bounds.joiningDate && selectedDateStr < bounds.joiningDate) ? (
+                        <span className="text-muted-foreground">
+                          Prior to joining date ({bounds.joiningDate})
+                        </span>
+                      ) : Boolean(bounds.offboardingDate && selectedDateStr > bounds.offboardingDate && !selectedAtt.eod && !selectedAtt.leave && !selectedAtt.wfh) ? (
+                        <span className="text-muted-foreground">
+                          Post effective offboarding date ({bounds.offboardingDate})
+                        </span>
+                      ) : selectedAtt.holiday ? (
                         <span className="text-purple-400">
                           {selectedAtt.holiday.name}{' '}
                           {selectedAtt.holiday.name === 'Sunday' ? '(Weekly Off)' : '(Holiday)'}

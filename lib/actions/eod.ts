@@ -182,6 +182,12 @@ export async function reviewEOD(eodId: string, action: 'Approve' | 'Reject', rej
         reportDate: eod.report_date,
         supabaseClient: supabase
       });
+    } else if (newStatus === 'Rejected') {
+      await supabase
+        .from('comp_off_ledger')
+        .delete()
+        .eq('reference_id', eodId)
+        .eq('transaction_type', 'CREDIT');
     }
 
     return { success: true };
@@ -308,6 +314,15 @@ export async function batchReviewEODs(
             })),
             { supabaseClient: supabase }
           );
+        }
+      } else if (newStatus === 'Rejected') {
+        const rejectedSuccessEods = toUpdate.filter(e => succeeded.includes(e.id));
+        if (rejectedSuccessEods.length > 0) {
+          await supabase
+            .from('comp_off_ledger')
+            .delete()
+            .in('reference_id', rejectedSuccessEods.map(e => e.id))
+            .eq('transaction_type', 'CREDIT');
         }
       }
     }

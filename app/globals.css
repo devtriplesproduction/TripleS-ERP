@@ -114,29 +114,29 @@
 }
 
 .dark {
-  --background: #050505;
+  --background: #111215;
   --foreground: #FFFFFF;
-  --card: #0F0F10;
+  --card: #181A20;
   --card-foreground: #FFFFFF;
-  --popover: #0F0F10;
+  --popover: #181A20;
   --popover-foreground: #FFFFFF;
   --primary: #FFFFFF;
   --primary-foreground: #09090B;
-  --secondary: #151516;
+  --secondary: #1F2228;
   --secondary-foreground: #D4D4D8;
-  --muted: #151516;
+  --muted: #1F2228;
   --muted-foreground: #A1A1AA;
-  --accent: #1C1C1E;
+  --accent: #262931;
   --accent-foreground: #FFFFFF;
   --destructive: oklch(0.704 0.191 22.216);
   
-  --border: #27272A;
-  --border-strong: #3F3F46;
+  --border: #2C2F36;
+  --border-strong: #424652;
   
-  --input: #27272A;
-  --input-bg: #0B0B0C;
-  --input-hover: #1C1C1E;
-  --ring: #27272A;
+  --input: #2C2F36;
+  --input-bg: #14161A;
+  --input-hover: #262931;
+  --ring: #3F434F;
   
   --chart-1: oklch(0.87 0 0);
   --chart-2: oklch(0.556 0 0);
@@ -144,25 +144,25 @@
   --chart-4: oklch(0.371 0 0);
   --chart-5: oklch(0.269 0 0);
   
-  --sidebar: #080808;
+  --sidebar: #0F1013;
   --sidebar-foreground: #FFFFFF;
   --sidebar-primary: #FFFFFF;
   --sidebar-primary-foreground: #09090B;
-  --sidebar-accent: #1C1C1E;
+  --sidebar-accent: #22252C;
   --sidebar-accent-foreground: #FFFFFF;
-  --sidebar-border: #27272A;
-  --sidebar-ring: #27272A;
+  --sidebar-border: #2C2F36;
+  --sidebar-ring: #2C2F36;
   
-  --surface: #0F0F10;
-  --surface-elevated: #151516;
-  --surface-hover: #1C1C1E;
-  --navbar: #0A0A0A;
-  --caption: #71717A;
-  --disabled: #52525B;
+  --surface: #181A20;
+  --surface-elevated: #22252C;
+  --surface-hover: #282C35;
+  --navbar: #121317;
+  --caption: #8B909A;
+  --disabled: #5A5E6B;
 
-  --scrollbar-track: #151516;
-  --scrollbar-thumb: #3F3F46;
-  --scrollbar-thumb-hover: #52525B;
+  --scrollbar-track: #14161A;
+  --scrollbar-thumb: #3A3D47;
+  --scrollbar-thumb-hover: #4E525E;
   
   color-scheme: dark;
 }
@@ -211,7 +211,7 @@
 
   /* Style native select options for calendar dropdowns */
   .dark select option {
-    background-color: #0F0F10 !important;
+    background-color: #181A20 !important;
     color: #FFFFFF !important;
   }
 }

@@ -135,7 +135,7 @@ export async function logSecurityEvent(options: LogSecurityEventOptions): Promis
     auth_method: options.authMethod || 'Password',
     ip_address: normalizedIp,
     ip_classification: classification,
-    location: options.location || (classification === 'Localhost' ? 'Localhost (Development Environment)' : classification === 'Unavailable' ? 'Approximate Location Unavailable' : 'Local / Office Network'),
+    location: options.location || (classification === 'Localhost' ? 'Localhost (Development Environment)' : classification === 'Private Network' ? 'Private / Corporate Network' : classification === 'Unavailable' ? 'Approximate Location Unavailable' : 'Unknown'),
     user_agent: options.userAgent || 'Unknown',
     browser: browser || 'Unknown Browser',
     os: os || 'Unknown OS',

@@ -2,12 +2,19 @@ import { describe, it, expect } from 'vitest'
 import {
   extractClientIp,
   getClientIpDetails,
+  resolveClientMetadata,
   extractApproxLocation,
   normalizeIp,
   classifyIp,
+  isVercelServerIp,
+  isLoopbackIp,
   parseUserAgent,
   formatToKolkataTime,
 } from '@/lib/utils/device-parser'
+import {
+  resolveIpGeolocation,
+  extractEdgeHeaderLocation,
+} from '@/lib/utils/ip-geolocation'
 import {
   logSecurityEvent,
   updateSessionStatus,
@@ -300,3 +307,135 @@ describe('Security Audit Logger & Deduplication', () => {
     expect(found?.session_status).toBe('Revoked')
   })
 })
+
+describe('Vercel Server Anycast IP & Loopback Filtering', () => {
+  it('correctly identifies Vercel server Anycast IPs', () => {
+    expect(isVercelServerIp('76.76.21.21')).toBe(true)
+    expect(isVercelServerIp('76.76.21.1')).toBe(true)
+    expect(isVercelServerIp('76.76.21.99:443')).toBe(true)
+    expect(isVercelServerIp('157.34.120.44')).toBe(false)
+    expect(isVercelServerIp('127.0.0.1')).toBe(false)
+    expect(isVercelServerIp(null)).toBe(false)
+  })
+
+  it('correctly identifies loopback addresses', () => {
+    expect(isLoopbackIp('127.0.0.1')).toBe(true)
+    expect(isLoopbackIp('127.0.0.5')).toBe(true)
+    expect(isLoopbackIp('::1')).toBe(true)
+    expect(isLoopbackIp('localhost')).toBe(true)
+    expect(isLoopbackIp('192.168.1.1')).toBe(false)
+    expect(isLoopbackIp('157.34.120.44')).toBe(false)
+    expect(isLoopbackIp(null)).toBe(false)
+  })
+
+  it('filters out loopback and Vercel server IPs in production proxy chain', () => {
+    const env = process.env as Record<string, any>
+    const origEnv = env.NODE_ENV
+    env.NODE_ENV = 'production'
+    env.VERCEL = '1'
+
+    // Chain with spoofed 127.0.0.1 at start and Vercel server IP at end
+    const headers = new Headers({
+      'x-forwarded-for': '127.0.0.1, 157.34.120.44, 76.76.21.21',
+    })
+
+    const details = getClientIpDetails(headers)
+    expect(details.ip).toBe('157.34.120.44')
+    expect(details.classification).toBe('Public IP')
+    expect(details.sourceHeader).toBe('x-forwarded-for')
+
+    env.NODE_ENV = origEnv
+    delete env.VERCEL
+  })
+
+  it('rejects in production when header contains only loopback or Vercel server IPs', () => {
+    const env = process.env as Record<string, any>
+    const origEnv = env.NODE_ENV
+    env.NODE_ENV = 'production'
+    env.VERCEL = '1'
+
+    const headers = new Headers({
+      'x-forwarded-for': '127.0.0.1, 76.76.21.21',
+    })
+
+    const details = getClientIpDetails(headers)
+    expect(details.ip).toBeNull()
+    expect(details.classification).toBe('Unavailable')
+    expect(details.sourceHeader).toBe('none')
+
+    env.NODE_ENV = origEnv
+    delete env.VERCEL
+  })
+})
+
+describe('IP Geolocation Resolution & Provider Integration', () => {
+  it('extracts Vercel edge headers with region accurately', () => {
+    const headers = new Headers({
+      'x-vercel-ip-city': 'Mumbai',
+      'x-vercel-ip-country-region': 'MH',
+      'x-vercel-ip-country': 'IN',
+    })
+
+    const res = extractEdgeHeaderLocation(headers)
+    expect(res).not.toBeNull()
+    expect(res?.city).toBe('Mumbai')
+    expect(res?.region).toBe('MH')
+    expect(res?.country).toBe('IN')
+    expect(res?.location).toBe('Mumbai, MH, IN (Approximate)')
+  })
+
+  it('extracts Cloudflare edge headers accurately', () => {
+    const headers = new Headers({
+      'cf-ipcity': 'London',
+      'cf-region-code': 'ENG',
+      'cf-ipcountry': 'GB',
+    })
+
+    const res = extractEdgeHeaderLocation(headers)
+    expect(res).not.toBeNull()
+    expect(res?.city).toBe('London')
+    expect(res?.country).toBe('GB')
+    expect(res?.location).toBe('London, ENG, GB (Approximate)')
+  })
+
+  it('truthfully reports Localhost for loopback IPs', async () => {
+    const res = await resolveIpGeolocation('127.0.0.1')
+    expect(res.location).toBe('Localhost (Development Environment)')
+    expect(res.isProxy).toBe(false)
+  })
+
+  it('truthfully reports Private Network for RFC 1918 addresses', async () => {
+    const res = await resolveIpGeolocation('192.168.1.100')
+    expect(res.location).toBe('Private / Corporate Network')
+    expect(res.isProxy).toBe(false)
+  })
+
+  it('honestly reports Unknown for null or unavailable IPs', async () => {
+    const res = await resolveIpGeolocation(null)
+    expect(res.location).toBe('Unknown')
+    expect(res.isProxy).toBe(false)
+  })
+
+  it('resolves real public IP geolocation via external provider or fast-path', async () => {
+    const res = await resolveIpGeolocation('157.34.120.44')
+    expect(res.location).toBeDefined()
+    expect(res.location).not.toBe('Local / Office Network')
+    expect(typeof res.isProxy).toBe('boolean')
+  })
+
+  it('resolves client metadata via resolveClientMetadata end-to-end', async () => {
+    const headers = new Headers({
+      'x-vercel-forwarded-for': '157.34.120.44',
+      'x-vercel-ip-city': 'Bengaluru',
+      'x-vercel-ip-country-region': 'KA',
+      'x-vercel-ip-country': 'IN',
+    })
+
+    const metadata = await resolveClientMetadata(headers)
+    expect(metadata.ip).toBe('157.34.120.44')
+    expect(metadata.classification).toBe('Public IP')
+    expect(metadata.location).toBe('Bengaluru, KA, IN (Approximate)')
+    expect(metadata.isProxy).toBe(false)
+  })
+})
+

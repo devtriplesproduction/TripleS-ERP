@@ -54,7 +54,7 @@ export function KanbanColumn({
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
-      className={`flex flex-col min-w-[280px] w-[300px] max-w-[320px] shrink-0 bg-secondary/30 border rounded-lg p-3 transition-all duration-200 ${
+      className={`flex flex-col min-w-[280px] w-[300px] max-w-[320px] shrink-0 bg-secondary/40 border rounded-lg p-3 transition-all duration-200 ${
         isOver ? 'border-foreground/50 bg-accent/40 shadow-sm' : 'border-border/60 hover:border-border'
       }`}
     >

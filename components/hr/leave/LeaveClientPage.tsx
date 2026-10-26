@@ -345,6 +345,7 @@ export function LeaveClientPage({
                     <span className="text-muted-foreground block text-[11px]">Employee</span>
                     <span className="font-semibold text-foreground">
                       {selectedLeave.employee.first_name} {selectedLeave.employee.last_name}
+                      {selectedLeave.employee.department ? ` (${selectedLeave.employee.department})` : ''}
                     </span>
                   </div>
                 )}
@@ -356,6 +357,15 @@ export function LeaveClientPage({
                   {selectedLeave.reason || 'No reason provided.'}
                 </div>
               </div>
+
+              {selectedLeave.rejection_reason && (
+                <div>
+                  <span className="text-xs font-semibold text-rose-500 block mb-1.5">Rejection Reason</span>
+                  <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-xs sm:text-sm text-rose-300 whitespace-pre-wrap leading-relaxed">
+                    {selectedLeave.rejection_reason}
+                  </div>
+                </div>
+              )}
 
               {selectedLeave.medical_certificate_url && (
                 <div className="flex items-center justify-between p-3 rounded-xl border border-border bg-secondary/20">
@@ -373,6 +383,53 @@ export function LeaveClientPage({
                   </a>
                 </div>
               )}
+
+              {/* Quick Actions in popup */}
+              {canApprove && selectedLeave.status?.includes('Pending') && (
+                <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-border">
+                  <button
+                    type="button"
+                    onClick={() => setSelectedLeave(null)}
+                    className="h-9 px-3.5 rounded-xl border border-border bg-secondary/40 hover:bg-secondary text-xs sm:text-sm font-medium transition-colors"
+                  >
+                    Close
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const id = selectedLeave.id
+                      await handleUpdateStatus(id, 'Rejected')
+                      setSelectedLeave((prev: any) => prev && prev.id === id ? { ...prev, status: 'Rejected' } : null)
+                    }}
+                    disabled={submittingId === selectedLeave.id}
+                    className="h-9 px-3.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  >
+                    {submittingId === selectedLeave.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                    ) : (
+                      <X className="w-3.5 h-3.5 shrink-0" />
+                    )}
+                    <span>Reject</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const id = selectedLeave.id
+                      await handleUpdateStatus(id, 'Approved')
+                      setSelectedLeave((prev: any) => prev && prev.id === id ? { ...prev, status: 'Approved' } : null)
+                    }}
+                    disabled={submittingId === selectedLeave.id}
+                    className="h-9 px-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                  >
+                    {submittingId === selectedLeave.id ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                    ) : (
+                      <Check className="w-3.5 h-3.5 shrink-0" />
+                    )}
+                    <span>Approve</span>
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>
@@ -384,15 +441,15 @@ export function LeaveClientPage({
         subtitle={headerInfo.subtitle}
         icon={headerInfo.icon}
         actions={
-          <div className="flex items-center gap-2.5 sm:gap-3 flex-wrap sm:flex-nowrap shrink-0">
+          <div className="flex items-center gap-2 sm:gap-2.5 shrink-0">
             {/* Tab Switcher for Admins/HR */}
             {canApprove && (
-              <div className="flex p-1 bg-muted/40 dark:bg-[#141416] rounded-xl border border-border/80 shrink-0 h-11 items-center">
+              <div className="flex p-0.5 sm:p-1 bg-muted/40 dark:bg-[#141416] rounded-xl border border-border/80 shrink-0 h-10 items-center">
                 {!isSuperAdmin && (
                   <button
                     type="button"
                     className={cn(
-                      "px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all h-9 flex items-center",
+                      "px-2 sm:px-2.5 py-1 text-xs font-medium rounded-lg transition-all h-8 flex items-center",
                       activeTab === 'mine'
                         ? "bg-foreground text-background shadow-xs font-semibold"
                         : "text-muted-foreground hover:text-foreground"
@@ -405,7 +462,7 @@ export function LeaveClientPage({
                 <button
                   type="button"
                   className={cn(
-                    "px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all flex items-center gap-1.5 h-9",
+                    "px-2 sm:px-2.5 py-1 text-xs font-medium rounded-lg transition-all flex items-center gap-1.5 h-8",
                     activeTab === 'approve'
                       ? "bg-foreground text-background shadow-xs font-semibold"
                       : "text-muted-foreground hover:text-foreground"
@@ -416,7 +473,7 @@ export function LeaveClientPage({
                   {pendingCount > 0 && (
                     <span
                       className={cn(
-                        "text-[10px] px-1.5 py-0.5 rounded-full font-bold",
+                        "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
                         activeTab === 'approve'
                           ? "bg-background text-foreground"
                           : "bg-foreground text-background"
@@ -430,28 +487,28 @@ export function LeaveClientPage({
                 <button
                   type="button"
                   className={cn(
-                    "px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all flex items-center gap-1.5 h-9",
+                    "px-2 sm:px-2.5 py-1 text-xs font-medium rounded-lg transition-all flex items-center gap-1 h-8",
                     activeTab === 'comphours'
                       ? "bg-foreground text-background shadow-xs font-semibold"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                   onClick={() => setActiveTab('comphours')}
                 >
-                  <Clock className="w-3.5 h-3.5" />
+                  <Clock className="w-3.5 h-3.5 hidden 2xl:inline-block" />
                   <span>Credits</span>
                 </button>
 
                 <button
                   type="button"
                   className={cn(
-                    "px-3.5 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all flex items-center gap-1.5 h-9",
+                    "px-2 sm:px-2.5 py-1 text-xs font-medium rounded-lg transition-all flex items-center gap-1 h-8",
                     activeTab === 'worklog'
                       ? "bg-foreground text-background shadow-xs font-semibold"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                   onClick={() => setActiveTab('worklog')}
                 >
-                  <TrendingUp className="w-3.5 h-3.5" />
+                  <TrendingUp className="w-3.5 h-3.5 hidden 2xl:inline-block" />
                   <span>Worklog</span>
                 </button>
               </div>
@@ -459,8 +516,8 @@ export function LeaveClientPage({
 
             {/* Comp-Off Balance Pill */}
             {!isSuperAdmin && activeTab === 'mine' && compOffBalance > 0 && (
-              <div className="h-11 px-4 rounded-xl border border-border/80 bg-muted/40 dark:bg-[#141416] flex items-center gap-2 text-xs sm:text-sm text-muted-foreground shrink-0 shadow-xs">
-                <Clock className="w-4 h-4 text-muted-foreground shrink-0" />
+              <div className="h-10 px-2.5 sm:px-3 rounded-xl border border-border/80 bg-muted/40 dark:bg-[#141416] flex items-center gap-1.5 text-xs text-muted-foreground shrink-0 shadow-xs">
+                <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                 <span>
                   Comp-Off: <strong className="font-semibold text-foreground">{formatCompOffBalance(compOffBalance * 60)}</strong>
                 </span>
@@ -470,10 +527,10 @@ export function LeaveClientPage({
             {/* Primary Action Button (Employees & HR only; removed for admin) */}
             {!isSuperAdmin && (
               <Button
-                className="h-11 px-5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-sm flex items-center gap-2 shadow-xs transition-colors shrink-0"
+                className="h-10 px-3 sm:px-3.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-medium text-xs sm:text-sm flex items-center gap-1.5 shadow-xs transition-colors shrink-0 whitespace-nowrap"
                 onClick={() => setShowForm(true)}
               >
-                <Plus className="w-4 h-4 mr-1" />
+                <Plus className="w-4 h-4 mr-0.5 sm:mr-1" />
                 Apply Leave / WFH
               </Button>
             )}
@@ -564,16 +621,20 @@ export function LeaveClientPage({
                   className="rounded-2xl border border-border/60 bg-card hover:border-border transition-all px-3.5 sm:px-4 py-2.5 sm:py-3 shadow-xs"
                 >
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-4">
-                    {/* ZONE 1: Left - Request Type & Dates */}
-                    <div className="flex items-center gap-3 min-w-0 lg:w-[280px] xl:w-[320px] 2xl:w-[350px] shrink-0">
+                    {/* Left - Request Type & Dates (Clickable to view details popup) */}
+                    <div
+                      onClick={() => setSelectedLeave(leave)}
+                      title="Click to view details"
+                      className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group"
+                    >
                       {/* Icon Box */}
-                      <div className="w-10 h-10 rounded-xl bg-secondary/50 dark:bg-zinc-900/80 border border-border/70 flex items-center justify-center shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-secondary/50 dark:bg-zinc-900/80 border border-border/70 flex items-center justify-center shrink-0 group-hover:border-border transition-colors">
                         {getRequestTypeIcon(leave, "w-4 h-4 text-foreground")}
                       </div>
                       {/* Details */}
                       <div className="min-w-0 flex-1 space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-xs sm:text-sm font-semibold text-foreground tracking-tight truncate">
+                        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                          <h3 className="text-xs sm:text-sm font-semibold text-foreground tracking-tight group-hover:text-primary transition-colors truncate">
                             {leave.request_type === "WFH" ? "Work From Home" : leave.leave_type}
                           </h3>
                           {leave.is_half_day && (
@@ -581,52 +642,26 @@ export function LeaveClientPage({
                               Half Day
                             </span>
                           )}
+                          {leave.medical_certificate_url && (
+                            <a
+                              href={leave.medical_certificate_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/60 hover:bg-secondary border border-border text-[11px] font-medium text-foreground transition-colors shrink-0"
+                              title="View Medical Certificate"
+                            >
+                              <Paperclip className="w-3 h-3 text-muted-foreground" />
+                              <span>Doc</span>
+                            </a>
+                          )}
                         </div>
                         <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-muted-foreground flex-wrap sm:flex-nowrap">
                           <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                           <span className="truncate">{formatDateRange(leave.start_date, leave.end_date)}</span>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-secondary/70 dark:bg-zinc-800/90 border border-border/60 text-foreground shrink-0">
-                            {calculateDuration(leave.start_date, leave.end_date, leave.is_half_day)}
-                          </span>
                         </div>
                       </div>
                     </div>
-
-                    {/* Vertical Divider 1 */}
-                    <div className="hidden lg:block w-px h-7 bg-border/50 shrink-0" />
-
-                    {/* ZONE 2: Center - Reason */}
-                    <div
-                      onClick={() => setSelectedLeave(leave)}
-                      title={leave.reason || "No reason provided (Click to view details)"}
-                      className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer group"
-                    >
-                      <div className="w-9 h-9 rounded-xl bg-secondary/30 dark:bg-zinc-900/60 border border-border/70 flex items-center justify-center shrink-0 text-muted-foreground group-hover:text-foreground group-hover:border-border transition-colors">
-                        <FileText className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[10px] sm:text-[11px] text-muted-foreground font-medium">Reason</div>
-                        <div className="text-xs sm:text-sm font-normal text-foreground/90 truncate max-w-[200px] sm:max-w-xs md:max-w-sm lg:max-w-[240px] xl:max-w-[320px] 2xl:max-w-[420px]">
-                          {leave.reason || <span className="italic text-muted-foreground">No reason provided</span>}
-                        </div>
-                      </div>
-                      {leave.medical_certificate_url && (
-                        <a
-                          href={leave.medical_certificate_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/60 hover:bg-secondary border border-border text-[11px] font-medium text-foreground transition-colors shrink-0"
-                          title="View Medical Certificate"
-                        >
-                          <Paperclip className="w-3 h-3 text-muted-foreground" />
-                          <span>Doc</span>
-                        </a>
-                      )}
-                    </div>
-
-                    {/* Vertical Divider 2 */}
-                    <div className="hidden lg:block w-px h-7 bg-border/50 shrink-0" />
 
                     {/* ZONE 3: Right - Duration, Status Badge, Cancel & 3-dots */}
                     <div className="flex items-center justify-between lg:justify-end gap-2.5 sm:gap-3 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-border/40">
@@ -731,19 +766,23 @@ export function LeaveClientPage({
                   className="rounded-2xl border border-border/60 bg-card hover:border-border transition-all px-3.5 sm:px-4 py-2.5 sm:py-3 shadow-xs"
                 >
                   <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-4">
-                    {/* ZONE 1: Left - Employee & Request Info */}
-                    <div className="flex items-center gap-3 min-w-0 lg:w-[280px] xl:w-[320px] 2xl:w-[350px] shrink-0">
+                    {/* Left - Employee & Request Info (Clickable to view details popup) */}
+                    <div
+                      onClick={() => setSelectedLeave(leave)}
+                      title="Click to view details"
+                      className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group"
+                    >
                       {/* Icon Box */}
-                      <div className="w-10 h-10 rounded-xl bg-secondary/50 dark:bg-zinc-900/80 border border-border/70 flex items-center justify-center shrink-0">
+                      <div className="w-10 h-10 rounded-xl bg-secondary/50 dark:bg-zinc-900/80 border border-border/70 flex items-center justify-center shrink-0 group-hover:border-border transition-colors">
                         {getRequestTypeIcon(leave, "w-4 h-4 text-foreground")}
                       </div>
                       {/* Details */}
                       <div className="min-w-0 flex-1 space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-xs sm:text-sm font-semibold text-foreground tracking-tight truncate">
+                        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                          <h3 className="text-xs sm:text-sm font-semibold text-foreground tracking-tight group-hover:text-primary transition-colors truncate">
                             {firstName} {lastName}
                           </h3>
-                          <span className="text-[11px] text-muted-foreground truncate hidden sm:inline">
+                          <span className="text-[11px] text-muted-foreground truncate">
                             • {leave.request_type === 'WFH' ? 'Work From Home' : leave.leave_type}
                             {department ? ` (${department})` : ''}
                           </span>
@@ -752,52 +791,26 @@ export function LeaveClientPage({
                               Half Day
                             </span>
                           )}
+                          {leave.medical_certificate_url && (
+                            <a
+                              href={leave.medical_certificate_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
+                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/60 hover:bg-secondary border border-border text-[11px] font-medium text-foreground transition-colors shrink-0"
+                              title="View Medical Certificate"
+                            >
+                              <Paperclip className="w-3 h-3 text-muted-foreground" />
+                              <span>Doc</span>
+                            </a>
+                          )}
                         </div>
                         <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-muted-foreground flex-wrap sm:flex-nowrap">
                           <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
                           <span className="truncate">{formatDateRange(leave.start_date, leave.end_date)}</span>
-                          <span className="px-2 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold bg-secondary/70 dark:bg-zinc-800/90 border border-border/60 text-foreground shrink-0">
-                            {calculateDuration(leave.start_date, leave.end_date, leave.is_half_day)}
-                          </span>
                         </div>
                       </div>
                     </div>
-
-                    {/* Vertical Divider 1 */}
-                    <div className="hidden lg:block w-px h-7 bg-border/50 shrink-0" />
-
-                    {/* ZONE 2: Center - Reason */}
-                    <div
-                      onClick={() => setSelectedLeave(leave)}
-                      title={leave.reason || "No reason provided (Click to view details)"}
-                      className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer group"
-                    >
-                      <div className="w-9 h-9 rounded-xl bg-secondary/30 dark:bg-zinc-900/60 border border-border/70 flex items-center justify-center shrink-0 text-muted-foreground group-hover:text-foreground group-hover:border-border transition-colors">
-                        <FileText className="w-4 h-4" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="text-[10px] sm:text-[11px] text-muted-foreground font-medium">Reason</div>
-                        <div className="text-xs sm:text-sm font-normal text-foreground/90 truncate max-w-[200px] sm:max-w-xs md:max-w-sm lg:max-w-[240px] xl:max-w-[320px] 2xl:max-w-[420px]">
-                          {leave.reason || <span className="italic text-muted-foreground">No reason provided</span>}
-                        </div>
-                      </div>
-                      {leave.medical_certificate_url && (
-                        <a
-                          href={leave.medical_certificate_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/60 hover:bg-secondary border border-border text-[11px] font-medium text-foreground transition-colors shrink-0"
-                          title="View Medical Certificate"
-                        >
-                          <Paperclip className="w-3 h-3 text-muted-foreground" />
-                          <span>Doc</span>
-                        </a>
-                      )}
-                    </div>
-
-                    {/* Vertical Divider 2 */}
-                    <div className="hidden lg:block w-px h-7 bg-border/50 shrink-0" />
 
                     {/* ZONE 3: Right - Duration, Status Badge, Approve/Reject & 3-dots */}
                     <div className="flex items-center justify-between lg:justify-end gap-2.5 sm:gap-3 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-border/40">

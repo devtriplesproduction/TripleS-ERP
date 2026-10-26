@@ -37,6 +37,13 @@ export interface PayrollResult {
   unpaidLeaveDeduction: number;
   shortHoursDeduction: number;
 
+  /** Total employee-specific manual/fixed deductions */
+  manualDeductions: number;
+  /** Number of employee-specific deductions recorded */
+  deductionsCount: number;
+  /** Detailed list of employee-specific deductions */
+  deductionsList?: any[];
+
   totalPaidHours: number;
   grossPay: number;
   totalDeductions: number;
@@ -96,8 +103,8 @@ function classifyDay(workedMinutes: number, context: DayContext): DayClassificat
 
   // Normal working day (Mon–Sat)
   if (wm < HALF_DAY_THRESHOLD) {
-    // <4h: Unpaid, ALL worked hours → Comp Off
-    return { payFraction: 0, compOffMinutes: wm, status: 'UNPAID' };
+    // <4h: Unpaid, 0 Comp Off
+    return { payFraction: 0, compOffMinutes: 0, status: 'UNPAID' };
   }
 
   if (wm < FULL_DAY_MINUTES) {
@@ -264,7 +271,17 @@ export async function calculateMonthlyPayroll(
     }
   }
 
-  // 10. Process each employee independently
+  // 10. Fetch active employee-specific deductions for this month
+  const { getDeductionsForMonth } = await import('@/lib/services/payroll-deductions.service');
+  const activeDeductions = await getDeductionsForMonth(year, month, employeeIds);
+  const deductionsByEmp = new Map<string, any[]>();
+  activeDeductions.forEach(d => {
+    const list = deductionsByEmp.get(d.employee_id) || [];
+    list.push(d);
+    deductionsByEmp.set(d.employee_id, list);
+  });
+
+  // 11. Process each employee independently
   const results: PayrollResult[] = [];
 
   for (const emp of employees) {
@@ -382,14 +399,21 @@ export async function calculateMonthlyPayroll(
     // Earned pay = equivalent payable days × full day rate
     const earnedPay = equivalentPayableDays * fullDayRate;
 
+    // Employee-specific fixed deductions
+    const empDeductions = deductionsByEmp.get(emp.id) || [];
+    const manualDeductions = empDeductions.reduce((sum, d) => sum + Number(d.amount || 0), 0);
+
     // Deduction = full monthly base - earned pay
-    const deduction = hasPayrollData ? Math.max(0, monthlyPayBase - earnedPay) : 0;
+    const attendanceDeduction = hasPayrollData ? Math.max(0, monthlyPayBase - earnedPay) : 0;
+
+    // Total deductions = attendance deduction + employee-specific fixed deductions
+    const totalDeductions = Math.round((attendanceDeduction + manualDeductions) * 100) / 100;
 
     // Cash overtime is ALWAYS ₹0. Extra hours go to Comp Off, not cash.
     const overtimePay = 0;
 
-    // Net Payable
-    const netPayable = hasPayrollData ? earnedPay : 0;
+    // Net Payable: earnedPay reduced by manual deductions (cannot fall below 0)
+    const netPayable = hasPayrollData ? Math.max(0, earnedPay - manualDeductions) : 0;
 
     // ─── Display values ─────────────────────────────────────────
     let actualWorkedHours = totalWorkedMinutes / 60;
@@ -423,7 +447,7 @@ export async function calculateMonthlyPayroll(
     console.log(`  Comp Off earned: ${compOffMinutesEarned} mins (${(compOffMinutesEarned / 60).toFixed(1)}h)`);
     console.log(`  Pay base: ₹${monthlyPayBase}, Full day rate: ₹${fullDayRate.toFixed(2)}`);
     console.log(`  Paid day fractions: ${totalPaidDayFractions}`);
-    console.log(`  Earned pay: ₹${earnedPay.toFixed(2)}, Deduction: ₹${deduction.toFixed(2)}`);
+    console.log(`  Earned pay: ₹${earnedPay.toFixed(2)}, Attendance Deduction: ₹${attendanceDeduction.toFixed(2)}, Manual Deductions: ₹${manualDeductions.toFixed(2)}, Total Deductions: ₹${totalDeductions.toFixed(2)}`);
     console.log(`  Cash overtime: ₹0 (always), Net payable: ₹${netPayable.toFixed(2)}`);
 
     results.push({
@@ -445,12 +469,15 @@ export async function calculateMonthlyPayroll(
       compOffMinutesEarned,
 
       overtimePay: 0,
-      unpaidLeaveDeduction: Math.round(deduction * 100) / 100,
+      unpaidLeaveDeduction: Math.round(attendanceDeduction * 100) / 100,
       shortHoursDeduction: 0,
+      manualDeductions: Math.round(manualDeductions * 100) / 100,
+      deductionsCount: empDeductions.length,
+      deductionsList: empDeductions,
 
       totalPaidHours: Math.round(totalPaidHours * 100) / 100,
       grossPay: Math.round(monthlyPayBase * 100) / 100,
-      totalDeductions: Math.round(deduction * 100) / 100,
+      totalDeductions,
       netPayable: Math.round(netPayable * 100) / 100,
 
       hasPayrollData,

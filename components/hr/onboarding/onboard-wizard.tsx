@@ -184,13 +184,13 @@ function EditableFileItem({
         <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
         <div className="min-w-0 flex-1">
           {isEditing ? (
-            <Input 
+            <input 
               autoFocus
               type="text" 
               value={editValue} 
               onChange={e => setEditValue(e.target.value)}
               onKeyDown={handleKeyDown}
-              className="h-7 text-sm px-2 w-full font-medium"
+              className="h-7 text-sm px-2 w-full font-medium rounded-md border border-border bg-background text-foreground outline-none focus:outline-none focus:border-border transition-colors"
             />
           ) : (
             <p className="text-sm font-medium text-foreground truncate">{nameWithoutExt}</p>
@@ -717,7 +717,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
           {/* Form Container */}
           <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
             <form onSubmit={handleSubmit(onSubmit)} className="flex-1 min-h-0 flex flex-col overflow-hidden">
-              <div className="flex-1 min-h-0 overflow-y-auto pr-2 custom-scrollbar space-y-5 mb-6">
+              <div className="flex-1 min-h-0 overflow-y-auto pr-2 pb-8 custom-scrollbar space-y-5">
 
                 {/* Step 1: Personal */}
                 {step === 1 && (
@@ -948,7 +948,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
 
                 {/* Step 2: Professional */}
                 {step === 2 && (
-                  <div className="space-y-3">
+                  <div className="space-y-3 pb-6">
                     <div className="flex items-start gap-2 mb-6">
                       <User className="w-4 h-4 text-foreground" />
                       <div>
@@ -1074,20 +1074,23 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       )}
 
                       {watchedEmploymentType === 'Intern' ? (
-                        <div className="flex flex-col gap-1.5" id="field-stipend">
+                        <div className="flex flex-col gap-1.5 pb-2" id="field-stipend">
                           <label className="text-sm font-medium text-secondary-foreground">Stipend (INR/Month) <span className="text-destructive">*</span></label>
                           <Input
                             type="number"
                             {...register("stipend")}
                             placeholder="₹ 15000"
-                            className={cn(errors.stipend && "border-destructive focus-visible:ring-destructive")}
+                            className={cn(
+                              "h-10 px-3.5 py-2",
+                              errors.stipend && "border-destructive focus-visible:ring-destructive"
+                            )}
                           />
                           {errors.stipend && (
                             <p className="text-xs font-medium text-destructive mt-0.5">{errors.stipend.message}</p>
                           )}
                         </div>
                       ) : (
-                        <div className="flex flex-col gap-1.5" id="field-salary">
+                        <div className="flex flex-col gap-1.5 pb-2" id="field-salary">
                           <label className="text-sm font-medium text-secondary-foreground">Annual CTC (INR) <span className="text-destructive">*</span></label>
                           <Input
                             type="number"
@@ -1102,7 +1105,10 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                               }
                             })}
                             placeholder="₹ 1200000"
-                            className={cn(errors.salary && "border-destructive focus-visible:ring-destructive")}
+                            className={cn(
+                              "h-10 px-3.5 py-2",
+                              errors.salary && "border-destructive focus-visible:ring-destructive"
+                            )}
                           />
                           {errors.salary && (
                             <p className="text-xs font-medium text-destructive mt-0.5">{errors.salary.message}</p>

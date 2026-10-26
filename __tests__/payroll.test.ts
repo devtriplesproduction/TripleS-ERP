@@ -11,11 +11,11 @@ import {
 } from '../lib/utils/time'
 
 describe('classifyWorkDay - New Classification Logic', () => {
-  it('classifies < 4h as Unpaid Leave on normal days', () => {
+  it('classifies < 4h as Unpaid Leave on normal days with 0 Comp Off', () => {
     const result = classifyWorkDay(239, 'normal'); // 3h 59m
     expect(result.payrollStatus).toBe('UNPAID_LEAVE');
     expect(result.isPayableDay).toBe(false);
-    expect(result.compOffMinutes).toBe(239); // All time to comp off
+    expect(result.compOffMinutes).toBe(0);
   })
 
   it('classifies 4h-7h59m as Half Day on normal days', () => {
