@@ -33,23 +33,25 @@ function getFallbackStoreFileName(): string {
 }
 
 function getFallbackStorePath(): string {
-  return path.join(FALLBACK_DIR, getFallbackStoreFileName())
+  const fileName = getFallbackStoreFileName()
+  return path.join(/*turbopackIgnore: true*/ FALLBACK_DIR, fileName)
 }
 
 function ensureStoreDir(): void {
-  if (!fs.existsSync(/*turbopackIgnore: true*/ FALLBACK_DIR)) {
-    fs.mkdirSync(FALLBACK_DIR, { recursive: true })
+  const dir = FALLBACK_DIR
+  if (!fs.existsSync(/*turbopackIgnore: true*/ dir)) {
+    fs.mkdirSync(dir, { recursive: true })
   }
 }
 
 function readFallbackNotes(): PersonalNote[] {
   try {
     ensureStoreDir()
-    const fileName = getFallbackStoreFileName()
-    if (!fs.existsSync(/*turbopackIgnore: true*/ path.join(FALLBACK_DIR, fileName))) {
+    const storePath = getFallbackStorePath()
+    if (!fs.existsSync(/*turbopackIgnore: true*/ storePath)) {
       return []
     }
-    const raw = fs.readFileSync(/*turbopackIgnore: true*/ path.join(FALLBACK_DIR, fileName), 'utf-8')
+    const raw = fs.readFileSync(/*turbopackIgnore: true*/ storePath, 'utf-8')
     return JSON.parse(raw) as PersonalNote[]
   } catch (err) {
     console.error('[PersonalNotes] Failed to read fallback store:', err)
@@ -60,8 +62,8 @@ function readFallbackNotes(): PersonalNote[] {
 function writeFallbackNotes(notes: PersonalNote[]): void {
   try {
     ensureStoreDir()
-    const fileName = getFallbackStoreFileName()
-    fs.writeFileSync(/*turbopackIgnore: true*/ path.join(FALLBACK_DIR, fileName), JSON.stringify(notes, null, 2), 'utf-8')
+    const storePath = getFallbackStorePath()
+    fs.writeFileSync(/*turbopackIgnore: true*/ storePath, JSON.stringify(notes, null, 2), 'utf-8')
   } catch (err) {
     console.error('[PersonalNotes] Failed to write fallback store:', err)
   }
@@ -412,3 +414,4 @@ export async function restorePersonalNoteAction(
     return { success: false, error: err.message || 'Failed to restore note' }
   }
 }
+

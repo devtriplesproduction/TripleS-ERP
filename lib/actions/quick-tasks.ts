@@ -36,23 +36,25 @@ function getFallbackStoreFileName(): string {
 }
 
 function getFallbackStorePath(): string {
-  return path.join(FALLBACK_DIR, getFallbackStoreFileName())
+  const fileName = getFallbackStoreFileName()
+  return path.join(/*turbopackIgnore: true*/ FALLBACK_DIR, fileName)
 }
 
 function ensureStoreDir(): void {
-  if (!fs.existsSync(/*turbopackIgnore: true*/ FALLBACK_DIR)) {
-    fs.mkdirSync(FALLBACK_DIR, { recursive: true })
+  const dir = FALLBACK_DIR
+  if (!fs.existsSync(/*turbopackIgnore: true*/ dir)) {
+    fs.mkdirSync(dir, { recursive: true })
   }
 }
 
 function readFallbackTasks(): QuickTask[] {
   try {
     ensureStoreDir()
-    const fileName = getFallbackStoreFileName()
-    if (!fs.existsSync(/*turbopackIgnore: true*/ path.join(FALLBACK_DIR, fileName))) {
+    const storePath = getFallbackStorePath()
+    if (!fs.existsSync(/*turbopackIgnore: true*/ storePath)) {
       return []
     }
-    const raw = fs.readFileSync(/*turbopackIgnore: true*/ path.join(FALLBACK_DIR, fileName), 'utf-8')
+    const raw = fs.readFileSync(/*turbopackIgnore: true*/ storePath, 'utf-8')
     return JSON.parse(raw) as QuickTask[]
   } catch (err) {
     console.error('[QuickTasks] Failed to read fallback store:', err)
@@ -63,8 +65,8 @@ function readFallbackTasks(): QuickTask[] {
 function writeFallbackTasks(tasks: QuickTask[]): void {
   try {
     ensureStoreDir()
-    const fileName = getFallbackStoreFileName()
-    fs.writeFileSync(/*turbopackIgnore: true*/ path.join(FALLBACK_DIR, fileName), JSON.stringify(tasks, null, 2), 'utf-8')
+    const storePath = getFallbackStorePath()
+    fs.writeFileSync(/*turbopackIgnore: true*/ storePath, JSON.stringify(tasks, null, 2), 'utf-8')
   } catch (err) {
     console.error('[QuickTasks] Failed to write fallback store:', err)
   }
@@ -982,3 +984,4 @@ export async function getQuickTasksBadgeCountAction(): Promise<QuickTasksBadgeSt
     }
   }
 }
+
