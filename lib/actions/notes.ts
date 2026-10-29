@@ -21,29 +21,35 @@ function safeRevalidatePath(pathUrl: string) {
   }
 }
 
+const FALLBACK_DIR = path.join(process.cwd(), 'scratch')
+const DEFAULT_STORE_FILE = 'personal_notes_store.json'
+
+function getFallbackStoreFileName(): string {
+  const customPath = process.env.PERSONAL_NOTES_STORE_PATH
+  if (customPath) {
+    return path.basename(customPath)
+  }
+  return DEFAULT_STORE_FILE
+}
+
 function getFallbackStorePath(): string {
-  return (
-    process.env.PERSONAL_NOTES_STORE_PATH ||
-    path.join(process.cwd(), 'scratch', 'personal_notes_store.json')
-  )
+  return path.join(FALLBACK_DIR, getFallbackStoreFileName())
 }
 
 function ensureStoreDir(): void {
-  const storePath = getFallbackStorePath()
-  const dir = path.dirname(storePath)
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true })
+  if (!fs.existsSync(/*turbopackIgnore: true*/ FALLBACK_DIR)) {
+    fs.mkdirSync(FALLBACK_DIR, { recursive: true })
   }
 }
 
 function readFallbackNotes(): PersonalNote[] {
   try {
     ensureStoreDir()
-    const storePath = getFallbackStorePath()
-    if (!fs.existsSync(storePath)) {
+    const fileName = getFallbackStoreFileName()
+    if (!fs.existsSync(/*turbopackIgnore: true*/ path.join(FALLBACK_DIR, fileName))) {
       return []
     }
-    const raw = fs.readFileSync(storePath, 'utf-8')
+    const raw = fs.readFileSync(/*turbopackIgnore: true*/ path.join(FALLBACK_DIR, fileName), 'utf-8')
     return JSON.parse(raw) as PersonalNote[]
   } catch (err) {
     console.error('[PersonalNotes] Failed to read fallback store:', err)
@@ -54,8 +60,8 @@ function readFallbackNotes(): PersonalNote[] {
 function writeFallbackNotes(notes: PersonalNote[]): void {
   try {
     ensureStoreDir()
-    const storePath = getFallbackStorePath()
-    fs.writeFileSync(storePath, JSON.stringify(notes, null, 2), 'utf-8')
+    const fileName = getFallbackStoreFileName()
+    fs.writeFileSync(/*turbopackIgnore: true*/ path.join(FALLBACK_DIR, fileName), JSON.stringify(notes, null, 2), 'utf-8')
   } catch (err) {
     console.error('[PersonalNotes] Failed to write fallback store:', err)
   }

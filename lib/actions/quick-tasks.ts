@@ -27,31 +27,32 @@ function safeRevalidatePath(pathUrl: string) {
 const FALLBACK_DIR = path.join(process.cwd(), 'scratch')
 const DEFAULT_STORE_FILE = 'quick_tasks_store.json'
 
-function getFallbackStorePath(): string {
+function getFallbackStoreFileName(): string {
   const customPath = process.env.QUICK_TASKS_STORE_PATH
   if (customPath) {
-    const fileName = path.basename(customPath)
-    return path.join(FALLBACK_DIR, fileName)
+    return path.basename(customPath)
   }
-  return path.join(FALLBACK_DIR, DEFAULT_STORE_FILE)
+  return DEFAULT_STORE_FILE
+}
+
+function getFallbackStorePath(): string {
+  return path.join(FALLBACK_DIR, getFallbackStoreFileName())
 }
 
 function ensureStoreDir(): void {
-  const storePath = getFallbackStorePath()
-  const dir = path.dirname(storePath)
-  if (!fs.existsSync(/* turbopackIgnore: true */ dir)) {
-    fs.mkdirSync(dir, { recursive: true })
+  if (!fs.existsSync(/*turbopackIgnore: true*/ FALLBACK_DIR)) {
+    fs.mkdirSync(FALLBACK_DIR, { recursive: true })
   }
 }
 
 function readFallbackTasks(): QuickTask[] {
   try {
     ensureStoreDir()
-    const storePath = getFallbackStorePath()
-    if (!fs.existsSync(/* turbopackIgnore: true */ storePath)) {
+    const fileName = getFallbackStoreFileName()
+    if (!fs.existsSync(/*turbopackIgnore: true*/ path.join(FALLBACK_DIR, fileName))) {
       return []
     }
-    const raw = fs.readFileSync(/* turbopackIgnore: true */ storePath, 'utf-8')
+    const raw = fs.readFileSync(/*turbopackIgnore: true*/ path.join(FALLBACK_DIR, fileName), 'utf-8')
     return JSON.parse(raw) as QuickTask[]
   } catch (err) {
     console.error('[QuickTasks] Failed to read fallback store:', err)
@@ -62,8 +63,8 @@ function readFallbackTasks(): QuickTask[] {
 function writeFallbackTasks(tasks: QuickTask[]): void {
   try {
     ensureStoreDir()
-    const storePath = getFallbackStorePath()
-    fs.writeFileSync(/* turbopackIgnore: true */ storePath, JSON.stringify(tasks, null, 2), 'utf-8')
+    const fileName = getFallbackStoreFileName()
+    fs.writeFileSync(/*turbopackIgnore: true*/ path.join(FALLBACK_DIR, fileName), JSON.stringify(tasks, null, 2), 'utf-8')
   } catch (err) {
     console.error('[QuickTasks] Failed to write fallback store:', err)
   }
