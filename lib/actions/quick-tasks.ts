@@ -24,14 +24,22 @@ function safeRevalidatePath(pathUrl: string) {
   }
 }
 
+const FALLBACK_DIR = path.join(process.cwd(), 'scratch')
+const DEFAULT_STORE_FILE = 'quick_tasks_store.json'
+
 function getFallbackStorePath(): string {
-  return process.env.QUICK_TASKS_STORE_PATH || path.join(process.cwd(), 'scratch', 'quick_tasks_store.json')
+  const customPath = process.env.QUICK_TASKS_STORE_PATH
+  if (customPath) {
+    const fileName = path.basename(customPath)
+    return path.join(FALLBACK_DIR, fileName)
+  }
+  return path.join(FALLBACK_DIR, DEFAULT_STORE_FILE)
 }
 
 function ensureStoreDir(): void {
   const storePath = getFallbackStorePath()
   const dir = path.dirname(storePath)
-  if (!fs.existsSync(dir)) {
+  if (!fs.existsSync(/* turbopackIgnore: true */ dir)) {
     fs.mkdirSync(dir, { recursive: true })
   }
 }
@@ -40,10 +48,10 @@ function readFallbackTasks(): QuickTask[] {
   try {
     ensureStoreDir()
     const storePath = getFallbackStorePath()
-    if (!fs.existsSync(storePath)) {
+    if (!fs.existsSync(/* turbopackIgnore: true */ storePath)) {
       return []
     }
-    const raw = fs.readFileSync(storePath, 'utf-8')
+    const raw = fs.readFileSync(/* turbopackIgnore: true */ storePath, 'utf-8')
     return JSON.parse(raw) as QuickTask[]
   } catch (err) {
     console.error('[QuickTasks] Failed to read fallback store:', err)
@@ -55,7 +63,7 @@ function writeFallbackTasks(tasks: QuickTask[]): void {
   try {
     ensureStoreDir()
     const storePath = getFallbackStorePath()
-    fs.writeFileSync(storePath, JSON.stringify(tasks, null, 2), 'utf-8')
+    fs.writeFileSync(/* turbopackIgnore: true */ storePath, JSON.stringify(tasks, null, 2), 'utf-8')
   } catch (err) {
     console.error('[QuickTasks] Failed to write fallback store:', err)
   }
