@@ -27,67 +27,80 @@ export interface AuthUser {
  * Returns null if not authenticated.
  */
 export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
-  const supabase = await createClient()
-  const { data: { user }, error } = await supabase.auth.getUser()
+  try {
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+      console.warn('[Auth] Missing Supabase environment variables')
+      return null
+    }
 
-  if (error || !user) return null
+    const supabase = await createClient()
+    const { data: { user }, error } = await supabase.auth.getUser()
 
-  // Check if banned or deactivated in Supabase Auth app_metadata
-  if (user.app_metadata?.deactivated || (user as any).banned_until) {
-    return null
-  }
+    if (error || !user) return null
 
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('role, employee_id, first_name, last_name, is_hod')
-    .eq('id', user.id)
-    .single()
+    // Check if banned or deactivated in Supabase Auth app_metadata
+    if (user.app_metadata?.deactivated || (user as any).banned_until) {
+      return null
+    }
 
-  if (!profile) return null
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role, employee_id, first_name, last_name, is_hod')
+      .eq('id', user.id)
+      .single()
 
-  // Check profiles is_active if column populated
-  if ((profile as any).is_active === false) {
-    return null
-  }
+    if (!profile) return null
 
-  let is_hod = !!profile.is_hod
-  let department: string | null = null
-  let designation: string | null = null
-  let division: string | null = null
-  let resolvedRole = (profile.role || 'Employee') as AppRole
+    // Check profiles is_active if column populated
+    if ((profile as any).is_active === false) {
+      return null
+    }
 
-  if (profile.employee_id) {
-    const { data: emp } = await supabase
-      .from('employee_onboarding')
-      .select('is_hod, department, designation, division, role, employment_status')
-      .eq('employee_id_number', profile.employee_id)
-      .maybeSingle()
+    let is_hod = !!profile.is_hod
+    let department: string | null = null
+    let designation: string | null = null
+    let division: string | null = null
+    let resolvedRole = (profile.role || 'Employee') as AppRole
 
-    if (emp) {
-      // Inactive employees must not access ERP pages or server actions
-      if (emp.employment_status === 'Inactive' || emp.employment_status === 'Terminated') {
-        return null
-      }
-      if (!is_hod) is_hod = !!emp.is_hod
-      department = emp.department || null
-      designation = emp.designation || null
-      division = emp.division || null
-      if (resolvedRole === 'Employee' && emp.role === 'Manager') {
-        resolvedRole = 'Manager'
+    if (profile.employee_id) {
+      const { data: emp } = await supabase
+        .from('employee_onboarding')
+        .select('is_hod, department, designation, division, role, employment_status')
+        .eq('employee_id_number', profile.employee_id)
+        .maybeSingle()
+
+      if (emp) {
+        // Inactive employees must not access ERP pages or server actions
+        if (emp.employment_status === 'Inactive' || emp.employment_status === 'Terminated') {
+          return null
+        }
+        if (!is_hod) is_hod = !!emp.is_hod
+        department = emp.department || null
+        designation = emp.designation || null
+        division = emp.division || null
+        if (resolvedRole === 'Employee' && emp.role === 'Manager') {
+          resolvedRole = 'Manager'
+        }
       }
     }
-  }
 
-  return {
-    id: user.id,
-    email: user.email || '',
-    role: resolvedRole,
-    employee_id: profile.employee_id,
-    employee_name: (profile.first_name || profile.last_name) ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : null,
-    is_hod,
-    department,
-    designation,
-    division,
+    return {
+      id: user.id,
+      email: user.email || '',
+      role: resolvedRole,
+      employee_id: profile.employee_id,
+      employee_name: (profile.first_name || profile.last_name) ? `${profile.first_name || ''} ${profile.last_name || ''}`.trim() : null,
+      is_hod,
+      department,
+      designation,
+      division,
+    }
+  } catch (err: any) {
+    if (err?.digest === 'DYNAMIC_SERVER_USAGE' || err?.digest?.startsWith('NEXT_')) {
+      throw err
+    }
+    console.error('[Auth] getCurrentUser error:', err)
+    return null
   }
 })
 
