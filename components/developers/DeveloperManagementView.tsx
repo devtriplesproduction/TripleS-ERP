@@ -177,7 +177,7 @@ export function DeveloperManagementView({
         <Card
           onClick={() => {
             setWorkloadFilter('ALL')
-            setProjectFilter('ALL')
+            setFilters(prev => ({ ...prev, projectId: 'ALL' }))
           }}
           className={cn(
             'cursor-pointer transition-all border-border bg-card hover:border-primary/50 shadow-xs',

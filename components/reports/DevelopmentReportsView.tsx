@@ -121,7 +121,7 @@ export function DevelopmentReportsView({
 
       return {
         id: dev.id,
-        name: `${dev.first_name || ''} ${dev.last_name || ''}`.trim() || 'Developer',
+        name: dev.name || 'Developer',
         employeeId: dev.employee_id || 'EMP',
         designation: dev.designation || 'Developer',
         assignedProjectsCount,

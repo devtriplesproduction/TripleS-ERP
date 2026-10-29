@@ -166,7 +166,7 @@ export function DevelopmentProgressView({
 
       return {
         id: dev.id,
-        name: `${dev.first_name || ''} ${dev.last_name || ''}`.trim() || dev.name || 'Developer',
+        name: dev.name || 'Developer',
         designation: dev.designation || 'Software Engineer',
         total,
         completed,
