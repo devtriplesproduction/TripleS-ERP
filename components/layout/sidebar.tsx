@@ -17,6 +17,7 @@ import {
   Briefcase,
   CheckSquare,
   Clock,
+  FileText,
 } from 'lucide-react'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
@@ -76,6 +77,7 @@ function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: 
     if (isHod || userRole === 'Manager') {
       allItems.push({ label: 'Tasks Board', href: '/tasks', icon: <CheckSquare className="mr-3 h-5 w-5 shrink-0" /> })
       allItems.push({ label: 'Clients', href: '/clients', icon: <Briefcase className="mr-3 h-5 w-5 shrink-0" /> })
+      allItems.push({ label: 'Content Management', href: '/content-management', icon: <FileText className="mr-3 h-5 w-5 shrink-0" /> })
     }
     allItems.push({ label: 'EOD Reports', href: eodHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Request Leave / WFH', href: leaveHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })

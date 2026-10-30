@@ -1,0 +1,242 @@
+[
+  {
+    "id": "CNT-101",
+    "title": "Q4 Product Launch Press Release & Release Notes",
+    "summary": "Public release announcement and technical release highlights for ERP 2.0 launch.",
+    "body": "# Q4 Product Launch Press Release\n\nTriple S Production is pleased to announce ERP 2.0.\n\n## Highlights\n- Unified Dashboard for all departments\n- Advanced Content Management with multi-tier reviews\n- Secure Role-Based Access Control and automated audit trails.",
+    "content_type": "Release Notes",
+    "project_id": null,
+    "project_name": "Core Platform",
+    "owner_id": "af354098-e268-4294-889f-130387cf916b",
+    "owner_name": "Kavita Verma",
+    "status": "In Review",
+    "tags": [
+      "Press Release",
+      "Q4",
+      "Launch"
+    ],
+    "created_at": "2026-10-25T09:00:00.000Z",
+    "updated_at": "2026-10-28T11:00:00.000Z",
+    "due_date": "2026-10-31",
+    "assigned_to_id": "af354098-e268-4294-889f-130387cf916b",
+    "assigned_to_name": "Harishchandra Nanavare",
+    "assigned_role": "Team Lead",
+    "priority": "High",
+    "submission_date": "2026-10-27T10:00:00.000Z",
+    "current_reviewer_id": "af354098-e268-4294-889f-130387cf916b",
+    "current_reviewer_name": "Kavita Verma",
+    "assignment_history": [
+      {
+        "id": "ASG-101-1",
+        "previous_assignee_id": null,
+        "previous_assignee_name": null,
+        "new_assignee_id": "af354098-e268-4294-889f-130387cf916b",
+        "new_assignee_name": "Harishchandra Nanavare",
+        "changed_by_id": "af354098-e268-4294-889f-130387cf916b",
+        "changed_by_name": "Kavita Verma",
+        "date": "25 Oct 2026",
+        "time": "09:30 AM",
+        "reason": "Initial assignment for Q4 launch",
+        "created_at": "2026-10-25T09:30:00.000Z"
+      }
+    ],
+    "review_history": []
+  },
+  {
+    "id": "CNT-102",
+    "title": "REST & GraphQL API Documentation — Payment Module",
+    "summary": "API endpoint references, request/response payload examples, and webhook specifications.",
+    "body": "# Payment Gateway API\n\nAll requests must include `Authorization: Bearer <token>`.\n\n## Endpoints\n- `POST /api/v1/payments/charge`\n- `GET /api/v1/payments/:id`\n- `POST /api/v1/payments/refund`",
+    "content_type": "API Documentation",
+    "project_id": null,
+    "project_name": "Financial Microservices",
+    "owner_id": "af354098-e268-4294-889f-130387cf916b",
+    "owner_name": "Prince Nandagawali",
+    "status": "Changes Requested",
+    "tags": [
+      "API",
+      "Payments",
+      "REST",
+      "Endpoints"
+    ],
+    "created_at": "2026-10-24T14:00:00.000Z",
+    "updated_at": "2026-10-29T09:00:00.000Z",
+    "due_date": "2026-10-28",
+    "assigned_to_id": "af354098-e268-4294-889f-130387cf916b",
+    "assigned_to_name": "Prince Nandagawali",
+    "assigned_role": "Developer",
+    "priority": "Urgent",
+    "submission_date": "2026-10-27T16:00:00.000Z",
+    "current_reviewer_id": "af354098-e268-4294-889f-130387cf916b",
+    "current_reviewer_name": "Kavita Verma",
+    "assignment_history": [
+      {
+        "id": "ASG-102-1",
+        "previous_assignee_id": "dev-rahul",
+        "previous_assignee_name": "Rahul Sharma",
+        "new_assignee_id": "af354098-e268-4294-889f-130387cf916b",
+        "new_assignee_name": "Prince Nandagawali",
+        "changed_by_id": "af354098-e268-4294-889f-130387cf916b",
+        "changed_by_name": "Kavita Verma",
+        "date": "27 Oct 2026",
+        "time": "11:00 AM",
+        "reason": "Workload rebalancing from backend team",
+        "created_at": "2026-10-27T11:00:00.000Z"
+      }
+    ],
+    "review_history": [
+      {
+        "id": "REV-102-1",
+        "reviewer_id": "af354098-e268-4294-889f-130387cf916b",
+        "reviewer_name": "Kavita Verma",
+        "decision": "Changes Requested",
+        "comment": "Please update the API response examples and add 401/403 error status code documentation.",
+        "date": "29 Oct 2026",
+        "time": "09:00 AM",
+        "created_at": "2026-10-29T09:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "CNT-103",
+    "title": "Employee Onboarding & HR Self-Service User Guide",
+    "summary": "Step-by-step walkthrough for new recruits to complete personal profile and tax onboarding.",
+    "body": "# Employee Onboarding Guide\n\nWelcome to Triple S Production! This guide walks you through completing your digital profile.\n\n## Steps\n1. Sign in with your work email.\n2. Complete personal and emergency contacts.\n3. Upload bank documents and tax certificates.",
+    "content_type": "User Guides",
+    "project_id": null,
+    "project_name": "People & HR",
+    "owner_id": "af354098-e268-4294-889f-130387cf916b",
+    "owner_name": "Kavita Verma",
+    "status": "Approved",
+    "tags": [
+      "HR",
+      "Onboarding",
+      "Guide",
+      "Employees"
+    ],
+    "created_at": "2026-10-20T10:00:00.000Z",
+    "updated_at": "2026-10-28T16:00:00.000Z",
+    "due_date": "2026-11-04",
+    "assigned_to_id": "af354098-e268-4294-889f-130387cf916b",
+    "assigned_to_name": "Kavita Verma",
+    "assigned_role": "Team Lead",
+    "priority": "Medium",
+    "submission_date": "2026-10-26T12:00:00.000Z",
+    "current_reviewer_id": "af354098-e268-4294-889f-130387cf916b",
+    "current_reviewer_name": "Kavita Verma",
+    "assignment_history": [],
+    "review_history": [
+      {
+        "id": "REV-103-1",
+        "reviewer_id": "af354098-e268-4294-889f-130387cf916b",
+        "reviewer_name": "Kavita Verma",
+        "decision": "Approved",
+        "comment": "Content looks comprehensive and verified by HR operations.",
+        "date": "28 Oct 2026",
+        "time": "04:00 PM",
+        "created_at": "2026-10-28T16:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "CNT-104",
+    "title": "TripleS ERP 2.0 Architectural Overview",
+    "summary": "Comprehensive overview of microservices, SSR rendering, and RBAC hierarchy.",
+    "body": "# Architectural Overview\n\nThis technical documentation outlines the system design of TripleS ERP 2.0.\n\n## Architecture Components\n- Next.js 16 App Router with React Server Components\n- Supabase SSR session handling and cookie forwarding\n- Modular RBAC route security\n- Hybrid persistent store with background job dispatch.",
+    "content_type": "Technical Documentation",
+    "project_id": null,
+    "project_name": "Core Platform",
+    "owner_id": "af354098-e268-4294-889f-130387cf916b",
+    "owner_name": "Kavita Verma",
+    "status": "Published",
+    "tags": [
+      "Architecture",
+      "Core",
+      "V2"
+    ],
+    "created_at": "2026-10-18T10:00:00.000Z",
+    "updated_at": "2026-10-24T14:30:00.000Z",
+    "due_date": "2026-10-24",
+    "completion_date": "2026-10-24T14:30:00.000Z",
+    "assigned_to_id": "af354098-e268-4294-889f-130387cf916b",
+    "assigned_to_name": "Kavita Verma",
+    "assigned_role": "Team Lead",
+    "priority": "High",
+    "assignment_history": [],
+    "review_history": [
+      {
+        "id": "REV-104-1",
+        "reviewer_id": "af354098-e268-4294-889f-130387cf916b",
+        "reviewer_name": "Kavita Verma",
+        "decision": "Approved",
+        "comment": "Excellent technical architecture document.",
+        "date": "24 Oct 2026",
+        "time": "02:00 PM",
+        "created_at": "2026-10-24T14:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "id": "CNT-105",
+    "title": "Developer Guide: Local Environment Setup & Docker",
+    "summary": "Standard instructions for configuring local database containers, environment variables, and pre-commit hooks.",
+    "body": "# Developer Guide: Setup\n\nFollow these steps to run TripleS ERP locally:\n\n1. Clone the repository\n2. Copy `.env.example` to `.env.local`\n3. Run `npm install`\n4. Start dev server with `npm run dev`",
+    "content_type": "Developer Guides",
+    "project_id": null,
+    "project_name": "Core Platform",
+    "owner_id": "af354098-e268-4294-889f-130387cf916b",
+    "owner_name": "Harishchandra Nanavare",
+    "status": "Draft",
+    "tags": [
+      "DevGuide",
+      "Docker",
+      "Setup"
+    ],
+    "created_at": "2026-10-28T09:00:00.000Z",
+    "updated_at": "2026-10-28T09:00:00.000Z",
+    "due_date": "2026-11-06",
+    "assigned_to_id": "af354098-e268-4294-889f-130387cf916b",
+    "assigned_to_name": "Harishchandra Nanavare",
+    "assigned_role": "Developer",
+    "priority": "Medium",
+    "assignment_history": [],
+    "review_history": []
+  },
+  {
+    "id": "CNT-106",
+    "title": "Internal SOP & Troubleshooting Knowledge Base",
+    "summary": "Runbooks for resolving Redis cache mismatches, database deadlocks, and worker timeouts.",
+    "body": "# Troubleshooting Runbooks\n\n## 1. Redis Cache Flush\nWhen schema migrations change payload formats, execute cache invalidation.\n\n## 2. Worker Queue\nRestart worker task if deadlocks are encountered.",
+    "content_type": "Knowledge Base Articles",
+    "project_id": null,
+    "project_name": "Core Platform",
+    "owner_id": "af354098-e268-4294-889f-130387cf916b",
+    "owner_name": "Prince Nandagawali",
+    "status": "Rejected",
+    "tags": [
+      "Runbook",
+      "SOP",
+      "Troubleshooting"
+    ],
+    "created_at": "2026-10-21T11:00:00.000Z",
+    "updated_at": "2026-10-23T15:00:00.000Z",
+    "due_date": "2026-10-23",
+    "assigned_to_id": "af354098-e268-4294-889f-130387cf916b",
+    "assigned_to_name": "Prince Nandagawali",
+    "assigned_role": "Developer",
+    "priority": "Low",
+    "assignment_history": [],
+    "review_history": [
+      {
+        "id": "REV-106-1",
+        "reviewer_id": "af354098-e268-4294-889f-130387cf916b",
+        "reviewer_name": "Kavita Verma",
+        "decision": "Rejected",
+        "comment": "This article duplicates SOP-04. Please merge with the existing infrastructure runbook.",
+        "date": "23 Oct 2026",
+        "time": "03:00 PM",
+        "created_at": "2026-10-23T15:00:00.000Z"
+      }
+    ]
+  }
+]

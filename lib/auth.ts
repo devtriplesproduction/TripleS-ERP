@@ -28,7 +28,16 @@ export interface AuthUser {
  */
 export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
   try {
-    if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    const supabaseUrl = (
+      process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+    )?.trim().replace(/^["']|["']$/g, '')
+    const supabaseAnonKey = (
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+      process.env.SUPABASE_ANON_KEY ||
+      process.env.SUPABASE_KEY
+    )?.trim().replace(/^["']|["']$/g, '')
+
+    if (!supabaseUrl || !supabaseAnonKey || supabaseAnonKey === 'placeholder') {
       console.warn('[Auth] Missing Supabase environment variables')
       return null
     }

@@ -7,6 +7,7 @@ import { DashboardAnnouncementReader } from '@/components/announcements/Dashboar
 import { DashboardMyTasks } from '@/components/dashboard/DashboardMyTasks'
 import { DashboardMyProjects } from '@/components/dashboard/DashboardMyProjects'
 import { TopContributorCard } from '@/components/dashboard/TopContributorCard'
+import { HeadOfContentDashboard } from '@/components/dashboard/HeadOfContentDashboard'
 import { PageHeader } from '@/components/PageHeader'
 import { LayoutDashboard } from 'lucide-react'
 
@@ -25,6 +26,17 @@ export default async function DashboardPage() {
   const taskData = myTasksRes.data
   const myProjects = myProjectsRes.data || []
   const topContributorData = topContributorRes?.data
+
+  // If user is Head of Department for Content, render the Content HOD Dashboard
+  if (user.is_hod && user.department?.toLowerCase() === 'content') {
+    return (
+      <HeadOfContentDashboard
+        user={user}
+        projects={myProjects}
+        tasks={taskData?.todayTasks || []}
+      />
+    )
+  }
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
@@ -67,4 +79,3 @@ export default async function DashboardPage() {
     </div>
   )
 }
-

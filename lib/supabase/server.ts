@@ -1,10 +1,29 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
+function sanitizeEnv(value: string | undefined): string {
+  if (!value) return ''
+  const trimmed = value.trim()
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim()
+  }
+  return trimmed
+}
+
 export async function createClient() {
   const cookieStore = await cookies()
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder'
+  const url =
+    sanitizeEnv(process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL) ||
+    'https://placeholder.supabase.co'
+  const anonKey =
+    sanitizeEnv(
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+        process.env.SUPABASE_ANON_KEY ||
+        process.env.SUPABASE_KEY
+    ) || 'placeholder'
 
   return createServerClient(
     url,
@@ -31,8 +50,15 @@ export async function createClient() {
 }
 
 export async function createAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co'
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder'
+  const url =
+    sanitizeEnv(process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL) ||
+    'https://placeholder.supabase.co'
+  const serviceKey =
+    sanitizeEnv(
+      process.env.SUPABASE_SERVICE_ROLE_KEY ||
+        process.env.SUPABASE_SERVICE_KEY ||
+        process.env.SUPABASE_SECRET_KEY
+    ) || 'placeholder'
 
   return createServerClient(
     url,

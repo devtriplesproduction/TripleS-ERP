@@ -1,0 +1,58 @@
+[
+  {
+    "id": "ct-1",
+    "name": "Technical Documentation",
+    "description": "System specs and technical architecture guides",
+    "is_active": true,
+    "created_at": "2026-10-01T00:00:00.000Z"
+  },
+  {
+    "id": "ct-2",
+    "name": "Project Documentation",
+    "description": "Milestones, delivery roadmaps and project scope",
+    "is_active": true,
+    "created_at": "2026-10-01T00:00:00.000Z"
+  },
+  {
+    "id": "ct-3",
+    "name": "API Documentation",
+    "description": "Endpoint references, auth specs and schema contracts",
+    "is_active": true,
+    "created_at": "2026-10-01T00:00:00.000Z"
+  },
+  {
+    "id": "ct-4",
+    "name": "User Guides",
+    "description": "End-user tutorials and walkthrough documentation",
+    "is_active": true,
+    "created_at": "2026-10-01T00:00:00.000Z"
+  },
+  {
+    "id": "ct-5",
+    "name": "Developer Guides",
+    "description": "Engineering standards, onboarding and code guidelines",
+    "is_active": true,
+    "created_at": "2026-10-01T00:00:00.000Z"
+  },
+  {
+    "id": "ct-6",
+    "name": "Release Notes",
+    "description": "Changelogs, patch notices and deployment notes",
+    "is_active": true,
+    "created_at": "2026-10-01T00:00:00.000Z"
+  },
+  {
+    "id": "ct-7",
+    "name": "Knowledge Base Articles",
+    "description": "Internal operating procedures and troubleshooting",
+    "is_active": true,
+    "created_at": "2026-10-01T00:00:00.000Z"
+  },
+  {
+    "id": "ct-8",
+    "name": "FAQs",
+    "description": "Frequently asked operational and technical questions",
+    "is_active": true,
+    "created_at": "2026-10-01T00:00:00.000Z"
+  }
+]
