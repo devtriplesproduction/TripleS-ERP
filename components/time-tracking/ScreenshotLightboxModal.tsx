@@ -264,11 +264,10 @@ export function ScreenshotLightboxModal({
                   setZoomLevel(1)
                   setCurrentIndex(idx)
                 }}
-                className={`relative shrink-0 w-16 h-10 rounded-lg overflow-hidden border-2 transition-all ${
-                  idx === validIndex
-                    ? 'border-primary ring-2 ring-primary/30 scale-105'
-                    : 'border-border/60 opacity-60 hover:opacity-100 hover:border-foreground/30'
-                }`}
+                className={`relative shrink-0 w-16 h-10 rounded-lg overflow-hidden border-2 transition-all ${idx === validIndex
+                  ? 'border-primary ring-2 ring-primary/30 scale-105'
+                  : 'border-border/60 opacity-60 hover:opacity-100 hover:border-foreground/30'
+                  }`}
                 title={`${s.appName} - ${s.capturedAtFormatted}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}

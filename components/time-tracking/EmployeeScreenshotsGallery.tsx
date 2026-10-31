@@ -255,22 +255,20 @@ export function EmployeeScreenshotsGallery({
           <div className="flex items-center rounded-xl border border-border bg-card p-0.5 shadow-sm">
             <button
               onClick={() => setGridDensity('compact')}
-              className={`p-1.5 rounded-lg text-xs transition-colors ${
-                gridDensity === 'compact'
-                  ? 'bg-primary text-primary-foreground font-semibold'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              }`}
+              className={`p-1.5 rounded-lg text-xs transition-colors ${gridDensity === 'compact'
+                ? 'bg-primary text-primary-foreground font-semibold'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
               title="Compact View"
             >
               <Grid3X3 size={14} />
             </button>
             <button
               onClick={() => setGridDensity('normal')}
-              className={`p-1.5 rounded-lg text-xs transition-colors ${
-                gridDensity === 'normal'
-                  ? 'bg-primary text-primary-foreground font-semibold'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-              }`}
+              className={`p-1.5 rounded-lg text-xs transition-colors ${gridDensity === 'normal'
+                ? 'bg-primary text-primary-foreground font-semibold'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
               title="Standard View"
             >
               <LayoutGrid size={14} />
