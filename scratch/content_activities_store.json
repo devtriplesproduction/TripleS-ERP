@@ -1,0 +1,57 @@
+[
+  {
+    "id": "ACT-01",
+    "content_id": "CNT-102",
+    "content_title": "REST & GraphQL API Documentation — Payment Module",
+    "action": "Changes Requested",
+    "user_id": "af354098-e268-4294-889f-130387cf916b",
+    "user_name": "Kavita Verma",
+    "details": "Changes Requested by Kavita Verma: \"Please update the API response examples.\"",
+    "created_at": "2026-10-29T09:00:00.000Z",
+    "timestamp_display": "29 Oct 2026 09:00 AM"
+  },
+  {
+    "id": "ACT-02",
+    "content_id": "CNT-103",
+    "content_title": "Employee Onboarding & HR Self-Service User Guide",
+    "action": "Approved",
+    "user_id": "af354098-e268-4294-889f-130387cf916b",
+    "user_name": "Kavita Verma",
+    "details": "Approved by Kavita Verma: \"Content looks comprehensive and verified by HR operations.\"",
+    "created_at": "2026-10-28T16:00:00.000Z",
+    "timestamp_display": "28 Oct 2026 04:00 PM"
+  },
+  {
+    "id": "ACT-03",
+    "content_id": "CNT-102",
+    "content_title": "REST & GraphQL API Documentation — Payment Module",
+    "action": "Reassigned",
+    "user_id": "af354098-e268-4294-889f-130387cf916b",
+    "user_name": "Kavita Verma",
+    "details": "Reassigned to Prince Nandagawali (Developer) by Kavita Verma (Reason: Workload rebalancing)",
+    "created_at": "2026-10-27T11:00:00.000Z",
+    "timestamp_display": "27 Oct 2026 11:00 AM"
+  },
+  {
+    "id": "ACT-04",
+    "content_id": "CNT-101",
+    "content_title": "Q4 Product Launch Press Release & Release Notes",
+    "action": "Submitted",
+    "user_id": "af354098-e268-4294-889f-130387cf916b",
+    "user_name": "Harishchandra Nanavare",
+    "details": "Submitted for review by Harishchandra Nanavare",
+    "created_at": "2026-10-27T10:00:00.000Z",
+    "timestamp_display": "27 Oct 2026 10:00 AM"
+  },
+  {
+    "id": "ACT-05",
+    "content_id": "CNT-104",
+    "content_title": "TripleS ERP 2.0 Architectural Overview",
+    "action": "Published",
+    "user_id": "af354098-e268-4294-889f-130387cf916b",
+    "user_name": "Kavita Verma",
+    "details": "Published by Kavita Verma",
+    "created_at": "2026-10-24T14:30:00.000Z",
+    "timestamp_display": "24 Oct 2026 02:30 PM"
+  }
+]

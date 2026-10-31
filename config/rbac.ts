@@ -44,6 +44,7 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/attendance',
     '/holidays',
     '/payroll',
+    '/content-management',
     '/time-tracking',
     '/projects',
     '/tasks',
@@ -70,6 +71,7 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/eod',
     '/attendance',
     '/holidays',
+    '/payroll',
     '/dashboard',
     '/rulebook',
     '/announcements',
@@ -89,6 +91,7 @@ export const ROLE_ROUTE_MAP: Record<AppRole, string[]> = {
     '/eod',
     '/attendance',
     '/holidays',
+    '/payroll',
     '/dashboard',
     '/rulebook',
     '/announcements',
@@ -130,6 +133,11 @@ export function hasRouteAccess(
   isHod?: boolean
 ): boolean {
   if (!role || !ALL_ROLES.includes(role as AppRole)) return false
+
+  // Special Content Management access for HODs and Admin
+  if (pathname.startsWith('/content-management')) {
+    if (role === 'Admin' || isHod) return true
+  }
 
   // Special Project Management bypass for HODs
   if (

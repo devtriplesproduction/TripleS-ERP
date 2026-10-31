@@ -4,9 +4,8 @@ export function calculateMonthlyBasicSalary(annualCTC: number): number {
 }
 
 /**
- * Calculate salary increment percentage.
- * Formula: (new total salary - previous salary) / previous salary * 100
- * Handles zero or missing previous salary safely without dividing by zero or returning NaN/Infinity/null.
+ * Calculates salary increment percentage: ((newSalary - previousSalary) / previousSalary) * 100
+ * Safely handles null, zero, negative, or invalid previous/new salaries without returning Infinity, NaN, or null.
  */
 export function calculateIncrementPercentage(
   previousSalary: number | null | undefined,
@@ -15,75 +14,64 @@ export function calculateIncrementPercentage(
   const prev = Number(previousSalary);
   const next = Number(newSalary);
 
-  if (isNaN(next) || next <= 0) return 0;
-  if (isNaN(prev) || prev <= 0) return 0;
+  if (!Number.isFinite(prev) || prev <= 0) return 0;
+  if (!Number.isFinite(next) || next <= 0) return 0;
 
   const percentage = ((next - prev) / prev) * 100;
-  if (!isFinite(percentage) || isNaN(percentage)) return 0;
-
   return Math.round(percentage * 100) / 100;
 }
 
 /**
- * Resolve the employee's actual current salary from employee records and salary history.
- * Checks:
- * 1. Most recent record in salary_history (if valid > 0)
- * 2. employee.basic_salary (if valid > 0)
- * 3. employee.stipend (if employment_type is Intern and valid > 0)
- * 4. employee.salary (annual CTC -> converted to monthly basic salary, if valid > 0)
- * 5. employee.stipend (fallback, if valid > 0)
- * Returns null if salary data is genuinely missing, avoiding defaulting to 0.
+ * Resolves current monthly compensation from employee and salary history records.
+ * 
+ * Precedence:
+ * 1. Latest salary_history row's new_salary (if any exists)
+ * 2. If Intern: employee.stipend (can be 1, never defaults to 0 if set)
+ * 3. employee.basic_salary (if set)
+ * 4. employee.salary / 12 (if annual salary is set)
+ * 5. Returns null if genuinely missing (never defaults to 0)
  */
 export function resolveCurrentSalary(
   employee: {
-    salary?: number | string | null;
-    basic_salary?: number | string | null;
-    stipend?: number | string | null;
+    salary?: number | null;
+    basic_salary?: number | null;
+    stipend?: number | null;
     employment_type?: string | null;
   } | null | undefined,
-  history?: Array<{ new_salary: number | string }> | null
+  salaryHistory: Array<{ new_salary: number | string | null }> | null | undefined
 ): number | null {
-  // 1. Check salary history: most recent new_salary
-  if (history && history.length > 0) {
-    const latest = history[0];
-    const val = Number(latest.new_salary);
-    if (!isNaN(val) && val > 0) {
-      return val;
-    }
+  if (!employee && (!salaryHistory || salaryHistory.length === 0)) {
+    return null;
+  }
+
+  // 1. Check latest salary history
+  if (salaryHistory && salaryHistory.length > 0 && salaryHistory[0].new_salary !== null && salaryHistory[0].new_salary !== undefined) {
+    const histVal = Number(salaryHistory[0].new_salary);
+    if (Number.isFinite(histVal)) return histVal;
   }
 
   if (!employee) return null;
 
-  // 2. Check basic_salary (monthly basic salary)
-  if (employee.basic_salary != null && employee.basic_salary !== '') {
-    const val = Number(employee.basic_salary);
-    if (!isNaN(val) && val > 0) {
-      return val;
-    }
-  }
-
-  // 3. For Interns, check stipend (monthly stipend)
+  // 2. Check Intern stipend
   const isIntern = employee.employment_type?.toLowerCase() === 'intern';
-  if (isIntern && employee.stipend != null && employee.stipend !== '') {
-    const val = Number(employee.stipend);
-    if (!isNaN(val) && val > 0) {
-      return val;
+  if (isIntern) {
+    if (employee.stipend !== null && employee.stipend !== undefined) {
+      const stipendVal = Number(employee.stipend);
+      if (Number.isFinite(stipendVal)) return stipendVal;
     }
   }
 
-  // 4. Check annual salary CTC -> monthly basic
-  if (employee.salary != null && employee.salary !== '') {
-    const val = Number(employee.salary);
-    if (!isNaN(val) && val > 0) {
-      return calculateMonthlyBasicSalary(val);
-    }
+  // 3. Check basic_salary
+  if (employee.basic_salary !== null && employee.basic_salary !== undefined) {
+    const basicVal = Number(employee.basic_salary);
+    if (Number.isFinite(basicVal)) return basicVal;
   }
 
-  // 5. Fallback check for stipend for any employment type
-  if (employee.stipend != null && employee.stipend !== '') {
-    const val = Number(employee.stipend);
-    if (!isNaN(val) && val > 0) {
-      return val;
+  // 4. Check annual salary (divide by 12)
+  if (employee.salary !== null && employee.salary !== undefined) {
+    const annualVal = Number(employee.salary);
+    if (Number.isFinite(annualVal) && annualVal > 0) {
+      return Math.round((annualVal / 12) * 100) / 100;
     }
   }
 

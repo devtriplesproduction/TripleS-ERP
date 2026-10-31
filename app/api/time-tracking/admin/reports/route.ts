@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
-import { getTimeTrackingDashboardData, getMonthlyTrackingSummary } from '@/lib/actions/time-tracking'
+import {
+  getTimeTrackingDashboardData,
+  getMonthlyTrackingSummary,
+  getScreenshotsForEmployeeAndDate
+} from '@/lib/actions/time-tracking'
 
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
@@ -30,6 +34,24 @@ export async function GET(req: NextRequest) {
     const month = searchParams.get('month') || undefined
     const status = searchParams.get('status') || 'All'
     const employeeId = searchParams.get('employeeId') || 'All'
+    const sessionId = searchParams.get('sessionId') || undefined
+
+    if (mode === 'screenshots') {
+      const screenshotsResult = await getScreenshotsForEmployeeAndDate({
+        employeeId,
+        date,
+        sessionId
+      })
+
+      if (!screenshotsResult.success) {
+        return NextResponse.json(
+          { success: false, error: screenshotsResult.error || 'Failed to retrieve screenshots' },
+          { status: 500 }
+        )
+      }
+
+      return NextResponse.json(screenshotsResult)
+    }
 
     if (mode === 'monthly') {
       const summaryResult = await getMonthlyTrackingSummary({

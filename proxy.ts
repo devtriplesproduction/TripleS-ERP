@@ -20,49 +20,21 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next()
   }
 
-  let response = NextResponse.next({
-    request: { headers: request.headers },
-  })
+  const supabaseUrl = (
+    process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+  )?.trim().replace(/^["']|["']$/g, '')
+  const supabaseAnonKey = (
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_KEY
+  )?.trim().replace(/^["']|["']$/g, '')
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll()
-        },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            request.cookies.set(name, value)
-          )
-          response = NextResponse.next({
-            request: { headers: request.headers },
-          })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          )
-        },
-      },
+  // If Supabase environment variables are missing, redirect to /login instead of crashing
+  if (!supabaseUrl || !supabaseAnonKey) {
+    console.warn('[Proxy] Missing NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY')
+    if (pathname === '/login') {
+      return NextResponse.next()
     }
-  )
-
-  // Server Actions handling:
-  // If request is a Server Action (contains 'next-action' header), NEVER issue NextResponse.redirect().
-  // Next.js Server Actions communicate using Flight RSC protocol over POST requests.
-  // Returning an HTTP redirect (307/308) or HTML from middleware causes the client router
-  // to fail with: "An unexpected response was received from the server."
-  // All Server Actions enforce auth and authorization internally via getCurrentUser/requireAuth/requireRole.
-  const isServerAction = request.headers.has('next-action')
-  if (isServerAction) {
-    await supabase.auth.getUser()
-    return response
-  }
-
-  const { data: { user } } = await supabase.auth.getUser()
-
-  // Not authenticated → redirect to login
-  if (!user) {
     const loginUrl = new URL('/login', request.url)
     if (pathname !== '/') {
       loginUrl.searchParams.set('redirect', pathname)
@@ -70,52 +42,111 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl)
   }
 
-  // Deactivated account → revoke ERP access and redirect
-  if (user.app_metadata?.deactivated || user.banned_until) {
-    return NextResponse.redirect(new URL('/access-disabled', request.url))
-  }
+  try {
+    let response = NextResponse.next({
+      request: { headers: request.headers },
+    })
 
-  // For root path, redirect authenticated users directly to dashboard
-  if (pathname === '/') {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
+    const supabase = createServerClient(
+      supabaseUrl,
+      supabaseAnonKey,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              request.cookies.set(name, value)
+            )
+            response = NextResponse.next({
+              request: { headers: request.headers },
+            })
+            cookiesToSet.forEach(({ name, value, options }) =>
+              response.cookies.set(name, value, options)
+            )
+          },
+        },
+      }
+    )
 
-  // Canonical Route Migration Redirections
-  const legacyToCanonicalMap: Record<string, string> = {
-    '/hr/onboarding': '/employees',
-    '/hr/onboarding/add': '/employees/add',
-    '/hr/leave': '/leave',
-    '/super-admin/leave': '/leave',
-    '/hr/employee-leave': '/leave',
-    '/hr/holidays': '/holidays',
-    '/admin-holiday': '/holidays',
-    '/employee-holiday': '/holidays',
-    '/hr/payroll': '/payroll',
-    '/admin-payroll': '/payroll',
-    '/hr/attendance': '/attendance',
-    '/super-admin/attendance': '/attendance',
-    '/admin-eod': '/eod',
-    '/employee-eod': '/eod',
-  }
-
-  let targetCanonical: string | null = legacyToCanonicalMap[pathname] || null
-  if (!targetCanonical) {
-    if (pathname.startsWith('/hr/onboarding/')) {
-      targetCanonical = pathname.replace('/hr/onboarding/', '/employees/')
-    } else if (pathname.startsWith('/hr/attendance/')) {
-      targetCanonical = pathname.replace('/hr/attendance/', '/attendance/')
-    } else if (pathname.startsWith('/super-admin/attendance/')) {
-      targetCanonical = pathname.replace('/super-admin/attendance/', '/attendance/')
+    // Server Actions handling:
+    // If request is a Server Action (contains 'next-action' header), NEVER issue NextResponse.redirect().
+    // Next.js Server Actions communicate using Flight RSC protocol over POST requests.
+    // Returning an HTTP redirect (307/308) or HTML from middleware causes the client router
+    // to fail with: "An unexpected response was received from the server."
+    // All Server Actions enforce auth and authorization internally via getCurrentUser/requireAuth/requireRole.
+    const isServerAction = request.headers.has('next-action')
+    if (isServerAction) {
+      await supabase.auth.getUser()
+      return response
     }
-  }
 
-  if (targetCanonical) {
-    const targetUrl = new URL(targetCanonical, request.url)
-    targetUrl.search = request.nextUrl.search
-    return NextResponse.redirect(targetUrl)
-  }
+    const { data: { user } } = await supabase.auth.getUser()
 
-  return response
+    // Not authenticated -> redirect to login
+    if (!user) {
+      const loginUrl = new URL('/login', request.url)
+      if (pathname !== '/') {
+        loginUrl.searchParams.set('redirect', pathname)
+      }
+      return NextResponse.redirect(loginUrl)
+    }
+
+    // Deactivated account -> revoke ERP access and redirect
+    if (user.app_metadata?.deactivated || user.banned_until) {
+      return NextResponse.redirect(new URL('/access-disabled', request.url))
+    }
+
+    // For root path, redirect authenticated users directly to dashboard
+    if (pathname === '/') {
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+
+    // Canonical Route Migration Redirections
+    const legacyToCanonicalMap: Record<string, string> = {
+      '/hr/onboarding': '/employees',
+      '/hr/onboarding/add': '/employees/add',
+      '/hr/leave': '/leave',
+      '/super-admin/leave': '/leave',
+      '/hr/employee-leave': '/leave',
+      '/hr/holidays': '/holidays',
+      '/admin-holiday': '/holidays',
+      '/employee-holiday': '/holidays',
+      '/hr/payroll': '/payroll',
+      '/admin-payroll': '/payroll',
+      '/hr/attendance': '/attendance',
+      '/super-admin/attendance': '/attendance',
+      '/admin-eod': '/eod',
+      '/employee-eod': '/eod',
+    }
+
+    let targetCanonical: string | null = legacyToCanonicalMap[pathname] || null
+    if (!targetCanonical) {
+      if (pathname.startsWith('/hr/onboarding/')) {
+        targetCanonical = pathname.replace('/hr/onboarding/', '/employees/')
+      } else if (pathname.startsWith('/hr/attendance/')) {
+        targetCanonical = pathname.replace('/hr/attendance/', '/attendance/')
+      } else if (pathname.startsWith('/super-admin/attendance/')) {
+        targetCanonical = pathname.replace('/super-admin/attendance/', '/attendance/')
+      }
+    }
+
+    if (targetCanonical) {
+      const targetUrl = new URL(targetCanonical, request.url)
+      targetUrl.search = request.nextUrl.search
+      return NextResponse.redirect(targetUrl)
+    }
+
+    return response
+  } catch (err) {
+    console.error('[Proxy] Error executing proxy:', err)
+    const loginUrl = new URL('/login', request.url)
+    if (pathname !== '/') {
+      loginUrl.searchParams.set('redirect', pathname)
+    }
+    return NextResponse.redirect(loginUrl)
+  }
 }
 
 export const config = {

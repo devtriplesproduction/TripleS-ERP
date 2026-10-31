@@ -1,0 +1,48 @@
+[
+  {
+    "id": "NOTIF-01",
+    "user_id": "af354098-e268-4294-889f-130387cf916b",
+    "type": "Changes Requested",
+    "title": "Content Review Update",
+    "message": "Changes have been requested by the reviewer for \"REST & GraphQL API Documentation — Payment Module\".",
+    "content_id": "CNT-102",
+    "content_title": "REST & GraphQL API Documentation — Payment Module",
+    "reason": "Please update the API response examples and add 401/403 error status code documentation.",
+    "is_read": false,
+    "created_at": "2026-10-29T09:00:00.000Z"
+  },
+  {
+    "id": "NOTIF-02",
+    "user_id": "af354098-e268-4294-889f-130387cf916b",
+    "type": "New Assignment",
+    "title": "New Content Assigned",
+    "message": "You have been assigned to \"REST & GraphQL API Documentation — Payment Module\" with priority Urgent.",
+    "content_id": "CNT-102",
+    "content_title": "REST & GraphQL API Documentation — Payment Module",
+    "reason": "Workload rebalancing from backend team",
+    "is_read": false,
+    "created_at": "2026-10-27T11:00:00.000Z"
+  },
+  {
+    "id": "NOTIF-03",
+    "user_id": "af354098-e268-4294-889f-130387cf916b",
+    "type": "Approaching Deadline",
+    "title": "Deadline Approaching",
+    "message": "The deadline for \"Q4 Product Launch Press Release & Release Notes\" is approaching (Due: 31 Oct 2026).",
+    "content_id": "CNT-101",
+    "content_title": "Q4 Product Launch Press Release & Release Notes",
+    "is_read": false,
+    "created_at": "2026-10-28T09:00:00.000Z"
+  },
+  {
+    "id": "NOTIF-04",
+    "user_id": "af354098-e268-4294-889f-130387cf916b",
+    "type": "Overdue",
+    "title": "Content Overdue",
+    "message": "\"REST & GraphQL API Documentation — Payment Module\" is overdue. Due date was 28 Oct 2026.",
+    "content_id": "CNT-102",
+    "content_title": "REST & GraphQL API Documentation — Payment Module",
+    "is_read": false,
+    "created_at": "2026-10-29T00:00:00.000Z"
+  }
+]

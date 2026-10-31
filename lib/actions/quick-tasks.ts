@@ -27,18 +27,21 @@ function safeRevalidatePath(pathUrl: string) {
 const FALLBACK_DIR = path.join(process.cwd(), 'scratch')
 const DEFAULT_STORE_FILE = 'quick_tasks_store.json'
 
-function getFallbackStorePath(): string {
+function getFallbackStoreFileName(): string {
   const customPath = process.env.QUICK_TASKS_STORE_PATH
   if (customPath) {
-    const fileName = path.basename(customPath)
-    return path.join(FALLBACK_DIR, fileName)
+    return path.basename(customPath)
   }
-  return path.join(FALLBACK_DIR, DEFAULT_STORE_FILE)
+  return DEFAULT_STORE_FILE
+}
+
+function getFallbackStorePath(): string {
+  const fileName = getFallbackStoreFileName()
+  return path.join(/*turbopackIgnore: true*/ FALLBACK_DIR, fileName)
 }
 
 function ensureStoreDir(): void {
-  const storePath = getFallbackStorePath()
-  const dir = path.dirname(storePath)
+  const dir = FALLBACK_DIR
   if (!fs.existsSync(/*turbopackIgnore: true*/ dir)) {
     fs.mkdirSync(dir, { recursive: true })
   }
@@ -981,3 +984,4 @@ export async function getQuickTasksBadgeCountAction(): Promise<QuickTasksBadgeSt
     }
   }
 }
+

@@ -3,6 +3,22 @@
 import { getCurrentUser, guardServerAction } from '@/lib/auth'
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
 
+export interface ScreenshotItem {
+  id: string
+  sessionId: string
+  employeeId: string
+  employeeName?: string
+  sessionDate: string
+  capturedAt: string
+  capturedAtFormatted: string
+  storagePath?: string | null
+  imageUrl: string
+  fileSizeBytes: number
+  fileSizeFormatted: string
+  appName: string
+  windowTitle: string
+}
+
 export interface EmployeeReportItem {
   id: string
   name: string
@@ -22,6 +38,8 @@ export interface EmployeeReportItem {
   lastSync: string
   lastSyncFormatted: string
   sessionCount: number
+  screenshotCount: number
+  screenshots: ScreenshotItem[]
   sessions: Array<{
     id: string
     clock_in: string
@@ -86,6 +104,7 @@ export interface OverviewMetrics {
   totalWorkedHoursFormatted: string
   totalActiveHoursFormatted: string
   activeEfficiencyPercent: number
+  totalScreenshots: number
   hourlyData: Array<{ hour: string; worked: number; active: number }>
 }
 
@@ -151,6 +170,14 @@ function formatMinutesToHours(minutes: number): string {
   const h = Math.floor(minutes / 60)
   const m = minutes % 60
   return `${h}h ${m.toString().padStart(2, '0')}m`
+}
+
+function formatBytes(bytes: number): string {
+  if (!bytes || bytes <= 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
 }
 
 function getAdminSupabase() {
@@ -240,14 +267,60 @@ export async function getTimeTrackingDashboardData(params?: {
       }
     }
 
+    // 5. Fetch screenshots for target business date (or matching sessions)
+    let sessionScreenshots: any[] = []
+    const { data: screensData, error: screenErr } = await adminSupa
+      .from('session_screenshots')
+      .select('id, session_id, employee_id, session_date, captured_at, storage_path, image_url, file_size_bytes, app_name, window_title')
+      .eq('session_date', targetDate)
+      .order('captured_at', { ascending: false })
+
+    if (!screenErr && screensData && screensData.length > 0) {
+      sessionScreenshots = screensData
+    } else if (sessionIds.length > 0) {
+      const { data: screensBySession, error: sErr } = await adminSupa
+        .from('session_screenshots')
+        .select('id, session_id, employee_id, session_date, captured_at, storage_path, image_url, file_size_bytes, app_name, window_title')
+        .in('session_id', sessionIds)
+        .order('captured_at', { ascending: false })
+
+      if (!sErr && screensBySession) {
+        sessionScreenshots = screensBySession
+      }
+    }
+
     const now = Date.now()
     const isToday = targetDate === getTodayIST()
 
-    // 5. Build Employee Report items
+    // 6. Build Employee Report items
     const employees: EmployeeReportItem[] = profiles.map(profile => {
       const empSessions = sessions.filter(s => s.employee_id === profile.id)
       const empBreaks = sessionBreaks.filter(b => empSessions.some(s => s.id === b.session_id))
       const empLogs = activityLogs.filter(l => l.employee_id === profile.id)
+      const empScreenshotsRaw = sessionScreenshots.filter(s => s.employee_id === profile.id)
+
+      const empScreenshots: ScreenshotItem[] = empScreenshotsRaw.map(s => {
+        let url = s.image_url
+        if (!url && s.storage_path) {
+          const { data: pubData } = adminSupa.storage.from('screenshots').getPublicUrl(s.storage_path)
+          url = pubData?.publicUrl || ''
+        }
+        return {
+          id: s.id,
+          sessionId: s.session_id,
+          employeeId: s.employee_id,
+          employeeName: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'Employee',
+          sessionDate: s.session_date,
+          capturedAt: s.captured_at,
+          capturedAtFormatted: formatISTTime(s.captured_at),
+          storagePath: s.storage_path,
+          imageUrl: url,
+          fileSizeBytes: Number(s.file_size_bytes || 0),
+          fileSizeFormatted: formatBytes(Number(s.file_size_bytes || 0)),
+          appName: s.app_name || 'Active Screen',
+          windowTitle: s.window_title || ''
+        }
+      })
 
       const workedMins = empSessions.reduce((acc, s) => acc + (s.worked_minutes || 0), 0)
       const activeMins = empSessions.reduce((acc, s) => acc + (s.active_minutes || 0), 0)
@@ -505,6 +578,8 @@ export async function getTimeTrackingDashboardData(params?: {
         lastSync: latestSyncIso || '-',
         lastSyncFormatted: latestSyncIso ? formatISTTime(latestSyncIso) : '-',
         sessionCount: empSessions.length,
+        screenshotCount: empScreenshots.length,
+        screenshots: empScreenshots,
         sessions: formattedSessions,
         timeline,
         applications,
@@ -548,6 +623,7 @@ export async function getTimeTrackingDashboardData(params?: {
     const activeEfficiencyPercent = totalWorkedMinutes > 0
       ? Math.min(100, Math.round((totalActiveMinutes / totalWorkedMinutes) * 100))
       : 0
+    const totalScreenshots = sessionScreenshots.length
 
     // Hourly distribution for target date (9 AM to 6 PM IST)
     const hourlyData = [
@@ -597,6 +673,7 @@ export async function getTimeTrackingDashboardData(params?: {
         totalWorkedHoursFormatted: formatMinutesToHours(totalWorkedMinutes),
         totalActiveHoursFormatted: formatMinutesToHours(totalActiveMinutes),
         activeEfficiencyPercent,
+        totalScreenshots,
         hourlyData
       },
       employees: filteredEmployees
@@ -619,6 +696,7 @@ export async function getTimeTrackingDashboardData(params?: {
         totalWorkedHoursFormatted: '0h 00m',
         totalActiveHoursFormatted: '0h 00m',
         activeEfficiencyPercent: 0,
+        totalScreenshots: 0,
         hourlyData: []
       },
       employees: []
@@ -765,6 +843,104 @@ export async function getMonthlyTrackingSummary(params?: {
         dailyTrends: []
       },
       employees: []
+    }
+  }
+}
+
+/**
+ * Fetch Screenshots for Admin Dashboard
+ * Strictly restricted to Admin role.
+ */
+export async function getScreenshotsForEmployeeAndDate(params?: {
+  employeeId?: string
+  date?: string
+  sessionId?: string
+}): Promise<{
+  success: boolean
+  date: string
+  screenshots: ScreenshotItem[]
+  totalCount: number
+  error?: string
+}> {
+  await guardServerAction(['Admin'])
+
+  try {
+    const adminSupa = getAdminSupabase()
+    const targetDate = params?.date || getTodayIST()
+    const filterEmpId = params?.employeeId && params.employeeId !== 'All' ? params.employeeId : undefined
+    const filterSessionId = params?.sessionId && params.sessionId !== 'All' ? params.sessionId : undefined
+
+    // 1. Fetch profiles for name resolution
+    const { data: dbProfiles } = await adminSupa
+      .from('profiles')
+      .select('id, first_name, last_name, employee_id')
+
+    const profileMap = new Map<string, string>()
+    if (dbProfiles) {
+      for (const p of dbProfiles) {
+        const fullName = `${p.first_name || ''} ${p.last_name || ''}`.trim() || 'Employee'
+        profileMap.set(p.id, fullName)
+      }
+    }
+
+    // 2. Query screenshots
+    let query = adminSupa
+      .from('session_screenshots')
+      .select('id, session_id, employee_id, session_date, captured_at, storage_path, image_url, file_size_bytes, app_name, window_title')
+      .eq('session_date', targetDate)
+      .order('captured_at', { ascending: false })
+
+    if (filterEmpId) {
+      query = query.eq('employee_id', filterEmpId)
+    }
+
+    if (filterSessionId) {
+      query = query.eq('session_id', filterSessionId)
+    }
+
+    const { data: rawScreens, error } = await query
+
+    if (error) {
+      throw new Error(`Failed to query screenshots: ${error.message}`)
+    }
+
+    const screenshots: ScreenshotItem[] = (rawScreens || []).map(s => {
+      let url = s.image_url
+      if (!url && s.storage_path) {
+        const { data: pubData } = adminSupa.storage.from('screenshots').getPublicUrl(s.storage_path)
+        url = pubData?.publicUrl || ''
+      }
+      return {
+        id: s.id,
+        sessionId: s.session_id,
+        employeeId: s.employee_id,
+        employeeName: profileMap.get(s.employee_id) || 'Employee',
+        sessionDate: s.session_date,
+        capturedAt: s.captured_at,
+        capturedAtFormatted: formatISTTime(s.captured_at),
+        storagePath: s.storage_path,
+        imageUrl: url,
+        fileSizeBytes: Number(s.file_size_bytes || 0),
+        fileSizeFormatted: formatBytes(Number(s.file_size_bytes || 0)),
+        appName: s.app_name || 'Active Screen',
+        windowTitle: s.window_title || ''
+      }
+    })
+
+    return {
+      success: true,
+      date: targetDate,
+      screenshots,
+      totalCount: screenshots.length
+    }
+  } catch (err: any) {
+    console.error('[getScreenshotsForEmployeeAndDate] Error:', err)
+    return {
+      success: false,
+      date: params?.date || getTodayIST(),
+      screenshots: [],
+      totalCount: 0,
+      error: err.message || 'Failed to fetch screenshots'
     }
   }
 }

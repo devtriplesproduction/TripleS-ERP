@@ -21,9 +21,11 @@ import {
   Building2,
   TrendingUp,
   BarChart2,
-  X
+  X,
+  Camera
 } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
+import { EmployeeScreenshotsGallery } from './EmployeeScreenshotsGallery'
 import type {
   EmployeeReportItem,
   OverviewMetrics,
@@ -57,8 +59,8 @@ export function TimeTrackingAdminDashboard() {
     }
   }
 
-  // Mode: Daily or Monthly
-  const [viewMode, setViewMode] = useState<'daily' | 'monthly'>('daily')
+  // Mode: Daily, Screenshots, or Monthly
+  const [viewMode, setViewMode] = useState<'daily' | 'screenshots' | 'monthly'>('daily')
 
   // Daily Filters
   const [selectedDate, setSelectedDate] = useState<string>(getTodayIST())
@@ -87,6 +89,7 @@ export function TimeTrackingAdminDashboard() {
     totalWorkedHoursFormatted: '0h 00m',
     totalActiveHoursFormatted: '0h 00m',
     activeEfficiencyPercent: 0,
+    totalScreenshots: 0,
     hourlyData: []
   })
 
@@ -107,7 +110,7 @@ export function TimeTrackingAdminDashboard() {
 
   // Drilldown Detail state
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeReportItem | null>(null)
-  const [detailTab, setDetailTab] = useState<'timeline' | 'applications' | 'sessions' | 'sync'>('timeline')
+  const [detailTab, setDetailTab] = useState<'timeline' | 'applications' | 'screenshots' | 'sessions' | 'sync'>('timeline')
 
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
@@ -144,6 +147,7 @@ export function TimeTrackingAdminDashboard() {
           totalWorkedHoursFormatted: '0h 00m',
           totalActiveHoursFormatted: '0h 00m',
           activeEfficiencyPercent: 0,
+          totalScreenshots: 0,
           hourlyData: []
         })
 
@@ -205,9 +209,28 @@ export function TimeTrackingAdminDashboard() {
     }
   }, [selectedMonth, selectedDept])
 
+  // Read URL query params on mount (e.g. ?tab=screenshots or ?mode=screenshots)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const sp = new URLSearchParams(window.location.search)
+      const tabParam = sp.get('tab') || sp.get('mode')
+      if (tabParam === 'screenshots') {
+        setViewMode('screenshots')
+      }
+      const empParam = sp.get('employeeId')
+      if (empParam) {
+        setSelectedEmpId(empParam)
+      }
+      const dateParam = sp.get('date')
+      if (dateParam) {
+        setSelectedDate(dateParam)
+      }
+    }
+  }, [])
+
   // Trigger fetch when mode or filters change
   useEffect(() => {
-    if (viewMode === 'daily') {
+    if (viewMode === 'daily' || viewMode === 'screenshots') {
       fetchDailyReports()
     } else {
       fetchMonthlyReports()
@@ -218,7 +241,7 @@ export function TimeTrackingAdminDashboard() {
   useEffect(() => {
     if (!autoRefresh) return
     const interval = setInterval(() => {
-      if (viewMode === 'daily') {
+      if (viewMode === 'daily' || viewMode === 'screenshots') {
         fetchDailyReports(true)
       } else {
         fetchMonthlyReports(true)
@@ -378,8 +401,8 @@ export function TimeTrackingAdminDashboard() {
           </div>
 
           {/* Metric Cards Header */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full lg:w-auto">
-            <div className="p-3.5 rounded-xl border border-border bg-muted/30 min-w-[130px]">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 w-full lg:w-auto">
+            <div className="p-3.5 rounded-xl border border-border bg-muted/30 min-w-[120px]">
               <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium">
                 <Clock size={14} className="text-muted-foreground" />
                 <span>Worked Time</span>
@@ -389,7 +412,7 @@ export function TimeTrackingAdminDashboard() {
               </span>
             </div>
 
-            <div className="p-3.5 rounded-xl border border-border bg-muted/30 min-w-[130px]">
+            <div className="p-3.5 rounded-xl border border-border bg-muted/30 min-w-[120px]">
               <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium">
                 <Activity size={14} className="text-muted-foreground" />
                 <span>Active Time</span>
@@ -399,7 +422,7 @@ export function TimeTrackingAdminDashboard() {
               </span>
             </div>
 
-            <div className="p-3.5 rounded-xl border border-border bg-muted/30 min-w-[130px]">
+            <div className="p-3.5 rounded-xl border border-border bg-muted/30 min-w-[120px]">
               <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium">
                 <Moon size={14} className="text-muted-foreground" />
                 <span>Idle Time</span>
@@ -409,7 +432,7 @@ export function TimeTrackingAdminDashboard() {
               </span>
             </div>
 
-            <div className="p-3.5 rounded-xl border border-border bg-muted/30 min-w-[130px]">
+            <div className="p-3.5 rounded-xl border border-border bg-muted/30 min-w-[120px]">
               <div className="flex items-center gap-2 text-muted-foreground text-xs font-medium">
                 <ShieldCheck size={14} className="text-muted-foreground" />
                 <span>Sleep / Suspend</span>
@@ -417,6 +440,31 @@ export function TimeTrackingAdminDashboard() {
               <span className="text-lg font-bold text-foreground mt-1 block font-mono">
                 {Math.round(selectedEmployee.suspendedSeconds / 60)}m
               </span>
+            </div>
+
+            <div
+              onClick={() => setDetailTab('screenshots')}
+              className={`p-3.5 rounded-xl border cursor-pointer transition-all ${
+                detailTab === 'screenshots'
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-muted/30 text-muted-foreground hover:border-primary/50'
+              } min-w-[120px]`}
+              title="Click to view desktop screenshots"
+            >
+              <div className="flex items-center gap-2 text-xs font-medium">
+                <Camera size={14} />
+                <span>Screenshots</span>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-lg font-bold text-foreground font-mono">
+                  {selectedEmployee.screenshotCount || selectedEmployee.screenshots?.length || 0}
+                </span>
+                {(selectedEmployee.screenshotCount || 0) > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary text-primary-foreground font-semibold">
+                    View
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -456,6 +504,18 @@ export function TimeTrackingAdminDashboard() {
                 }`}
               >
                 Observed Applications ({selectedEmployee.applications.length})
+              </button>
+
+              <button
+                onClick={() => setDetailTab('screenshots')}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                  detailTab === 'screenshots'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                }`}
+              >
+                <Camera size={14} />
+                <span>Screenshots ({selectedEmployee.screenshotCount || selectedEmployee.screenshots?.length || 0})</span>
               </button>
 
               <button
@@ -583,6 +643,16 @@ export function TimeTrackingAdminDashboard() {
             </div>
           )}
 
+          {/* TAB: Desktop Screenshots Gallery */}
+          {detailTab === 'screenshots' && (
+            <EmployeeScreenshotsGallery
+              screenshots={selectedEmployee.screenshots || []}
+              employeeName={selectedEmployee.name}
+              selectedDate={selectedDate}
+              sessions={selectedEmployee.sessions}
+            />
+          )}
+
           {/* TAB 3: Sessions & Breaks Detailed Intervals */}
           {detailTab === 'sessions' && (
             <div className="space-y-6">
@@ -704,7 +774,7 @@ export function TimeTrackingAdminDashboard() {
         iconClassName="text-foreground"
         actions={
           <div className="flex items-center gap-3 flex-wrap">
-            {/* Mode Toggle: Daily vs Monthly */}
+            {/* Mode Toggle: Daily vs Screenshots vs Monthly */}
             <div className="flex items-center bg-muted/50 p-1 rounded-xl border border-border">
               <button
                 onClick={() => setViewMode('daily')}
@@ -715,6 +785,26 @@ export function TimeTrackingAdminDashboard() {
                 }`}
               >
                 Daily Tracking
+              </button>
+              <button
+                onClick={() => setViewMode('screenshots')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  viewMode === 'screenshots'
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Camera size={13} />
+                <span>Screenshots</span>
+                {(overview.totalScreenshots || 0) > 0 && (
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                    viewMode === 'screenshots'
+                      ? 'bg-primary-foreground/20 text-primary-foreground'
+                      : 'bg-primary/10 text-primary'
+                  }`}>
+                    {overview.totalScreenshots}
+                  </span>
+                )}
               </button>
               <button
                 onClick={() => setViewMode('monthly')}
@@ -728,8 +818,8 @@ export function TimeTrackingAdminDashboard() {
               </button>
             </div>
 
-            {/* Date Picker (Daily) or Month Picker (Monthly) */}
-            {viewMode === 'daily' ? (
+            {/* Date Picker (Daily & Screenshots) or Month Picker (Monthly) */}
+            {viewMode === 'daily' || viewMode === 'screenshots' ? (
               <div className="flex items-center gap-2">
                 <input
                   type="date"
@@ -777,7 +867,7 @@ export function TimeTrackingAdminDashboard() {
 
             {/* Manual Refresh Button */}
             <button
-              onClick={() => viewMode === 'daily' ? fetchDailyReports() : fetchMonthlyReports()}
+              onClick={() => (viewMode === 'daily' || viewMode === 'screenshots') ? fetchDailyReports() : fetchMonthlyReports()}
               disabled={loading}
               className="p-2 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors shadow-sm"
               title="Refresh Data"
@@ -801,8 +891,8 @@ export function TimeTrackingAdminDashboard() {
       {/* ------------------------------------------------------------- */}
       {viewMode === 'daily' && (
         <>
-          {/* 6 Top Overview KPI Cards: Real Aggregations */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+          {/* 7 Top Overview KPI Cards: Real Aggregations */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3 sm:gap-4">
             {/* Total Active Staff */}
             <div className="p-4 rounded-2xl border border-border bg-card shadow-sm hover:border-foreground/20 transition-colors">
               <div className="flex items-center justify-between text-muted-foreground">
@@ -872,6 +962,29 @@ export function TimeTrackingAdminDashboard() {
               <span className="text-[11px] text-muted-foreground">
                 {overview.activeEfficiencyPercent}% efficiency
               </span>
+            </div>
+
+            {/* Desktop Screenshots */}
+            <div
+              onClick={() => setViewMode('screenshots')}
+              className="p-4 rounded-2xl border border-border bg-card shadow-sm hover:border-primary/50 transition-all cursor-pointer group"
+              title="Click to view all desktop screenshots"
+            >
+              <div className="flex items-center justify-between text-muted-foreground group-hover:text-primary transition-colors">
+                <span className="text-xs font-medium">Screenshots</span>
+                <Camera size={16} />
+              </div>
+              <div className="flex items-center gap-2 mt-2">
+                <span className="text-2xl font-extrabold text-foreground font-mono group-hover:text-primary transition-colors">
+                  {overview.totalScreenshots || 0}
+                </span>
+                {(overview.totalScreenshots || 0) > 0 && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-semibold">
+                    View
+                  </span>
+                )}
+              </div>
+              <span className="text-[11px] text-muted-foreground">Captured frames</span>
             </div>
           </div>
 
@@ -999,6 +1112,7 @@ export function TimeTrackingAdminDashboard() {
                     <th className="py-3 px-4">Clock Out</th>
                     <th className="py-3 px-4">Worked Hours</th>
                     <th className="py-3 px-4">Active Hours</th>
+                    <th className="py-3 px-4">Screenshots</th>
                     <th className="py-3 px-4">Last Sync</th>
                     <th className="py-3 px-4 text-right">Action</th>
                   </tr>
@@ -1035,6 +1149,23 @@ export function TimeTrackingAdminDashboard() {
                         <td className="py-3 px-4 text-muted-foreground">{emp.clockOutTime}</td>
                         <td className="py-3 px-4 font-mono font-medium text-foreground">{emp.workedHours}</td>
                         <td className="py-3 px-4 font-mono font-semibold text-foreground">{emp.activeHours}</td>
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                          {(emp.screenshotCount || 0) > 0 ? (
+                            <button
+                              onClick={() => {
+                                setSelectedEmployee(emp)
+                                setDetailTab('screenshots')
+                              }}
+                              className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-primary/10 text-primary border border-primary/20 hover:bg-primary hover:text-primary-foreground transition-all shadow-sm"
+                              title={`View ${emp.screenshotCount} screenshots for ${emp.name}`}
+                            >
+                              <Camera size={12} />
+                              <span>{emp.screenshotCount}</span>
+                            </button>
+                          ) : (
+                            <span className="text-muted-foreground text-xs pl-2">-</span>
+                          )}
+                        </td>
                         <td className="py-3 px-4 text-muted-foreground">{emp.lastSyncFormatted}</td>
 
                         <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
@@ -1051,7 +1182,7 @@ export function TimeTrackingAdminDashboard() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={9} className="py-12 text-center text-muted-foreground">
+                      <td colSpan={10} className="py-12 text-center text-muted-foreground">
                         {loading ? 'Querying verified time records...' : 'No employee records found matching criteria.'}
                       </td>
                     </tr>
@@ -1061,6 +1192,27 @@ export function TimeTrackingAdminDashboard() {
             </div>
           </div>
         </>
+      )}
+
+      {/* ------------------------------------------------------------- */}
+      {/* SCREENSHOTS GALLERY VIEW MODE */}
+      {/* ------------------------------------------------------------- */}
+      {viewMode === 'screenshots' && (
+        <EmployeeScreenshotsGallery
+          screenshots={selectedEmpId !== 'All' 
+            ? (employees.find(e => e.id === selectedEmpId)?.screenshots || []) 
+            : employees.flatMap(e => e.screenshots || [])}
+          availableEmployees={employees.map(e => ({
+            id: e.id,
+            name: e.name,
+            count: e.screenshotCount || 0
+          }))}
+          selectedEmployeeId={selectedEmpId}
+          onEmployeeChange={setSelectedEmpId}
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+          isLoading={loading}
+        />
       )}
 
       {/* ------------------------------------------------------------- */}
