@@ -73,6 +73,15 @@ import { logSecurityEvent } from '@/lib/utils/audit-logger'
  * Login with email and password.
  */
 export async function loginAction(email: string, password: string): Promise<{ success: boolean; error?: string }> {
+  // Ensure Supabase environment configuration exists before attempting sign-in
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+  if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
+    return {
+      success: false,
+      error: 'Supabase URL is not configured. Please add NEXT_PUBLIC_SUPABASE_URL in your Vercel Project Environment Variables.'
+    }
+  }
+
   const supabase = await createClient()
   const headerStore = await headers()
   const { ip, sourceHeader, classification, location, isProxy } = await resolveClientMetadata(headerStore)
@@ -113,7 +122,11 @@ export async function loginAction(email: string, password: string): Promise<{ su
         failure_reason: error.message
       }
     })
-    return { success: false, error: error.message }
+    const friendlyError =
+      error.message === 'fetch failed'
+        ? 'Cannot connect to Supabase. Please ensure your Supabase project is active and environment variables are set in Vercel.'
+        : error.message
+    return { success: false, error: friendlyError }
   }
 
   if (data?.user) {
