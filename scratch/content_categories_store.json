@@ -1,0 +1,58 @@
+[
+  {
+    "id": "cat-1",
+    "name": "Technical Documentation",
+    "description": "System specs, architecture and infrastructure guides",
+    "color": "#6366f1",
+    "is_active": true,
+    "created_at": "2026-10-01T00:00:00.000Z"
+  },
+  {
+    "id": "cat-2",
+    "name": "API Reference",
+    "description": "API endpoints, schemas, authentication contracts and webhooks",
+    "color": "#06b6d4",
+    "is_active": true,
+    "created_at": "2026-10-01T00:00:00.000Z"
+  },
+  {
+    "id": "cat-3",
+    "name": "Standard Operating Procedures",
+    "description": "Operational runbooks, workflows and incident handling SOPs",
+    "color": "#10b981",
+    "is_active": true,
+    "created_at": "2026-10-01T00:00:00.000Z"
+  },
+  {
+    "id": "cat-4",
+    "name": "Product Guides",
+    "description": "User guides, onboarding walkthroughs and customer manuals",
+    "color": "#f59e0b",
+    "is_active": true,
+    "created_at": "2026-10-01T00:00:00.000Z"
+  },
+  {
+    "id": "cat-5",
+    "name": "Release Notes & Changelogs",
+    "description": "Version releases, patch updates and sprint deliverables",
+    "color": "#ec4899",
+    "is_active": true,
+    "created_at": "2026-10-01T00:00:00.000Z"
+  },
+  {
+    "id": "cat-6",
+    "name": "Developer Tooling & SDKs",
+    "description": "SDK references, developer setup and library documentation",
+    "color": "#8b5cf6",
+    "is_active": true,
+    "created_at": "2026-10-01T00:00:00.000Z"
+  },
+  {
+    "id": "cat-7",
+    "name": "Security & Compliance",
+    "description": "Security policies, compliance audits and RBAC standards",
+    "color": "#ef4444",
+    "is_active": true,
+    "created_at": "2026-10-01T00:00:00.000Z"
+  }
+]

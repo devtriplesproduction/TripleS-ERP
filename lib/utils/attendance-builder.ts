@@ -151,8 +151,10 @@ export function buildAttendanceRecords(
   
   if (leaveRequests) {
     for (const req of leaveRequests) {
-      const start = new Date(req.start_date);
-      const end = new Date(req.end_date);
+      const [sY, sM, sD] = req.start_date.slice(0, 10).split('-').map(Number);
+      const [eY, eM, eD] = req.end_date.slice(0, 10).split('-').map(Number);
+      const start = new Date(sY, sM - 1, sD);
+      const end = new Date(eY, eM - 1, eD);
       for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
         const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         if (req.request_type === 'WFH') {

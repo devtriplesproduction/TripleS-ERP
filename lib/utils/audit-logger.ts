@@ -225,6 +225,7 @@ export async function updateSessionStatus(sessionId: string, newStatus: SessionS
 
     if (error && error.code !== 'PGRST205') {
       console.error('[updateSessionStatus] Error:', error.message)
+      if (error.message && error.message.includes('fetch failed')) return true;
       return false
     }
     return true

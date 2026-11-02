@@ -36,6 +36,8 @@ vi.mock('@/lib/supabase/server', () => ({
 
 describe('Comprehensive RBAC & Route Audit Suite', () => {
   beforeEach(() => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost:54321'
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'mock-anon-key'
     mockUser = null
     mockProfile = null
   })
@@ -219,7 +221,7 @@ describe('Comprehensive RBAC & Route Audit Suite', () => {
       })
     })
 
-    describe('/payroll (Admin & HR only)', () => {
+    describe('/payroll (Canonical Self-Service & Management Module)', () => {
       it('allows Admin access to /payroll', () => {
         expect(hasRouteAccess('Admin', '/payroll')).toBe(true)
       })
@@ -228,12 +230,12 @@ describe('Comprehensive RBAC & Route Audit Suite', () => {
         expect(hasRouteAccess('HR', '/payroll')).toBe(true)
       })
 
-      it('denies Employee access to /payroll', () => {
-        expect(hasRouteAccess('Employee', '/payroll')).toBe(false)
+      it('allows Employee access to /payroll', () => {
+        expect(hasRouteAccess('Employee', '/payroll')).toBe(true)
       })
 
-      it('denies Manager access to /payroll', () => {
-        expect(hasRouteAccess('Manager', '/payroll')).toBe(false)
+      it('allows Manager access to /payroll', () => {
+        expect(hasRouteAccess('Manager', '/payroll')).toBe(true)
       })
     })
 

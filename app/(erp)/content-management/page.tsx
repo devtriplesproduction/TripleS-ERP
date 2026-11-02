@@ -2,6 +2,8 @@ import { requireRole } from '@/lib/auth'
 import {
   getContentItems,
   getContentTypes,
+  getContentCategories,
+  getContentTags,
   getContentActivities,
   getContentNotifications,
   getContentAttachments,
@@ -18,9 +20,21 @@ export const metadata = {
 export default async function ContentManagementPage() {
   const user = await requireRole('/content-management')
 
-  const [itemsRes, typesRes, activitiesRes, notifsRes, attachmentsRes, projectsRes, employeesRes] = await Promise.all([
+  const [
+    itemsRes,
+    typesRes,
+    categoriesRes,
+    tagsRes,
+    activitiesRes,
+    notifsRes,
+    attachmentsRes,
+    projectsRes,
+    employeesRes,
+  ] = await Promise.all([
     getContentItems(),
     getContentTypes(),
+    getContentCategories(),
+    getContentTags(),
     getContentActivities(),
     getContentNotifications(user.id),
     getContentAttachments(),
@@ -33,6 +47,8 @@ export default async function ContentManagementPage() {
       <ContentManagementView
         initialItems={itemsRes.data || []}
         initialTypes={typesRes.data || []}
+        initialCategories={categoriesRes.data || []}
+        initialTags={tagsRes.data || []}
         initialActivities={activitiesRes.data || []}
         initialNotifications={notifsRes.data || []}
         initialAttachments={attachmentsRes.data || []}

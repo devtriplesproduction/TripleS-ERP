@@ -32,6 +32,10 @@ import {
   Check,
   ExternalLink,
   Users,
+  Tags,
+  GitBranch,
+  Sparkles,
+  BarChart3,
 } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -42,6 +46,8 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 import {
   ContentItem,
   ContentType,
+  ContentCategory,
+  ContentTag,
   ContentStatus,
   ContentPriority,
   ReviewDecision,
@@ -66,6 +72,14 @@ import {
   submitForReview,
   publishContentItem,
   markContentNotificationRead,
+  restoreContentVersion,
+  updateContentQualityFlags,
+  createContentCategory,
+  updateContentCategory,
+  toggleContentCategoryStatus,
+  deleteContentCategory,
+  createContentTag,
+  deleteContentTag,
 } from '@/lib/actions/content-management'
 import { ViewContentModal } from './ViewContentModal'
 import { CreateEditContentModal } from './CreateEditContentModal'
@@ -73,12 +87,19 @@ import { ManageContentTypesModal } from './ManageContentTypesModal'
 import { ReviewModal } from './ReviewModal'
 import { MediaFilesSection } from './MediaFilesSection'
 import { AssignReassignModal } from './AssignReassignModal'
+import { CategoriesTagsSection } from './CategoriesTagsSection'
+import { VersionHistorySection } from './VersionHistorySection'
+import { AdvancedSearchFilterSection } from './AdvancedSearchFilterSection'
+import { ReportsAnalyticsSection } from './ReportsAnalyticsSection'
+import { QualityFreshnessSection } from './QualityFreshnessSection'
 import { useToast } from '@/hooks/use-toast'
 import dayjs from 'dayjs'
 
 interface ContentManagementViewProps {
   initialItems: ContentItem[]
   initialTypes: ContentType[]
+  initialCategories?: ContentCategory[]
+  initialTags?: ContentTag[]
   initialActivities?: ContentActivityRecord[]
   initialNotifications?: ContentNotificationRecord[]
   initialAttachments?: ContentAttachment[]
@@ -90,6 +111,8 @@ interface ContentManagementViewProps {
 export function ContentManagementView({
   initialItems,
   initialTypes,
+  initialCategories = [],
+  initialTags = [],
   initialActivities = [],
   initialNotifications = [],
   initialAttachments = [],
@@ -97,15 +120,28 @@ export function ContentManagementView({
   employees,
   user,
 }: ContentManagementViewProps) {
-  const [items, setItems] = useState<ContentItem[]>(initialItems)
-  const [types, setTypes] = useState<ContentType[]>(initialTypes)
+  const [items, setItems] = useState<ContentItem[]>(initialItems || [])
+  const [types, setTypes] = useState<ContentType[]>(initialTypes || [])
+  const [categories, setCategories] = useState<ContentCategory[]>(initialCategories || [])
+  const [tags, setTags] = useState<ContentTag[]>(initialTags || [])
   const [activities, setActivities] = useState<ContentActivityRecord[]>(initialActivities)
   const [notifications, setNotifications] = useState<ContentNotificationRecord[]>(initialNotifications)
   const [attachments, setAttachments] = useState<ContentAttachment[]>(initialAttachments)
 
   // Active top-level section/tab
   const [activeSection, setActiveSection] = useState<
-    'dashboard' | 'content' | 'assignments' | 'approvals' | 'deadlines' | 'media' | 'activity'
+    | 'dashboard'
+    | 'content'
+    | 'assignments'
+    | 'approvals'
+    | 'deadlines'
+    | 'categories'
+    | 'versions'
+    | 'search'
+    | 'reports'
+    | 'quality'
+    | 'media'
+    | 'activity'
   >('dashboard')
 
   // Content sub-status filter
@@ -140,14 +176,31 @@ export function ContentManagementView({
 
   // Stats calculation
   const totalCount = items.length
+  const draftCount = items.filter((i) => i.status === 'Draft').length
   const inReviewCount = items.filter((i) => i.status === 'In Review').length
   const changesRequestedCount = items.filter((i) => i.status === 'Changes Requested').length
   const approvedCount = items.filter((i) => i.status === 'Approved').length
   const publishedCount = items.filter((i) => i.status === 'Published').length
-  const draftCount = items.filter((i) => i.status === 'Draft').length
+  const rejectedCount = items.filter((i) => i.status === 'Rejected').length
+  const archivedCount = items.filter((i) => i.status === 'Archived').length
 
   const overdueCount = items.filter((i) => computeDeadlineState(i.due_date, i.status) === 'Overdue').length
   const upcomingCount = items.filter((i) => computeDeadlineState(i.due_date, i.status) === 'Upcoming').length
+  const now = dayjs()
+  const weekFromNow = now.add(7, 'day')
+  const dueThisWeekCount = items.filter((i) => {
+    if (!i.due_date || i.status === 'Published' || i.status === 'Archived') return false
+    const d = dayjs(i.due_date)
+    return d.isAfter(now.subtract(1, 'day')) && d.isBefore(weekFromNow.add(1, 'day'))
+  }).length
+  const awaitingMyApprovalCount = items.filter((i) => {
+    if (i.status !== 'In Review') return false
+    if (i.current_reviewer_id && i.current_reviewer_id === user.id) return true
+    if (isAuthorizedManager) return true
+    return false
+  }).length
+  const rejectedItems = items.filter((i) => i.status === 'Rejected')
+  const [isRejectedReasonModalOpen, setIsRejectedReasonModalOpen] = useState(false)
   const unreadNotifsCount = notifications.filter((n) => !n.is_read).length
 
   // Filtered content for Content Catalog
@@ -303,6 +356,127 @@ export function ContentManagementView({
   const handleMarkNotifRead = async (id: string) => {
     await markContentNotificationRead(id)
     setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)))
+  }
+
+  const handleRestoreVersion = async (contentId: string, versionNumber: number) => {
+    const res = await restoreContentVersion(contentId, versionNumber)
+    if (res.success && res.data) {
+      setItems((prev) => prev.map((i) => (i.id === res.data!.id ? res.data! : i)))
+      if (viewItem?.id === res.data.id) {
+        setViewItem(res.data)
+      }
+      toast({
+        title: 'Version Restored',
+        description: `Restored v${versionNumber}.0 as new version ${res.data.version_number || res.data.version}. Complete audit trail preserved.`,
+      })
+    } else {
+      toast({
+        title: 'Restore Failed',
+        description: res.error || 'Failed to restore previous version',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleUpdateQualityFlags = async (
+    contentId: string,
+    flags: {
+      is_duplicate?: boolean
+      duplicate_of_id?: string
+      duplicate_reason?: string
+      related_content_ids?: string[]
+      follow_up_required?: boolean
+      follow_up_note?: string
+      follow_up_date?: string
+      next_review_date?: string
+      review_frequency?: 'monthly' | 'quarterly' | 'biannual' | 'annual'
+    }
+  ) => {
+    const res = await updateContentQualityFlags(contentId, flags)
+    if (res.success && res.data) {
+      setItems((prev) => prev.map((i) => (i.id === res.data!.id ? res.data! : i)))
+      if (viewItem?.id === res.data.id) {
+        setViewItem(res.data)
+      }
+      toast({
+        title: 'Quality Flags Updated',
+        description: `Quality attributes updated for "${res.data.title}".`,
+      })
+    } else {
+      toast({
+        title: 'Update Failed',
+        description: res.error || 'Failed to update quality attributes',
+        variant: 'destructive',
+      })
+    }
+  }
+
+  const handleCreateCategory = async (input: {
+    name: string
+    description?: string
+    color?: string
+    department?: string
+  }) => {
+    const res = await createContentCategory(input.name, input.description, input.color)
+    if (res.success && res.data) {
+      setCategories((prev) => [...prev, res.data!])
+      toast({ title: 'Category Created', description: `Category "${res.data.name}" added successfully.` })
+    } else {
+      toast({ title: 'Error', description: res.error || 'Failed to create category', variant: 'destructive' })
+    }
+  }
+
+  const handleUpdateCategory = async (id: string, updates: any) => {
+    const res = await updateContentCategory(id, updates)
+    if (res.success && res.data) {
+      setCategories((prev) => prev.map((c) => (c.id === id ? res.data! : c)))
+      toast({ title: 'Category Updated', description: 'Changes saved successfully.' })
+    } else {
+      toast({ title: 'Error', description: res.error || 'Failed to update category', variant: 'destructive' })
+    }
+  }
+
+  const handleToggleCategory = async (id: string) => {
+    const res = await toggleContentCategoryStatus(id)
+    if (res.success && res.data) {
+      setCategories((prev) => prev.map((c) => (c.id === id ? res.data! : c)))
+      toast({
+        title: 'Category Status Toggled',
+        description: `Category is now ${res.data.is_active ? 'Active' : 'Inactive'}.`,
+      })
+    } else {
+      toast({ title: 'Error', description: res.error || 'Failed to toggle category', variant: 'destructive' })
+    }
+  }
+
+  const handleDeleteCategory = async (id: string) => {
+    const res = await deleteContentCategory(id)
+    if (res.success) {
+      setCategories((prev) => prev.filter((c) => c.id !== id))
+      toast({ title: 'Category Deleted', description: 'Category removed successfully.' })
+    } else {
+      toast({ title: 'Error', description: res.error || 'Failed to delete category', variant: 'destructive' })
+    }
+  }
+
+  const handleCreateTag = async (name: string, color?: string) => {
+    const res = await createContentTag(name, color)
+    if (res.success && res.data) {
+      setTags((prev) => [...prev, res.data!])
+      toast({ title: 'Tag Created', description: `Tag #${res.data.name} added successfully.` })
+    } else {
+      toast({ title: 'Error', description: res.error || 'Failed to create tag', variant: 'destructive' })
+    }
+  }
+
+  const handleDeleteTag = async (id: string) => {
+    const res = await deleteContentTag(id)
+    if (res.success) {
+      setTags((prev) => prev.filter((t) => t.id !== id))
+      toast({ title: 'Tag Deleted', description: 'Tag removed successfully.' })
+    } else {
+      toast({ title: 'Error', description: res.error || 'Failed to delete tag', variant: 'destructive' })
+    }
   }
 
   return (
@@ -505,6 +679,66 @@ export function ContentManagementView({
         </button>
 
         <button
+          onClick={() => setActiveSection('categories')}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
+            activeSection === 'categories'
+              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
+              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+          }`}
+        >
+          <Tags className="w-3.5 h-3.5" />
+          <span>Categories & Tags</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSection('versions')}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
+            activeSection === 'versions'
+              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
+              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+          }`}
+        >
+          <GitBranch className="w-3.5 h-3.5" />
+          <span>Version History</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSection('search')}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
+            activeSection === 'search'
+              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
+              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+          }`}
+        >
+          <Search className="w-3.5 h-3.5" />
+          <span>Search & Filters</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSection('reports')}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
+            activeSection === 'reports'
+              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
+              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+          }`}
+        >
+          <BarChart3 className="w-3.5 h-3.5" />
+          <span>Reports & Analytics</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSection('quality')}
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
+            activeSection === 'quality'
+              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
+              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+          }`}
+        >
+          <Sparkles className="w-3.5 h-3.5" />
+          <span>Quality & Freshness</span>
+        </button>
+
+        <button
           onClick={() => setActiveSection('media')}
           className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
             activeSection === 'media'
@@ -532,49 +766,153 @@ export function ContentManagementView({
       {/* ---------------- 1. DASHBOARD OVERVIEW ---------------- */}
       {activeSection === 'dashboard' && (
         <div className="space-y-6">
-          {/* Metrics Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          {/* Quick Action Buttons (Section 2 Checklist) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-zinc-900/40 border border-zinc-800 rounded-xl">
+            <Button
+              size="sm"
+              onClick={() => {
+                setCreateEditItem(null)
+                setIsCreateEditModalOpen(true)
+              }}
+              className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium justify-start h-9 text-xs"
+            >
+              <Plus className="w-3.5 h-3.5 mr-2 shrink-0" />
+              <span>Create Content</span>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setActiveSection('assignments')}
+              className="border-zinc-800 bg-zinc-950/60 text-zinc-200 hover:text-white justify-start h-9 text-xs"
+            >
+              <UserCheck className="w-3.5 h-3.5 mr-2 text-indigo-400 shrink-0" />
+              <span>Assign Content</span>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setActiveSection('approvals')}
+              className="border-zinc-800 bg-zinc-950/60 text-zinc-200 hover:text-white justify-start h-9 text-xs"
+            >
+              <ShieldCheck className="w-3.5 h-3.5 mr-2 text-amber-400 shrink-0" />
+              <span>Review Approvals ({inReviewCount})</span>
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setActiveSection('reports')}
+              className="border-zinc-800 bg-zinc-950/60 text-zinc-200 hover:text-white justify-start h-9 text-xs"
+            >
+              <BarChart3 className="w-3.5 h-3.5 mr-2 text-emerald-400 shrink-0" />
+              <span>View Reports</span>
+            </Button>
+          </div>
+
+          {/* Summary Metric Cards (Section 1 Checklist) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
             <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardContent className="p-4">
-                <span className="text-xs text-zinc-400">Total Items</span>
-                <div className="text-2xl font-bold text-zinc-100 mt-1">{totalCount}</div>
+              <CardContent className="p-3">
+                <span className="text-[11px] text-zinc-400 font-medium">Total Content</span>
+                <div className="text-xl font-bold text-zinc-100 mt-1">{totalCount}</div>
+                <span className="text-[10px] text-zinc-500">All assets</span>
               </CardContent>
             </Card>
 
             <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardContent className="p-4">
-                <span className="text-xs text-indigo-400">In Review (Pending)</span>
-                <div className="text-2xl font-bold text-indigo-300 mt-1">{inReviewCount}</div>
+              <CardContent className="p-3">
+                <span className="text-[11px] text-zinc-400 font-medium">Draft Content</span>
+                <div className="text-xl font-bold text-zinc-300 mt-1">{draftCount}</div>
+                <span className="text-[10px] text-zinc-500">In authoring</span>
               </CardContent>
             </Card>
 
             <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardContent className="p-4">
-                <span className="text-xs text-amber-400">Changes Requested</span>
-                <div className="text-2xl font-bold text-amber-300 mt-1">{changesRequestedCount}</div>
+              <CardContent className="p-3">
+                <span className="text-[11px] text-amber-400 font-medium">Pending Approval</span>
+                <div className="text-xl font-bold text-amber-300 mt-1">{inReviewCount}</div>
+                <span className="text-[10px] text-zinc-500">In review</span>
               </CardContent>
             </Card>
 
             <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardContent className="p-4">
-                <span className="text-xs text-teal-400">Approved</span>
-                <div className="text-2xl font-bold text-teal-300 mt-1">{approvedCount}</div>
+              <CardContent className="p-3">
+                <span className="text-[11px] text-indigo-400 font-medium">Awaiting My Review</span>
+                <div className="text-xl font-bold text-indigo-300 mt-1">{awaitingMyApprovalCount}</div>
+                <span className="text-[10px] text-zinc-500">Assigned reviewer</span>
               </CardContent>
             </Card>
 
             <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardContent className="p-4">
-                <span className="text-xs text-emerald-400">Published</span>
-                <div className="text-2xl font-bold text-emerald-300 mt-1">{publishedCount}</div>
+              <CardContent className="p-3">
+                <span className="text-[11px] text-emerald-400 font-medium">Published</span>
+                <div className="text-xl font-bold text-emerald-300 mt-1">{publishedCount}</div>
+                <span className="text-[10px] text-zinc-500">Live documents</span>
               </CardContent>
             </Card>
 
             <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardContent className="p-4">
-                <span className="text-xs text-rose-400">Overdue</span>
-                <div className="text-2xl font-bold text-rose-300 mt-1">{overdueCount}</div>
+              <CardContent className="p-3">
+                <span className="text-[11px] text-cyan-400 font-medium">Due This Week</span>
+                <div className="text-xl font-bold text-cyan-300 mt-1">{dueThisWeekCount}</div>
+                <span className="text-[10px] text-zinc-500">Upcoming deadlines</span>
               </CardContent>
             </Card>
+
+            <Card className="bg-zinc-900/60 border-zinc-800">
+              <CardContent className="p-3">
+                <span className="text-[11px] text-rose-400 font-medium">Overdue Content</span>
+                <div className="text-xl font-bold text-rose-300 mt-1">{overdueCount}</div>
+                <span className="text-[10px] text-zinc-500">Past target date</span>
+              </CardContent>
+            </Card>
+
+            <Card
+              onClick={() => rejectedCount > 0 && setIsRejectedReasonModalOpen(true)}
+              className={`border-zinc-800 transition-colors ${
+                rejectedCount > 0
+                  ? 'bg-rose-950/20 border-rose-500/30 cursor-pointer hover:border-rose-500'
+                  : 'bg-zinc-900/60'
+              }`}
+            >
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] text-rose-400 font-medium">Rejected</span>
+                  {rejectedCount > 0 && (
+                    <span className="text-[9px] bg-rose-500/20 text-rose-300 px-1 py-0.2 rounded font-bold">
+                      View Reason
+                    </span>
+                  )}
+                </div>
+                <div className="text-xl font-bold text-rose-400 mt-1">{rejectedCount}</div>
+                <span className="text-[10px] text-zinc-500">
+                  {rejectedCount > 0 ? 'Click to inspect reason' : 'Zero rejections'}
+                </span>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Content Status Overview Breakdown (Section 2 Checklist) */}
+          <div className="p-4 bg-zinc-900/40 border border-zinc-800 rounded-xl space-y-2">
+            <div className="flex items-center justify-between text-xs font-semibold text-zinc-200">
+              <span>Content Status Overview Breakdown</span>
+              <span className="text-zinc-500 font-normal">{totalCount} Total Items</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-1">
+              {[
+                { label: 'Draft', count: draftCount, color: 'text-zinc-300', bg: 'bg-zinc-950/80 border border-zinc-800' },
+                { label: 'In Review', count: inReviewCount, color: 'text-indigo-400', bg: 'bg-indigo-950/40 border border-indigo-500/30' },
+                { label: 'Changes Requested', count: changesRequestedCount, color: 'text-amber-400', bg: 'bg-amber-950/40 border border-amber-500/30' },
+                { label: 'Approved', count: approvedCount, color: 'text-teal-400', bg: 'bg-teal-950/40 border border-teal-500/30' },
+                { label: 'Published', count: publishedCount, color: 'text-emerald-400', bg: 'bg-emerald-950/40 border border-emerald-500/30' },
+                { label: 'Rejected', count: rejectedCount, color: 'text-rose-400', bg: 'bg-rose-950/40 border border-rose-500/30' },
+                { label: 'Archived', count: archivedCount, color: 'text-purple-400', bg: 'bg-purple-950/40 border border-purple-500/30' },
+              ].map((s) => (
+                <div key={s.label} className={`p-2.5 rounded-lg ${s.bg}`}>
+                  <div className="text-[10px] text-zinc-400 truncate">{s.label}</div>
+                  <div className={`text-base font-bold ${s.color} mt-0.5`}>{s.count}</div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Dual Widget: Pending Approvals Queue & Team Workload */}
@@ -856,16 +1194,17 @@ export function ContentManagementView({
                     <th className="py-3 px-3">Content Type</th>
                     <th className="py-3 px-3">Project</th>
                     <th className="py-3 px-3">Owner / Author</th>
-                    <th className="py-3 px-3">Assignee</th>
+                    <th className="py-3 px-3">Reviewer</th>
                     <th className="py-3 px-3">Status</th>
                     <th className="py-3 px-3">Due Date</th>
+                    <th className="py-3 px-3">Last Updated</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-800/60">
                   {filteredItems.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-zinc-500">
+                      <td colSpan={9} className="py-12 text-center text-zinc-500">
                         No content items found matching current filters.
                       </td>
                     </tr>
@@ -888,8 +1227,8 @@ export function ContentManagementView({
                         <td className="py-3 px-3 text-zinc-400">{item.project_name || 'General'}</td>
                         <td className="py-3 px-3 text-zinc-300 font-medium">{item.owner_name}</td>
                         <td className="py-3 px-3">
-                          <span className={item.assigned_to_name ? 'text-indigo-400 font-medium' : 'text-zinc-500'}>
-                            {item.assigned_to_name || 'Unassigned'}
+                          <span className={item.current_reviewer_name ? 'text-zinc-300 font-medium' : 'text-zinc-600'}>
+                            {item.current_reviewer_name || '—'}
                           </span>
                         </td>
                         <td className="py-3 px-3">{renderStatusBadge(item.status)}</td>
@@ -900,6 +1239,9 @@ export function ContentManagementView({
                             </span>
                             <div>{renderDeadlineBadge(item)}</div>
                           </div>
+                        </td>
+                        <td className="py-3 px-3 text-zinc-400 font-mono text-[11px]">
+                          {item.updated_at ? dayjs(item.updated_at).format('DD MMM YYYY') : '—'}
                         </td>
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
@@ -1343,6 +1685,86 @@ export function ContentManagementView({
         <MediaFilesSection initialAttachments={attachments} user={user} />
       )}
 
+      {/* ---------------- CATEGORIES & TAGS ---------------- */}
+      {activeSection === 'categories' && (
+        <CategoriesTagsSection
+          categories={categories}
+          tags={tags}
+          items={items}
+          isAuthorizedManager={isAuthorizedManager}
+          onCategoriesUpdated={(newCats) => setCategories(newCats)}
+          onTagsUpdated={(newTags) => setTags(newTags)}
+        />
+      )}
+
+      {/* ---------------- VERSION HISTORY ---------------- */}
+      {activeSection === 'versions' && (
+        <VersionHistorySection
+          items={items}
+          user={user}
+          isAuthorizedManager={isAuthorizedManager}
+          onRestoreVersion={handleRestoreVersion}
+          onViewItem={(it: ContentItem) => {
+            setViewItem(it)
+            setIsViewModalOpen(true)
+          }}
+        />
+      )}
+
+      {/* ---------------- ADVANCED SEARCH & FILTERS ---------------- */}
+      {activeSection === 'search' && (
+        <AdvancedSearchFilterSection
+          items={items}
+          contentTypes={types}
+          categories={categories}
+          tags={tags}
+          projects={projects}
+          employees={employees}
+          onViewItem={(it: ContentItem) => {
+            setViewItem(it)
+            setIsViewModalOpen(true)
+          }}
+          onEditItem={(it: ContentItem) => {
+            setCreateEditItem(it)
+            setIsCreateEditModalOpen(true)
+          }}
+          onSubmitForReview={handleSubmitForReview}
+          onPublish={handlePublish}
+        />
+      )}
+
+      {/* ---------------- REPORTS & ANALYTICS ---------------- */}
+      {activeSection === 'reports' && (
+        <ReportsAnalyticsSection
+          items={items}
+          types={types}
+          categories={categories}
+          activities={activities}
+          projects={projects}
+          employees={employees}
+          onViewItem={(it) => {
+            setViewItem(it)
+            setIsViewModalOpen(true)
+          }}
+        />
+      )}
+
+      {/* ---------------- CONTENT QUALITY & FRESHNESS ---------------- */}
+      {activeSection === 'quality' && (
+        <QualityFreshnessSection
+          items={items}
+          user={user}
+          onViewItem={(it) => {
+            setViewItem(it)
+            setIsViewModalOpen(true)
+          }}
+          onUpdateQuality={(it) => {
+            setViewItem(it)
+            setIsViewModalOpen(true)
+          }}
+        />
+      )}
+
       {/* ---------------- 6. ACTIVITY / HISTORY ---------------- */}
       {activeSection === 'activity' && (
         <div className="space-y-4">
@@ -1411,6 +1833,9 @@ export function ContentManagementView({
           setIsAssignModalOpen(true)
         }}
         onPublish={handlePublish}
+        onRestoreVersion={handleRestoreVersion}
+        onUpdateQualityFlags={handleUpdateQualityFlags}
+        allItems={items}
         user={user}
       />
 
@@ -1421,6 +1846,8 @@ export function ContentManagementView({
         contentTypes={types}
         projects={projects}
         employees={employees}
+        availableCategories={categories}
+        availableTags={tags.map((t) => t.name)}
         currentUserId={user.id}
         currentUserName={user.employee_name || undefined}
         onSubmit={handleSaveContent}
@@ -1484,6 +1911,60 @@ export function ContentManagementView({
         confirmText="Delete"
         variant="destructive"
       />
+
+      {/* Rejected Content Reason Modal */}
+      {isRejectedReasonModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden p-5 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
+              <h3 className="text-sm font-bold text-rose-300 flex items-center gap-2">
+                <XCircle className="w-4 h-4 text-rose-400" />
+                <span>Rejected Content & Feedback</span>
+              </h3>
+              <button
+                onClick={() => setIsRejectedReasonModalOpen(false)}
+                className="text-zinc-500 hover:text-zinc-200 text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-80 overflow-y-auto">
+              {rejectedItems.length === 0 ? (
+                <div className="text-xs text-zinc-500 py-6 text-center">No rejected items found.</div>
+              ) : (
+                rejectedItems.map((item) => {
+                  const revs = item.reviews || item.review_history || []
+                  const rejectionReview = revs.slice().reverse().find((r) => r.decision === 'Rejected')
+                  return (
+                    <div key={item.id} className="p-3 rounded-lg bg-zinc-950 border border-rose-500/30 space-y-1.5 text-xs">
+                      <div className="font-semibold text-zinc-200">{item.title}</div>
+                      <div className="text-[11px] text-zinc-400">
+                        Author: {item.owner_name} &bull; Project: {item.project_name || 'General'}
+                      </div>
+                      <div className="p-2 rounded bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
+                        <strong>Rejection Reason:</strong>{' '}
+                        {rejectionReview?.comment || rejectionReview?.feedback || 'Specification guidelines were not met.'}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-zinc-800">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setIsRejectedReasonModalOpen(false)}
+                className="border-zinc-800 text-xs"
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
