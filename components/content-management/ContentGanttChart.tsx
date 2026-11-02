@@ -15,7 +15,10 @@ import {
   Layers,
   ZoomIn,
   ZoomOut,
-  Maximize2
+  Maximize2,
+  GitCommit,
+  GitBranch,
+  Timer
 } from 'lucide-react'
 import { ContentItem, ContentStatus, ContentPriority, computeDeadlineState } from '@/types/content-management'
 import { AssignableEmployee } from '@/lib/actions/team'
@@ -67,6 +70,43 @@ export function ContentGanttChart({
     return list
   }, [rangeStart, totalDays])
 
+  // Detect overlapping tasks for the same assignee
+  const overlappingTaskIds = useMemo(() => {
+    const overlapping = new Set<string>()
+    const byAssignee: Record<string, ContentItem[]> = {}
+
+    items.forEach((item) => {
+      const assignee = item.assigned_to_id || item.assigned_to_name
+      if (!assignee) return
+      if (!byAssignee[assignee]) byAssignee[assignee] = []
+      byAssignee[assignee].push(item)
+    })
+
+    Object.values(byAssignee).forEach((taskList) => {
+      if (taskList.length < 2) return
+      for (let i = 0; i < taskList.length; i++) {
+        const a = taskList[i]
+        const aStart = dayjs(a.start_date || a.created_at)
+        const aDue = dayjs(a.due_date || aStart.add(3, 'day'))
+
+        for (let j = i + 1; j < taskList.length; j++) {
+          const b = taskList[j]
+          const bStart = dayjs(b.start_date || b.created_at)
+          const bDue = dayjs(b.due_date || bStart.add(3, 'day'))
+
+          // Check interval overlap: max(aStart, bStart) <= min(aDue, bDue)
+          const overlap = aStart.isBefore(bDue.add(1, 'day')) && bStart.isBefore(aDue.add(1, 'day'))
+          if (overlap && a.status !== 'Completed' && b.status !== 'Completed') {
+            overlapping.add(a.id)
+            overlapping.add(b.id)
+          }
+        }
+      }
+    })
+
+    return overlapping
+  }, [items])
+
   // Filter items
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
@@ -112,7 +152,7 @@ export function ContentGanttChart({
       {/* Gantt Header & Controls Bar */}
       <div className="p-4 bg-card border border-border rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
         {/* Left: Date Navigator */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1 bg-muted/40 border border-border p-1 rounded-xl shadow-xs">
             <button
               onClick={() => stepMonth(-1)}
@@ -205,13 +245,13 @@ export function ContentGanttChart({
       {/* Gantt Chart Container */}
       <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <div className="min-w-[950px]">
-            {/* Header: Task Metadata on Left (320px), Timeline Grid on Right */}
+          <div className="min-w-[1000px]">
+            {/* Header: Task Metadata on Left (360px), Timeline Grid on Right */}
             <div className="flex border-b border-border bg-muted/30 text-[11px] font-semibold text-muted-foreground">
               {/* Left Column Header */}
-              <div className="w-[320px] shrink-0 p-3 border-r border-border flex items-center justify-between">
-                <span>Content Deliverable</span>
-                <span>Assignee & Dates</span>
+              <div className="w-[360px] shrink-0 p-3 border-r border-border flex items-center justify-between">
+                <span>Deliverable & Assignee</span>
+                <span>Schedule & Duration</span>
               </div>
 
               {/* Right Column Header: Days */}
@@ -257,12 +297,15 @@ export function ContentGanttChart({
                     ? dayjs(item.due_date)
                     : itemStart.add(3, 'day')
 
+                  const totalDurationDays = Math.max(1, itemDue.diff(itemStart, 'day') + 1)
                   const diffStart = itemStart.diff(rangeStart, 'day')
-                  const diffDuration = Math.max(1, itemDue.diff(itemStart, 'day') + 1)
 
                   // Percentage placement within timeline
                   const startOffset = Math.max(0, diffStart)
-                  const visibleDuration = Math.min(totalDays - startOffset, diffDuration - (diffStart < 0 ? Math.abs(diffStart) : 0))
+                  const visibleDuration = Math.min(
+                    totalDays - startOffset,
+                    totalDurationDays - (diffStart < 0 ? Math.abs(diffStart) : 0)
+                  )
 
                   const leftPercent = Math.min(100, Math.max(0, (startOffset / totalDays) * 100))
                   const widthPercent = Math.min(100 - leftPercent, Math.max(2.5, (visibleDuration / totalDays) * 100))
@@ -281,6 +324,7 @@ export function ContentGanttChart({
 
                   const deadlineState = computeDeadlineState(item.due_date, item.status)
                   const isOverdue = deadlineState === 'Overdue' && item.status !== 'Completed'
+                  const isOverlapping = overlappingTaskIds.has(item.id)
 
                   // Bar color styling
                   let barGradient = 'from-zinc-600 to-zinc-500'
@@ -298,8 +342,8 @@ export function ContentGanttChart({
                       className="flex hover:bg-muted/20 transition-colors group"
                       onClick={() => onItemClick && onItemClick(item)}
                     >
-                      {/* Left: Metadata info */}
-                      <div className="w-[320px] shrink-0 p-3 border-r border-border flex flex-col justify-between cursor-pointer space-y-1">
+                      {/* Left: Metadata info (360px) */}
+                      <div className="w-[360px] shrink-0 p-3 border-r border-border flex flex-col justify-between cursor-pointer space-y-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[10px] font-mono font-bold text-primary px-1.5 py-0.2 rounded bg-primary/10">
                             {item.id}
@@ -314,6 +358,12 @@ export function ContentGanttChart({
                               <span>Overdue</span>
                             </span>
                           )}
+                          {isOverlapping && (
+                            <span className="text-[9px] font-bold text-amber-400 flex items-center gap-0.5 bg-amber-500/10 px-1 py-0.2 rounded">
+                              <Timer className="w-2.5 h-2.5" />
+                              <span>Overlap</span>
+                            </span>
+                          )}
                         </div>
 
                         <h4 className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors">
@@ -321,14 +371,18 @@ export function ContentGanttChart({
                         </h4>
 
                         <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
-                          <div className="flex items-center gap-1 truncate max-w-[150px]">
+                          <div className="flex items-center gap-1 truncate max-w-[160px]">
                             <User className="w-3 h-3 text-primary shrink-0" />
                             <span className="truncate">{item.assigned_to_name || 'Unassigned'}</span>
                           </div>
-                          <span className="font-mono text-[10px]">
-                            {item.start_date ? dayjs(item.start_date).format('DD MMM') : '-'} &rarr;{' '}
-                            {item.due_date ? dayjs(item.due_date).format('DD MMM') : '-'}
-                          </span>
+                          <div className="flex items-center gap-2 font-mono text-[10px]">
+                            <span>{totalDurationDays}d</span>
+                            <span>&bull;</span>
+                            <span>
+                              {item.start_date ? dayjs(item.start_date).format('DD MMM') : '-'} &rarr;{' '}
+                              {item.due_date ? dayjs(item.due_date).format('DD MMM') : '-'}
+                            </span>
+                          </div>
                         </div>
                       </div>
 
@@ -360,7 +414,7 @@ export function ContentGanttChart({
                               left: `${leftPercent}%`,
                               width: `${widthPercent}%`,
                             }}
-                            title={`${item.title} (${item.status}) | ${progress}% Complete`}
+                            title={`${item.title} | ${item.status} | Duration: ${totalDurationDays} days | ${progress}% Complete`}
                           >
                             {/* Gradient Background */}
                             <div className={cn("absolute inset-0 bg-gradient-to-r", barGradient, isOverdue && "ring-2 ring-rose-500")} />
@@ -397,7 +451,7 @@ export function ContentGanttChart({
             <span className="font-semibold text-foreground">Timeline Legend:</span>
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded bg-emerald-500" />
-              <span>Completed / Approved</span>
+              <span>Completed</span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded bg-indigo-500" />
@@ -415,6 +469,10 @@ export function ContentGanttChart({
               <span className="w-3 h-3 rounded border-2 border-rose-500 bg-rose-500/30" />
               <span>Overdue</span>
             </div>
+            <div className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-amber-400" />
+              <span>Overlapping</span>
+            </div>
           </div>
 
           <div className="text-[11px]">
@@ -425,4 +483,3 @@ export function ContentGanttChart({
     </div>
   )
 }
-

@@ -6,6 +6,7 @@ import {
   ContentItem,
   ContentType,
   ContentStatus,
+  ContentTaskComment,
   ContentPriority,
   ReviewDecision,
   AssignedRole,
@@ -249,6 +250,7 @@ function normalizeContentItem(item: ContentItem): ContentItem {
     instructions: item.instructions || item.creative_brief || null,
     progress: calculatedProgress,
     reference_attachment: item.reference_attachment || null,
+    comments: item.comments || [],
     version,
     version_number: versionNumber,
     version_history: versionHistory,
@@ -348,6 +350,17 @@ export async function getContentNotifications(userId?: string): Promise<{ succes
     return { success: true, data: notifications.filter(n => n.user_id === userId) }
   }
   return { success: true, data: notifications }
+}
+
+export async function markAllContentNotificationsRead(userId?: string): Promise<{ success: boolean }> {
+  const notifications = readStore<ContentNotificationRecord[]>(CONTENT_NOTIFICATIONS_FILE, [])
+  notifications.forEach(n => {
+    if (!userId || n.user_id === userId) {
+      n.is_read = true
+    }
+  })
+  writeStore(CONTENT_NOTIFICATIONS_FILE, notifications)
+  return { success: true }
 }
 
 export async function markContentNotificationRead(id: string): Promise<{ success: boolean }> {
@@ -1663,6 +1676,70 @@ export async function deleteContentItem(id: string): Promise<{ success: boolean;
     return { success: true }
   } catch (err: any) {
     return { success: false, error: err.message || 'Failed to delete content' }
+  }
+}
+
+export async function addContentTaskComment(
+  taskId: string,
+  commentText: string,
+  parentId?: string
+): Promise<{ success: boolean; data?: ContentItem; error?: string }> {
+  try {
+    const user = await getCurrentUser()
+    const rawItems = readStore<ContentItem[]>(CONTENT_ITEMS_FILE, [])
+    const items = rawItems.map(normalizeContentItem)
+    const index = items.findIndex(i => i.id === taskId)
+    if (index === -1) {
+      return { success: false, error: 'Task not found' }
+    }
+
+    const now = new Date()
+    const newComment: ContentTaskComment = {
+      id: 'CMT-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      task_id: taskId,
+      user_id: user?.id || 'system',
+      user_name: user?.employee_name || 'Team Member',
+      content: commentText.trim(),
+      parent_id: parentId || null,
+      created_at: now.toISOString(),
+    }
+
+    const current = items[index]
+    const updatedComments = [...(current.comments || []), newComment]
+
+    const updated: ContentItem = {
+      ...current,
+      comments: updatedComments,
+      updated_at: now.toISOString(),
+    }
+
+    items[index] = updated
+    writeStore(CONTENT_ITEMS_FILE, items)
+
+    if (current.assigned_to_id && current.assigned_to_id !== user?.id) {
+      await createContentNotification(
+        current.assigned_to_id,
+        'Review Due',
+        'New Comment on Task',
+        `${user?.employee_name || 'A team member'} commented on "${current.title}": "${commentText.slice(0, 60)}"`,
+        current.id,
+        current.title
+      )
+    }
+
+    await logContentActivity(
+      updated.id,
+      updated.title,
+      'Created',
+      `New comment added by ${user?.employee_name || 'User'}`,
+      user?.id,
+      user?.employee_name
+    )
+
+    safeRevalidatePath('/content-management')
+    return { success: true, data: updated }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to add comment' }
   }
 }
 

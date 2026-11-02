@@ -1,3 +1,13 @@
+export interface ContentTaskComment {
+  id: string
+  task_id: string
+  user_id: string
+  user_name: string
+  content: string
+  parent_id?: string | null
+  created_at: string
+}
+
 export type ContentStatus =
   | 'To Do'
   | 'In Progress'
@@ -227,6 +237,7 @@ export interface ContentItem {
 
   // Media & Attachments
   attachments?: ContentAttachment[]
+  comments?: ContentTaskComment[]
 }
 
 export interface ContentFilterOptions {
