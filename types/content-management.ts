@@ -355,7 +355,7 @@ export interface UpdateContentInput {
 }
 
 export function computeDeadlineState(dueDate?: string | null, status?: ContentStatus): DeadlineState {
-  if (status === 'Published' || status === 'Approved') {
+  if (status === 'Published' || status === 'Approved' || status === 'Completed') {
     return 'Completed'
   }
   if (!dueDate) {
@@ -377,7 +377,7 @@ export function computeDeadlineState(dueDate?: string | null, status?: ContentSt
 }
 
 export function computeFreshnessState(item: ContentItem): FreshnessState {
-  if (item.status !== 'Published' && item.status !== 'Approved') {
+  if (item.status !== 'Published' && item.status !== 'Approved' && item.status !== 'Completed') {
     return 'Unreviewed'
   }
   if (!item.last_reviewed_date && !item.next_review_date) {

@@ -25,7 +25,13 @@ import {
   Send,
   SlidersHorizontal,
   ChevronDown,
-  UploadCloud
+  UploadCloud,
+  BarChart2,
+  Users,
+  UserCheck,
+  ArrowUpDown,
+  CalendarDays,
+  ExternalLink
 } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -53,6 +59,7 @@ import {
   uploadContentAttachment,
 } from '@/lib/actions/content-management'
 import { ViewContentModal } from './ViewContentModal'
+import { ContentGanttChart } from './ContentGanttChart'
 import { useToast } from '@/hooks/use-toast'
 import dayjs from 'dayjs'
 import { cn } from '@/lib/utils'
@@ -121,7 +128,7 @@ export function ContentManagementView({
   user,
 }: ContentManagementViewProps) {
   const [items, setItems] = useState<ContentItem[]>(initialItems || [])
-  const [activeTab, setActiveTab] = useState<'board' | 'create'>('board')
+  const [activeTab, setActiveTab] = useState<'board' | 'gantt' | 'deadlines' | 'assignments' | 'create'>('board')
 
   // Board filters
   const [searchQuery, setSearchQuery] = useState('')
@@ -250,6 +257,99 @@ export function ContentManagementView({
       getTaskColumn(i.status) !== 'Completed'
   ).length
 
+  // Deadlines grouping
+  const deadlineTasks = useMemo(() => {
+    const overdue: ContentItem[] = []
+    const dueToday: ContentItem[] = []
+    const dueThisWeek: ContentItem[] = []
+    const dueLater: ContentItem[] = []
+    const completedList: ContentItem[] = []
+
+    const now = dayjs()
+    const weekFromNow = now.add(7, 'day')
+
+    items.forEach((item) => {
+      if (getTaskColumn(item.status) === 'Completed') {
+        completedList.push(item)
+        return
+      }
+
+      if (!item.due_date) {
+        dueLater.push(item)
+        return
+      }
+
+      const d = dayjs(item.due_date)
+      if (computeDeadlineState(item.due_date, item.status) === 'Overdue') {
+        overdue.push(item)
+      } else if (d.format('YYYY-MM-DD') === todayStr) {
+        dueToday.push(item)
+      } else if (d.isBefore(weekFromNow.add(1, 'day'))) {
+        dueThisWeek.push(item)
+      } else {
+        dueLater.push(item)
+      }
+    })
+
+    return { overdue, dueToday, dueThisWeek, dueLater, completed: completedList }
+  }, [items, todayStr])
+
+  // Team Workload Mapping for Assignments tab
+  const teamWorkloadList = useMemo(() => {
+    const map: Record<
+      string,
+      { id: string; name: string; role: string; assignedTasks: ContentItem[]; inProgress: number; completed: number; overdue: number }
+    > = {}
+
+    // Add employees
+    employees.forEach((emp) => {
+      map[emp.id] = {
+        id: emp.id,
+        name: emp.name || (emp as any).employee_name || 'Staff Member',
+        role: emp.designation || 'Content Creator',
+        assignedTasks: [],
+        inProgress: 0,
+        completed: 0,
+        overdue: 0,
+      }
+    })
+
+    // Assign tasks
+    items.forEach((item) => {
+      const key = item.assigned_to_id || item.assigned_to_name
+      if (!key) return
+
+      if (!map[key]) {
+        map[key] = {
+          id: key,
+          name: item.assigned_to_name || 'Staff Member',
+          role: item.assigned_role || 'Creator',
+          assignedTasks: [],
+          inProgress: 0,
+          completed: 0,
+          overdue: 0,
+        }
+      }
+
+      map[key].assignedTasks.push(item)
+      if (getTaskColumn(item.status) === 'In Progress' || getTaskColumn(item.status) === 'In Review') {
+        map[key].inProgress += 1
+      } else if (getTaskColumn(item.status) === 'Completed') {
+        map[key].completed += 1
+      }
+
+      if (computeDeadlineState(item.due_date, item.status) === 'Overdue' && getTaskColumn(item.status) !== 'Completed') {
+        map[key].overdue += 1
+      }
+    })
+
+    return Object.values(map)
+  }, [items, employees])
+
+  const unassignedTasks = useMemo(() => {
+    return items.filter((i) => !i.assigned_to_id && !i.assigned_to_name)
+  }, [items])
+
   // Update Task Status Handler
   const handleUpdateStatus = async (itemId: string, newStatus: ContentStatus) => {
     setUpdatingStatusId(itemId)
@@ -303,6 +403,82 @@ export function ContentManagementView({
     }
   }
 
+  // Quick Reassign Employee Handler
+  const handleReassignTask = async (itemId: string, newEmployeeId: string) => {
+    const emp = employees.find((e) => e.id === newEmployeeId)
+    const empName = emp ? (emp.name || (emp as any).employee_name) : null
+
+    // Optimistic update
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === itemId
+          ? {
+              ...i,
+              assigned_to_id: newEmployeeId || null,
+              assigned_to_name: empName,
+              updated_at: new Date().toISOString(),
+            }
+          : i
+      )
+    )
+
+    try {
+      const res = await updateContentItem(itemId, {
+        assigned_to_id: newEmployeeId || null,
+        assigned_to_name: empName || null,
+      })
+
+      if (res.success && res.data) {
+        setItems((prev) => prev.map((i) => (i.id === itemId ? res.data! : i)))
+        toast({
+          title: 'Task Assigned',
+          description: `Task assigned to ${empName || 'Unassigned'}.`,
+        })
+      } else {
+        toast({
+          title: 'Assignment Failed',
+          description: res.error || 'Failed to update assignment.',
+          variant: 'destructive',
+        })
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Could not reassign task', variant: 'destructive' })
+    }
+  }
+
+  // Quick Extend Deadline Handler
+  const handleExtendDeadline = async (itemId: string, daysToAdd: number) => {
+    const item = items.find((i) => i.id === itemId)
+    if (!item) return
+    const currentDue = item.due_date ? dayjs(item.due_date) : dayjs()
+    const newDue = currentDue.add(daysToAdd, 'day').format('YYYY-MM-DD')
+
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === itemId
+          ? {
+              ...i,
+              due_date: newDue,
+              updated_at: new Date().toISOString(),
+            }
+          : i
+      )
+    )
+
+    try {
+      const res = await updateContentItem(itemId, { due_date: newDue })
+      if (res.success && res.data) {
+        setItems((prev) => prev.map((i) => (i.id === itemId ? res.data! : i)))
+        toast({
+          title: 'Deadline Rescheduled',
+          description: `New deadline set to ${dayjs(newDue).format('DD MMM YYYY')}.`,
+        })
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Could not extend deadline', variant: 'destructive' })
+    }
+  }
+
   // Delete Task Handler
   const handleDeleteTask = async () => {
     if (!itemToDelete) return
@@ -324,7 +500,7 @@ export function ContentManagementView({
     setItemToDelete(null)
   }
 
-  // Submit New Task Form (Tab 2)
+  // Submit New Task Form
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault()
 
@@ -388,10 +564,8 @@ export function ContentManagementView({
       const res = await createContentItem(createInput)
 
       if (res.success && res.data) {
-        // Automatically add newly created task to state
         setItems((prev) => [res.data!, ...prev])
 
-        // Reset form
         setFormData({
           title: '',
           description: '',
@@ -410,7 +584,6 @@ export function ContentManagementView({
           description: `"${res.data.title}" is now added to the To Do column.`,
         })
 
-        // Automatically switch to Task Board tab
         setActiveTab('board')
       } else {
         toast({
@@ -493,7 +666,7 @@ export function ContentManagementView({
     }
   }
 
-  // Content Type options list (merging standard and custom if any)
+  // Content Type options list
   const contentTypeOptions = useMemo(() => {
     const list = [...STANDARD_CONTENT_TYPES]
     initialTypes.forEach((t) => {
@@ -513,7 +686,7 @@ export function ContentManagementView({
             <span>Content Management</span>
           </div>
         }
-        subtitle="Organize, track, and assign content creation tasks in a streamlined Kanban workflow."
+        subtitle="Organize, schedule, and track content deliverables with Gantt timeline, deadlines, and team assignments."
         icon={FileText}
         iconClassName="text-primary"
         actions={
@@ -536,14 +709,14 @@ export function ContentManagementView({
         }
       />
 
-      {/* Main Two-Tab Navigation Bar */}
+      {/* Main Segmented Navigation Bar */}
       <div className="p-1.5 bg-card border border-border rounded-2xl flex items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border/60 shadow-xs">
+        <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border/60 shadow-xs overflow-x-auto">
           {/* Tab 1: Task Board */}
           <button
             onClick={() => setActiveTab('board')}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all",
+              "flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
               activeTab === 'board'
                 ? "bg-background text-foreground shadow-xs border border-border/80"
                 : "text-muted-foreground hover:text-foreground"
@@ -556,18 +729,70 @@ export function ContentManagementView({
             </span>
           </button>
 
-          {/* Tab 2: Task Creation */}
+          {/* Tab 2: Gantt Chart */}
+          <button
+            onClick={() => setActiveTab('gantt')}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+              activeTab === 'gantt'
+                ? "bg-background text-foreground shadow-xs border border-border/80"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <CalendarDays className="w-4 h-4 text-indigo-400 shrink-0" />
+            <span>Gantt Chart</span>
+          </button>
+
+          {/* Tab 3: Deadlines */}
+          <button
+            onClick={() => setActiveTab('deadlines')}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+              activeTab === 'deadlines'
+                ? "bg-background text-foreground shadow-xs border border-border/80"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>Deadlines</span>
+            {overdueCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                {overdueCount}
+              </span>
+            )}
+          </button>
+
+          {/* Tab 4: Assignments */}
+          <button
+            onClick={() => setActiveTab('assignments')}
+            className={cn(
+              "flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+              activeTab === 'assignments'
+                ? "bg-background text-foreground shadow-xs border border-border/80"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <UserCheck className="w-4 h-4 text-blue-400 shrink-0" />
+            <span>Assignments</span>
+            {unassignedTasks.length > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/20 text-amber-300">
+                {unassignedTasks.length} unassigned
+              </span>
+            )}
+          </button>
+
+          {/* Tab 5: Task Creation */}
           <button
             onClick={() => setActiveTab('create')}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all",
+              "flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
               activeTab === 'create'
                 ? "bg-background text-foreground shadow-xs border border-border/80"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
             <PlusCircle className="w-4 h-4 text-emerald-500 shrink-0" />
-            <span>Task Creation</span>
+            <span>Create Task</span>
           </button>
         </div>
 
@@ -589,12 +814,6 @@ export function ContentManagementView({
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
             <span>Completed: <strong className="text-foreground">{completedCount}</strong></span>
           </div>
-          {overdueCount > 0 && (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[11px] font-semibold">
-              <AlertTriangle className="w-3 h-3" />
-              <span>{overdueCount} Overdue</span>
-            </div>
-          )}
         </div>
       </div>
 
@@ -657,7 +876,6 @@ export function ContentManagementView({
 
             {/* Filter Dropdowns */}
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Content Type Filter */}
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
@@ -671,7 +889,6 @@ export function ContentManagementView({
                 ))}
               </select>
 
-              {/* Priority Filter */}
               <select
                 value={priorityFilter}
                 onChange={(e) => setPriorityFilter(e.target.value)}
@@ -684,7 +901,6 @@ export function ContentManagementView({
                 <option value="Low">Low</option>
               </select>
 
-              {/* Assignee Filter */}
               <select
                 value={assigneeFilter}
                 onChange={(e) => setAssigneeFilter(e.target.value)}
@@ -893,7 +1109,362 @@ export function ContentManagementView({
       )}
 
       {/* ========================================================= */}
-      {/* TAB 2: TASK CREATION FORM                                 */}
+      {/* TAB 2: GANTT CHART (TIMELINE VIEW)                         */}
+      {/* ========================================================= */}
+      {activeTab === 'gantt' && (
+        <div className="space-y-4">
+          <ContentGanttChart
+            items={items}
+            employees={employees}
+            onItemClick={(item) => {
+              setViewItem(item)
+              setIsViewModalOpen(true)
+            }}
+            onStatusChange={handleUpdateStatus}
+          />
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* TAB 3: DEADLINES & MILESTONES                             */}
+      {/* ========================================================= */}
+      {activeTab === 'deadlines' && (
+        <div className="space-y-6">
+          {/* Deadlines KPI Summary */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-rose-400 font-semibold flex items-center justify-between">
+                <span>Overdue Deadlines</span>
+                <AlertTriangle className="w-4 h-4 text-rose-400" />
+              </span>
+              <p className={cn("text-2xl font-bold mt-1", deadlineTasks.overdue.length > 0 ? "text-rose-400" : "text-foreground")}>
+                {deadlineTasks.overdue.length}
+              </p>
+              <span className="text-[10px] text-muted-foreground">Immediate escalation required</span>
+            </div>
+
+            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-amber-400 font-semibold flex items-center justify-between">
+                <span>Due Today</span>
+                <Clock className="w-4 h-4 text-amber-400" />
+              </span>
+              <p className="text-2xl font-bold text-amber-400 mt-1">{deadlineTasks.dueToday.length}</p>
+              <span className="text-[10px] text-muted-foreground">Expiring at end of day</span>
+            </div>
+
+            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-primary font-semibold flex items-center justify-between">
+                <span>Due This Week</span>
+                <Calendar className="w-4 h-4 text-primary" />
+              </span>
+              <p className="text-2xl font-bold text-foreground mt-1">{deadlineTasks.dueThisWeek.length}</p>
+              <span className="text-[10px] text-muted-foreground">Next 7 calendar days</span>
+            </div>
+
+            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-emerald-400 font-semibold flex items-center justify-between">
+                <span>Delivered & Closed</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              </span>
+              <p className="text-2xl font-bold text-emerald-400 mt-1">{deadlineTasks.completed.length}</p>
+              <span className="text-[10px] text-muted-foreground">Successfully published</span>
+            </div>
+          </div>
+
+          {/* Overdue Items Alert Panel */}
+          {deadlineTasks.overdue.length > 0 && (
+            <Card className="border-rose-500/30 bg-rose-500/5 shadow-xs">
+              <CardHeader className="p-4 border-b border-rose-500/20 flex flex-row items-center justify-between">
+                <div className="flex items-center gap-2 text-rose-400">
+                  <AlertTriangle className="w-5 h-5 shrink-0" />
+                  <CardTitle className="text-sm font-bold text-rose-400">
+                    Overdue Attention Required ({deadlineTasks.overdue.length} Tasks Past Due)
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 space-y-3">
+                {deadlineTasks.overdue.map((task) => (
+                  <div
+                    key={task.id}
+                    className="p-3.5 bg-card/90 border border-rose-500/30 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="space-y-1 min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-mono font-bold text-rose-400 px-1.5 py-0.5 rounded bg-rose-500/10">
+                          {task.id}
+                        </span>
+                        <h4 className="font-bold text-foreground">{task.title}</h4>
+                        {renderPriorityBadge(task.priority)}
+                      </div>
+                      <div className="text-[11px] text-muted-foreground flex items-center gap-3">
+                        <span>Assignee: <strong className="text-foreground">{task.assigned_to_name || 'Unassigned'}</strong></span>
+                        <span>&bull;</span>
+                        <span className="text-rose-400 font-semibold">
+                          Due Date: {dayjs(task.due_date).format('DD MMM YYYY')} ({dayjs().diff(dayjs(task.due_date), 'day')} days ago)
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Quick Reschedule & Complete Actions */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleExtendDeadline(task.id, 3)}
+                        className="h-8 text-xs border-border"
+                        title="Extend deadline by 3 days"
+                      >
+                        +3 Days
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleExtendDeadline(task.id, 7)}
+                        className="h-8 text-xs border-border"
+                        title="Extend deadline by 1 week"
+                      >
+                        +1 Week
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => handleUpdateStatus(task.id, 'Completed')}
+                        className="h-8 text-xs bg-emerald-600 hover:bg-emerald-500 text-white gap-1"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Mark Done</span>
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Upcoming Schedule Groupings */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Due This Week */}
+            <Card className="bg-card border-border shadow-xs">
+              <CardHeader className="p-4 border-b border-border flex flex-row items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-amber-400" />
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    Due This Week ({deadlineTasks.dueThisWeek.length})
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 space-y-2.5">
+                {deadlineTasks.dueThisWeek.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-6 text-center">No tasks expiring in the next 7 days.</p>
+                ) : (
+                  deadlineTasks.dueThisWeek.map((t) => (
+                    <div
+                      key={t.id}
+                      onClick={() => {
+                        setViewItem(t)
+                        setIsViewModalOpen(true)
+                      }}
+                      className="p-3 rounded-xl bg-muted/20 border border-border hover:border-primary/40 transition-colors flex items-center justify-between gap-3 text-xs cursor-pointer"
+                    >
+                      <div className="min-w-0 space-y-0.5">
+                        <h5 className="font-bold text-foreground truncate">{t.title}</h5>
+                        <p className="text-[11px] text-muted-foreground">{t.assigned_to_name || 'Unassigned'}</p>
+                      </div>
+                      <Badge variant="outline" className="border-border text-[10px] font-mono shrink-0">
+                        {dayjs(t.due_date).format('DD MMM')}
+                      </Badge>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Upcoming / Flexible Schedule */}
+            <Card className="bg-card border-border shadow-xs">
+              <CardHeader className="p-4 border-b border-border flex flex-row items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-primary" />
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-foreground">
+                    Upcoming (Next 30 Days & Later) ({deadlineTasks.dueLater.length})
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 space-y-2.5">
+                {deadlineTasks.dueLater.length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-6 text-center">No upcoming tasks scheduled.</p>
+                ) : (
+                  deadlineTasks.dueLater.slice(0, 6).map((t) => (
+                    <div
+                      key={t.id}
+                      onClick={() => {
+                        setViewItem(t)
+                        setIsViewModalOpen(true)
+                      }}
+                      className="p-3 rounded-xl bg-muted/20 border border-border hover:border-primary/40 transition-colors flex items-center justify-between gap-3 text-xs cursor-pointer"
+                    >
+                      <div className="min-w-0 space-y-0.5">
+                        <h5 className="font-bold text-foreground truncate">{t.title}</h5>
+                        <p className="text-[11px] text-muted-foreground">{t.assigned_to_name || 'Unassigned'}</p>
+                      </div>
+                      <Badge variant="outline" className="border-border text-[10px] font-mono shrink-0">
+                        {t.due_date ? dayjs(t.due_date).format('DD MMM') : 'Flexible'}
+                      </Badge>
+                    </div>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* TAB 4: ASSIGNMENTS & WORKLOAD                             */}
+      {/* ========================================================= */}
+      {activeTab === 'assignments' && (
+        <div className="space-y-6">
+          {/* Unassigned Tasks Alert Queue */}
+          {unassignedTasks.length > 0 && (
+            <Card className="border-amber-500/30 bg-amber-500/5 shadow-xs">
+              <CardHeader className="p-4 border-b border-amber-500/20 flex flex-row items-center justify-between">
+                <div className="flex items-center gap-2 text-amber-400">
+                  <AlertTriangle className="w-4 h-4" />
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-amber-400">
+                    Unassigned Tasks Queue ({unassignedTasks.length} Awaiting Staff Assignment)
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="p-4 space-y-2.5">
+                {unassignedTasks.map((task) => (
+                  <div
+                    key={task.id}
+                    className="p-3 rounded-xl bg-card border border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="min-w-0 space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-primary text-[10px] px-1.5 py-0.2 bg-primary/10 rounded">
+                          {task.id}
+                        </span>
+                        <h4 className="font-bold text-foreground truncate">{task.title}</h4>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground line-clamp-1">{task.summary}</p>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) handleReassignTask(task.id, e.target.value)
+                        }}
+                        className="h-8 px-2.5 rounded-lg text-xs bg-muted/40 border border-border text-foreground font-medium outline-none cursor-pointer"
+                        defaultValue=""
+                      >
+                        <option value="" disabled>Assign to staff...</option>
+                        {employees.map((emp) => (
+                          <option key={emp.id} value={emp.id}>
+                            {emp.name || (emp as any).employee_name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Team Workload & Staff Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {teamWorkloadList.map((member) => {
+              const capacityPercent = Math.min(100, Math.round((member.assignedTasks.length / 8) * 100))
+
+              return (
+                <Card key={member.id} className="bg-card border-border shadow-xs flex flex-col justify-between">
+                  <CardHeader className="p-4 pb-3 border-b border-border">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs shrink-0">
+                          {member.name.charAt(0)}
+                        </div>
+                        <div>
+                          <CardTitle className="text-sm font-bold text-foreground">{member.name}</CardTitle>
+                          <span className="text-[11px] text-muted-foreground">{member.role}</span>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="text-[10px] font-mono border-border">
+                        {member.assignedTasks.length} Tasks
+                      </Badge>
+                    </div>
+
+                    {/* Capacity Progress Bar */}
+                    <div className="pt-2 space-y-1">
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                        <span>Workload Capacity</span>
+                        <span className="font-bold text-foreground">{capacityPercent}%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                        <div
+                          className={cn(
+                            "h-full rounded-full transition-all",
+                            capacityPercent >= 90
+                              ? "bg-rose-500"
+                              : capacityPercent >= 60
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
+                          )}
+                          style={{ width: `${capacityPercent}%` }}
+                        />
+                      </div>
+                    </div>
+                  </CardHeader>
+
+                  <CardContent className="p-4 space-y-2.5 flex-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Assigned Deliverables ({member.assignedTasks.length})
+                    </p>
+
+                    {member.assignedTasks.length === 0 ? (
+                      <p className="text-xs text-muted-foreground italic py-4 text-center">
+                        No active deliverables assigned.
+                      </p>
+                    ) : (
+                      member.assignedTasks.slice(0, 4).map((task) => (
+                        <div
+                          key={task.id}
+                          className="p-2.5 rounded-lg bg-muted/20 border border-border flex items-center justify-between gap-2 text-xs"
+                        >
+                          <div className="min-w-0">
+                            <span className="font-semibold text-foreground truncate block">{task.title}</span>
+                            <span className="text-[10px] text-muted-foreground">
+                              Due: {task.due_date ? dayjs(task.due_date).format('DD MMM') : 'Flexible'}
+                            </span>
+                          </div>
+
+                          {/* Quick Reassign Dropdown */}
+                          <select
+                            value={member.id}
+                            onChange={(e) => handleReassignTask(task.id, e.target.value)}
+                            className="h-6 text-[10px] bg-muted border border-border rounded px-1 text-muted-foreground hover:text-foreground outline-none cursor-pointer max-w-[100px] truncate"
+                            title="Reassign to another team member"
+                          >
+                            <option value={member.id}>{member.name.split(' ')[0]}</option>
+                            {employees.filter((e) => e.id !== member.id).map((e) => (
+                              <option key={e.id} value={e.id}>
+                                &rarr; {e.name?.split(' ')[0] || 'Staff'}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ))
+                    )}
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* TAB 5: TASK CREATION FORM                                 */}
       {/* ========================================================= */}
       {activeTab === 'create' && (
         <Card className="border-border shadow-xs max-w-4xl mx-auto">
@@ -905,7 +1476,7 @@ export function ContentManagementView({
                   <span>Create Content Task</span>
                 </CardTitle>
                 <p className="text-xs text-muted-foreground">
-                  Fill in the details below to schedule and assign a content production task. The new task will immediately appear on the Task Board under To Do.
+                  Fill in the details below to schedule and assign a content production task. The new task will immediately appear on the Task Board under To Do and on the Gantt timeline.
                 </p>
               </div>
               <Button

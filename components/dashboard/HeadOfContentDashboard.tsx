@@ -32,7 +32,8 @@ import {
   BookOpen,
   Share2,
   Megaphone,
-  Briefcase
+  Briefcase,
+  CalendarDays
 } from 'lucide-react'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -42,6 +43,7 @@ import { Project, Task } from '@/types/project-management'
 import { ContentItem, ContentStatus, ContentPriority, computeDeadlineState } from '@/types/content-management'
 import { getContentItems, updateContentStatus } from '@/lib/actions/content-management'
 import { getAssignableEmployees, AssignableEmployee } from '@/lib/actions/team'
+import { ContentGanttChart } from '@/components/content-management/ContentGanttChart'
 import { useToast } from '@/hooks/use-toast'
 import dayjs from 'dayjs'
 import { cn } from '@/lib/utils'
@@ -117,8 +119,8 @@ export function HeadOfContentDashboard({
   const [employees, setEmployees] = useState<AssignableEmployee[]>([])
   const [loading, setLoading] = useState(false)
   const [processingId, setProcessingId] = useState<string | null>(null)
-  const [activeNotice, setActiveNotice] = useState<string | null>(null)
   const [reviewFilter, setReviewFilter] = useState<'All' | 'In Review' | 'Changes Requested'>('All')
+  const [dashboardViewMode, setDashboardViewMode] = useState<'OVERVIEW' | 'GANTT' | 'DEADLINES' | 'WORKLOAD'>('OVERVIEW')
 
   const { toast } = useToast()
 
@@ -179,7 +181,6 @@ export function HeadOfContentDashboard({
       { id: string; name: string; role: string; assigned: number; inProgress: number; completed: number; overdue: number }
     > = {}
 
-    // Seed from assignable employees or known assignees
     employees.forEach((emp) => {
       memberMap[emp.id] = {
         id: emp.id,
@@ -192,7 +193,6 @@ export function HeadOfContentDashboard({
       }
     })
 
-    // Populate from content items
     items.forEach((item) => {
       if (!item.assigned_to_name && !item.assigned_to_id) return
       const key = item.assigned_to_id || item.assigned_to_name || 'unassigned'
@@ -252,7 +252,6 @@ export function HeadOfContentDashboard({
           description: `Task "${res.data.title}" has been marked as ${newStatus}.`,
         })
       } else {
-        // Optimistic fallback
         setItems((prev) =>
           prev.map((i) =>
             i.id === itemId ? { ...i, status: newStatus, updated_at: new Date().toISOString() } : i
@@ -295,14 +294,14 @@ export function HeadOfContentDashboard({
                 <span>Content Department</span>
               </span>
               <span className="text-xs text-zinc-400 font-mono">
-                Operations & Editorial Intelligence
+                Operations, Gantt Timeline & Editorial Pipeline
               </span>
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
               Welcome back, {user.employee_name || 'Head of Content'}
             </h1>
             <p className="text-xs text-zinc-400 max-w-2xl leading-relaxed">
-              Supervise content creation workflows, editorial sign-offs, production deadlines, and team workload capacity in real time.
+              Supervise content creation workflows, interactive Gantt charts, production deadlines, and team workload capacity in real time.
             </p>
           </div>
 
@@ -345,7 +344,6 @@ export function HeadOfContentDashboard({
 
       {/* 2. TOP METRICS / KPI GRID (6 Cards) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
-        {/* Total Tasks */}
         <Card className="bg-card border-border shadow-xs">
           <CardContent className="p-4 space-y-1">
             <span className="text-xs text-muted-foreground font-medium flex items-center justify-between">
@@ -357,7 +355,6 @@ export function HeadOfContentDashboard({
           </CardContent>
         </Card>
 
-        {/* In Progress */}
         <Card className="bg-card border-border shadow-xs">
           <CardContent className="p-4 space-y-1">
             <span className="text-xs text-amber-400 font-medium flex items-center justify-between">
@@ -369,7 +366,6 @@ export function HeadOfContentDashboard({
           </CardContent>
         </Card>
 
-        {/* Editorial Sign-off */}
         <Card className="bg-card border-border shadow-xs">
           <CardContent className="p-4 space-y-1">
             <span className="text-xs text-indigo-400 font-medium flex items-center justify-between">
@@ -381,7 +377,6 @@ export function HeadOfContentDashboard({
           </CardContent>
         </Card>
 
-        {/* Ready / Completed */}
         <Card className="bg-card border-border shadow-xs">
           <CardContent className="p-4 space-y-1">
             <span className="text-xs text-emerald-400 font-medium flex items-center justify-between">
@@ -393,7 +388,6 @@ export function HeadOfContentDashboard({
           </CardContent>
         </Card>
 
-        {/* Overdue Risk */}
         <Card className="bg-card border-border shadow-xs">
           <CardContent className="p-4 space-y-1">
             <span className="text-xs text-rose-400 font-medium flex items-center justify-between">
@@ -407,7 +401,6 @@ export function HeadOfContentDashboard({
           </CardContent>
         </Card>
 
-        {/* Active Creators */}
         <Card className="bg-card border-border shadow-xs">
           <CardContent className="p-4 space-y-1">
             <span className="text-xs text-blue-400 font-medium flex items-center justify-between">
@@ -420,364 +413,438 @@ export function HeadOfContentDashboard({
         </Card>
       </div>
 
-      {/* 3. ROW 1: EDITORIAL APPROVAL QUEUE & TEAM WORKLOAD */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* EDITORIAL APPROVAL QUEUE */}
-        <Card className="bg-card border-border shadow-xs flex flex-col">
-          <CardHeader className="p-4 pb-3 border-b border-border flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-indigo-400" />
-              <CardTitle className="text-sm font-semibold text-foreground">
-                Editorial Sign-Off Queue ({inReviewTasks.length})
-              </CardTitle>
-            </div>
+      {/* 3. VIEW MODE CONTROLS: Overview vs Gantt vs Deadlines vs Workload */}
+      <div className="p-1.5 bg-card border border-border rounded-xl flex items-center justify-start gap-2 shadow-xs overflow-x-auto">
+        <button
+          onClick={() => setDashboardViewMode('OVERVIEW')}
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+            dashboardViewMode === 'OVERVIEW'
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          )}
+        >
+          <BarChart3 className="w-3.5 h-3.5" />
+          <span>Overview & Sign-Off</span>
+        </button>
 
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => setReviewFilter('All')}
-                className={cn(
-                  "px-2 py-1 rounded text-[11px] font-semibold transition-colors",
-                  reviewFilter === 'All' ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                All ({inReviewTasks.length})
-              </button>
-              <button
-                onClick={() => setReviewFilter('In Review')}
-                className={cn(
-                  "px-2 py-1 rounded text-[11px] font-semibold transition-colors",
-                  reviewFilter === 'In Review' ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                In Review
-              </button>
-              <button
-                onClick={() => setReviewFilter('Changes Requested')}
-                className={cn(
-                  "px-2 py-1 rounded text-[11px] font-semibold transition-colors",
-                  reviewFilter === 'Changes Requested' ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                Revisions
-              </button>
-            </div>
-          </CardHeader>
+        <button
+          onClick={() => setDashboardViewMode('GANTT')}
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+            dashboardViewMode === 'GANTT'
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          )}
+        >
+          <CalendarDays className="w-3.5 h-3.5" />
+          <span>Gantt Timeline Chart</span>
+        </button>
 
-          <CardContent className="p-4 space-y-3 flex-1 overflow-y-auto max-h-[460px]">
-            {filteredReviewQueue.length === 0 ? (
-              <div className="py-12 text-center space-y-2">
-                <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
-                <p className="text-xs font-semibold text-foreground">Editorial Pipeline Clear!</p>
-                <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
-                  All submitted content deliverables have been reviewed and signed off.
-                </p>
-                <Link href="/content-management">
-                  <Button variant="outline" size="sm" className="text-xs border-border mt-2">
-                    <span>View Task Board</span>
-                  </Button>
-                </Link>
+        <button
+          onClick={() => setDashboardViewMode('DEADLINES')}
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+            dashboardViewMode === 'DEADLINES'
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          )}
+        >
+          <Clock className="w-3.5 h-3.5 text-amber-400" />
+          <span>Deadlines Schedule</span>
+          {overdueTasks.length > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-500/20 text-rose-300">
+              {overdueTasks.length}
+            </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setDashboardViewMode('WORKLOAD')}
+          className={cn(
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+            dashboardViewMode === 'WORKLOAD'
+              ? "bg-primary text-primary-foreground shadow-xs"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          )}
+        >
+          <UserCheck className="w-3.5 h-3.5" />
+          <span>Assignments & Capacity</span>
+        </button>
+      </div>
+
+      {/* VIEW: GANTT CHART */}
+      {dashboardViewMode === 'GANTT' && (
+        <div className="space-y-4">
+          <ContentGanttChart
+            items={items}
+            employees={employees}
+            onStatusChange={async (id, st) => {
+              await updateContentStatus(id, st)
+              loadData(false)
+            }}
+          />
+        </div>
+      )}
+
+      {/* VIEW: DEADLINES SCHEDULE */}
+      {dashboardViewMode === 'DEADLINES' && (
+        <div className="space-y-4">
+          <Card className="bg-card border-border shadow-xs">
+            <CardHeader className="p-4 border-b border-border flex flex-row items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-400" />
+                <CardTitle className="text-sm font-semibold text-foreground">
+                  Content Production Deadlines & Milestones
+                </CardTitle>
               </div>
-            ) : (
-              filteredReviewQueue.map((item) => {
-                const deadlineState = computeDeadlineState(item.due_date, item.status)
-                const isOverdue = deadlineState === 'Overdue'
-
-                return (
-                  <div
-                    key={item.id}
-                    className="p-3.5 bg-muted/20 border border-border rounded-xl space-y-2.5 text-xs transition-colors hover:border-primary/40 shadow-xs"
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="space-y-1 min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[10px] font-mono font-bold text-primary px-1.5 py-0.5 rounded bg-primary/10">
-                            {item.id}
-                          </span>
-                          <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-border">
-                            {item.content_type || 'Content'}
-                          </Badge>
-                          {renderPriorityBadge(item.priority)}
-                          {isOverdue && (
-                            <span className="text-[10px] font-bold text-rose-400 flex items-center gap-0.5">
-                              <AlertTriangle className="w-2.5 h-2.5" />
-                              <span>Overdue</span>
-                            </span>
-                          )}
+              <Link href="/content-management" className="text-xs text-primary hover:underline flex items-center gap-1">
+                <span>Open in Content Management</span>
+                <ExternalLink className="w-3 h-3" />
+              </Link>
+            </CardHeader>
+            <CardContent className="p-4 space-y-4">
+              {/* Overdue Section */}
+              {overdueTasks.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <AlertTriangle className="w-3.5 h-3.5" />
+                    <span>Overdue Action Items ({overdueTasks.length})</span>
+                  </span>
+                  <div className="space-y-2">
+                    {overdueTasks.map((t) => (
+                      <div
+                        key={t.id}
+                        className="p-3 bg-rose-500/10 border border-rose-500/25 rounded-xl flex items-center justify-between gap-3 text-xs"
+                      >
+                        <div className="min-w-0 space-y-0.5">
+                          <h5 className="font-bold text-foreground truncate">{t.title}</h5>
+                          <p className="text-[11px] text-muted-foreground">
+                            Assignee: <strong className="text-foreground">{t.assigned_to_name || 'Unassigned'}</strong> &bull;{' '}
+                            <span className="text-rose-400 font-semibold">Due: {dayjs(t.due_date).format('DD MMM YYYY')}</span>
+                          </p>
                         </div>
-                        <h4 className="font-bold text-foreground line-clamp-1">{item.title}</h4>
+                        <Badge className="bg-rose-500/20 text-rose-300 border-rose-500/40 text-[10px]">
+                          Overdue
+                        </Badge>
                       </div>
-
-                      <Badge
-                        className={
-                          item.status === 'In Review'
-                            ? 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30'
-                            : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
-                        }
-                      >
-                        {item.status}
-                      </Badge>
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                      <span>Author: <strong className="text-foreground">{item.assigned_to_name || item.owner_name}</strong></span>
-                      <span>Due: <strong className={isOverdue ? "text-rose-400 font-bold" : "text-foreground"}>
-                        {item.due_date ? dayjs(item.due_date).format('DD MMM YYYY') : 'Not set'}
-                      </strong></span>
-                    </div>
-
-                    {/* Decision Action Buttons */}
-                    <div className="flex items-center justify-between pt-2 border-t border-border/60">
-                      <Link
-                        href="/content-management"
-                        className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium"
-                      >
-                        <span>Inspect Brief</span>
-                        <ExternalLink className="w-3 h-3" />
-                      </Link>
-
-                      <div className="flex items-center gap-1.5">
-                        <button
-                          disabled={processingId === item.id}
-                          onClick={() => handleEditorialDecision(item.id, 'Completed', 'Approved')}
-                          className="px-2.5 py-1 bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-lg transition-colors text-[11px] font-semibold flex items-center gap-1 shadow-xs"
-                        >
-                          <Check className="w-3 h-3" />
-                          <span>Approve</span>
-                        </button>
-                        <button
-                          disabled={processingId === item.id}
-                          onClick={() => handleEditorialDecision(item.id, 'Changes Requested', 'Changes Requested')}
-                          className="px-2.5 py-1 bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border border-amber-500/30 rounded-lg transition-colors text-[11px] font-semibold shadow-xs"
-                        >
-                          <span>Changes</span>
-                        </button>
-                        <button
-                          disabled={processingId === item.id}
-                          onClick={() => handleEditorialDecision(item.id, 'Rejected', 'Rejected')}
-                          className="px-2.5 py-1 bg-rose-500/15 text-rose-400 hover:bg-rose-500/25 border border-rose-500/30 rounded-lg transition-colors text-[11px] font-semibold shadow-xs"
-                        >
-                          <span>Reject</span>
-                        </button>
-                      </div>
-                    </div>
+                    ))}
                   </div>
-                )
-              })
-            )}
-          </CardContent>
-        </Card>
+                </div>
+              )}
 
-        {/* TEAM WORKLOAD DISTRIBUTION */}
-        <Card className="bg-card border-border shadow-xs flex flex-col">
-          <CardHeader className="p-4 pb-3 border-b border-border flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4 text-indigo-400" />
-              <CardTitle className="text-sm font-semibold text-foreground">
-                Team Workload & Capacity
-              </CardTitle>
-            </div>
-            <Link
-              href="/content-management"
-              className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
-            >
-              <span>Manage Assignments</span>
-              <ArrowRight className="w-3 h-3" />
-            </Link>
-          </CardHeader>
+              {/* Upcoming Items */}
+              <div className="space-y-2 pt-2 border-t border-border">
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                  Upcoming Deliverables
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {items
+                    .filter((t) => t.status !== 'Completed' && t.status !== 'Published' && t.status !== 'Approved' && computeDeadlineState(t.due_date, t.status) !== 'Overdue')
+                    .map((t) => (
+                      <div
+                        key={t.id}
+                        className="p-3 bg-muted/20 border border-border rounded-xl flex items-center justify-between gap-3 text-xs"
+                      >
+                        <div className="min-w-0 space-y-0.5">
+                          <h5 className="font-bold text-foreground truncate">{t.title}</h5>
+                          <p className="text-[11px] text-muted-foreground">
+                            Assignee: <strong className="text-foreground">{t.assigned_to_name || 'Unassigned'}</strong> &bull; Due: {t.due_date ? dayjs(t.due_date).format('DD MMM') : 'Flexible'}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="border-border text-[10px]">
+                          {t.status}
+                        </Badge>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
-          <CardContent className="p-4 flex-1">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-border text-muted-foreground uppercase tracking-wider text-[11px]">
-                    <th className="pb-2.5 font-medium">Content Staff</th>
-                    <th className="pb-2.5 font-medium text-center">Assigned</th>
-                    <th className="pb-2.5 font-medium text-center">In Progress</th>
-                    <th className="pb-2.5 font-medium text-center">Completed</th>
-                    <th className="pb-2.5 font-medium text-center">Overdue</th>
-                    <th className="pb-2.5 font-medium text-right">Capacity</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60">
-                  {teamWorkloads.map((member) => {
-                    const capacityPercent = Math.min(100, Math.round((member.assigned / 8) * 100))
+      {/* VIEW: ASSIGNMENTS & WORKLOAD */}
+      {dashboardViewMode === 'WORKLOAD' && (
+        <div className="space-y-4">
+          <Card className="bg-card border-border shadow-xs">
+            <CardHeader className="p-4 border-b border-border flex flex-row items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-indigo-400" />
+                <CardTitle className="text-sm font-semibold text-foreground">
+                  Team Workload & Assignments
+                </CardTitle>
+              </div>
+              <Link href="/content-management" className="text-xs text-primary hover:underline flex items-center gap-1">
+                <span>Manage in Content Management</span>
+                <ExternalLink className="w-3 h-3" />
+              </Link>
+            </CardHeader>
+            <CardContent className="p-4">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="border-b border-border text-muted-foreground uppercase tracking-wider text-[11px]">
+                      <th className="pb-2.5 font-medium">Content Staff</th>
+                      <th className="pb-2.5 font-medium text-center">Assigned</th>
+                      <th className="pb-2.5 font-medium text-center">In Progress</th>
+                      <th className="pb-2.5 font-medium text-center">Completed</th>
+                      <th className="pb-2.5 font-medium text-center">Overdue</th>
+                      <th className="pb-2.5 font-medium text-right">Capacity</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {teamWorkloads.map((member) => {
+                      const capacityPercent = Math.min(100, Math.round((member.assigned / 8) * 100))
+
+                      return (
+                        <tr key={member.id} className="hover:bg-muted/30 transition-colors">
+                          <td className="py-3 font-medium text-foreground">
+                            <div className="flex items-center gap-2">
+                              <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px] shrink-0">
+                                {member.name.charAt(0)}
+                              </div>
+                              <div>
+                                <div className="font-semibold">{member.name}</div>
+                                <span className="text-[10px] text-muted-foreground">{member.role}</span>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3 text-center text-foreground font-bold">{member.assigned}</td>
+                          <td className="py-3 text-center text-amber-400 font-semibold">{member.inProgress}</td>
+                          <td className="py-3 text-center text-emerald-400 font-semibold">{member.completed}</td>
+                          <td className="py-3 text-center font-semibold">
+                            <span className={member.overdue > 0 ? 'text-rose-400 font-bold' : 'text-muted-foreground'}>
+                              {member.overdue}
+                            </span>
+                          </td>
+                          <td className="py-3 text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className={cn(
+                                    "h-full rounded-full transition-all",
+                                    capacityPercent >= 90
+                                      ? "bg-rose-500"
+                                      : capacityPercent >= 60
+                                      ? "bg-amber-500"
+                                      : "bg-emerald-500"
+                                  )}
+                                  style={{ width: `${capacityPercent}%` }}
+                                />
+                              </div>
+                              <span className="text-[10px] font-mono text-muted-foreground w-7">
+                                {capacityPercent}%
+                              </span>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* VIEW: OVERVIEW & APPROVALS (DEFAULT) */}
+      {dashboardViewMode === 'OVERVIEW' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* EDITORIAL APPROVAL QUEUE */}
+            <Card className="bg-card border-border shadow-xs flex flex-col">
+              <CardHeader className="p-4 pb-3 border-b border-border flex flex-row items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <ShieldCheck className="w-4 h-4 text-indigo-400" />
+                  <CardTitle className="text-sm font-semibold text-foreground">
+                    Editorial Sign-Off Queue ({inReviewTasks.length})
+                  </CardTitle>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => setReviewFilter('All')}
+                    className={cn(
+                      "px-2 py-1 rounded text-[11px] font-semibold transition-colors",
+                      reviewFilter === 'All' ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    All ({inReviewTasks.length})
+                  </button>
+                  <button
+                    onClick={() => setReviewFilter('In Review')}
+                    className={cn(
+                      "px-2 py-1 rounded text-[11px] font-semibold transition-colors",
+                      reviewFilter === 'In Review' ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    In Review
+                  </button>
+                  <button
+                    onClick={() => setReviewFilter('Changes Requested')}
+                    className={cn(
+                      "px-2 py-1 rounded text-[11px] font-semibold transition-colors",
+                      reviewFilter === 'Changes Requested' ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    Revisions
+                  </button>
+                </div>
+              </CardHeader>
+
+              <CardContent className="p-4 space-y-3 flex-1 overflow-y-auto max-h-[460px]">
+                {filteredReviewQueue.length === 0 ? (
+                  <div className="py-12 text-center space-y-2">
+                    <CheckCircle2 className="w-8 h-8 text-emerald-400 mx-auto" />
+                    <p className="text-xs font-semibold text-foreground">Editorial Pipeline Clear!</p>
+                    <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
+                      All submitted content deliverables have been reviewed and signed off.
+                    </p>
+                    <Link href="/content-management">
+                      <Button variant="outline" size="sm" className="text-xs border-border mt-2">
+                        <span>View Task Board</span>
+                      </Button>
+                    </Link>
+                  </div>
+                ) : (
+                  filteredReviewQueue.map((item) => {
+                    const deadlineState = computeDeadlineState(item.due_date, item.status)
+                    const isOverdue = deadlineState === 'Overdue'
 
                     return (
-                      <tr key={member.id} className="hover:bg-muted/30 transition-colors">
-                        <td className="py-3 font-medium text-foreground">
-                          <div className="flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[10px] shrink-0">
-                              {member.name.charAt(0)}
-                            </div>
-                            <div>
-                              <div className="font-semibold">{member.name}</div>
-                              <span className="text-[10px] text-muted-foreground">{member.role}</span>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="py-3 text-center text-foreground font-bold">{member.assigned}</td>
-                        <td className="py-3 text-center text-amber-400 font-semibold">{member.inProgress}</td>
-                        <td className="py-3 text-center text-emerald-400 font-semibold">{member.completed}</td>
-                        <td className="py-3 text-center font-semibold">
-                          <span className={member.overdue > 0 ? 'text-rose-400 font-bold' : 'text-muted-foreground'}>
-                            {member.overdue}
-                          </span>
-                        </td>
-                        <td className="py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
-                              <div
-                                className={cn(
-                                  "h-full rounded-full transition-all",
-                                  capacityPercent >= 90
-                                    ? "bg-rose-500"
-                                    : capacityPercent >= 60
-                                    ? "bg-amber-500"
-                                    : "bg-emerald-500"
-                                )}
-                                style={{ width: `${capacityPercent}%` }}
-                              />
-                            </div>
-                            <span className="text-[10px] font-mono text-muted-foreground w-7">
-                              {capacityPercent}%
-                            </span>
-                          </div>
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* 4. ROW 2: CONTENT DELIVERABLES BREAKDOWN & UPCOMING DEADLINES */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* CONTENT FORMAT & ASSET BREAKDOWN */}
-        <Card className="bg-card border-border shadow-xs">
-          <CardHeader className="p-4 pb-3 border-b border-border flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4 text-indigo-400" />
-              <CardTitle className="text-sm font-semibold text-foreground">
-                Content Deliverables by Format
-              </CardTitle>
-            </div>
-            <Link
-              href="/content-management"
-              className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
-            >
-              <span>View All</span>
-              <ArrowRight className="w-3 h-3" />
-            </Link>
-          </CardHeader>
-
-          <CardContent className="p-4 space-y-3.5">
-            {Object.keys(typeCounts).length === 0 ? (
-              <p className="text-xs text-muted-foreground py-6 text-center">No deliverables recorded yet.</p>
-            ) : (
-              Object.entries(typeCounts).map(([type, count]) => {
-                const percentage = totalTasks > 0 ? Math.round((count / totalTasks) * 100) : 0
-                return (
-                  <div key={type} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="font-semibold text-foreground">{type}</span>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <span className="font-bold text-foreground">{count}</span>
-                        <span className="text-[10px] font-mono">({percentage}%)</span>
-                      </div>
-                    </div>
-                    <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
                       <div
-                        className="h-full bg-primary rounded-full transition-all duration-300"
-                        style={{ width: `${percentage}%` }}
-                      />
-                    </div>
-                  </div>
-                )
-              })
-            )}
-          </CardContent>
-        </Card>
+                        key={item.id}
+                        className="p-3.5 bg-muted/20 border border-border rounded-xl space-y-2.5 text-xs transition-colors hover:border-primary/40 shadow-xs"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="space-y-1 min-w-0 flex-1">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="text-[10px] font-mono font-bold text-primary px-1.5 py-0.5 rounded bg-primary/10">
+                                {item.id}
+                              </span>
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-border">
+                                {item.content_type || 'Content'}
+                              </Badge>
+                              {renderPriorityBadge(item.priority)}
+                              {isOverdue && (
+                                <span className="text-[10px] font-bold text-rose-400 flex items-center gap-0.5">
+                                  <AlertTriangle className="w-2.5 h-2.5" />
+                                  <span>Overdue</span>
+                                </span>
+                              )}
+                            </div>
+                            <h4 className="font-bold text-foreground line-clamp-1">{item.title}</h4>
+                          </div>
 
-        {/* UPCOMING & OVERDUE DEADLINES */}
-        <Card className="bg-card border-border shadow-xs">
-          <CardHeader className="p-4 pb-3 border-b border-border flex flex-row items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-indigo-400" />
-              <CardTitle className="text-sm font-semibold text-foreground">
-                Editorial Deadlines & Milestones
-              </CardTitle>
-            </div>
-            <Link
-              href="/content-management"
-              className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
-            >
-              <span>Full Schedule</span>
-              <ArrowRight className="w-3 h-3" />
-            </Link>
-          </CardHeader>
+                          <Badge
+                            className={
+                              item.status === 'In Review'
+                                ? 'bg-indigo-500/15 text-indigo-400 border-indigo-500/30'
+                                : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                            }
+                          >
+                            {item.status}
+                          </Badge>
+                        </div>
 
-          <CardContent className="p-4 space-y-3 overflow-y-auto max-h-[360px]">
-            {overdueTasks.length > 0 && (
-              <div className="space-y-2">
-                <div className="text-[11px] font-bold uppercase tracking-wider text-rose-400 flex items-center gap-1.5">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  <span>Overdue Submissions ({overdueTasks.length})</span>
+                        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                          <span>Author: <strong className="text-foreground">{item.assigned_to_name || item.owner_name}</strong></span>
+                          <span>Due: <strong className={isOverdue ? "text-rose-400 font-bold" : "text-foreground"}>
+                            {item.due_date ? dayjs(item.due_date).format('DD MMM YYYY') : 'Not set'}
+                          </strong></span>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-2 border-t border-border/60">
+                          <Link
+                            href="/content-management"
+                            className="text-[11px] text-primary hover:underline flex items-center gap-1 font-medium"
+                          >
+                            <span>Inspect Brief</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </Link>
+
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              disabled={processingId === item.id}
+                              onClick={() => handleEditorialDecision(item.id, 'Completed', 'Approved')}
+                              className="px-2.5 py-1 bg-emerald-500/15 text-emerald-400 hover:bg-emerald-500/25 border border-emerald-500/30 rounded-lg transition-colors text-[11px] font-semibold flex items-center gap-1 shadow-xs"
+                            >
+                              <Check className="w-3 h-3" />
+                              <span>Approve</span>
+                            </button>
+                            <button
+                              disabled={processingId === item.id}
+                              onClick={() => handleEditorialDecision(item.id, 'Changes Requested', 'Changes Requested')}
+                              className="px-2.5 py-1 bg-amber-500/15 text-amber-400 hover:bg-amber-500/25 border border-amber-500/30 rounded-lg transition-colors text-[11px] font-semibold shadow-xs"
+                            >
+                              <span>Changes</span>
+                            </button>
+                            <button
+                              disabled={processingId === item.id}
+                              onClick={() => handleEditorialDecision(item.id, 'Rejected', 'Rejected')}
+                              className="px-2.5 py-1 bg-rose-500/15 text-rose-400 hover:bg-rose-500/25 border border-rose-500/30 rounded-lg transition-colors text-[11px] font-semibold shadow-xs"
+                            >
+                              <span>Reject</span>
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </CardContent>
+            </Card>
+
+            {/* CONTENT FORMAT & ASSET BREAKDOWN */}
+            <Card className="bg-card border-border shadow-xs flex flex-col justify-between">
+              <CardHeader className="p-4 pb-3 border-b border-border flex flex-row items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Layers className="w-4 h-4 text-indigo-400" />
+                  <CardTitle className="text-sm font-semibold text-foreground">
+                    Content Deliverables by Format
+                  </CardTitle>
                 </div>
-                {overdueTasks.map((t) => (
-                  <div
-                    key={t.id}
-                    className="p-3 bg-rose-500/10 border border-rose-500/25 rounded-xl flex items-center justify-between gap-3 text-xs"
-                  >
-                    <div className="space-y-0.5 min-w-0">
-                      <h5 className="font-bold text-foreground truncate">{t.title}</h5>
-                      <div className="text-muted-foreground flex items-center gap-2 text-[11px]">
-                        <span>Assignee: <strong className="text-foreground">{t.assigned_to_name || 'Unassigned'}</strong></span>
-                        <span>&bull;</span>
-                        <span className="text-rose-400 font-bold">Due: {dayjs(t.due_date).format('DD MMM YYYY')}</span>
-                      </div>
-                    </div>
-                    <Badge className="bg-rose-500/20 text-rose-300 border-rose-500/40 text-[10px] shrink-0">
-                      Overdue
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
+                <Link
+                  href="/content-management"
+                  className="text-xs text-primary hover:underline flex items-center gap-1 font-medium"
+                >
+                  <span>View All</span>
+                  <ArrowRight className="w-3 h-3" />
+                </Link>
+              </CardHeader>
 
-            {/* Upcoming items */}
-            <div className="space-y-2 pt-2 border-t border-border">
-              <div className="text-[11px] font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5" />
-                <span>Upcoming Deliverables</span>
-              </div>
-              {items
-                .filter((t) => t.status !== 'Completed' && t.status !== 'Published' && t.status !== 'Approved' && computeDeadlineState(t.due_date, t.status) !== 'Overdue')
-                .slice(0, 4)
-                .map((t) => (
-                  <div
-                    key={t.id}
-                    className="p-3 bg-muted/20 border border-border rounded-xl flex items-center justify-between gap-3 text-xs"
-                  >
-                    <div className="space-y-0.5 min-w-0">
-                      <h5 className="font-bold text-foreground truncate">{t.title}</h5>
-                      <div className="text-muted-foreground flex items-center gap-2 text-[11px]">
-                        <span>Assignee: <strong className="text-foreground">{t.assigned_to_name || 'Unassigned'}</strong></span>
-                        <span>&bull;</span>
-                        <span>Due: {t.due_date ? dayjs(t.due_date).format('DD MMM YYYY') : 'Flexible'}</span>
+              <CardContent className="p-4 space-y-3.5 flex-1">
+                {Object.keys(typeCounts).length === 0 ? (
+                  <p className="text-xs text-muted-foreground py-6 text-center">No deliverables recorded yet.</p>
+                ) : (
+                  Object.entries(typeCounts).map(([type, count]) => {
+                    const percentage = totalTasks > 0 ? Math.round((count / totalTasks) * 100) : 0
+                    return (
+                      <div key={type} className="space-y-1.5">
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="font-semibold text-foreground">{type}</span>
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <span className="font-bold text-foreground">{count}</span>
+                            <span className="text-[10px] font-mono">({percentage}%)</span>
+                          </div>
+                        </div>
+                        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-primary rounded-full transition-all duration-300"
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <Badge variant="outline" className="text-[10px] border-border shrink-0">
-                      {t.status}
-                    </Badge>
-                  </div>
-                ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                    )
+                  })
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
