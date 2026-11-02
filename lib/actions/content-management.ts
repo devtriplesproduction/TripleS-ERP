@@ -679,7 +679,7 @@ export async function toggleContentCategoryStatus(id: string): Promise<{ success
   }
 }
 
-export async function deleteContentCategory(id: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteContentCategory(id: string, name?: string): Promise<{ success: boolean; error?: string }> {
   try {
     const categories = readStore<ContentCategory[]>(CONTENT_CATEGORIES_FILE, DEFAULT_CATEGORIES)
     const filtered = categories.filter(c => c.id !== id && c.name.toLowerCase() !== id.toLowerCase())
@@ -728,7 +728,7 @@ export async function createContentTag(name: string, color?: string): Promise<{ 
   }
 }
 
-export async function deleteContentTag(id: string): Promise<{ success: boolean; error?: string }> {
+export async function deleteContentTag(id: string, name?: string): Promise<{ success: boolean; error?: string }> {
   try {
     const tags = readStore<ContentTag[]>(CONTENT_TAGS_FILE, DEFAULT_TAGS)
     const filtered = tags.filter(t => t.id !== id && t.name.toLowerCase() !== id.toLowerCase())

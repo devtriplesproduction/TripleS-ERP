@@ -352,16 +352,6 @@ export async function updateEmployeeData(id: string, data: Partial<Employee>): P
       console.warn('Auth user email sync warning:', authErr)
     }
   }
-        u.email === currentEmployee.email ||
-        (currentEmployee.employee_id_number && u.user_metadata?.employee_id === currentEmployee.employee_id_number)
-      )
-      if (authUser) {
-        await adminClient.auth.admin.updateUserById(authUser.id, { email: data.email })
-      }
-    } catch (authErr) {
-      console.warn('Auth user email sync warning:', authErr)
-    }
-  }
 
   revalidatePath(`/employees/${id}`)
   revalidatePath('/employees')

@@ -18,7 +18,9 @@ import {
   CheckSquare,
   Clock,
   FileText,
-  Download,\r\n  ExternalLink,\r\n  Landmark,
+  Download,
+  ExternalLink,
+  Landmark,
 } from 'lucide-react'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
