@@ -1,3 +1,5 @@
+import dayjs from 'dayjs'
+
 export interface ContentTaskComment {
   id: string
   task_id: string
@@ -31,7 +33,22 @@ export type AssignedRole =
   | 'SEO Specialist'
   | 'Video Editor'
   | 'Graphic Designer'
-export type DeadlineState = 'Upcoming' | 'Pending' | 'Overdue' | 'Completed'
+export type DeadlineCategory =
+  | 'Overdue'
+  | 'Due Today'
+  | 'Due This Week'
+  | 'Upcoming'
+  | 'Completed'
+  | 'No Deadline'
+
+export type DeadlineState =
+  | 'Upcoming'
+  | 'Pending'
+  | 'Overdue'
+  | 'Completed'
+  | 'Due Today'
+  | 'Due This Week'
+  | 'No Deadline'
 export type FreshnessState = 'Fresh' | 'Due Soon' | 'Outdated' | 'Unreviewed'
 
 export interface ContentAttachment {
@@ -365,22 +382,54 @@ export interface UpdateContentInput {
   scheduled_publish_time?: string | null
 }
 
+export function computeDeadlineCategory(dueDate?: string | null, status?: ContentStatus): DeadlineCategory {
+  if (status === 'Published' || status === 'Approved' || status === 'Completed') {
+    return 'Completed'
+  }
+  if (!dueDate || !dueDate.trim()) {
+    return 'No Deadline'
+  }
+  const cleanDate = dueDate.slice(0, 10)
+  const due = dayjs(cleanDate).startOf('day')
+  if (!due.isValid()) {
+    return 'No Deadline'
+  }
+  const today = dayjs().startOf('day')
+  const diffDays = due.diff(today, 'day')
+
+  if (diffDays < 0) {
+    return 'Overdue'
+  }
+  if (diffDays === 0) {
+    return 'Due Today'
+  }
+  if (diffDays <= 7) {
+    return 'Due This Week'
+  }
+  return 'Upcoming'
+}
+
 export function computeDeadlineState(dueDate?: string | null, status?: ContentStatus): DeadlineState {
   if (status === 'Published' || status === 'Approved' || status === 'Completed') {
     return 'Completed'
   }
-  if (!dueDate) {
+  if (!dueDate || !dueDate.trim()) {
     return 'Pending'
   }
-  const now = new Date()
-  const todayStr = now.toISOString().slice(0, 10)
-  const dueStr = dueDate.slice(0, 10)
-  if (dueStr < todayStr) {
+  const cleanDate = dueDate.slice(0, 10)
+  const due = dayjs(cleanDate).startOf('day')
+  if (!due.isValid()) {
+    return 'Pending'
+  }
+  const today = dayjs().startOf('day')
+  const diffDays = due.diff(today, 'day')
+
+  if (diffDays < 0) {
     return 'Overdue'
   }
-  const due = new Date(dueDate)
-  const diffTime = due.getTime() - now.getTime()
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+  if (diffDays === 0) {
+    return 'Due Today'
+  }
   if (diffDays <= 3) {
     return 'Upcoming'
   }

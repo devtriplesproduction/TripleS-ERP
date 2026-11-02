@@ -14,7 +14,7 @@ import {
   Pencil,
   CheckCircle2
 } from 'lucide-react'
-import { ContentItem, ContentStatus, ContentPriority, computeDeadlineState } from '@/types/content-management'
+import { ContentItem, ContentStatus, ContentPriority, computeDeadlineState, computeDeadlineCategory } from '@/types/content-management'
 import { AssignableEmployee } from '@/lib/actions/team'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -360,9 +360,17 @@ export function ContentGanttChart({
                   const isDraggingThis = dragState?.item.id === item.id
                   const deltaDays = isDraggingThis ? dragState.deltaDays : 0
 
-                  // Calculate start & due relative to timeline range
-                  let rawStart = item.start_date ? dayjs(item.start_date) : dayjs(item.created_at || rangeStart)
-                  let rawDue = item.due_date ? dayjs(item.due_date) : rawStart.add(3, 'day')
+                  // Calculate start & due relative to timeline range with safe local date parsing
+                  let rawStart = dayjs(
+                    item.start_date
+                      ? item.start_date.slice(0, 10)
+                      : item.created_at
+                      ? item.created_at.slice(0, 10)
+                      : rangeStart.format('YYYY-MM-DD')
+                  ).startOf('day')
+                  let rawDue = item.due_date
+                    ? dayjs(item.due_date.slice(0, 10)).startOf('day')
+                    : rawStart.add(3, 'day')
 
                   // Apply drag / resize delta preview
                   if (isDraggingThis) {
@@ -403,8 +411,7 @@ export function ContentGanttChart({
                     ? 40
                     : 0
 
-                  const deadlineState = computeDeadlineState(item.due_date, item.status)
-                  const isOverdue = deadlineState === 'Overdue' && item.status !== 'Completed'
+                  const isOverdue = computeDeadlineCategory(item.due_date, item.status) === 'Overdue'
                   const isOverlapping = overlappingTaskIds.has(item.id)
 
                   // Bar color styling

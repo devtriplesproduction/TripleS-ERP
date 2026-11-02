@@ -889,6 +889,11 @@ export async function getContentItems(options?: ContentFilterOptions): Promise<{
 export async function createContentItem(input: CreateContentInput): Promise<{ success: boolean; data?: ContentItem; error?: string }> {
   try {
     const user = await getCurrentUser()
+
+    if (input.start_date && input.due_date && input.due_date.slice(0, 10) < input.start_date.slice(0, 10)) {
+      return { success: false, error: 'Deadline cannot be earlier than the start date.' }
+    }
+
     const rawItems = readStore<ContentItem[]>(CONTENT_ITEMS_FILE, [])
     const items = rawItems.map(normalizeContentItem)
 
@@ -1023,6 +1028,12 @@ export async function updateContentItem(id: string, input: UpdateContentInput): 
     const current = items[index]
     const now = new Date()
 
+    const effectiveStart = input.start_date !== undefined ? input.start_date : current.start_date
+    const effectiveDue = input.due_date !== undefined ? input.due_date : current.due_date
+    if (effectiveStart && effectiveDue && effectiveDue.slice(0, 10) < effectiveStart.slice(0, 10)) {
+      return { success: false, error: 'Deadline cannot be earlier than the start date.' }
+    }
+
     // Meaningful changes check for automated version increment
     const isMeaningfulChange =
       (input.title !== undefined && input.title.trim() !== current.title) ||
@@ -1057,8 +1068,30 @@ export async function updateContentItem(id: string, input: UpdateContentInput): 
       versionHistory.unshift(newVersionSnapshot)
     }
 
+    const isAssigneeChanged =
+      (input.assigned_to_id !== undefined && input.assigned_to_id !== current.assigned_to_id) ||
+      (input.assigned_to_name !== undefined && input.assigned_to_name !== current.assigned_to_name)
+
+    let assignmentHistory = [...(current.assignment_history || [])]
+    if (isAssigneeChanged && (input.assigned_to_id || input.assigned_to_name)) {
+      assignmentHistory.unshift({
+        id: 'ASG-' + Date.now().toString(36),
+        previous_assignee_id: current.assigned_to_id || null,
+        previous_assignee_name: current.assigned_to_name || null,
+        new_assignee_id: input.assigned_to_id || '',
+        new_assignee_name: input.assigned_to_name || 'Staff Member',
+        changed_by_id: user?.id || 'system',
+        changed_by_name: user?.employee_name || 'Manager',
+        date: formatDate(now),
+        time: formatTime(now),
+        reason: 'Reassigned task deliverable',
+        created_at: now.toISOString(),
+      })
+    }
+
     const updated: ContentItem = {
       ...current,
+      assignment_history: assignmentHistory,
       title: input.title !== undefined ? input.title.trim() : current.title,
       summary: input.summary !== undefined ? input.summary.trim() : current.summary,
       body: input.body !== undefined ? input.body.trim() : current.body,

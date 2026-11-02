@@ -27,7 +27,8 @@ import {
   Columns3,
   Workflow,
   ExternalLink,
-  Filter
+  Filter,
+  Timer
 } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -45,6 +46,8 @@ import {
   ContentPriority,
   CreateContentInput,
   computeDeadlineState,
+  computeDeadlineCategory,
+  DeadlineCategory,
 } from '@/types/content-management'
 import { Project } from '@/types/project-management'
 import { AssignableEmployee } from '@/lib/actions/team'
@@ -285,17 +288,19 @@ export function ContentManagementView({
 
   // Filtered tasks specifically for Assignments & Deadlines sections
   const filteredAssignmentsDeadlines = useMemo(() => {
-    const now = dayjs()
-    const todayFormatted = now.format('YYYY-MM-DD')
-    const nextWeek = now.add(7, 'day')
-
     return contentTasks.filter((item) => {
-      // Employee filter
+      // Employee filter (matches by assigned ID or Content Employee Name)
       if (adSelectedEmployee !== 'ALL') {
         if (adSelectedEmployee === 'UNASSIGNED') {
           if (item.assigned_to_id || item.assigned_to_name) return false
-        } else if (item.assigned_to_id !== adSelectedEmployee) {
-          return false
+        } else {
+          const matchesId = item.assigned_to_id === adSelectedEmployee
+          const emp = contentEmployees.find((e) => e.id === adSelectedEmployee)
+          const matchesName =
+            emp &&
+            item.assigned_to_name &&
+            emp.name.toLowerCase() === item.assigned_to_name.toLowerCase()
+          if (!matchesId && !matchesName) return false
         }
       }
 
@@ -310,28 +315,15 @@ export function ContentManagementView({
         if (getTaskColumn(item.status) !== adSelectedStatus) return false
       }
 
-      // Deadline filter
+      // Deadline category filter (accurate, timezone-safe calculation)
       if (adSelectedDeadlineType !== 'ALL') {
-        const isCompleted = getTaskColumn(item.status) === 'Completed'
-        const isOverdue = computeDeadlineState(item.due_date, item.status) === 'Overdue' && !isCompleted
-
-        if (adSelectedDeadlineType === 'OVERDUE') {
-          if (!isOverdue) return false
-        } else if (adSelectedDeadlineType === 'TODAY') {
-          if (!item.due_date || dayjs(item.due_date).format('YYYY-MM-DD') !== todayFormatted) {
-            return false
-          }
-        } else if (adSelectedDeadlineType === 'THIS_WEEK') {
-          if (!item.due_date) return false
-          const d = dayjs(item.due_date)
-          if (!d.isAfter(now.subtract(1, 'day')) || !d.isBefore(nextWeek.add(1, 'day'))) {
-            return false
-          }
-        } else if (adSelectedDeadlineType === 'UPCOMING') {
-          if (!item.due_date || !dayjs(item.due_date).isAfter(now)) {
-            return false
-          }
-        }
+        const cat = computeDeadlineCategory(item.due_date, item.status)
+        if (adSelectedDeadlineType === 'OVERDUE' && cat !== 'Overdue') return false
+        if (adSelectedDeadlineType === 'TODAY' && cat !== 'Due Today') return false
+        if (adSelectedDeadlineType === 'THIS_WEEK' && cat !== 'Due This Week') return false
+        if (adSelectedDeadlineType === 'UPCOMING' && cat !== 'Upcoming') return false
+        if (adSelectedDeadlineType === 'COMPLETED' && cat !== 'Completed') return false
+        if (adSelectedDeadlineType === 'NO_DEADLINE' && cat !== 'No Deadline') return false
       }
 
       // Search Query
@@ -348,6 +340,7 @@ export function ContentManagementView({
     })
   }, [
     contentTasks,
+    contentEmployees,
     adSelectedEmployee,
     adSelectedPriority,
     adSelectedStatus,
@@ -370,32 +363,31 @@ export function ContentManagementView({
     return map
   }, [filteredTasks])
 
-  // Statistics strictly for Content Management
+  // Statistics strictly for Content Management with live deadline categories
   const totalTasks = contentTasks.length
+
   const overdueCount = useMemo(() => {
-    return contentTasks.filter(
-      (i) =>
-        computeDeadlineState(i.due_date, i.status) === 'Overdue' &&
-        getTaskColumn(i.status) !== 'Completed'
-    ).length
+    return contentTasks.filter((i) => computeDeadlineCategory(i.due_date, i.status) === 'Overdue').length
   }, [contentTasks])
 
   const dueTodayCount = useMemo(() => {
-    return contentTasks.filter(
-      (i) =>
-        i.due_date &&
-        dayjs(i.due_date).format('YYYY-MM-DD') === todayStr &&
-        getTaskColumn(i.status) !== 'Completed'
-    ).length
-  }, [contentTasks, todayStr])
+    return contentTasks.filter((i) => computeDeadlineCategory(i.due_date, i.status) === 'Due Today').length
+  }, [contentTasks])
 
   const dueThisWeekCount = useMemo(() => {
-    const nextWeek = dayjs().add(7, 'day')
-    return contentTasks.filter((i) => {
-      if (!i.due_date || getTaskColumn(i.status) === 'Completed') return false
-      const d = dayjs(i.due_date)
-      return d.isAfter(dayjs().subtract(1, 'day')) && d.isBefore(nextWeek.add(1, 'day'))
-    }).length
+    return contentTasks.filter((i) => computeDeadlineCategory(i.due_date, i.status) === 'Due This Week').length
+  }, [contentTasks])
+
+  const upcomingCount = useMemo(() => {
+    return contentTasks.filter((i) => computeDeadlineCategory(i.due_date, i.status) === 'Upcoming').length
+  }, [contentTasks])
+
+  const completedCount = useMemo(() => {
+    return contentTasks.filter((i) => computeDeadlineCategory(i.due_date, i.status) === 'Completed').length
+  }, [contentTasks])
+
+  const noDeadlineCount = useMemo(() => {
+    return contentTasks.filter((i) => computeDeadlineCategory(i.due_date, i.status) === 'No Deadline').length
   }, [contentTasks])
 
   const unassignedCount = useMemo(() => {
@@ -434,7 +426,18 @@ export function ContentManagementView({
 
     // Assign content tasks
     contentTasks.forEach((item) => {
-      const key = item.assigned_to_id
+      let key = item.assigned_to_id
+      if (!key || !map[key]) {
+        if (item.assigned_to_name) {
+          const found = contentEmployees.find(
+            (e) => (e.name || '').toLowerCase() === item.assigned_to_name?.toLowerCase()
+          )
+          if (found) {
+            key = found.id
+          }
+        }
+      }
+
       if (key && map[key]) {
         map[key].tasks.push(item)
         const col = getTaskColumn(item.status)
@@ -444,7 +447,7 @@ export function ContentManagementView({
           map[key].completed += 1
         }
 
-        if (computeDeadlineState(item.due_date, item.status) === 'Overdue' && col !== 'Completed') {
+        if (computeDeadlineCategory(item.due_date, item.status) === 'Overdue') {
           map[key].overdue += 1
         }
       }
@@ -505,21 +508,45 @@ export function ContentManagementView({
           description: `Task moved to ${targetCol}.`,
         })
       } else {
+        // Rollback optimistic update
+        setItems((prev) => prev.map((i) => (i.id === taskId ? currentTask : i)))
+        if (viewItem && viewItem.id === taskId) {
+          setViewItem(currentTask)
+        }
         toast({
           title: 'Update Failed',
           description: res.error || 'Failed to update task status.',
           variant: 'destructive',
         })
       }
+    } catch {
+      setItems((prev) => prev.map((i) => (i.id === taskId ? currentTask : i)))
+      if (viewItem && viewItem.id === taskId) {
+        setViewItem(currentTask)
+      }
+      toast({ title: 'Error', description: 'Failed to update task status.', variant: 'destructive' })
     } finally {
       setUpdatingStatusId(null)
     }
   }
 
-  // In-place Reassign Employee Handler
+  // In-place Reassign Employee Handler with Validation & Rollback
   const handleReassignTask = async (itemId: string, newEmployeeId: string) => {
-    const emp = contentEmployees.find((e) => e.id === newEmployeeId)
-    const empName = emp ? (emp.name || (emp as any).employee_name) : null
+    let empName: string | null = null
+    if (newEmployeeId) {
+      const emp = contentEmployees.find((e) => e.id === newEmployeeId)
+      if (!emp) {
+        toast({
+          title: 'Invalid Employee',
+          description: 'Selected employee does not belong to Content Management.',
+          variant: 'destructive',
+        })
+        return
+      }
+      empName = emp.name || (emp as any).employee_name || null
+    }
+
+    const previousItem = items.find((i) => i.id === itemId)
 
     // Optimistic update
     setItems((prev) =>
@@ -555,6 +582,10 @@ export function ContentManagementView({
           description: `Task assigned to ${empName || 'Unassigned'}.`,
         })
       } else {
+        if (previousItem) {
+          setItems((prev) => prev.map((i) => (i.id === itemId ? previousItem : i)))
+          if (viewItem && viewItem.id === itemId) setViewItem(previousItem)
+        }
         toast({
           title: 'Assignment Failed',
           description: res.error || 'Failed to update assignment.',
@@ -562,15 +593,19 @@ export function ContentManagementView({
         })
       }
     } catch {
+      if (previousItem) {
+        setItems((prev) => prev.map((i) => (i.id === itemId ? previousItem : i)))
+        if (viewItem && viewItem.id === itemId) setViewItem(previousItem)
+      }
       toast({ title: 'Error', description: 'Could not reassign task', variant: 'destructive' })
     }
   }
 
-  // In-place Extend Deadline Handler
+  // In-place Extend Deadline Handler with Rollback
   const handleExtendDeadline = async (itemId: string, daysToAdd: number) => {
     const item = items.find((i) => i.id === itemId)
     if (!item) return
-    const currentDue = item.due_date ? dayjs(item.due_date) : dayjs()
+    const currentDue = item.due_date ? dayjs(item.due_date.slice(0, 10)) : dayjs().startOf('day')
     const newDue = currentDue.add(daysToAdd, 'day').format('YYYY-MM-DD')
 
     setItems((prev) =>
@@ -585,22 +620,51 @@ export function ContentManagementView({
       )
     )
 
+    if (viewItem && viewItem.id === itemId) {
+      setViewItem((prev) => (prev ? { ...prev, due_date: newDue } : null))
+    }
+
     try {
       const res = await updateContentItem(itemId, { due_date: newDue })
       if (res.success && res.data) {
         setItems((prev) => prev.map((i) => (i.id === itemId ? res.data! : i)))
+        if (viewItem && viewItem.id === itemId) {
+          setViewItem(res.data)
+        }
         toast({
           title: 'Deadline Rescheduled',
           description: `New deadline set to ${dayjs(newDue).format('DD MMM YYYY')}.`,
         })
+      } else {
+        setItems((prev) => prev.map((i) => (i.id === itemId ? item : i)))
+        if (viewItem && viewItem.id === itemId) setViewItem(item)
+        toast({
+          title: 'Reschedule Failed',
+          description: res.error || 'Failed to extend deadline.',
+          variant: 'destructive',
+        })
       }
     } catch {
+      setItems((prev) => prev.map((i) => (i.id === itemId ? item : i)))
+      if (viewItem && viewItem.id === itemId) setViewItem(item)
       toast({ title: 'Error', description: 'Could not extend deadline', variant: 'destructive' })
     }
   }
 
-  // Synchronized Date Change Handler (Gantt Drag/Resize & Calendar Drag-and-Drop)
+  // Synchronized Date Change Handler with Date Validation & Rollback
   const handleDateChange = async (itemId: string, newStartDate: string, newDueDate: string) => {
+    // Validate deadline is not earlier than start date
+    if (newStartDate && newDueDate && newDueDate.slice(0, 10) < newStartDate.slice(0, 10)) {
+      toast({
+        title: 'Invalid Date Range',
+        description: 'Deadline cannot be earlier than start date.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    const previousItem = items.find((i) => i.id === itemId)
+
     // Optimistic UI update across all views (Kanban, Gantt, Calendar, Deadlines)
     setItems((prev) =>
       prev.map((i) =>
@@ -638,6 +702,10 @@ export function ContentManagementView({
               : `Deliverable scheduled: ${dayjs(newStartDate).format('DD MMM')} – ${dayjs(newDueDate).format('DD MMM YYYY')}.`,
         })
       } else {
+        if (previousItem) {
+          setItems((prev) => prev.map((i) => (i.id === itemId ? previousItem : i)))
+          if (viewItem && viewItem.id === itemId) setViewItem(previousItem)
+        }
         toast({
           title: 'Update Failed',
           description: res.error || 'Failed to update schedule dates.',
@@ -645,6 +713,10 @@ export function ContentManagementView({
         })
       }
     } catch (err: any) {
+      if (previousItem) {
+        setItems((prev) => prev.map((i) => (i.id === itemId ? previousItem : i)))
+        if (viewItem && viewItem.id === itemId) setViewItem(previousItem)
+      }
       toast({
         title: 'Error',
         description: err.message || 'Could not update task dates.',
@@ -686,6 +758,29 @@ export function ContentManagementView({
     if (!formData.description.trim()) {
       toast({ title: 'Description Required', description: 'Please enter a task description.', variant: 'destructive' })
       return
+    }
+
+    // Validate deadline is not earlier than start date
+    if (formData.start_date && formData.due_date && formData.due_date.slice(0, 10) < formData.start_date.slice(0, 10)) {
+      toast({
+        title: 'Invalid Date Range',
+        description: 'Deadline cannot be earlier than start date.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    // Validate employee ID against Content Management department employees
+    if (formData.assigned_to_id) {
+      const isValid = contentEmployees.some((e) => e.id === formData.assigned_to_id)
+      if (!isValid) {
+        toast({
+          title: 'Invalid Assignment',
+          description: 'Selected employee does not belong to Content Management.',
+          variant: 'destructive',
+        })
+        return
+      }
     }
 
     setIsSubmitting(true)
@@ -785,6 +880,34 @@ export function ContentManagementView({
   const handleSaveEditedTask = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editingItem) return
+
+    if (!editingItem.title.trim()) {
+      toast({ title: 'Title Required', description: 'Please enter a task title.', variant: 'destructive' })
+      return
+    }
+
+    // Validate deadline is not earlier than start date
+    if (editingItem.start_date && editingItem.due_date && editingItem.due_date.slice(0, 10) < editingItem.start_date.slice(0, 10)) {
+      toast({
+        title: 'Invalid Date Range',
+        description: 'Deadline cannot be earlier than start date.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    // Validate employee ID against Content Management department employees
+    if (editingItem.assigned_to_id) {
+      const isValid = contentEmployees.some((e) => e.id === editingItem.assigned_to_id)
+      if (!isValid) {
+        toast({
+          title: 'Invalid Assignment',
+          description: 'Selected employee does not belong to Content Management.',
+          variant: 'destructive',
+        })
+        return
+      }
+    }
 
     setIsSubmitting(true)
     try {
@@ -1488,19 +1611,36 @@ export function ContentManagementView({
 
                             {/* Assigned Content Employee with In-place Reassign Dropdown */}
                             <td className="p-3.5">
-                              <select
-                                value={task.assigned_to_id || ''}
-                                onChange={(e) => handleReassignTask(task.id, e.target.value)}
-                                className="h-8 px-2 rounded-lg text-xs bg-muted/40 border border-border text-foreground font-medium outline-none cursor-pointer max-w-[150px] truncate"
-                                title="Change assigned content staff"
-                              >
-                                <option value="">Unassigned</option>
-                                {contentEmployees.map((e) => (
-                                  <option key={e.id} value={e.id}>
-                                    {e.name || (e as any).employee_name}
-                                  </option>
-                                ))}
-                              </select>
+                              {(() => {
+                                const matchingEmp = contentEmployees.find(
+                                  (e) =>
+                                    e.id === task.assigned_to_id ||
+                                    (e.name &&
+                                      task.assigned_to_name &&
+                                      e.name.toLowerCase() === task.assigned_to_name.toLowerCase())
+                                )
+                                const currentEmpId = matchingEmp ? matchingEmp.id : task.assigned_to_id || ''
+
+                                return (
+                                  <select
+                                    value={currentEmpId}
+                                    onChange={(e) => handleReassignTask(task.id, e.target.value)}
+                                    className="h-8 px-2 rounded-lg text-xs bg-muted/40 border border-border text-foreground font-medium outline-none cursor-pointer max-w-[160px] truncate"
+                                    title="Change assigned content staff"
+                                  >
+                                    <option value="">
+                                      {task.assigned_to_name && !contentEmployees.some((e) => e.id === task.assigned_to_id)
+                                        ? task.assigned_to_name
+                                        : 'Unassigned'}
+                                    </option>
+                                    {contentEmployees.map((e) => (
+                                      <option key={e.id} value={e.id}>
+                                        {e.name || (e as any).employee_name}
+                                      </option>
+                                    ))}
+                                  </select>
+                                )
+                              })()}
                             </td>
 
                             {/* Assignment / Creation Date */}
@@ -1677,45 +1817,61 @@ export function ContentManagementView({
             <span className="text-xs text-muted-foreground font-medium">Viewing Department Deadlines</span>
           </div>
           {/* Top KPI Summary Strip for Deadlines */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="p-3.5 rounded-xl bg-card border border-border shadow-xs">
               <span className="text-xs text-rose-400 font-semibold flex items-center justify-between">
-                <span>Overdue Deadlines</span>
-                <AlertTriangle className="w-4 h-4 text-rose-400" />
+                <span>Overdue</span>
+                <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
               </span>
               <p className={cn("text-2xl font-bold mt-1", overdueCount > 0 ? "text-rose-400" : "text-foreground")}>
                 {overdueCount}
               </p>
-              <span className="text-[10px] text-muted-foreground">Requires immediate review</span>
+              <span className="text-[10px] text-muted-foreground">Action required</span>
             </div>
 
-            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+            <div className="p-3.5 rounded-xl bg-card border border-border shadow-xs">
               <span className="text-xs text-amber-400 font-semibold flex items-center justify-between">
                 <span>Due Today</span>
-                <Clock className="w-4 h-4 text-amber-400" />
+                <Clock className="w-3.5 h-3.5 text-amber-400" />
               </span>
               <p className="text-2xl font-bold text-amber-400 mt-1">{dueTodayCount}</p>
-              <span className="text-[10px] text-muted-foreground">Due by end of day</span>
+              <span className="text-[10px] text-muted-foreground">Due by midnight</span>
             </div>
 
-            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+            <div className="p-3.5 rounded-xl bg-card border border-border shadow-xs">
               <span className="text-xs text-primary font-semibold flex items-center justify-between">
                 <span>Due This Week</span>
-                <Calendar className="w-4 h-4 text-primary" />
+                <Calendar className="w-3.5 h-3.5 text-primary" />
               </span>
               <p className="text-2xl font-bold text-foreground mt-1">{dueThisWeekCount}</p>
-              <span className="text-[10px] text-muted-foreground">Next 7 calendar days</span>
+              <span className="text-[10px] text-muted-foreground">Next 7 days</span>
             </div>
 
-            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
-              <span className="text-xs text-emerald-400 font-semibold flex items-center justify-between">
-                <span>Upcoming & Flexible</span>
-                <CalendarDays className="w-4 h-4 text-emerald-400" />
+            <div className="p-3.5 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-indigo-400 font-semibold flex items-center justify-between">
+                <span>Upcoming</span>
+                <CalendarDays className="w-3.5 h-3.5 text-indigo-400" />
               </span>
-              <p className="text-2xl font-bold text-foreground mt-1">
-                {contentTasks.filter((t) => !t.due_date || dayjs(t.due_date).isAfter(dayjs().add(7, 'day'))).length}
-              </p>
-              <span className="text-[10px] text-muted-foreground">Scheduled beyond 7 days</span>
+              <p className="text-2xl font-bold text-foreground mt-1">{upcomingCount}</p>
+              <span className="text-[10px] text-muted-foreground">Beyond 7 days</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-emerald-400 font-semibold flex items-center justify-between">
+                <span>Completed</span>
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              </span>
+              <p className="text-2xl font-bold text-emerald-400 mt-1">{completedCount}</p>
+              <span className="text-[10px] text-muted-foreground">Deliverables done</span>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-muted-foreground font-semibold flex items-center justify-between">
+                <span>No Deadline</span>
+                <Timer className="w-3.5 h-3.5 text-muted-foreground" />
+              </span>
+              <p className="text-2xl font-bold text-muted-foreground mt-1">{noDeadlineCount}</p>
+              <span className="text-[10px] text-muted-foreground">Flexible timeline</span>
             </div>
           </div>
 
@@ -1756,13 +1912,15 @@ export function ContentManagementView({
                 onChange={(val) => setAdSelectedDeadlineType(val || 'ALL')}
                 options={[
                   { value: 'ALL', label: 'All Deadlines' },
-                  { value: 'OVERDUE', label: 'Overdue Only' },
-                  { value: 'TODAY', label: 'Due Today' },
-                  { value: 'THIS_WEEK', label: 'Due This Week' },
-                  { value: 'UPCOMING', label: 'Upcoming' },
+                  { value: 'OVERDUE', label: `Overdue (${overdueCount})` },
+                  { value: 'TODAY', label: `Due Today (${dueTodayCount})` },
+                  { value: 'THIS_WEEK', label: `Due This Week (${dueThisWeekCount})` },
+                  { value: 'UPCOMING', label: `Upcoming (${upcomingCount})` },
+                  { value: 'COMPLETED', label: `Completed (${completedCount})` },
+                  { value: 'NO_DEADLINE', label: `No Deadline (${noDeadlineCount})` },
                 ]}
                 className="w-auto space-y-0 shrink-0"
-                buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[125px] shadow-xs hover:border-foreground/30 transition-colors"
+                buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[130px] shadow-xs hover:border-foreground/30 transition-colors"
               />
 
               {/* Priority Filter */}
@@ -1791,7 +1949,7 @@ export function ContentManagementView({
                     <th className="p-3.5">Task Deliverable</th>
                     <th className="p-3.5">Assigned Employee</th>
                     <th className="p-3.5">Start Date</th>
-                    <th className="p-3.5">Deadline</th>
+                    <th className="p-3.5">Deadline & Category</th>
                     <th className="p-3.5">Priority</th>
                     <th className="p-3.5">Status</th>
                     <th className="p-3.5 text-right">Quick Reschedule</th>
@@ -1806,9 +1964,15 @@ export function ContentManagementView({
                     </tr>
                   ) : (
                     filteredAssignmentsDeadlines.map((task) => {
-                      const deadlineState = computeDeadlineState(task.due_date, task.status)
-                      const isOverdue =
-                        deadlineState === 'Overdue' && getTaskColumn(task.status) !== 'Completed'
+                      const deadlineCat = computeDeadlineCategory(task.due_date, task.status)
+                      const matchingEmp = contentEmployees.find(
+                        (e) =>
+                          e.id === task.assigned_to_id ||
+                          (e.name &&
+                            task.assigned_to_name &&
+                            e.name.toLowerCase() === task.assigned_to_name.toLowerCase())
+                      )
+                      const currentEmpId = matchingEmp ? matchingEmp.id : task.assigned_to_id || ''
 
                       return (
                         <tr
@@ -1834,30 +1998,71 @@ export function ContentManagementView({
                             </div>
                           </td>
 
-                          {/* Assigned Employee */}
+                          {/* Assigned Employee with In-place Reassignment */}
                           <td className="p-3.5">
-                            <span className="font-medium text-foreground">
-                              {task.assigned_to_name || 'Unassigned'}
-                            </span>
+                            <select
+                              value={currentEmpId}
+                              onChange={(e) => handleReassignTask(task.id, e.target.value)}
+                              className="h-8 px-2 rounded-lg text-xs bg-muted/40 border border-border text-foreground font-medium outline-none cursor-pointer max-w-[160px] truncate"
+                              title="Change assigned content staff"
+                            >
+                              <option value="">
+                                {task.assigned_to_name && !contentEmployees.some((e) => e.id === task.assigned_to_id)
+                                  ? task.assigned_to_name
+                                  : 'Unassigned'}
+                              </option>
+                              {contentEmployees.map((e) => (
+                                <option key={e.id} value={e.id}>
+                                  {e.name || (e as any).employee_name}
+                                </option>
+                              ))}
+                            </select>
                           </td>
 
                           {/* Start Date */}
                           <td className="p-3.5 text-foreground font-mono text-[11px]">
-                            {task.start_date ? dayjs(task.start_date).format('DD MMM YYYY') : '-'}
+                            {task.start_date ? dayjs(task.start_date.slice(0, 10)).format('DD MMM YYYY') : '-'}
                           </td>
 
-                          {/* Due Date / Deadline */}
+                          {/* Due Date / Deadline with Accurate Category Badge */}
                           <td className="p-3.5">
-                            <div className="flex items-center gap-1.5 font-mono text-[11px]">
-                              {isOverdue ? (
-                                <span className="flex items-center gap-1 text-rose-400 font-bold">
-                                  <AlertTriangle className="w-3 h-3 shrink-0" />
-                                  <span>{dayjs(task.due_date).format('DD MMM')} (Overdue)</span>
-                                </span>
-                              ) : (
-                                <span className="text-foreground">
-                                  {task.due_date ? dayjs(task.due_date).format('DD MMM YYYY') : 'Flexible'}
-                                </span>
+                            <div className="flex items-center gap-2 font-mono text-[11px] flex-wrap">
+                              <span className="text-foreground">
+                                {task.due_date ? dayjs(task.due_date.slice(0, 10)).format('DD MMM YYYY') : 'No Deadline'}
+                              </span>
+                              {deadlineCat === 'Overdue' && (
+                                <Badge className="bg-rose-500/15 text-rose-400 border-rose-500/30 text-[10px] px-1.5 py-0 font-sans flex items-center gap-1">
+                                  <AlertTriangle className="w-2.5 h-2.5" />
+                                  <span>Overdue</span>
+                                </Badge>
+                              )}
+                              {deadlineCat === 'Due Today' && (
+                                <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-[10px] px-1.5 py-0 font-sans flex items-center gap-1">
+                                  <Clock className="w-2.5 h-2.5" />
+                                  <span>Due Today</span>
+                                </Badge>
+                              )}
+                              {deadlineCat === 'Due This Week' && (
+                                <Badge className="bg-primary/15 text-primary border-primary/30 text-[10px] px-1.5 py-0 font-sans flex items-center gap-1">
+                                  <Calendar className="w-2.5 h-2.5" />
+                                  <span>Due This Week</span>
+                                </Badge>
+                              )}
+                              {deadlineCat === 'Upcoming' && (
+                                <Badge variant="outline" className="text-muted-foreground border-border text-[10px] px-1.5 py-0 font-sans">
+                                  Upcoming
+                                </Badge>
+                              )}
+                              {deadlineCat === 'Completed' && (
+                                <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[10px] px-1.5 py-0 font-sans flex items-center gap-1">
+                                  <CheckCircle2 className="w-2.5 h-2.5" />
+                                  <span>Completed</span>
+                                </Badge>
+                              )}
+                              {deadlineCat === 'No Deadline' && (
+                                <Badge variant="outline" className="text-muted-foreground/60 border-border/60 text-[10px] px-1.5 py-0 font-sans">
+                                  No Deadline
+                                </Badge>
                               )}
                             </div>
                           </td>

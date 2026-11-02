@@ -225,7 +225,7 @@
       "Employees"
     ],
     "created_at": "2026-10-20T10:00:00.000Z",
-    "updated_at": "2026-11-02T12:39:22.934Z",
+    "updated_at": "2026-11-02T13:44:53.749Z",
     "due_date": "2026-11-02",
     "assigned_to_id": "af354098-e268-4294-889f-130387cf916b",
     "assigned_to_name": "Kavita Verma",
@@ -247,7 +247,7 @@
         "created_at": "2026-10-28T16:00:00.000Z"
       }
     ],
-    "start_date": "2026-10-20",
+    "start_date": "2026-11-02",
     "instructions": null,
     "progress": 100,
     "reference_attachment": null,
@@ -424,15 +424,15 @@
       "Setup"
     ],
     "created_at": "2026-10-28T09:00:00.000Z",
-    "updated_at": "2026-11-02T13:13:44.221Z",
-    "due_date": "2026-11-12",
+    "updated_at": "2026-11-02T13:44:41.564Z",
+    "due_date": "2026-11-15",
     "assigned_to_id": "ba210f01-f9f9-4fe2-8b8d-af9c7285884e",
     "assigned_to_name": "Harishchandra Nanavare",
     "assigned_role": "Developer",
     "priority": "Medium",
     "assignment_history": [],
     "review_history": [],
-    "start_date": "2026-10-28",
+    "start_date": "2026-11-01",
     "instructions": null,
     "progress": 0,
     "reference_attachment": null,
