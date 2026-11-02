@@ -79,8 +79,8 @@ interface ContentManagementViewProps {
   user: AuthUser
 }
 
-// Exactly One Main Tab: Task Board
-type MainTab = 'board'
+// Main Navigation Tabs: Task Board, Assignments, Deadlines
+type MainTab = 'board' | 'assignments' | 'deadlines'
 type BoardColumnKey = 'To Do' | 'In Progress' | 'In Review' | 'Completed'
 type SecondaryBoardView = 'kanban' | 'gantt' | 'calendar'
 
@@ -111,7 +111,7 @@ export function ContentManagementView({
 }: ContentManagementViewProps) {
   const [items, setItems] = useState<ContentItem[]>(initialItems || [])
   
-  // Main Tab: Task Board
+  // Main Tab: Task Board | Assignments | Deadlines
   const [activeTab, setActiveTab] = useState<MainTab>('board')
 
   // Secondary View Switcher inside Task Board: Kanban | Gantt | Calendar (Icons Only)
@@ -119,6 +119,14 @@ export function ContentManagementView({
 
   // Task Board Search Filter
   const [searchQuery, setSearchQuery] = useState('')
+
+  // Assignments & Deadlines Section Filters & View Modes
+  const [adSearchQuery, setAdSearchQuery] = useState('')
+  const [adSelectedEmployee, setAdSelectedEmployee] = useState<string>('ALL')
+  const [adSelectedPriority, setAdSelectedPriority] = useState<string>('ALL')
+  const [adSelectedStatus, setAdSelectedStatus] = useState<string>('ALL')
+  const [adSelectedDeadlineType, setAdSelectedDeadlineType] = useState<string>('ALL')
+  const [adViewMode, setAdViewMode] = useState<'table' | 'workload'>('table')
 
   // HTML5 Drag and Drop state
   const [draggedTaskId, setDraggedTaskId] = useState<string | null>(null)
@@ -268,6 +276,78 @@ export function ContentManagementView({
       return matchesTitle || matchesSummary || matchesBody || matchesAssignee || matchesType
     })
   }, [contentTasks, searchQuery])
+
+  // Filtered tasks specifically for Assignments & Deadlines sections
+  const filteredAssignmentsDeadlines = useMemo(() => {
+    const now = dayjs()
+    const todayFormatted = now.format('YYYY-MM-DD')
+    const nextWeek = now.add(7, 'day')
+
+    return contentTasks.filter((item) => {
+      // Employee filter
+      if (adSelectedEmployee !== 'ALL') {
+        if (adSelectedEmployee === 'UNASSIGNED') {
+          if (item.assigned_to_id || item.assigned_to_name) return false
+        } else if (item.assigned_to_id !== adSelectedEmployee) {
+          return false
+        }
+      }
+
+      // Priority filter
+      if (adSelectedPriority !== 'ALL') {
+        const itemP = (item.priority || 'MEDIUM').toUpperCase()
+        if (itemP !== adSelectedPriority) return false
+      }
+
+      // Status filter
+      if (adSelectedStatus !== 'ALL') {
+        if (getTaskColumn(item.status) !== adSelectedStatus) return false
+      }
+
+      // Deadline filter
+      if (adSelectedDeadlineType !== 'ALL') {
+        const isCompleted = getTaskColumn(item.status) === 'Completed'
+        const isOverdue = computeDeadlineState(item.due_date, item.status) === 'Overdue' && !isCompleted
+
+        if (adSelectedDeadlineType === 'OVERDUE') {
+          if (!isOverdue) return false
+        } else if (adSelectedDeadlineType === 'TODAY') {
+          if (!item.due_date || dayjs(item.due_date).format('YYYY-MM-DD') !== todayFormatted) {
+            return false
+          }
+        } else if (adSelectedDeadlineType === 'THIS_WEEK') {
+          if (!item.due_date) return false
+          const d = dayjs(item.due_date)
+          if (!d.isAfter(now.subtract(1, 'day')) || !d.isBefore(nextWeek.add(1, 'day'))) {
+            return false
+          }
+        } else if (adSelectedDeadlineType === 'UPCOMING') {
+          if (!item.due_date || !dayjs(item.due_date).isAfter(now)) {
+            return false
+          }
+        }
+      }
+
+      // Search Query
+      if (adSearchQuery.trim()) {
+        const q = adSearchQuery.toLowerCase()
+        const matchesTitle = item.title.toLowerCase().includes(q)
+        const matchesSummary = (item.summary || '').toLowerCase().includes(q)
+        const matchesBody = (item.body || '').toLowerCase().includes(q)
+        const matchesAssignee = (item.assigned_to_name || '').toLowerCase().includes(q)
+        if (!matchesTitle && !matchesSummary && !matchesBody && !matchesAssignee) return false
+      }
+
+      return true
+    })
+  }, [
+    contentTasks,
+    adSelectedEmployee,
+    adSelectedPriority,
+    adSelectedStatus,
+    adSelectedDeadlineType,
+    adSearchQuery,
+  ])
 
   // Tasks grouped by column for Kanban
   const columnTasks = useMemo(() => {
@@ -748,7 +828,7 @@ export function ContentManagementView({
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16 animate-in fade-in duration-200">
-      {/* Page Header with Existing Create Task Button Preserved */}
+      {/* Page Header with Create Task, Assignments, and Deadlines on the same horizontal header line */}
       <PageHeader
         title={
           <div className="flex items-center gap-3">
@@ -759,7 +839,8 @@ export function ContentManagementView({
         icon={FileText}
         iconClassName="text-primary"
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* 1. Create Task */}
             <Button
               onClick={() => setIsCreateModalOpen(true)}
               size="sm"
@@ -768,28 +849,46 @@ export function ContentManagementView({
               <PlusCircle className="w-4 h-4 shrink-0" />
               <span>Create Task</span>
             </Button>
+
+            {/* 2. Assignments */}
+            <Button
+              onClick={() => setActiveTab(activeTab === 'assignments' ? 'board' : 'assignments')}
+              variant={activeTab === 'assignments' ? 'default' : 'outline'}
+              size="sm"
+              className={cn(
+                "h-9 px-3.5 text-xs font-semibold gap-1.5 shadow-xs transition-all",
+                activeTab === 'assignments'
+                  ? "bg-indigo-600 hover:bg-indigo-700 text-white border-transparent"
+                  : "border-border text-foreground hover:bg-muted/60"
+              )}
+            >
+              <Users className="w-4 h-4 shrink-0 text-indigo-400" />
+              <span>Assignments</span>
+            </Button>
+
+            {/* 3. Deadlines */}
+            <Button
+              onClick={() => setActiveTab(activeTab === 'deadlines' ? 'board' : 'deadlines')}
+              variant={activeTab === 'deadlines' ? 'default' : 'outline'}
+              size="sm"
+              className={cn(
+                "h-9 px-3.5 text-xs font-semibold gap-1.5 shadow-xs transition-all",
+                activeTab === 'deadlines'
+                  ? "bg-amber-600 hover:bg-amber-700 text-white border-transparent"
+                  : "border-border text-foreground hover:bg-muted/60"
+              )}
+            >
+              <Clock className="w-4 h-4 shrink-0 text-amber-400" />
+              <span>Deadlines</span>
+              {overdueCount > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                  {overdueCount}
+                </span>
+              )}
+            </Button>
           </div>
         }
       />
-
-      {/* ========================================================= */}
-      {/* MAIN NAVIGATION: Task Board                                */}
-      {/* ========================================================= */}
-      <div className="p-1.5 bg-card border border-border rounded-2xl flex items-center justify-between gap-3 shadow-xs">
-        <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border/60 shadow-xs">
-          {/* Main Tab: Task Board */}
-          <button
-            onClick={() => setActiveTab('board')}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap bg-background text-foreground shadow-xs border border-border/80"
-          >
-            <KanbanSquare className="w-4 h-4 text-primary shrink-0" />
-            <span>Task Board</span>
-            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary">
-              {totalTasks}
-            </span>
-          </button>
-        </div>
-      </div>
 
       {/* ========================================================= */}
       {/* MAIN TAB: TASK BOARD                                      */}
@@ -1171,6 +1270,639 @@ export function ContentManagementView({
               />
             </div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'assignments' && (
+        <div className="space-y-5">
+          {/* Section Return Bar */}
+          <div className="flex items-center justify-between pb-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setActiveTab('board')}
+              className="text-xs font-semibold gap-1.5 border-border hover:bg-muted h-8 px-3"
+            >
+              <KanbanSquare className="w-3.5 h-3.5 text-primary" />
+              <span>← Back to Task Board</span>
+            </Button>
+            <span className="text-xs text-muted-foreground font-medium">Viewing Department Assignments</span>
+          </div>
+          {/* Top KPI Summary Strip for Assignments */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-indigo-400 font-semibold flex items-center justify-between">
+                <span>Content Staff</span>
+                <Users className="w-4 h-4 text-indigo-400" />
+              </span>
+              <p className="text-2xl font-bold text-foreground mt-1">{contentEmployees.length}</p>
+              <span className="text-[10px] text-muted-foreground">Active department members</span>
+            </div>
+
+            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-primary font-semibold flex items-center justify-between">
+                <span>Assigned Tasks</span>
+                <UserCheck className="w-4 h-4 text-primary" />
+              </span>
+              <p className="text-2xl font-bold text-primary mt-1">
+                {contentTasks.filter((t) => t.assigned_to_id).length}
+              </p>
+              <span className="text-[10px] text-muted-foreground">Deliverables in progress</span>
+            </div>
+
+            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-amber-400 font-semibold flex items-center justify-between">
+                <span>Unassigned Backlog</span>
+                <Clock className="w-4 h-4 text-amber-400" />
+              </span>
+              <p className="text-2xl font-bold text-amber-400 mt-1">{unassignedCount}</p>
+              <span className="text-[10px] text-muted-foreground">Awaiting team allocation</span>
+            </div>
+
+            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-emerald-400 font-semibold flex items-center justify-between">
+                <span>Completed Tasks</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              </span>
+              <p className="text-2xl font-bold text-emerald-400 mt-1">
+                {contentTasks.filter((t) => getTaskColumn(t.status) === 'Completed').length}
+              </p>
+              <span className="text-[10px] text-muted-foreground">Finished deliverables</span>
+            </div>
+          </div>
+
+          {/* Sub-navigation & Filters for Assignments */}
+          <div className="p-3 bg-card border border-border rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
+            {/* Search Input */}
+            <div className="relative min-w-[200px] flex-1 max-w-sm">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search assignments & staff..."
+                value={adSearchQuery}
+                onChange={(e) => setAdSearchQuery(e.target.value)}
+                className="pl-9 h-9 text-xs bg-muted/30 border-border/80 shadow-xs"
+              />
+            </div>
+
+            {/* Filter Dropdowns */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Employee Filter (Content Department Only) */}
+              <Dropdown
+                value={adSelectedEmployee}
+                onChange={(val) => setAdSelectedEmployee(val || 'ALL')}
+                options={[
+                  { value: 'ALL', label: 'All Content Staff' },
+                  { value: 'UNASSIGNED', label: 'Unassigned Only' },
+                  ...contentEmployees.map((e) => ({
+                    value: e.id,
+                    label: e.name || (e as any).employee_name || 'Staff',
+                  })),
+                ]}
+                className="w-auto space-y-0 shrink-0"
+                buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[130px] shadow-xs hover:border-foreground/30 transition-colors"
+              />
+
+              {/* Priority Filter */}
+              <Dropdown
+                value={adSelectedPriority}
+                onChange={(val) => setAdSelectedPriority(val || 'ALL')}
+                options={[
+                  { value: 'ALL', label: 'All Priority' },
+                  { value: 'LOW', label: 'Low' },
+                  { value: 'MEDIUM', label: 'Medium' },
+                  { value: 'HIGH', label: 'High' },
+                  { value: 'URGENT', label: 'Urgent' },
+                ]}
+                className="w-auto space-y-0 shrink-0"
+                buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[110px] shadow-xs hover:border-foreground/30 transition-colors"
+              />
+
+              {/* Status Filter */}
+              <Dropdown
+                value={adSelectedStatus}
+                onChange={(val) => setAdSelectedStatus(val || 'ALL')}
+                options={[
+                  { value: 'ALL', label: 'All Status' },
+                  { value: 'To Do', label: 'To Do' },
+                  { value: 'In Progress', label: 'In Progress' },
+                  { value: 'In Review', label: 'In Review' },
+                  { value: 'Completed', label: 'Completed' },
+                ]}
+                className="w-auto space-y-0 shrink-0"
+                buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[110px] shadow-xs hover:border-foreground/30 transition-colors"
+              />
+
+              {/* View Switcher: Table View vs Team Workload Grid */}
+              <div className="flex items-center bg-muted/40 p-0.5 rounded-lg border border-border/80 h-9 shrink-0 ml-1">
+                <button
+                  type="button"
+                  onClick={() => setAdViewMode('table')}
+                  className={cn(
+                    "px-2.5 py-1 text-xs font-semibold rounded-md transition-all",
+                    adViewMode === 'table' ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Deliverables Table
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdViewMode('workload')}
+                  className={cn(
+                    "px-2.5 py-1 text-xs font-semibold rounded-md transition-all",
+                    adViewMode === 'workload' ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  Staff Workload
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* VIEW MODE 1: DELIVERABLES ASSIGNMENT TABLE */}
+          {adViewMode === 'table' && (
+            <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-muted/40 border-b border-border text-muted-foreground font-semibold">
+                    <tr>
+                      <th className="p-3.5">Task Deliverable</th>
+                      <th className="p-3.5">Assigned Content Staff</th>
+                      <th className="p-3.5">Assignment Date</th>
+                      <th className="p-3.5">Content Type</th>
+                      <th className="p-3.5">Priority</th>
+                      <th className="p-3.5">Status</th>
+                      <th className="p-3.5 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/60">
+                    {filteredAssignmentsDeadlines.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="p-12 text-center text-muted-foreground">
+                          No deliverables found matching your filter criteria.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredAssignmentsDeadlines.map((task) => {
+                        return (
+                          <tr
+                            key={task.id}
+                            className="hover:bg-muted/20 transition-colors group"
+                          >
+                            {/* Task Name & Description */}
+                            <td className="p-3.5 max-w-[260px]">
+                              <div className="space-y-0.5">
+                                <span
+                                  className="font-bold text-foreground hover:text-primary transition-colors cursor-pointer block truncate"
+                                  onClick={() => {
+                                    setViewItem(task)
+                                    setIsViewModalOpen(true)
+                                  }}
+                                  title={task.title}
+                                >
+                                  {task.title}
+                                </span>
+                                <span className="text-[11px] text-muted-foreground line-clamp-1">
+                                  {task.summary || task.body || 'No description'}
+                                </span>
+                              </div>
+                            </td>
+
+                            {/* Assigned Content Employee with In-place Reassign Dropdown */}
+                            <td className="p-3.5">
+                              <select
+                                value={task.assigned_to_id || ''}
+                                onChange={(e) => handleReassignTask(task.id, e.target.value)}
+                                className="h-8 px-2 rounded-lg text-xs bg-muted/40 border border-border text-foreground font-medium outline-none cursor-pointer max-w-[150px] truncate"
+                                title="Change assigned content staff"
+                              >
+                                <option value="">Unassigned</option>
+                                {contentEmployees.map((e) => (
+                                  <option key={e.id} value={e.id}>
+                                    {e.name || (e as any).employee_name}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+
+                            {/* Assignment / Creation Date */}
+                            <td className="p-3.5 text-muted-foreground font-mono text-[11px]">
+                              {dayjs(task.created_at).format('DD MMM YYYY')}
+                            </td>
+
+                            {/* Content Type */}
+                            <td className="p-3.5">
+                              <Badge variant="outline" className="text-[10px] border-border">
+                                {task.content_type || 'Content'}
+                              </Badge>
+                            </td>
+
+                            {/* Priority */}
+                            <td className="p-3.5">
+                              <span
+                                className={cn(
+                                  "text-[10px] px-2 py-0.5 rounded-[3.5px] border uppercase tracking-wider font-bold inline-block",
+                                  getPriorityVariant(task.priority)
+                                )}
+                              >
+                                {task.priority || 'MEDIUM'}
+                              </span>
+                            </td>
+
+                            {/* Task Status */}
+                            <td className="p-3.5">
+                              <Badge variant="outline" className="text-[10px] font-mono border-border">
+                                {task.status}
+                              </Badge>
+                            </td>
+
+                            {/* Actions */}
+                            <td className="p-3.5 text-right">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setEditingItem(task)}
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                title="Edit Task Details"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </Button>
+                            </td>
+                          </tr>
+                        )
+                      })
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* VIEW MODE 2: EMPLOYEE-WISE WORKLOAD & ASSIGNMENTS GRID */}
+          {adViewMode === 'workload' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {employeeWorkloadList.map((member) => {
+                const capacityPercent = Math.min(100, Math.round((member.tasks.length / 8) * 100))
+
+                return (
+                  <Card key={member.id} className="bg-card border-border shadow-xs flex flex-col justify-between">
+                    <CardHeader className="p-4 pb-3 border-b border-border">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-center gap-2.5">
+                          <Avatar className="h-8 w-8 border border-border bg-secondary text-xs">
+                            {member.profile_photo && (
+                              <AvatarImage
+                                src={getProfilePhotoUrl(member.profile_photo) || undefined}
+                                alt={member.name}
+                              />
+                            )}
+                            <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <CardTitle className="text-sm font-bold text-foreground">{member.name}</CardTitle>
+                            <span className="text-[11px] text-muted-foreground">{member.role}</span>
+                          </div>
+                        </div>
+                        <Badge variant="outline" className="text-[10px] font-mono border-border">
+                          {member.tasks.length} Tasks
+                        </Badge>
+                      </div>
+
+                      {/* Workload Capacity Bar */}
+                      <div className="pt-2 space-y-1">
+                        <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                          <span>Workload Capacity</span>
+                          <span className="font-bold text-foreground">{capacityPercent}%</span>
+                        </div>
+                        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                          <div
+                            className={cn(
+                              "h-full rounded-full transition-all",
+                              capacityPercent >= 90
+                                ? "bg-rose-500"
+                                : capacityPercent >= 60
+                                ? "bg-amber-500"
+                                : "bg-emerald-500"
+                            )}
+                            style={{ width: `${capacityPercent}%` }}
+                          />
+                        </div>
+                      </div>
+                    </CardHeader>
+
+                    <CardContent className="p-4 space-y-2.5 flex-1">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Assigned Deliverables ({member.tasks.length})
+                      </p>
+
+                      {member.tasks.length === 0 ? (
+                        <p className="text-xs text-muted-foreground italic py-4 text-center">
+                          No deliverables assigned currently.
+                        </p>
+                      ) : (
+                        member.tasks.slice(0, 4).map((task) => (
+                          <div
+                            key={task.id}
+                            className="p-2.5 rounded-lg bg-muted/20 border border-border flex items-center justify-between gap-2 text-xs"
+                          >
+                            <div className="min-w-0">
+                              <span className="font-semibold text-foreground truncate block">{task.title}</span>
+                              <span className="text-[10px] text-muted-foreground">
+                                Due: {task.due_date ? dayjs(task.due_date).format('DD MMM') : 'Flexible'}
+                              </span>
+                            </div>
+
+                            {/* In-place Reassign Dropdown (Content Staff Only) */}
+                            <select
+                              value={member.id}
+                              onChange={(e) => handleReassignTask(task.id, e.target.value)}
+                              className="h-6 text-[10px] bg-muted border border-border rounded px-1 text-muted-foreground hover:text-foreground outline-none cursor-pointer max-w-[100px] truncate"
+                              title="Reassign to another staff member"
+                            >
+                              <option value={member.id}>{member.name.split(' ')[0]}</option>
+                              {contentEmployees
+                                .filter((e) => e.id !== member.id)
+                                .map((e) => (
+                                  <option key={e.id} value={e.id}>
+                                    &rarr; {e.name?.split(' ')[0] || 'Staff'}
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
+                        ))
+                      )}
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MAIN TAB 3: DEADLINES (SCHEDULE & TIMELINE MANAGEMENT)    */}
+      {/* ========================================================= */}
+      {activeTab === 'deadlines' && (
+        <div className="space-y-5">
+          {/* Section Return Bar */}
+          <div className="flex items-center justify-between pb-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setActiveTab('board')}
+              className="text-xs font-semibold gap-1.5 border-border hover:bg-muted h-8 px-3"
+            >
+              <KanbanSquare className="w-3.5 h-3.5 text-primary" />
+              <span>← Back to Task Board</span>
+            </Button>
+            <span className="text-xs text-muted-foreground font-medium">Viewing Department Deadlines</span>
+          </div>
+          {/* Top KPI Summary Strip for Deadlines */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-rose-400 font-semibold flex items-center justify-between">
+                <span>Overdue Deadlines</span>
+                <AlertTriangle className="w-4 h-4 text-rose-400" />
+              </span>
+              <p className={cn("text-2xl font-bold mt-1", overdueCount > 0 ? "text-rose-400" : "text-foreground")}>
+                {overdueCount}
+              </p>
+              <span className="text-[10px] text-muted-foreground">Requires immediate review</span>
+            </div>
+
+            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-amber-400 font-semibold flex items-center justify-between">
+                <span>Due Today</span>
+                <Clock className="w-4 h-4 text-amber-400" />
+              </span>
+              <p className="text-2xl font-bold text-amber-400 mt-1">{dueTodayCount}</p>
+              <span className="text-[10px] text-muted-foreground">Due by end of day</span>
+            </div>
+
+            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-primary font-semibold flex items-center justify-between">
+                <span>Due This Week</span>
+                <Calendar className="w-4 h-4 text-primary" />
+              </span>
+              <p className="text-2xl font-bold text-foreground mt-1">{dueThisWeekCount}</p>
+              <span className="text-[10px] text-muted-foreground">Next 7 calendar days</span>
+            </div>
+
+            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-emerald-400 font-semibold flex items-center justify-between">
+                <span>Upcoming & Flexible</span>
+                <CalendarDays className="w-4 h-4 text-emerald-400" />
+              </span>
+              <p className="text-2xl font-bold text-foreground mt-1">
+                {contentTasks.filter((t) => !t.due_date || dayjs(t.due_date).isAfter(dayjs().add(7, 'day'))).length}
+              </p>
+              <span className="text-[10px] text-muted-foreground">Scheduled beyond 7 days</span>
+            </div>
+          </div>
+
+          {/* Sub-navigation & Filters for Deadlines */}
+          <div className="p-3 bg-card border border-border rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
+            {/* Search Input */}
+            <div className="relative min-w-[200px] flex-1 max-w-sm">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search deadlines & tasks..."
+                value={adSearchQuery}
+                onChange={(e) => setAdSearchQuery(e.target.value)}
+                className="pl-9 h-9 text-xs bg-muted/30 border-border/80 shadow-xs"
+              />
+            </div>
+
+            {/* Filter Dropdowns */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Employee Filter */}
+              <Dropdown
+                value={adSelectedEmployee}
+                onChange={(val) => setAdSelectedEmployee(val || 'ALL')}
+                options={[
+                  { value: 'ALL', label: 'All Content Staff' },
+                  ...contentEmployees.map((e) => ({
+                    value: e.id,
+                    label: e.name || (e as any).employee_name || 'Staff',
+                  })),
+                ]}
+                className="w-auto space-y-0 shrink-0"
+                buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[130px] shadow-xs hover:border-foreground/30 transition-colors"
+              />
+
+              {/* Deadline Status Filter */}
+              <Dropdown
+                value={adSelectedDeadlineType}
+                onChange={(val) => setAdSelectedDeadlineType(val || 'ALL')}
+                options={[
+                  { value: 'ALL', label: 'All Deadlines' },
+                  { value: 'OVERDUE', label: 'Overdue Only' },
+                  { value: 'TODAY', label: 'Due Today' },
+                  { value: 'THIS_WEEK', label: 'Due This Week' },
+                  { value: 'UPCOMING', label: 'Upcoming' },
+                ]}
+                className="w-auto space-y-0 shrink-0"
+                buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[125px] shadow-xs hover:border-foreground/30 transition-colors"
+              />
+
+              {/* Priority Filter */}
+              <Dropdown
+                value={adSelectedPriority}
+                onChange={(val) => setAdSelectedPriority(val || 'ALL')}
+                options={[
+                  { value: 'ALL', label: 'All Priority' },
+                  { value: 'LOW', label: 'Low' },
+                  { value: 'MEDIUM', label: 'Medium' },
+                  { value: 'HIGH', label: 'High' },
+                  { value: 'URGENT', label: 'Urgent' },
+                ]}
+                className="w-auto space-y-0 shrink-0"
+                buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[110px] shadow-xs hover:border-foreground/30 transition-colors"
+              />
+            </div>
+          </div>
+
+          {/* DEADLINES TABLE */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-muted/40 border-b border-border text-muted-foreground font-semibold">
+                  <tr>
+                    <th className="p-3.5">Task Deliverable</th>
+                    <th className="p-3.5">Assigned Employee</th>
+                    <th className="p-3.5">Start Date</th>
+                    <th className="p-3.5">Deadline</th>
+                    <th className="p-3.5">Priority</th>
+                    <th className="p-3.5">Status</th>
+                    <th className="p-3.5 text-right">Quick Reschedule</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {filteredAssignmentsDeadlines.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-12 text-center text-muted-foreground">
+                        No deliverables found matching your filter criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAssignmentsDeadlines.map((task) => {
+                      const deadlineState = computeDeadlineState(task.due_date, task.status)
+                      const isOverdue =
+                        deadlineState === 'Overdue' && getTaskColumn(task.status) !== 'Completed'
+
+                      return (
+                        <tr
+                          key={task.id}
+                          className="hover:bg-muted/20 transition-colors group"
+                        >
+                          {/* Task Name & Description */}
+                          <td className="p-3.5 max-w-[260px]">
+                            <div className="space-y-0.5">
+                              <span
+                                className="font-bold text-foreground hover:text-primary transition-colors cursor-pointer block truncate"
+                                onClick={() => {
+                                  setViewItem(task)
+                                  setIsViewModalOpen(true)
+                                }}
+                                title={task.title}
+                              >
+                                {task.title}
+                              </span>
+                              <span className="text-[11px] text-muted-foreground line-clamp-1">
+                                {task.summary || task.body || 'No description'}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Assigned Employee */}
+                          <td className="p-3.5">
+                            <span className="font-medium text-foreground">
+                              {task.assigned_to_name || 'Unassigned'}
+                            </span>
+                          </td>
+
+                          {/* Start Date */}
+                          <td className="p-3.5 text-foreground font-mono text-[11px]">
+                            {task.start_date ? dayjs(task.start_date).format('DD MMM YYYY') : '-'}
+                          </td>
+
+                          {/* Due Date / Deadline */}
+                          <td className="p-3.5">
+                            <div className="flex items-center gap-1.5 font-mono text-[11px]">
+                              {isOverdue ? (
+                                <span className="flex items-center gap-1 text-rose-400 font-bold">
+                                  <AlertTriangle className="w-3 h-3 shrink-0" />
+                                  <span>{dayjs(task.due_date).format('DD MMM')} (Overdue)</span>
+                                </span>
+                              ) : (
+                                <span className="text-foreground">
+                                  {task.due_date ? dayjs(task.due_date).format('DD MMM YYYY') : 'Flexible'}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Priority */}
+                          <td className="p-3.5">
+                            <span
+                              className={cn(
+                                "text-[10px] px-2 py-0.5 rounded-[3.5px] border uppercase tracking-wider font-bold inline-block",
+                                getPriorityVariant(task.priority)
+                              )}
+                            >
+                              {task.priority || 'MEDIUM'}
+                            </span>
+                          </td>
+
+                          {/* Task Status */}
+                          <td className="p-3.5">
+                            <Badge variant="outline" className="text-[10px] font-mono border-border">
+                              {task.status}
+                            </Badge>
+                          </td>
+
+                          {/* Quick Actions (Extend Deadline / Edit) */}
+                          <td className="p-3.5 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleExtendDeadline(task.id, 3)}
+                                className="h-7 text-[10px] px-2 border-border"
+                                title="Extend deadline by 3 days"
+                              >
+                                +3d
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleExtendDeadline(task.id, 7)}
+                                className="h-7 text-[10px] px-2 border-border"
+                                title="Extend deadline by 1 week"
+                              >
+                                +1w
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setEditingItem(task)}
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                title="Edit Task Details"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
