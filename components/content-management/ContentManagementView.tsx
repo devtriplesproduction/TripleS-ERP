@@ -79,7 +79,8 @@ interface ContentManagementViewProps {
   user: AuthUser
 }
 
-type MainTab = 'create' | 'board' | 'assignments_deadlines'
+// Exactly Two Main Tabs
+type MainTab = 'board' | 'assignments_deadlines'
 type BoardColumnKey = 'To Do' | 'In Progress' | 'In Review' | 'Completed'
 type SecondaryBoardView = 'kanban' | 'gantt' | 'calendar'
 
@@ -110,7 +111,7 @@ export function ContentManagementView({
 }: ContentManagementViewProps) {
   const [items, setItems] = useState<ContentItem[]>(initialItems || [])
   
-  // 1. Main Tabs: exactly 3 tabs as requested
+  // 1. Exactly Two Main Tabs: Task Board & Assignments & Deadlines
   const [activeTab, setActiveTab] = useState<MainTab>('board')
 
   // 2. Secondary View Switcher inside Task Board: Kanban | Gantt | Calendar
@@ -129,8 +130,6 @@ export function ContentManagementView({
   const [adSelectedPriority, setAdSelectedPriority] = useState<string>('ALL')
   const [adSelectedStatus, setAdSelectedStatus] = useState<string>('ALL')
   const [adSelectedDeadlineType, setAdSelectedDeadlineType] = useState<string>('ALL')
-  const [adDateFrom, setAdDateFrom] = useState('')
-  const [adDateTo, setAdDateTo] = useState('')
   const [adViewMode, setAdViewMode] = useState<'table' | 'workload'>('table')
 
   // HTML5 Drag and Drop state
@@ -138,6 +137,7 @@ export function ContentManagementView({
   const [dragOverColumn, setDragOverColumn] = useState<BoardColumnKey | null>(null)
 
   // Modals state
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [viewItem, setViewItem] = useState<ContentItem | null>(null)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
   const [editingItem, setEditingItem] = useState<ContentItem | null>(null)
@@ -339,16 +339,6 @@ export function ContentManagementView({
         }
       }
 
-      // Date Range Filter
-      if (adDateFrom) {
-        const d = item.due_date || item.start_date || item.created_at
-        if (d && dayjs(d).isBefore(dayjs(adDateFrom).startOf('day'))) return false
-      }
-      if (adDateTo) {
-        const d = item.due_date || item.start_date || item.created_at
-        if (d && dayjs(d).isAfter(dayjs(adDateTo).endOf('day'))) return false
-      }
-
       // Search Query
       if (adSearchQuery.trim()) {
         const q = adSearchQuery.toLowerCase()
@@ -367,12 +357,10 @@ export function ContentManagementView({
     adSelectedPriority,
     adSelectedStatus,
     adSelectedDeadlineType,
-    adDateFrom,
-    adDateTo,
     adSearchQuery,
   ])
 
-  // Statistics for Assignments & Deadlines
+  // Statistics
   const totalTasks = items.length
   const overdueCount = useMemo(() => {
     return items.filter(
@@ -698,14 +686,12 @@ export function ContentManagementView({
           reference_attachment: '',
         })
         setAttachmentFile(null)
+        setIsCreateModalOpen(false)
 
         toast({
           title: 'Task Created Successfully',
           description: `"${res.data.title}" has been created and synchronized across all views.`,
         })
-
-        // Switch to Task Board to view newly created deliverable
-        setActiveTab('board')
       } else {
         toast({
           title: 'Creation Failed',
@@ -792,7 +778,7 @@ export function ContentManagementView({
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-16 animate-in fade-in duration-200">
-      {/* Page Header */}
+      {/* Page Header with Existing Create Task Button Preserved */}
       <PageHeader
         title={
           <div className="flex items-center gap-3">
@@ -805,14 +791,9 @@ export function ContentManagementView({
         actions={
           <div className="flex items-center gap-2">
             <Button
-              onClick={() => setActiveTab('create')}
+              onClick={() => setIsCreateModalOpen(true)}
               size="sm"
-              className={cn(
-                "h-9 px-4 text-xs font-semibold gap-1.5 shadow-xs transition-all",
-                activeTab === 'create'
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-primary hover:bg-primary/90 text-primary-foreground"
-              )}
+              className="h-9 px-4 text-xs font-semibold gap-1.5 shadow-xs bg-primary hover:bg-primary/90 text-primary-foreground transition-all"
             >
               <PlusCircle className="w-4 h-4 shrink-0" />
               <span>Create Task</span>
@@ -822,26 +803,12 @@ export function ContentManagementView({
       />
 
       {/* ========================================================= */}
-      {/* MAIN 3 TABS (AS SPECIFIED BY USER)                        */}
-      {/* 1. Create Task | 2. Task Board | 3. Assignments & Deadlines*/}
+      {/* MAIN NAVIGATION: EXACTLY TWO TABS AS REQUESTED             */}
+      {/* 1. Task Board | 2. Assignments & Deadlines                */}
       {/* ========================================================= */}
       <div className="p-1.5 bg-card border border-border rounded-2xl flex items-center justify-between gap-3 shadow-xs">
         <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border/60 shadow-xs overflow-x-auto">
-          {/* Tab 1: Create Task */}
-          <button
-            onClick={() => setActiveTab('create')}
-            className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
-              activeTab === 'create'
-                ? "bg-background text-foreground shadow-xs border border-border/80"
-                : "text-muted-foreground hover:text-foreground"
-            )}
-          >
-            <PlusCircle className="w-4 h-4 text-emerald-500 shrink-0" />
-            <span>Create Task</span>
-          </button>
-
-          {/* Tab 2: Task Board */}
+          {/* Main Tab 1: Task Board */}
           <button
             onClick={() => setActiveTab('board')}
             className={cn(
@@ -858,7 +825,7 @@ export function ContentManagementView({
             </span>
           </button>
 
-          {/* Tab 3: Assignments & Deadlines */}
+          {/* Main Tab 2: Assignments & Deadlines */}
           <button
             onClick={() => setActiveTab('assignments_deadlines')}
             className={cn(
@@ -880,253 +847,9 @@ export function ContentManagementView({
       </div>
 
       {/* ========================================================= */}
-      {/* MAIN TAB 1: CREATE TASK                                   */}
-      {/* ========================================================= */}
-      {activeTab === 'create' && (
-        <Card className="border-border shadow-xs max-w-4xl mx-auto">
-          <CardHeader className="p-6 border-b border-border bg-muted/20">
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <PlusCircle className="w-5 h-5 text-emerald-500" />
-                  <span>Create Content Task</span>
-                </CardTitle>
-                <p className="text-xs text-muted-foreground">
-                  Define a new deliverable, assign an employee, schedule deadlines, and place in workflow.
-                </p>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setActiveTab('board')}
-                className="text-xs"
-              >
-                Back to Task Board
-              </Button>
-            </div>
-          </CardHeader>
-
-          <CardContent className="p-6">
-            <form onSubmit={handleCreateTask} className="space-y-5">
-              {/* Task Title */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
-                  <span>Task Title <span className="text-rose-500">*</span></span>
-                  <span className="text-[11px] text-muted-foreground font-normal">Actionable deliverable name</span>
-                </label>
-                <Input
-                  required
-                  placeholder="e.g., Weekly Product Announcement Newsletter"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="bg-muted/30 border-border text-sm h-10 font-medium"
-                />
-              </div>
-
-              {/* Task Description */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
-                  <span>Task Description <span className="text-rose-500">*</span></span>
-                  <span className="text-[11px] text-muted-foreground font-normal">Summary of the deliverable</span>
-                </label>
-                <textarea
-                  required
-                  rows={3}
-                  placeholder="Outline the main purpose, goals, target audience, and key highlights of this task..."
-                  value={formData.description}
-                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-y"
-                />
-              </div>
-
-              {/* Assignment & Content Type */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-primary" />
-                    <span>Assign Employee</span>
-                  </label>
-                  <select
-                    value={formData.assigned_to_id}
-                    onChange={(e) => setFormData({ ...formData, assigned_to_id: e.target.value })}
-                    className="w-full h-10 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground font-medium outline-none cursor-pointer"
-                  >
-                    <option value="">Unassigned</option>
-                    {employees.map((emp) => (
-                      <option key={emp.id} value={emp.id}>
-                        {emp.name || (emp as any).employee_name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Content Type</label>
-                  <select
-                    value={formData.content_type}
-                    onChange={(e) => setFormData({ ...formData, content_type: e.target.value })}
-                    className="w-full h-10 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground font-medium outline-none cursor-pointer"
-                  >
-                    {contentTypeOptions.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Priority, Task Status, Start Date & Due Date */}
-              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Priority</label>
-                  <select
-                    value={formData.priority}
-                    onChange={(e) => setFormData({ ...formData, priority: e.target.value as ContentPriority })}
-                    className="w-full h-10 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground font-medium outline-none cursor-pointer"
-                  >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                    <option value="Urgent">Urgent</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Task Status</label>
-                  <select
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value as ContentStatus })}
-                    className="w-full h-10 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground font-medium outline-none cursor-pointer"
-                  >
-                    <option value="To Do">To Do</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="In Review">In Review</option>
-                    <option value="Completed">Completed</option>
-                  </select>
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Start Date</label>
-                  <Input
-                    type="date"
-                    value={formData.start_date}
-                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                    className="bg-muted/30 border-border text-xs h-10 font-mono"
-                  />
-                </div>
-
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Due Date / Deadline</label>
-                  <Input
-                    type="date"
-                    value={formData.due_date}
-                    onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                    className="bg-muted/30 border-border text-xs h-10 font-mono"
-                  />
-                </div>
-              </div>
-
-              {/* Task Instructions */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
-                  <span>Task Instructions & Guidelines (Optional)</span>
-                  <span className="text-[11px] text-muted-foreground font-normal">Tone, word count, or required checklist</span>
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Provide detailed instructions, references, or specific rules for this task..."
-                  value={formData.instructions}
-                  onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-muted/30 border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-y"
-                />
-              </div>
-
-              {/* Reference Attachment (Optional) */}
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
-                  <Paperclip className="w-3.5 h-3.5 text-primary" />
-                  <span>Reference Attachment (Optional)</span>
-                </label>
-                <div className="p-3 rounded-xl border border-dashed border-border bg-muted/20 flex flex-col sm:flex-row items-center justify-between gap-3">
-                  <div className="space-y-0.5 text-center sm:text-left">
-                    <p className="text-xs font-semibold text-foreground">
-                      {attachmentFile ? attachmentFile.name : formData.reference_attachment || 'Upload document or brief'}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      Attach project brief, brand asset, or reference documentation (PDF, Word, Image)
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <label className="cursor-pointer px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors flex items-center gap-1.5">
-                      <UploadCloud className="w-3.5 h-3.5" />
-                      <span>{attachmentFile ? 'Replace File' : 'Choose File'}</span>
-                      <input
-                        type="file"
-                        className="hidden"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0]
-                          if (file) {
-                            setAttachmentFile(file)
-                            setFormData({ ...formData, reference_attachment: file.name })
-                          }
-                        }}
-                      />
-                    </label>
-                    {attachmentFile && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setAttachmentFile(null)
-                          setFormData({ ...formData, reference_attachment: '' })
-                        }}
-                        className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Form Action Buttons: Submit Task & Cancel */}
-              <div className="pt-4 border-t border-border flex items-center justify-end gap-3">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setActiveTab('board')}
-                  disabled={isSubmitting}
-                  className="border-border text-xs h-10 px-4"
-                >
-                  Cancel
-                </Button>
-
-                <Button
-                  type="submit"
-                  disabled={isSubmitting}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold h-10 px-5 gap-2 shadow-xs"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      <span>Creating Task...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-4 h-4" />
-                      <span>Submit Task</span>
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ========================================================= */}
-      {/* MAIN TAB 2: TASK BOARD                                    */}
-      {/* Includes compact view switcher: Kanban | Gantt | Calendar */}
+      {/* MAIN TAB 1: TASK BOARD                                    */}
+      {/* Reusing Project Management Kanban Board Layout & UI       */}
+      {/* Includes compact view options: Kanban | Gantt | Calendar  */}
       {/* ========================================================= */}
       {activeTab === 'board' && (
         <div className="space-y-4">
@@ -1224,7 +947,7 @@ export function ContentManagementView({
               )}
             </div>
 
-            {/* Small Compact Secondary View Switcher Inside Task Board: Kanban | Gantt | Calendar */}
+            {/* Small Compact Secondary View Options: Kanban Board | Gantt Chart | Calendar */}
             <div
               role="radiogroup"
               aria-label="Task board view options"
@@ -1349,7 +1072,7 @@ export function ContentManagementView({
                             type="button"
                             onClick={() => {
                               setFormData((prev) => ({ ...prev, status: 'To Do' }))
-                              setActiveTab('create')
+                              setIsCreateModalOpen(true)
                             }}
                             className="text-muted-foreground hover:text-foreground hover:bg-secondary rounded p-1 transition-colors"
                             title="Add Task to To Do"
@@ -1371,7 +1094,10 @@ export function ContentManagementView({
                               <p className="text-[13px] font-medium text-muted-foreground">No tasks here</p>
                               {col.key === 'To Do' && (
                                 <button
-                                  onClick={() => setActiveTab('create')}
+                                  onClick={() => {
+                                    setFormData((prev) => ({ ...prev, status: 'To Do' }))
+                                    setIsCreateModalOpen(true)
+                                  }}
                                   className="text-xs text-primary hover:underline font-semibold"
                                 >
                                   + Create a task
@@ -1540,7 +1266,7 @@ export function ContentManagementView({
       )}
 
       {/* ========================================================= */}
-      {/* MAIN TAB 3: ASSIGNMENTS & DEADLINES (COMBINED TAB)         */}
+      {/* MAIN TAB 2: ASSIGNMENTS & DEADLINES (COMBINED TAB)         */}
       {/* ========================================================= */}
       {activeTab === 'assignments_deadlines' && (
         <div className="space-y-5">
@@ -1943,6 +1669,243 @@ export function ContentManagementView({
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* CREATE TASK MODAL (SINGLE SOURCE FOR TASK CREATION)       */}
+      {/* Triggered via PageHeader Create Task button & To Do '+'   */}
+      {/* ========================================================= */}
+      {isCreateModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-2xl bg-card border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-5 border-b border-border bg-muted/20 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <PlusCircle className="w-5 h-5 text-emerald-500" />
+                <h3 className="text-base font-bold text-foreground">Create Content Task</h3>
+              </div>
+              <button
+                onClick={() => setIsCreateModalOpen(false)}
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateTask} className="p-6 space-y-4 overflow-y-auto flex-1">
+              {/* Task Title */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                  <span>Task Title <span className="text-rose-500">*</span></span>
+                  <span className="text-[11px] text-muted-foreground font-normal">Actionable deliverable name</span>
+                </label>
+                <Input
+                  required
+                  placeholder="e.g., Weekly Product Announcement Newsletter"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="bg-muted/30 border-border text-sm h-10 font-medium"
+                />
+              </div>
+
+              {/* Task Description */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                  <span>Task Description <span className="text-rose-500">*</span></span>
+                  <span className="text-[11px] text-muted-foreground font-normal">Summary of the deliverable</span>
+                </label>
+                <textarea
+                  required
+                  rows={3}
+                  placeholder="Outline the main purpose, goals, target audience, and key highlights of this task..."
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-y"
+                />
+              </div>
+
+              {/* Assignment & Content Type */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-primary" />
+                    <span>Assign Employee</span>
+                  </label>
+                  <select
+                    value={formData.assigned_to_id}
+                    onChange={(e) => setFormData({ ...formData, assigned_to_id: e.target.value })}
+                    className="w-full h-10 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground font-medium outline-none cursor-pointer"
+                  >
+                    <option value="">Unassigned</option>
+                    {employees.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.name || (emp as any).employee_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-foreground">Content Type</label>
+                  <select
+                    value={formData.content_type}
+                    onChange={(e) => setFormData({ ...formData, content_type: e.target.value })}
+                    className="w-full h-10 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground font-medium outline-none cursor-pointer"
+                  >
+                    {contentTypeOptions.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Priority, Task Status, Start Date & Due Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-foreground">Priority</label>
+                  <select
+                    value={formData.priority}
+                    onChange={(e) => setFormData({ ...formData, priority: e.target.value as ContentPriority })}
+                    className="w-full h-10 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground font-medium outline-none cursor-pointer"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Urgent">Urgent</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-foreground">Task Status</label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value as ContentStatus })}
+                    className="w-full h-10 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground font-medium outline-none cursor-pointer"
+                  >
+                    <option value="To Do">To Do</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="In Review">In Review</option>
+                    <option value="Completed">Completed</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-foreground">Start Date</label>
+                  <Input
+                    type="date"
+                    value={formData.start_date}
+                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                    className="bg-muted/30 border-border text-xs h-10 font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-semibold text-foreground">Due Date / Deadline</label>
+                  <Input
+                    type="date"
+                    value={formData.due_date}
+                    onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                    className="bg-muted/30 border-border text-xs h-10 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Task Instructions */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                  <span>Task Instructions & Guidelines (Optional)</span>
+                  <span className="text-[11px] text-muted-foreground font-normal">Tone, word count, or required checklist</span>
+                </label>
+                <textarea
+                  rows={2}
+                  placeholder="Provide detailed instructions, references, or specific rules for this task..."
+                  value={formData.instructions}
+                  onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-muted/30 border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-y"
+                />
+              </div>
+
+              {/* Reference Attachment (Optional) */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Paperclip className="w-3.5 h-3.5 text-primary" />
+                  <span>Reference Attachment (Optional)</span>
+                </label>
+                <div className="p-3 rounded-xl border border-dashed border-border bg-muted/20 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="space-y-0.5 text-center sm:text-left">
+                    <p className="text-xs font-semibold text-foreground">
+                      {attachmentFile ? attachmentFile.name : formData.reference_attachment || 'Upload document or brief'}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Attach project brief, brand asset, or reference documentation (PDF, Word, Image)
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="cursor-pointer px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors flex items-center gap-1.5">
+                      <UploadCloud className="w-3.5 h-3.5" />
+                      <span>{attachmentFile ? 'Replace File' : 'Choose File'}</span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            setAttachmentFile(file)
+                            setFormData({ ...formData, reference_attachment: file.name })
+                          }
+                        }}
+                      />
+                    </label>
+                    {attachmentFile && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAttachmentFile(null)
+                          setFormData({ ...formData, reference_attachment: '' })
+                        }}
+                        className="p-1 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Action Buttons: Submit Task & Cancel */}
+              <div className="pt-4 border-t border-border flex items-center justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsCreateModalOpen(false)}
+                  disabled={isSubmitting}
+                  className="border-border text-xs h-10 px-4"
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold h-10 px-5 gap-2 shadow-xs"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Creating Task...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Submit Task</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 
