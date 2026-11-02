@@ -1072,6 +1072,7 @@ export async function updateContentItem(id: string, input: UpdateContentInput): 
       owner_name: input.owner_name || current.owner_name,
       status: input.status || current.status,
       tags: input.tags !== undefined ? input.tags : current.tags,
+      start_date: input.start_date !== undefined ? input.start_date : current.start_date,
       due_date: input.due_date !== undefined ? input.due_date : current.due_date,
       assigned_to_id: input.assigned_to_id !== undefined ? input.assigned_to_id : current.assigned_to_id,
       assigned_to_name: input.assigned_to_name !== undefined ? input.assigned_to_name : current.assigned_to_name,

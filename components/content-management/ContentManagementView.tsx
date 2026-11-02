@@ -619,7 +619,10 @@ export function ContentManagementView({
         }
         toast({
           title: 'Schedule Updated',
-          description: `Deliverable scheduled: ${dayjs(newStartDate).format('DD MMM')} – ${dayjs(newDueDate).format('DD MMM YYYY')}.`,
+          description:
+            newStartDate === newDueDate
+              ? `Deliverable scheduled for ${dayjs(newDueDate).format('DD MMM YYYY')}.`
+              : `Deliverable scheduled: ${dayjs(newStartDate).format('DD MMM')} – ${dayjs(newDueDate).format('DD MMM YYYY')}.`,
         })
       } else {
         toast({

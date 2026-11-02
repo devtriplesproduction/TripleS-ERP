@@ -50,7 +50,8 @@ export function ContentCalendarView({
   onDateChange,
 }: ContentCalendarViewProps) {
   const [mode, setMode] = useState<CalendarMode>('MONTH')
-  const [currentDate, setCurrentDate] = useState<dayjs.Dayjs>(dayjs())
+  // Anchor date locked to noon (12:00:00) to eliminate any Daylight Saving Time / UTC midnight shifting
+  const [currentDate, setCurrentDate] = useState<dayjs.Dayjs>(() => dayjs().hour(12).minute(0).second(0).millisecond(0))
   const [dragOverDate, setDragOverDate] = useState<string | null>(null)
 
   // Search Filter
@@ -70,14 +71,14 @@ export function ContentCalendarView({
     })
   }, [items, searchQuery])
 
-  // Stepping navigation based on mode
+  // Stepping navigation based on mode (preserves noon anchor)
   const stepDate = (amount: number) => {
     if (mode === 'MONTH') {
-      setCurrentDate((prev) => prev.add(amount, 'month'))
+      setCurrentDate((prev) => prev.add(amount, 'month').hour(12).minute(0).second(0))
     } else if (mode === 'WEEK') {
-      setCurrentDate((prev) => prev.add(amount, 'week'))
+      setCurrentDate((prev) => prev.add(amount, 'week').hour(12).minute(0).second(0))
     } else {
-      setCurrentDate((prev) => prev.add(amount, 'day'))
+      setCurrentDate((prev) => prev.add(amount, 'day').hour(12).minute(0).second(0))
     }
   }
 
@@ -94,43 +95,62 @@ export function ContentCalendarView({
     }
   }, [mode, currentDate])
 
-  // Month grid calculations
+  // Month grid calculations (immunized against DST shifts with noon anchor)
   const monthGridDays = useMemo(() => {
-    const startOfMonth = currentDate.startOf('month')
+    const startOfMonth = currentDate.startOf('month').hour(12).minute(0).second(0).millisecond(0)
     const startDayOfWeek = startOfMonth.day() // 0 = Sunday
     // Adjust to Monday start (0 = Mon, 6 = Sun)
     const offset = (startDayOfWeek + 6) % 7
 
-    const startDate = startOfMonth.subtract(offset, 'day')
+    const startDate = startOfMonth.subtract(offset, 'day').hour(12).minute(0).second(0).millisecond(0)
     const days: dayjs.Dayjs[] = []
     for (let i = 0; i < 42; i++) {
-      days.push(startDate.add(i, 'day'))
+      days.push(startDate.add(i, 'day').hour(12))
     }
     return days
   }, [currentDate])
 
-  // Week days (7 days Mon to Sun)
+  // Week days (7 days Mon to Sun, immunized against DST shifts with noon anchor)
   const weekDays = useMemo(() => {
-    const startOfWeek = currentDate.startOf('isoWeek')
+    const startOfWeek = currentDate.startOf('isoWeek').hour(12).minute(0).second(0).millisecond(0)
     const list: dayjs.Dayjs[] = []
     for (let i = 0; i < 7; i++) {
-      list.push(startOfWeek.add(i, 'day'))
+      list.push(startOfWeek.add(i, 'day').hour(12))
     }
     return list
   }, [currentDate])
 
-  // Check if a task is active on a given date (falls between start_date and due_date or matches either)
+  // Check if a task is scheduled on a given date (matches exact due_date/deadline or start_date)
   const getTasksForDate = (day: dayjs.Dayjs): ContentItem[] => {
     const dateStr = day.format('YYYY-MM-DD')
     return filteredItems.filter((item) => {
-      const startStr = item.start_date || (item.created_at ? item.created_at.slice(0, 10) : dateStr)
-      const dueStr = item.due_date || startStr
-
-      if (dateStr >= startStr && dateStr <= dueStr) {
-        return true
+      // Direct YYYY-MM-DD string match without timezone skew
+      const taskDue = item.due_date ? item.due_date.substring(0, 10) : null
+      if (taskDue) {
+        return taskDue === dateStr
       }
-      return dateStr === startStr || dateStr === dueStr
+      const taskStart = item.start_date ? item.start_date.substring(0, 10) : null
+      if (taskStart) {
+        return taskStart === dateStr
+      }
+      return false
     })
+  }
+
+  // Handle dropping a task onto a specific calendar date with exact target assignment
+  const handleTaskDropOnDate = (taskId: string, targetDateStr: string) => {
+    if (!taskId || !targetDateStr || !onDateChange) return
+    // Validate target date string format YYYY-MM-DD
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(targetDateStr)) return
+
+    const task = items.find((t) => t.id === taskId)
+    if (!task) return
+
+    // Assign the task to the exact target date where dropped (no previous/next day shifting)
+    const newDueDate = targetDateStr
+    const newStartDate = targetDateStr
+
+    onDateChange(taskId, newStartDate, newDueDate)
   }
 
   // Priority Badge Helper
@@ -288,19 +308,10 @@ export function ContentCalendarView({
                   }}
                   onDrop={(e) => {
                     e.preventDefault()
+                    e.stopPropagation()
                     setDragOverDate(null)
                     const taskId = e.dataTransfer.getData('text/plain')
-                    if (taskId && onDateChange) {
-                      const task = items.find((t) => t.id === taskId)
-                      if (task) {
-                        const currentStart = task.start_date || (task.created_at ? task.created_at.slice(0, 10) : dayStr)
-                        const currentDue = task.due_date || currentStart
-                        const durationDays = Math.max(0, dayjs(currentDue).diff(dayjs(currentStart), 'day'))
-                        const newDue = dayStr
-                        const newStart = dayjs(dayStr).subtract(durationDays, 'day').format('YYYY-MM-DD')
-                        onDateChange(taskId, newStart, newDue)
-                      }
-                    }
+                    handleTaskDropOnDate(taskId, dayStr)
                   }}
                   className={cn(
                     "min-h-[110px] p-2 flex flex-col justify-between transition-all",
@@ -346,6 +357,7 @@ export function ContentCalendarView({
                             e.dataTransfer.setData('text/plain', task.id)
                             e.dataTransfer.effectAllowed = 'move'
                           }}
+                          onDragEnd={() => setDragOverDate(null)}
                           onClick={(e) => {
                             e.stopPropagation()
                             onItemClick && onItemClick(task)
@@ -402,19 +414,10 @@ export function ContentCalendarView({
                   }}
                   onDrop={(e) => {
                     e.preventDefault()
+                    e.stopPropagation()
                     setDragOverDate(null)
                     const taskId = e.dataTransfer.getData('text/plain')
-                    if (taskId && onDateChange) {
-                      const task = items.find((t) => t.id === taskId)
-                      if (task) {
-                        const currentStart = task.start_date || (task.created_at ? task.created_at.slice(0, 10) : dayStr)
-                        const currentDue = task.due_date || currentStart
-                        const durationDays = Math.max(0, dayjs(currentDue).diff(dayjs(currentStart), 'day'))
-                        const newDue = dayStr
-                        const newStart = dayjs(dayStr).subtract(durationDays, 'day').format('YYYY-MM-DD')
-                        onDateChange(taskId, newStart, newDue)
-                      }
-                    }
+                    handleTaskDropOnDate(taskId, dayStr)
                   }}
                   className={cn(
                     "min-h-[450px] p-3 flex flex-col space-y-2.5 transition-all",
@@ -458,6 +461,7 @@ export function ContentCalendarView({
                               e.dataTransfer.setData('text/plain', task.id)
                               e.dataTransfer.effectAllowed = 'move'
                             }}
+                            onDragEnd={() => setDragOverDate(null)}
                             onClick={() => onItemClick && onItemClick(task)}
                             className="p-2.5 rounded-xl bg-card border border-border hover:border-primary/50 transition-all cursor-grab active:cursor-grabbing space-y-1.5 shadow-xs hover:shadow-sm"
                             title="Drag to reschedule to another day"
@@ -503,7 +507,31 @@ export function ContentCalendarView({
       {/* ========================================================= */}
       {mode === 'DAY' && (
         <div className="space-y-4">
-          <Card className="bg-card border-border shadow-xs">
+          <Card
+            onDragOver={(e) => {
+              e.preventDefault()
+              e.dataTransfer.dropEffect = 'move'
+              const dayStr = currentDate.format('YYYY-MM-DD')
+              if (dragOverDate !== dayStr) setDragOverDate(dayStr)
+            }}
+            onDragLeave={(e) => {
+              if (e.currentTarget === e.target) {
+                setDragOverDate(null)
+              }
+            }}
+            onDrop={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              setDragOverDate(null)
+              const taskId = e.dataTransfer.getData('text/plain')
+              const dayStr = currentDate.format('YYYY-MM-DD')
+              handleTaskDropOnDate(taskId, dayStr)
+            }}
+            className={cn(
+              "bg-card border-border shadow-xs transition-all",
+              dragOverDate === currentDate.format('YYYY-MM-DD') && "ring-2 ring-primary ring-inset bg-primary/5"
+            )}
+          >
             <CardHeader className="p-4 border-b border-border flex flex-row items-center justify-between">
               <div className="flex items-center gap-2">
                 <CalendarIcon className="w-4 h-4 text-primary" />
