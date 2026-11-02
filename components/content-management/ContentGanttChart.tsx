@@ -37,10 +37,8 @@ export function ContentGanttChart({
   const [currentDate, setCurrentDate] = useState<dayjs.Dayjs>(dayjs())
   const [viewWindow, setViewWindow] = useState<14 | 30>(30)
 
-  // Filters
+  // Search Filter
   const [searchQuery, setSearchQuery] = useState('')
-  const [assigneeFilter, setAssigneeFilter] = useState('All')
-  const [statusFilter, setStatusFilter] = useState('All')
 
   // Ref for the timeline container (to calculate day width in px)
   const timelineContainerRef = useRef<HTMLDivElement>(null)
@@ -113,21 +111,17 @@ export function ContentGanttChart({
     return overlapping
   }, [items])
 
-  // Filter items
+  // Filter items (Search only; unwanted filters removed)
   const filteredItems = useMemo(() => {
+    if (!searchQuery.trim()) return items
+    const q = searchQuery.toLowerCase()
     return items.filter((item) => {
-      if (assigneeFilter !== 'All' && item.assigned_to_id !== assigneeFilter) return false
-      if (statusFilter !== 'All' && item.status !== statusFilter) return false
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase()
-        const matchesTitle = item.title.toLowerCase().includes(q)
-        const matchesAssignee = (item.assigned_to_name || '').toLowerCase().includes(q)
-        const matchesType = (item.content_type || '').toLowerCase().includes(q)
-        if (!matchesTitle && !matchesAssignee && !matchesType) return false
-      }
-      return true
+      const matchesTitle = item.title.toLowerCase().includes(q)
+      const matchesAssignee = (item.assigned_to_name || '').toLowerCase().includes(q)
+      const matchesType = (item.content_type || '').toLowerCase().includes(q)
+      return matchesTitle || matchesAssignee || matchesType
     })
-  }, [items, assigneeFilter, statusFilter, searchQuery])
+  }, [items, searchQuery])
 
   // Global mousemove & mouseup listeners for drag/resize
   useEffect(() => {
@@ -293,9 +287,9 @@ export function ContentGanttChart({
           </div>
         </div>
 
-        {/* Right: Search & Filters */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="relative min-w-[160px]">
+        {/* Right: Search Input */}
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-[200px]">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="text"
@@ -305,31 +299,6 @@ export function ContentGanttChart({
               className="pl-8 h-8 text-xs bg-muted/30 border-border"
             />
           </div>
-
-          <select
-            value={assigneeFilter}
-            onChange={(e) => setAssigneeFilter(e.target.value)}
-            className="h-8 px-2 rounded-lg text-xs bg-muted/40 border border-border text-foreground font-medium outline-none cursor-pointer max-w-[130px] truncate"
-          >
-            <option value="All">All Staff</option>
-            {employees.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.name || (e as any).employee_name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="h-8 px-2 rounded-lg text-xs bg-muted/40 border border-border text-foreground font-medium outline-none cursor-pointer"
-          >
-            <option value="All">All Statuses</option>
-            <option value="To Do">To Do</option>
-            <option value="In Progress">In Progress</option>
-            <option value="In Review">In Review</option>
-            <option value="Completed">Completed</option>
-          </select>
         </div>
       </div>
 
