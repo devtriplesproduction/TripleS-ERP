@@ -33,7 +33,8 @@ import {
   Sparkles,
   ExternalLink,
   ChevronDown,
-  Monitor
+  Monitor,
+  RotateCcw
 } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import { EmployeeScreenshotsGallery } from './EmployeeScreenshotsGallery'
@@ -85,8 +86,14 @@ export function TimeTrackingAdminDashboard() {
   const [sortBy, setSortBy] = useState<'worked' | 'active' | 'name' | 'status' | 'sync'>('worked')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-  // Monthly Filters
+  // Pagination for Daily
+  const [dailyPage, setDailyPage] = useState<number>(1)
+  const [dailyPageSize, setDailyPageSize] = useState<number>(10)
+
+  // Monthly Filters & Pagination
   const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonthIST())
+  const [monthlyPage, setMonthlyPage] = useState<number>(1)
+  const [monthlyPageSize, setMonthlyPageSize] = useState<number>(10)
 
   // Auto-refresh state (every 30 seconds)
   const [autoRefresh, setAutoRefresh] = useState<boolean>(true)
@@ -148,6 +155,7 @@ export function TimeTrackingAdminDashboard() {
         day: '2-digit'
       }).format(d)
       setSelectedDate(newDateStr)
+      setDailyPage(1)
     } catch {
       // ignore
     }
@@ -160,9 +168,25 @@ export function TimeTrackingAdminDashboard() {
       const d = new Date(parts[0], parts[1] - 1 + months, 1)
       const newMonthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
       setSelectedMonth(newMonthStr)
+      setMonthlyPage(1)
     } catch {
       // ignore
     }
+  }
+
+  // Check if any filters are active
+  const hasActiveFilters = useMemo(() => {
+    return searchQuery.trim() !== '' || selectedStatus !== 'All' || selectedDept !== 'All' || selectedEmpId !== 'All'
+  }, [searchQuery, selectedStatus, selectedDept, selectedEmpId])
+
+  const handleResetFilters = () => {
+    setSearchQuery('')
+    setSelectedStatus('All')
+    setSelectedDept('All')
+    setSelectedEmpId('All')
+    setSortBy('worked')
+    setSortOrder('desc')
+    setDailyPage(1)
   }
 
   // Fetch Daily Reports
@@ -389,6 +413,13 @@ export function TimeTrackingAdminDashboard() {
     })
   }, [employees, selectedStatus, selectedDept, selectedEmpId, searchQuery, sortBy, sortOrder])
 
+  // Paginated daily employees
+  const totalDailyPages = Math.ceil(filteredDailyEmployees.length / dailyPageSize) || 1
+  const paginatedDailyEmployees = useMemo(() => {
+    const start = (dailyPage - 1) * dailyPageSize
+    return filteredDailyEmployees.slice(start, start + dailyPageSize)
+  }, [filteredDailyEmployees, dailyPage, dailyPageSize])
+
   // Filtered and sorted monthly employees
   const filteredMonthlyEmployees = useMemo(() => {
     let list = monthlyEmployees
@@ -411,6 +442,13 @@ export function TimeTrackingAdminDashboard() {
 
     return list
   }, [monthlyEmployees, selectedDept, searchQuery])
+
+  // Paginated monthly employees
+  const totalMonthlyPages = Math.ceil(filteredMonthlyEmployees.length / monthlyPageSize) || 1
+  const paginatedMonthlyEmployees = useMemo(() => {
+    const start = (monthlyPage - 1) * monthlyPageSize
+    return filteredMonthlyEmployees.slice(start, start + monthlyPageSize)
+  }, [filteredMonthlyEmployees, monthlyPage, monthlyPageSize])
 
   // Find peak hour in hourly data
   const peakHour = useMemo(() => {
@@ -1120,7 +1158,10 @@ export function TimeTrackingAdminDashboard() {
                 <input
                   type="date"
                   value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedDate(e.target.value)
+                    setDailyPage(1)
+                  }}
                   className="px-2 py-1 bg-transparent text-xs font-medium text-foreground outline-none cursor-pointer border-none"
                 />
                 <button
@@ -1133,7 +1174,10 @@ export function TimeTrackingAdminDashboard() {
                 </button>
                 {selectedDate !== getTodayIST() && (
                   <button
-                    onClick={() => setSelectedDate(getTodayIST())}
+                    onClick={() => {
+                      setSelectedDate(getTodayIST())
+                      setDailyPage(1)
+                    }}
                     className="px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10 rounded-lg transition-colors ml-1"
                   >
                     Today
@@ -1152,7 +1196,10 @@ export function TimeTrackingAdminDashboard() {
                 <input
                   type="month"
                   value={selectedMonth}
-                  onChange={(e) => setSelectedMonth(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedMonth(e.target.value)
+                    setMonthlyPage(1)
+                  }}
                   className="px-2 py-1 bg-transparent text-xs font-medium text-foreground outline-none cursor-pointer border-none"
                 />
                 <button
@@ -1354,7 +1401,10 @@ export function TimeTrackingAdminDashboard() {
                 <Building2 size={14} className="text-muted-foreground" />
                 <select
                   value={selectedDept}
-                  onChange={(e) => setSelectedDept(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedDept(e.target.value)
+                    setDailyPage(1)
+                  }}
                   className="text-xs font-medium px-3 py-1.5 rounded-xl border border-border bg-card text-foreground outline-none cursor-pointer hover:border-foreground/30 focus:border-foreground shadow-xs transition-colors"
                 >
                   {departmentOptions.map(dept => (
@@ -1442,7 +1492,10 @@ export function TimeTrackingAdminDashboard() {
                   return (
                     <button
                       key={status}
-                      onClick={() => setSelectedStatus(status)}
+                      onClick={() => {
+                        setSelectedStatus(status)
+                        setDailyPage(1)
+                      }}
                       className={cn(
                         "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap shadow-xs",
                         isActive
@@ -1477,12 +1530,18 @@ export function TimeTrackingAdminDashboard() {
                     type="text"
                     placeholder="Search name, role, ID..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value)
+                      setDailyPage(1)
+                    }}
                     className="w-full pl-8 pr-8 py-1.5 rounded-xl border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-foreground focus:ring-1 focus:ring-foreground transition-all shadow-xs"
                   />
                   {searchQuery && (
                     <button
-                      onClick={() => setSearchQuery('')}
+                      onClick={() => {
+                        setSearchQuery('')
+                        setDailyPage(1)
+                      }}
                       className="absolute right-2.5 top-2 text-muted-foreground hover:text-foreground"
                     >
                       <X size={13} />
@@ -1493,7 +1552,10 @@ export function TimeTrackingAdminDashboard() {
                 {/* Department Filter */}
                 <select
                   value={selectedDept}
-                  onChange={(e) => setSelectedDept(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedDept(e.target.value)
+                    setDailyPage(1)
+                  }}
                   className="text-xs font-medium px-3 py-1.5 rounded-xl border border-border bg-card text-foreground outline-none cursor-pointer hover:border-foreground/30 focus:border-foreground shadow-xs transition-colors"
                 >
                   {departmentOptions.map(dept => (
@@ -1504,7 +1566,10 @@ export function TimeTrackingAdminDashboard() {
                 {/* Staff Selector */}
                 <select
                   value={selectedEmpId}
-                  onChange={(e) => setSelectedEmpId(e.target.value)}
+                  onChange={(e) => {
+                    setSelectedEmpId(e.target.value)
+                    setDailyPage(1)
+                  }}
                   className="text-xs font-medium px-3 py-1.5 rounded-xl border border-border bg-card text-foreground outline-none cursor-pointer max-w-[180px] truncate hover:border-foreground/30 focus:border-foreground shadow-xs transition-colors"
                 >
                   <option value="All">All Staff ({employees.length})</option>
@@ -1512,6 +1577,18 @@ export function TimeTrackingAdminDashboard() {
                     <option key={emp.id} value={emp.id}>{emp.name}</option>
                   ))}
                 </select>
+
+                {/* Reset Filters Shortcut */}
+                {hasActiveFilters && (
+                  <button
+                    onClick={handleResetFilters}
+                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-border bg-muted/40 hover:bg-muted text-xs font-medium text-muted-foreground hover:text-foreground transition-colors shadow-xs"
+                    title="Reset all active filters"
+                  >
+                    <RotateCcw size={12} />
+                    <span>Reset</span>
+                  </button>
+                )}
               </div>
 
               {/* Sorting Controls */}
@@ -1556,8 +1633,8 @@ export function TimeTrackingAdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {filteredDailyEmployees.length > 0 ? (
-                    filteredDailyEmployees.map((emp) => {
+                  {paginatedDailyEmployees.length > 0 ? (
+                    paginatedDailyEmployees.map((emp) => {
                       const efficiency = emp.workedMinutes > 0
                         ? Math.round((emp.activeMinutes / emp.workedMinutes) * 100)
                         : 0
@@ -1684,8 +1761,18 @@ export function TimeTrackingAdminDashboard() {
                             <RefreshCw size={20} className="animate-spin text-primary" />
                             <span>Querying verified telemetry records...</span>
                           </div>
+                        ) : hasActiveFilters ? (
+                          <div className="space-y-3">
+                            <p className="font-medium text-foreground">No employee records match the active filters.</p>
+                            <button
+                              onClick={handleResetFilters}
+                              className="px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-muted text-xs font-semibold text-primary transition-colors shadow-xs"
+                            >
+                              Reset All Filters
+                            </button>
+                          </div>
                         ) : (
-                          'No employee records found matching criteria.'
+                          'No employee records found for this date.'
                         )}
                       </td>
                     </tr>
@@ -1694,15 +1781,57 @@ export function TimeTrackingAdminDashboard() {
               </table>
             </div>
 
-            {/* Table Footer Summary */}
-            <div className="flex items-center justify-between text-xs text-muted-foreground pt-1">
-              <span>
-                Showing <strong className="text-foreground">{filteredDailyEmployees.length}</strong> of{' '}
-                <strong className="text-foreground">{employees.length}</strong> employees
-              </span>
-              <span className="font-mono text-[11px]">
-                Last updated: {lastRefreshedAt.toLocaleTimeString()}
-              </span>
+            {/* Table Footer & Pagination */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground pt-1 border-t border-border/40">
+              <div className="flex items-center gap-2">
+                <span>
+                  Showing <strong className="text-foreground">{Math.min(filteredDailyEmployees.length, (dailyPage - 1) * dailyPageSize + 1)}</strong>-
+                  <strong className="text-foreground">{Math.min(filteredDailyEmployees.length, dailyPage * dailyPageSize)}</strong> of{' '}
+                  <strong className="text-foreground">{filteredDailyEmployees.length}</strong> employees
+                </span>
+
+                {/* Page Size Selector */}
+                <div className="flex items-center gap-1 border-l border-border pl-2 ml-1">
+                  <span className="text-[11px] text-muted-foreground">Per page:</span>
+                  <select
+                    value={dailyPageSize}
+                    onChange={(e) => {
+                      setDailyPageSize(Number(e.target.value))
+                      setDailyPage(1)
+                    }}
+                    className="text-[11px] font-medium px-2 py-0.5 rounded-lg border border-border bg-card text-foreground outline-none cursor-pointer"
+                  >
+                    <option value={10}>10</option>
+                    <option value={25}>25</option>
+                    <option value={50}>50</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Page Controls */}
+              {totalDailyPages > 1 && (
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setDailyPage(p => Math.max(1, p - 1))}
+                    disabled={dailyPage <= 1}
+                    className="px-2.5 py-1 rounded-lg border border-border bg-card hover:bg-muted disabled:opacity-30 transition-colors shadow-xs"
+                  >
+                    Previous
+                  </button>
+
+                  <span className="px-2 font-mono text-[11px]">
+                    Page {dailyPage} of {totalDailyPages}
+                  </span>
+
+                  <button
+                    onClick={() => setDailyPage(p => Math.min(totalDailyPages, p + 1))}
+                    disabled={dailyPage >= totalDailyPages}
+                    className="px-2.5 py-1 rounded-lg border border-border bg-card hover:bg-muted disabled:opacity-30 transition-colors shadow-xs"
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </>
@@ -1807,7 +1936,10 @@ export function TimeTrackingAdminDashboard() {
                     type="text"
                     placeholder="Search staff, designation..."
                     value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value)
+                      setMonthlyPage(1)
+                    }}
                     className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-foreground focus:ring-1 focus:ring-foreground transition-all shadow-xs"
                   />
                 </div>
@@ -1837,8 +1969,8 @@ export function TimeTrackingAdminDashboard() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {filteredMonthlyEmployees.length > 0 ? (
-                    filteredMonthlyEmployees.map((emp) => (
+                  {paginatedMonthlyEmployees.length > 0 ? (
+                    paginatedMonthlyEmployees.map((emp) => (
                       <tr key={emp.id} className="hover:bg-muted/20 transition-colors">
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
@@ -1881,6 +2013,39 @@ export function TimeTrackingAdminDashboard() {
                 </tbody>
               </table>
             </div>
+
+            {/* Monthly Pagination */}
+            {totalMonthlyPages > 1 && (
+              <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/40">
+                <span>
+                  Showing {Math.min(filteredMonthlyEmployees.length, (monthlyPage - 1) * monthlyPageSize + 1)}-
+                  {Math.min(filteredMonthlyEmployees.length, monthlyPage * monthlyPageSize)} of{' '}
+                  {filteredMonthlyEmployees.length} employees
+                </span>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setMonthlyPage(p => Math.max(1, p - 1))}
+                    disabled={monthlyPage <= 1}
+                    className="px-2.5 py-1 rounded-lg border border-border bg-card hover:bg-muted disabled:opacity-30 transition-colors shadow-xs"
+                  >
+                    Previous
+                  </button>
+
+                  <span className="px-2 font-mono text-[11px]">
+                    Page {monthlyPage} of {totalMonthlyPages}
+                  </span>
+
+                  <button
+                    onClick={() => setMonthlyPage(p => Math.min(totalMonthlyPages, p + 1))}
+                    disabled={monthlyPage >= totalMonthlyPages}
+                    className="px-2.5 py-1 rounded-lg border border-border bg-card hover:bg-muted disabled:opacity-30 transition-colors shadow-xs"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </>
       )}
