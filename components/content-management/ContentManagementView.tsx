@@ -245,7 +245,13 @@ export function ContentManagementView({
     const contentEmpIdSet = new Set(contentEmployees.map((e) => e.id))
     return items.filter((item) => {
       if (item.assigned_to_id) {
-        return contentEmpIdSet.has(item.assigned_to_id)
+        if (contentEmpIdSet.has(item.assigned_to_id)) return true
+        if (item.assigned_to_name) {
+          const match = contentEmployees.some(
+            (e) => (e.name || '').toLowerCase() === item.assigned_to_name?.toLowerCase()
+          )
+          if (match) return true
+        }
       }
       if (item.assigned_to_name) {
         const lower = item.assigned_to_name.toLowerCase()
@@ -529,6 +535,10 @@ export function ContentManagementView({
       )
     )
 
+    if (viewItem && viewItem.id === itemId) {
+      setViewItem((prev) => (prev ? { ...prev, assigned_to_id: newEmployeeId || null, assigned_to_name: empName } : null))
+    }
+
     try {
       const res = await updateContentItem(itemId, {
         assigned_to_id: newEmployeeId || null,
@@ -537,6 +547,9 @@ export function ContentManagementView({
 
       if (res.success && res.data) {
         setItems((prev) => prev.map((i) => (i.id === itemId ? res.data! : i)))
+        if (viewItem && viewItem.id === itemId) {
+          setViewItem(res.data)
+        }
         toast({
           title: 'Task Assigned',
           description: `Task assigned to ${empName || 'Unassigned'}.`,
@@ -1252,7 +1265,9 @@ export function ContentManagementView({
                   setViewItem(item)
                   setIsViewModalOpen(true)
                 }}
+                onEditItem={(item) => setEditingItem(item)}
                 onStatusChange={(itemId, status) => handleDropTask(itemId, getTaskColumn(status))}
+                onReassignTask={handleReassignTask}
                 onDateChange={handleDateChange}
               />
             </div>

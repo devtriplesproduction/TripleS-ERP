@@ -10,7 +10,9 @@ import {
   AlertTriangle,
   Search,
   Timer,
-  GripVertical
+  GripVertical,
+  Pencil,
+  CheckCircle2
 } from 'lucide-react'
 import { ContentItem, ContentStatus, ContentPriority, computeDeadlineState } from '@/types/content-management'
 import { AssignableEmployee } from '@/lib/actions/team'
@@ -23,7 +25,9 @@ interface ContentGanttChartProps {
   items: ContentItem[]
   employees?: AssignableEmployee[]
   onItemClick?: (item: ContentItem) => void
+  onEditItem?: (item: ContentItem) => void
   onStatusChange?: (itemId: string, status: ContentStatus) => Promise<void> | void
+  onReassignTask?: (itemId: string, newEmployeeId: string) => Promise<void> | void
   onDateChange?: (itemId: string, newStartDate: string, newDueDate: string) => Promise<void> | void
 }
 
@@ -31,6 +35,9 @@ export function ContentGanttChart({
   items,
   employees = [],
   onItemClick,
+  onEditItem,
+  onStatusChange,
+  onReassignTask,
   onDateChange,
 }: ContentGanttChartProps) {
   // Navigation: Anchor date for timeline
@@ -80,10 +87,10 @@ export function ContentGanttChart({
     const byAssignee: Record<string, ContentItem[]> = {}
 
     items.forEach((item) => {
-      const assignee = item.assigned_to_id || item.assigned_to_name
-      if (!assignee) return
-      if (!byAssignee[assignee]) byAssignee[assignee] = []
-      byAssignee[assignee].push(item)
+      const assigneeKey = (item.assigned_to_name || item.assigned_to_id || '').trim().toLowerCase()
+      if (!assigneeKey || assigneeKey === 'unassigned') return
+      if (!byAssignee[assigneeKey]) byAssignee[assigneeKey] = []
+      byAssignee[assigneeKey].push(item)
     })
 
     Object.values(byAssignee).forEach((taskList) => {
@@ -315,7 +322,7 @@ export function ContentGanttChart({
               </div>
 
               {/* Right Column Header: Days */}
-              <div className="flex-1 flex">
+              <div ref={timelineContainerRef} className="flex-1 flex">
                 {daysArray.map((day) => {
                   const isToday = day.format('YYYY-MM-DD') === todayStr
                   const isWeekend = day.day() === 0 || day.day() === 6
@@ -410,6 +417,16 @@ export function ContentGanttChart({
                     barGradient = 'from-amber-600 to-orange-500'
                   }
 
+                  // Match assigned employee for inline dropdown
+                  const matchingEmp = employees.find(
+                    (e) =>
+                      e.id === item.assigned_to_id ||
+                      (e.name &&
+                        item.assigned_to_name &&
+                        e.name.toLowerCase() === item.assigned_to_name.toLowerCase())
+                  )
+                  const selectedEmpId = matchingEmp ? matchingEmp.id : (item.assigned_to_id || '')
+
                   return (
                     <div
                       key={item.id}
@@ -417,17 +434,51 @@ export function ContentGanttChart({
                     >
                       {/* Left: Metadata info (340px) */}
                       <div
-                        onClick={() => onItemClick && onItemClick(item)}
-                        className="w-[340px] shrink-0 p-3 border-r border-border flex flex-col justify-between cursor-pointer space-y-1"
+                        className="w-[340px] shrink-0 p-3 border-r border-border flex flex-col justify-between space-y-1.5"
                       >
+                        {/* Top: Badges and In-Place Status Selector */}
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[10px] font-mono font-bold text-primary px-1.5 py-0.2 rounded bg-primary/10">
+                          <span
+                            onClick={() => onItemClick && onItemClick(item)}
+                            className="text-[10px] font-mono font-bold text-primary px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 cursor-pointer transition-colors"
+                            title="Click to view task details"
+                          >
                             {item.id}
                           </span>
                           <span className="text-[10px] text-muted-foreground font-medium">
                             {item.content_type || 'Content'}
                           </span>
                           {getPriorityBadge(item.priority)}
+
+                          {/* In-place Status Selector */}
+                          <div onClick={(e) => e.stopPropagation()} className="inline-block">
+                            <select
+                              value={item.status}
+                              onChange={(e) => {
+                                e.stopPropagation()
+                                if (onStatusChange) {
+                                  onStatusChange(item.id, e.target.value as ContentStatus)
+                                }
+                              }}
+                              className={cn(
+                                "text-[9px] font-semibold px-1 py-0.5 rounded border outline-none cursor-pointer transition-colors",
+                                item.status === 'Completed' || item.status === 'Published' || item.status === 'Approved'
+                                  ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                  : item.status === 'In Review'
+                                  ? "bg-indigo-500/15 text-indigo-400 border-indigo-500/30"
+                                  : item.status === 'In Progress' || item.status === 'Changes Requested'
+                                  ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                                  : "bg-muted text-muted-foreground border-border"
+                              )}
+                              title="Change task status"
+                            >
+                              <option value="To Do" className="bg-popover text-popover-foreground">To Do</option>
+                              <option value="In Progress" className="bg-popover text-popover-foreground">In Progress</option>
+                              <option value="In Review" className="bg-popover text-popover-foreground">In Review</option>
+                              <option value="Completed" className="bg-popover text-popover-foreground">Completed</option>
+                            </select>
+                          </div>
+
                           {isOverdue && (
                             <span className="text-[9px] font-bold text-rose-400 flex items-center gap-0.5">
                               <AlertTriangle className="w-2.5 h-2.5" />
@@ -442,17 +493,63 @@ export function ContentGanttChart({
                           )}
                         </div>
 
-                        <h4 className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors">
-                          {item.title}
-                        </h4>
+                        {/* Title & Edit Button */}
+                        <div className="flex items-center justify-between gap-1">
+                          <h4
+                            onClick={() => onItemClick && onItemClick(item)}
+                            className="text-xs font-bold text-foreground truncate hover:text-primary cursor-pointer transition-colors flex-1"
+                            title={item.title}
+                          >
+                            {item.title}
+                          </h4>
+                          {onEditItem && (
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onEditItem(item)
+                              }}
+                              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+                              title="Edit task details"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
 
-                        <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
-                          <div className="flex items-center gap-1 truncate max-w-[150px]">
+                        {/* Assignee Reassignment & Timeline Dates */}
+                        <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5 gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0" onClick={(e) => e.stopPropagation()}>
                             <User className="w-3 h-3 text-primary shrink-0" />
-                            <span className="truncate">{item.assigned_to_name || 'Unassigned'}</span>
+                            <select
+                              value={selectedEmpId}
+                              onChange={(e) => {
+                                e.stopPropagation()
+                                if (onReassignTask) {
+                                  onReassignTask(item.id, e.target.value)
+                                }
+                              }}
+                              className="text-[11px] font-medium bg-muted/40 hover:bg-muted text-foreground border border-border/60 hover:border-border rounded px-1.5 py-0.5 outline-none cursor-pointer max-w-[130px] truncate transition-colors"
+                              title="Change assigned employee"
+                            >
+                              <option value="" className="bg-popover text-popover-foreground">
+                                {item.assigned_to_name && !employees.some((e) => e.id === item.assigned_to_id)
+                                  ? item.assigned_to_name
+                                  : 'Unassigned'}
+                              </option>
+                              {employees.map((emp) => (
+                                <option key={emp.id} value={emp.id} className="bg-popover text-popover-foreground">
+                                  {emp.name || (emp as any).employee_name}
+                                </option>
+                              ))}
+                            </select>
                           </div>
-                          <div className="flex items-center gap-2 font-mono text-[10px]">
-                            <span>{totalDurationDays}d</span>
+                          <div
+                            onClick={() => onItemClick && onItemClick(item)}
+                            className="flex items-center gap-1.5 font-mono text-[10px] shrink-0 cursor-pointer hover:text-foreground transition-colors"
+                            title={`Duration: ${totalDurationDays} days (${rawStart.format('DD MMM YYYY')} – ${rawDue.format('DD MMM YYYY')})`}
+                          >
+                            <span className="font-semibold text-foreground/80">{totalDurationDays}d</span>
                             <span>&bull;</span>
                             <span>
                               {rawStart.format('DD MMM')} &rarr; {rawDue.format('DD MMM')}
@@ -463,7 +560,6 @@ export function ContentGanttChart({
 
                       {/* Right: Gantt Bar Timeline Area */}
                       <div
-                        ref={timelineContainerRef}
                         className="flex-1 relative flex items-center min-h-[58px]"
                       >
                         {/* Day Grid Lines */}
@@ -537,8 +633,19 @@ export function ContentGanttChart({
                             />
                           </div>
                         ) : (
-                          <div className="text-[10px] text-muted-foreground px-4 italic">
-                            Scheduled outside current month window
+                          <div className="text-[11px] text-muted-foreground px-4 flex items-center gap-2">
+                            <span className="italic">
+                              Scheduled for {rawStart.format('MMM YYYY')} ({rawStart.format('DD MMM')} – {rawDue.format('DD MMM')})
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => setCurrentDate(rawStart)}
+                              className="px-2 py-0.5 rounded text-[10px] font-semibold bg-primary/10 hover:bg-primary/20 text-primary transition-colors flex items-center gap-1"
+                              title={`Jump timeline to ${rawStart.format('MMMM YYYY')}`}
+                            >
+                              <Calendar className="w-3 h-3" />
+                              <span>Jump to {rawStart.format('MMM YYYY')}</span>
+                            </button>
                           </div>
                         )}
                       </div>
