@@ -37,6 +37,7 @@ interface ContentCalendarViewProps {
   employees?: AssignableEmployee[]
   onItemClick?: (item: ContentItem) => void
   onStatusChange?: (itemId: string, status: ContentStatus) => Promise<void> | void
+  onDateChange?: (itemId: string, newStartDate: string, newDueDate: string) => Promise<void> | void
 }
 
 type CalendarMode = 'MONTH' | 'WEEK' | 'DAY'
@@ -46,9 +47,11 @@ export function ContentCalendarView({
   employees = [],
   onItemClick,
   onStatusChange,
+  onDateChange,
 }: ContentCalendarViewProps) {
   const [mode, setMode] = useState<CalendarMode>('MONTH')
   const [currentDate, setCurrentDate] = useState<dayjs.Dayjs>(dayjs())
+  const [dragOverDate, setDragOverDate] = useState<string | null>(null)
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('')
@@ -294,19 +297,48 @@ export function ContentCalendarView({
           {/* 7x6 Day Cells Grid */}
           <div className="grid grid-cols-7 divide-x divide-y divide-border/60">
             {monthGridDays.map((day) => {
+              const dayStr = day.format('YYYY-MM-DD')
               const isCurrentMonth = day.month() === currentDate.month()
-              const isToday = day.format('YYYY-MM-DD') === todayStr
+              const isToday = dayStr === todayStr
               const isWeekend = day.day() === 0 || day.day() === 6
               const dayTasks = getTasksForDate(day)
+              const isOverDrop = dragOverDate === dayStr
 
               return (
                 <div
-                  key={day.format('YYYY-MM-DD')}
+                  key={dayStr}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'move'
+                    if (dragOverDate !== dayStr) setDragOverDate(dayStr)
+                  }}
+                  onDragLeave={(e) => {
+                    if (e.currentTarget === e.target) {
+                      setDragOverDate(null)
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    setDragOverDate(null)
+                    const taskId = e.dataTransfer.getData('text/plain')
+                    if (taskId && onDateChange) {
+                      const task = items.find((t) => t.id === taskId)
+                      if (task) {
+                        const currentStart = task.start_date || (task.created_at ? task.created_at.slice(0, 10) : dayStr)
+                        const currentDue = task.due_date || currentStart
+                        const durationDays = Math.max(0, dayjs(currentDue).diff(dayjs(currentStart), 'day'))
+                        const newDue = dayStr
+                        const newStart = dayjs(dayStr).subtract(durationDays, 'day').format('YYYY-MM-DD')
+                        onDateChange(taskId, newStart, newDue)
+                      }
+                    }
+                  }}
                   className={cn(
-                    "min-h-[110px] p-2 flex flex-col justify-between transition-colors",
+                    "min-h-[110px] p-2 flex flex-col justify-between transition-all",
                     !isCurrentMonth && "bg-muted/10 opacity-40",
                     isWeekend && isCurrentMonth && "bg-muted/15",
-                    isToday && "bg-primary/5 ring-1 ring-inset ring-primary/40"
+                    isToday && "bg-primary/5 ring-1 ring-inset ring-primary/40",
+                    isOverDrop && "ring-2 ring-primary ring-inset bg-primary/10 shadow-inner"
                   )}
                   onClick={() => {
                     setCurrentDate(day)
@@ -339,15 +371,21 @@ export function ContentCalendarView({
                       return (
                         <div
                           key={task.id}
+                          draggable
+                          onDragStart={(e) => {
+                            e.stopPropagation()
+                            e.dataTransfer.setData('text/plain', task.id)
+                            e.dataTransfer.effectAllowed = 'move'
+                          }}
                           onClick={(e) => {
                             e.stopPropagation()
                             onItemClick && onItemClick(task)
                           }}
                           className={cn(
-                            "px-1.5 py-0.5 rounded text-[10px] font-medium border truncate cursor-pointer transition-all flex items-center justify-between gap-1",
+                            "px-1.5 py-0.5 rounded text-[10px] font-medium border truncate cursor-grab active:cursor-grabbing transition-all flex items-center justify-between gap-1 shadow-2xs hover:scale-[1.02]",
                             getStatusColor(task.status)
                           )}
-                          title={`${task.title} (${task.status}) - ${task.assigned_to_name || 'Unassigned'}`}
+                          title={`Drag to reschedule deadline. ${task.title} (${task.status}) - ${task.assigned_to_name || 'Unassigned'}`}
                         >
                           <span className="truncate">{task.title}</span>
                           {isOverdue && <AlertTriangle className="w-2.5 h-2.5 text-rose-400 shrink-0" />}
@@ -374,17 +412,46 @@ export function ContentCalendarView({
         <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
           <div className="grid grid-cols-1 sm:grid-cols-7 divide-y sm:divide-y-0 sm:divide-x divide-border/60">
             {weekDays.map((day) => {
-              const isToday = day.format('YYYY-MM-DD') === todayStr
+              const dayStr = day.format('YYYY-MM-DD')
+              const isToday = dayStr === todayStr
               const isWeekend = day.day() === 0 || day.day() === 6
               const dayTasks = getTasksForDate(day)
+              const isOverDrop = dragOverDate === dayStr
 
               return (
                 <div
-                  key={day.format('YYYY-MM-DD')}
+                  key={dayStr}
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    e.dataTransfer.dropEffect = 'move'
+                    if (dragOverDate !== dayStr) setDragOverDate(dayStr)
+                  }}
+                  onDragLeave={(e) => {
+                    if (e.currentTarget === e.target) {
+                      setDragOverDate(null)
+                    }
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault()
+                    setDragOverDate(null)
+                    const taskId = e.dataTransfer.getData('text/plain')
+                    if (taskId && onDateChange) {
+                      const task = items.find((t) => t.id === taskId)
+                      if (task) {
+                        const currentStart = task.start_date || (task.created_at ? task.created_at.slice(0, 10) : dayStr)
+                        const currentDue = task.due_date || currentStart
+                        const durationDays = Math.max(0, dayjs(currentDue).diff(dayjs(currentStart), 'day'))
+                        const newDue = dayStr
+                        const newStart = dayjs(dayStr).subtract(durationDays, 'day').format('YYYY-MM-DD')
+                        onDateChange(taskId, newStart, newDue)
+                      }
+                    }
+                  }}
                   className={cn(
-                    "min-h-[450px] p-3 flex flex-col space-y-2.5",
+                    "min-h-[450px] p-3 flex flex-col space-y-2.5 transition-all",
                     isWeekend && "bg-muted/15",
-                    isToday && "bg-primary/5 ring-1 ring-inset ring-primary/40"
+                    isToday && "bg-primary/5 ring-1 ring-inset ring-primary/40",
+                    isOverDrop && "ring-2 ring-primary ring-inset bg-primary/10 shadow-inner"
                   )}
                 >
                   {/* Day Column Header */}
@@ -416,8 +483,15 @@ export function ContentCalendarView({
                         return (
                           <div
                             key={task.id}
+                            draggable
+                            onDragStart={(e) => {
+                              e.stopPropagation()
+                              e.dataTransfer.setData('text/plain', task.id)
+                              e.dataTransfer.effectAllowed = 'move'
+                            }}
                             onClick={() => onItemClick && onItemClick(task)}
-                            className="p-2.5 rounded-xl bg-card border border-border hover:border-primary/50 transition-all cursor-pointer space-y-1.5 shadow-xs"
+                            className="p-2.5 rounded-xl bg-card border border-border hover:border-primary/50 transition-all cursor-grab active:cursor-grabbing space-y-1.5 shadow-xs hover:shadow-sm"
+                            title="Drag to reschedule to another day"
                           >
                             <div className="flex items-center justify-between gap-1">
                               <span className="text-[10px] font-mono font-bold text-primary px-1 py-0.2 bg-primary/10 rounded">

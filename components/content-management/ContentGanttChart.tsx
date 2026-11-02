@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
+import React, { useState, useMemo, useRef, useEffect } from 'react'
 import {
   Calendar,
   ChevronLeft,
@@ -8,22 +8,13 @@ import {
   Clock,
   User,
   AlertTriangle,
-  CheckCircle2,
-  Filter,
   Search,
-  Sparkles,
-  Layers,
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
-  GitCommit,
-  GitBranch,
-  Timer
+  Timer,
+  GripVertical
 } from 'lucide-react'
 import { ContentItem, ContentStatus, ContentPriority, computeDeadlineState } from '@/types/content-management'
 import { AssignableEmployee } from '@/lib/actions/team'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import dayjs from 'dayjs'
 import { cn } from '@/lib/utils'
@@ -33,12 +24,14 @@ interface ContentGanttChartProps {
   employees?: AssignableEmployee[]
   onItemClick?: (item: ContentItem) => void
   onStatusChange?: (itemId: string, status: ContentStatus) => Promise<void> | void
+  onDateChange?: (itemId: string, newStartDate: string, newDueDate: string) => Promise<void> | void
 }
 
 export function ContentGanttChart({
   items,
   employees = [],
   onItemClick,
+  onDateChange,
 }: ContentGanttChartProps) {
   // Navigation: Anchor date for timeline
   const [currentDate, setCurrentDate] = useState<dayjs.Dayjs>(dayjs())
@@ -48,6 +41,19 @@ export function ContentGanttChart({
   const [searchQuery, setSearchQuery] = useState('')
   const [assigneeFilter, setAssigneeFilter] = useState('All')
   const [statusFilter, setStatusFilter] = useState('All')
+
+  // Ref for the timeline container (to calculate day width in px)
+  const timelineContainerRef = useRef<HTMLDivElement>(null)
+
+  // Drag and Resize Interaction State
+  const [dragState, setDragState] = useState<{
+    item: ContentItem
+    mode: 'move' | 'resize-left' | 'resize-right'
+    startX: number
+    initialStartDate: string
+    initialDueDate: string
+    deltaDays: number
+  } | null>(null)
 
   // Calculate timeline start & end based on viewWindow
   const rangeStart = useMemo(() => {
@@ -123,6 +129,91 @@ export function ContentGanttChart({
     })
   }, [items, assigneeFilter, statusFilter, searchQuery])
 
+  // Global mousemove & mouseup listeners for drag/resize
+  useEffect(() => {
+    if (!dragState) return
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!timelineContainerRef.current) return
+      const rect = timelineContainerRef.current.getBoundingClientRect()
+      const dayWidthPx = rect.width / totalDays
+      const deltaPx = e.clientX - dragState.startX
+      const deltaDays = Math.round(deltaPx / (dayWidthPx > 0 ? dayWidthPx : 30))
+
+      setDragState((prev) => (prev ? { ...prev, deltaDays } : null))
+    }
+
+    const handleMouseUp = () => {
+      if (!dragState) return
+
+      const { item, mode, initialStartDate, initialDueDate, deltaDays } = dragState
+      setDragState(null)
+
+      if (deltaDays === 0) {
+        // Was a simple click without drag
+        if (onItemClick) {
+          onItemClick(item)
+        }
+        return
+      }
+
+      let newStartDate = initialStartDate
+      let newDueDate = initialDueDate
+
+      if (mode === 'move') {
+        newStartDate = dayjs(initialStartDate).add(deltaDays, 'day').format('YYYY-MM-DD')
+        newDueDate = dayjs(initialDueDate).add(deltaDays, 'day').format('YYYY-MM-DD')
+      } else if (mode === 'resize-left') {
+        newStartDate = dayjs(initialStartDate).add(deltaDays, 'day').format('YYYY-MM-DD')
+        // Ensure start date cannot exceed due date
+        if (dayjs(newStartDate).isAfter(dayjs(initialDueDate))) {
+          newStartDate = initialDueDate
+        }
+      } else if (mode === 'resize-right') {
+        newDueDate = dayjs(initialDueDate).add(deltaDays, 'day').format('YYYY-MM-DD')
+        // Ensure due date cannot precede start date
+        if (dayjs(newDueDate).isBefore(dayjs(initialStartDate))) {
+          newDueDate = initialStartDate
+        }
+      }
+
+      if (onDateChange) {
+        onDateChange(item.id, newStartDate, newDueDate)
+      }
+    }
+
+    window.addEventListener('mousemove', handleMouseMove)
+    window.addEventListener('mouseup', handleMouseUp)
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove)
+      window.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [dragState, totalDays, onDateChange, onItemClick])
+
+  // Start drag interaction
+  const handleStartBarInteraction = (
+    e: React.MouseEvent,
+    item: ContentItem,
+    mode: 'move' | 'resize-left' | 'resize-right'
+  ) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    const todayDefault = dayjs().format('YYYY-MM-DD')
+    const itemStart = item.start_date || (item.created_at ? item.created_at.slice(0, 10) : todayDefault)
+    const itemDue = item.due_date || dayjs(itemStart).add(3, 'day').format('YYYY-MM-DD')
+
+    setDragState({
+      item,
+      mode,
+      startX: e.clientX,
+      initialStartDate: itemStart,
+      initialDueDate: itemDue,
+      deltaDays: 0,
+    })
+  }
+
   // Today indicator string
   const todayStr = useMemo(() => dayjs().format('YYYY-MM-DD'), [])
 
@@ -134,15 +225,15 @@ export function ContentGanttChart({
       case 'High':
         return <Badge className="bg-orange-500/15 text-orange-400 border-orange-500/30 text-[9px] px-1.5 py-0">High</Badge>
       case 'Medium':
-        return <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/30 text-[9px] px-1.5 py-0">Med</Badge>
+        return <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30 text-[9px] px-1.5 py-0">Med</Badge>
       case 'Low':
-        return <Badge className="bg-zinc-700/50 text-zinc-400 border-zinc-600 text-[9px] px-1.5 py-0">Low</Badge>
+        return <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30 text-[9px] px-1.5 py-0">Low</Badge>
       default:
         return null
     }
   }
 
-  // Step Month / Window
+  // Step Month / Timeline Window
   const stepMonth = (offset: number) => {
     setCurrentDate((prev) => prev.add(offset, 'month'))
   }
@@ -151,7 +242,7 @@ export function ContentGanttChart({
     <div className="space-y-4">
       {/* Gantt Header & Controls Bar */}
       <div className="p-4 bg-card border border-border rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
-        {/* Left: Date Navigator */}
+        {/* Left: Date Navigator & Horizontal Navigation */}
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1 bg-muted/40 border border-border p-1 rounded-xl shadow-xs">
             <button
@@ -179,7 +270,7 @@ export function ContentGanttChart({
             </button>
           </div>
 
-          {/* View Zoom Toggle */}
+          {/* View Zoom Toggle (14 Days vs Full Month) */}
           <div className="flex items-center bg-muted/40 border border-border p-1 rounded-xl">
             <button
               onClick={() => setViewWindow(14)}
@@ -246,10 +337,10 @@ export function ContentGanttChart({
       <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <div className="min-w-[1000px]">
-            {/* Header: Task Metadata on Left (360px), Timeline Grid on Right */}
+            {/* Header: Task Metadata on Left (340px), Timeline Grid on Right */}
             <div className="flex border-b border-border bg-muted/30 text-[11px] font-semibold text-muted-foreground">
               {/* Left Column Header */}
-              <div className="w-[360px] shrink-0 p-3 border-r border-border flex items-center justify-between">
+              <div className="w-[340px] shrink-0 p-3 border-r border-border flex items-center justify-between">
                 <span>Deliverable & Assignee</span>
                 <span>Schedule & Duration</span>
               </div>
@@ -289,16 +380,30 @@ export function ContentGanttChart({
                 </div>
               ) : (
                 filteredItems.map((item) => {
-                  // Calculate start & due relative to timeline range
-                  const itemStart = item.start_date
-                    ? dayjs(item.start_date)
-                    : dayjs(item.created_at || rangeStart)
-                  const itemDue = item.due_date
-                    ? dayjs(item.due_date)
-                    : itemStart.add(3, 'day')
+                  // Check if this item is currently being dragged or resized
+                  const isDraggingThis = dragState?.item.id === item.id
+                  const deltaDays = isDraggingThis ? dragState.deltaDays : 0
 
-                  const totalDurationDays = Math.max(1, itemDue.diff(itemStart, 'day') + 1)
-                  const diffStart = itemStart.diff(rangeStart, 'day')
+                  // Calculate start & due relative to timeline range
+                  let rawStart = item.start_date ? dayjs(item.start_date) : dayjs(item.created_at || rangeStart)
+                  let rawDue = item.due_date ? dayjs(item.due_date) : rawStart.add(3, 'day')
+
+                  // Apply drag / resize delta preview
+                  if (isDraggingThis) {
+                    if (dragState.mode === 'move') {
+                      rawStart = rawStart.add(deltaDays, 'day')
+                      rawDue = rawDue.add(deltaDays, 'day')
+                    } else if (dragState.mode === 'resize-left') {
+                      rawStart = rawStart.add(deltaDays, 'day')
+                      if (rawStart.isAfter(rawDue)) rawStart = rawDue
+                    } else if (dragState.mode === 'resize-right') {
+                      rawDue = rawDue.add(deltaDays, 'day')
+                      if (rawDue.isBefore(rawStart)) rawDue = rawStart
+                    }
+                  }
+
+                  const totalDurationDays = Math.max(1, rawDue.diff(rawStart, 'day') + 1)
+                  const diffStart = rawStart.diff(rangeStart, 'day')
 
                   // Percentage placement within timeline
                   const startOffset = Math.max(0, diffStart)
@@ -310,7 +415,7 @@ export function ContentGanttChart({
                   const leftPercent = Math.min(100, Math.max(0, (startOffset / totalDays) * 100))
                   const widthPercent = Math.min(100 - leftPercent, Math.max(2.5, (visibleDuration / totalDays) * 100))
 
-                  const isVisible = diffStart < totalDays && itemDue.diff(rangeStart, 'day') >= 0
+                  const isVisible = diffStart < totalDays && rawDue.diff(rangeStart, 'day') >= 0
 
                   const progress = typeof item.progress === 'number'
                     ? item.progress
@@ -340,10 +445,12 @@ export function ContentGanttChart({
                     <div
                       key={item.id}
                       className="flex hover:bg-muted/20 transition-colors group"
-                      onClick={() => onItemClick && onItemClick(item)}
                     >
-                      {/* Left: Metadata info (360px) */}
-                      <div className="w-[360px] shrink-0 p-3 border-r border-border flex flex-col justify-between cursor-pointer space-y-1">
+                      {/* Left: Metadata info (340px) */}
+                      <div
+                        onClick={() => onItemClick && onItemClick(item)}
+                        className="w-[340px] shrink-0 p-3 border-r border-border flex flex-col justify-between cursor-pointer space-y-1"
+                      >
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="text-[10px] font-mono font-bold text-primary px-1.5 py-0.2 rounded bg-primary/10">
                             {item.id}
@@ -371,7 +478,7 @@ export function ContentGanttChart({
                         </h4>
 
                         <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5">
-                          <div className="flex items-center gap-1 truncate max-w-[160px]">
+                          <div className="flex items-center gap-1 truncate max-w-[150px]">
                             <User className="w-3 h-3 text-primary shrink-0" />
                             <span className="truncate">{item.assigned_to_name || 'Unassigned'}</span>
                           </div>
@@ -379,15 +486,17 @@ export function ContentGanttChart({
                             <span>{totalDurationDays}d</span>
                             <span>&bull;</span>
                             <span>
-                              {item.start_date ? dayjs(item.start_date).format('DD MMM') : '-'} &rarr;{' '}
-                              {item.due_date ? dayjs(item.due_date).format('DD MMM') : '-'}
+                              {rawStart.format('DD MMM')} &rarr; {rawDue.format('DD MMM')}
                             </span>
                           </div>
                         </div>
                       </div>
 
                       {/* Right: Gantt Bar Timeline Area */}
-                      <div className="flex-1 relative flex items-center min-h-[58px]">
+                      <div
+                        ref={timelineContainerRef}
+                        className="flex-1 relative flex items-center min-h-[58px]"
+                      >
                         {/* Day Grid Lines */}
                         <div className="absolute inset-0 flex pointer-events-none">
                           {daysArray.map((day) => {
@@ -406,30 +515,57 @@ export function ContentGanttChart({
                           })}
                         </div>
 
-                        {/* Visual Gantt Bar */}
+                        {/* Interactive Gantt Bar (Drag to Shift Dates & Resize Handles) */}
                         {isVisible ? (
                           <div
-                            className="absolute z-10 h-7 rounded-lg overflow-hidden cursor-pointer shadow-xs transition-all hover:brightness-110 flex items-center px-2 border border-white/10"
+                            className={cn(
+                              "absolute z-10 h-7 rounded-lg shadow-xs transition-all flex items-center border border-white/10 group/bar select-none",
+                              isDraggingThis
+                                ? "ring-2 ring-primary brightness-110 shadow-md cursor-grabbing"
+                                : "cursor-grab hover:brightness-110"
+                            )}
                             style={{
                               left: `${leftPercent}%`,
                               width: `${widthPercent}%`,
                             }}
-                            title={`${item.title} | ${item.status} | Duration: ${totalDurationDays} days | ${progress}% Complete`}
+                            onMouseDown={(e) => handleStartBarInteraction(e, item, 'move')}
+                            title={`${item.title} | ${rawStart.format('DD MMM')} → ${rawDue.format('DD MMM')} | Drag center to move, drag edges to resize`}
                           >
+                            {/* Left Resize Handle */}
+                            <div
+                              className="absolute left-0 top-0 bottom-0 w-2.5 cursor-ew-resize hover:bg-white/40 z-30 flex items-center justify-center transition-colors rounded-l-lg"
+                              onMouseDown={(e) => handleStartBarInteraction(e, item, 'resize-left')}
+                              title="Drag to adjust Start Date"
+                            />
+
                             {/* Gradient Background */}
-                            <div className={cn("absolute inset-0 bg-gradient-to-r", barGradient, isOverdue && "ring-2 ring-rose-500")} />
+                            <div className={cn("absolute inset-0 bg-gradient-to-r rounded-lg", barGradient, isOverdue && "ring-2 ring-rose-500")} />
 
                             {/* Inner Progress Shading */}
                             <div
-                              className="absolute left-0 top-0 bottom-0 bg-black/25 transition-all"
+                              className="absolute left-0 top-0 bottom-0 bg-black/25 rounded-l-lg transition-all"
                               style={{ width: `${progress}%` }}
                             />
 
                             {/* Text Label on Bar */}
-                            <span className="relative z-10 text-[11px] font-bold text-white truncate drop-shadow-sm flex items-center gap-1.5">
+                            <span className="relative z-10 text-[11px] font-bold text-white truncate drop-shadow-sm flex items-center gap-1.5 px-3 pointer-events-none">
                               <span>{item.title}</span>
                               <span className="text-[9px] opacity-80 font-mono">({progress}%)</span>
                             </span>
+
+                            {/* Live Date Preview Tooltip during Drag */}
+                            {isDraggingThis && deltaDays !== 0 && (
+                              <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-40 px-2 py-0.5 rounded bg-black/90 text-white text-[10px] font-mono whitespace-nowrap shadow-lg border border-border">
+                                {rawStart.format('DD MMM')} &rarr; {rawDue.format('DD MMM')} ({totalDurationDays}d)
+                              </div>
+                            )}
+
+                            {/* Right Resize Handle */}
+                            <div
+                              className="absolute right-0 top-0 bottom-0 w-2.5 cursor-ew-resize hover:bg-white/40 z-30 flex items-center justify-center transition-colors rounded-r-lg"
+                              onMouseDown={(e) => handleStartBarInteraction(e, item, 'resize-right')}
+                              title="Drag to adjust Deadline"
+                            />
                           </div>
                         ) : (
                           <div className="text-[10px] text-muted-foreground px-4 italic">
@@ -447,36 +583,28 @@ export function ContentGanttChart({
 
         {/* Gantt Legend & Summary Bar */}
         <div className="p-3 bg-muted/20 border-t border-border flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-3">
-          <div className="flex items-center gap-4 flex-wrap">
-            <span className="font-semibold text-foreground">Timeline Legend:</span>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-emerald-500" />
-              <span>Completed</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-indigo-500" />
-              <span>In Review</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-amber-500" />
-              <span>In Progress</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-zinc-600" />
+          <div className="flex items-center gap-4 flex-wrap text-[11px]">
+            <span className="font-semibold text-foreground">Timeline Guide:</span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-r from-zinc-600 to-zinc-500 inline-block" />
               <span>To Do</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded border-2 border-rose-500 bg-rose-500/30" />
-              <span>Overdue</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-amber-400" />
-              <span>Overlapping</span>
-            </div>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-r from-amber-600 to-orange-500 inline-block" />
+              <span>In Progress</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-r from-indigo-600 to-violet-500 inline-block" />
+              <span>In Review</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-r from-emerald-600 to-teal-500 inline-block" />
+              <span>Completed</span>
+            </span>
           </div>
 
-          <div className="text-[11px]">
-            Showing <strong className="text-foreground">{filteredItems.length}</strong> tasks on timeline
+          <div className="text-[11px] text-muted-foreground italic flex items-center gap-1">
+            <span>Tip: Drag task bars to shift dates; drag edges to adjust start/deadlines.</span>
           </div>
         </div>
       </div>

@@ -79,8 +79,8 @@ interface ContentManagementViewProps {
   user: AuthUser
 }
 
-// Exactly Two Main Tabs
-type MainTab = 'board' | 'assignments_deadlines'
+// Exactly Three Main Tabs: Task Board, Assignments, Deadlines
+type MainTab = 'board' | 'assignments' | 'deadlines'
 type BoardColumnKey = 'To Do' | 'In Progress' | 'In Review' | 'Completed'
 type SecondaryBoardView = 'kanban' | 'gantt' | 'calendar'
 
@@ -111,10 +111,10 @@ export function ContentManagementView({
 }: ContentManagementViewProps) {
   const [items, setItems] = useState<ContentItem[]>(initialItems || [])
   
-  // 1. Exactly Two Main Tabs: Task Board & Assignments & Deadlines
+  // Three Main Tabs: Task Board | Assignments | Deadlines
   const [activeTab, setActiveTab] = useState<MainTab>('board')
 
-  // 2. Secondary View Switcher inside Task Board: Kanban | Gantt | Calendar
+  // Secondary View Switcher inside Task Board: Kanban | Gantt | Calendar (Icons Only)
   const [boardView, setBoardView] = useState<SecondaryBoardView>('kanban')
 
   // Task Board Filters
@@ -208,13 +208,71 @@ export function ContentManagementView({
     }
   }
 
+  // Department & Employee Restrictions: Strictly Content Management department
+  const contentEmployees = useMemo(() => {
+    return employees.filter((emp) => {
+      const dept = (emp.department || '').toLowerCase().trim()
+      const desig = (emp.designation || '').toLowerCase().trim()
+
+      // Explicitly reject non-content departments
+      if (['development', 'hr', 'management', 'accounting', 'payroll', 'sales'].includes(dept)) {
+        return false
+      }
+      // Reject explicit non-content designations
+      if (
+        desig.includes('developer') ||
+        desig.includes('full-stack') ||
+        desig.includes('ui/ux') ||
+        desig.includes('hr') ||
+        desig.includes('accounting') ||
+        desig.includes('finance')
+      ) {
+        return false
+      }
+
+      // Match content department or designations
+      return (
+        dept === 'content' ||
+        desig.includes('content') ||
+        desig.includes('marketing') ||
+        desig.includes('video') ||
+        desig.includes('editor') ||
+        desig.includes('seo') ||
+        desig.includes('copy') ||
+        desig.includes('writer')
+      )
+    })
+  }, [employees])
+
+  // Filter tasks strictly to Content Management department
+  const contentTasks = useMemo(() => {
+    const contentEmpIdSet = new Set(contentEmployees.map((e) => e.id))
+    return items.filter((item) => {
+      if (item.assigned_to_id) {
+        return contentEmpIdSet.has(item.assigned_to_id)
+      }
+      if (item.assigned_to_name) {
+        const lower = item.assigned_to_name.toLowerCase()
+        if (
+          lower.includes('suraj') ||
+          lower.includes('shital') ||
+          lower.includes('prachi') ||
+          lower.includes('omkar')
+        ) {
+          return false
+        }
+      }
+      return true
+    })
+  }, [items, contentEmployees])
+
   // Filtered items for Task Board
   const filteredTasks = useMemo(() => {
     const now = dayjs()
     const todayFormatted = now.format('YYYY-MM-DD')
     const nextWeek = now.add(7, 'day')
 
-    return items.filter((item) => {
+    return contentTasks.filter((item) => {
       // 1. Assignee filter
       if (selectedAssignee !== 'ALL' && item.assigned_to_id !== selectedAssignee) {
         return false
@@ -271,7 +329,7 @@ export function ContentManagementView({
 
       return true
     })
-  }, [items, selectedAssignee, selectedPriority, selectedStatus, selectedDeadline, searchQuery])
+  }, [contentTasks, selectedAssignee, selectedPriority, selectedStatus, selectedDeadline, searchQuery])
 
   // Tasks grouped by column for Kanban
   const columnTasks = useMemo(() => {
@@ -294,7 +352,7 @@ export function ContentManagementView({
     const todayFormatted = now.format('YYYY-MM-DD')
     const nextWeek = now.add(7, 'day')
 
-    return items.filter((item) => {
+    return contentTasks.filter((item) => {
       // Employee filter
       if (adSelectedEmployee !== 'ALL') {
         if (adSelectedEmployee === 'UNASSIGNED') {
@@ -352,7 +410,7 @@ export function ContentManagementView({
       return true
     })
   }, [
-    items,
+    contentTasks,
     adSelectedEmployee,
     adSelectedPriority,
     adSelectedStatus,
@@ -360,39 +418,39 @@ export function ContentManagementView({
     adSearchQuery,
   ])
 
-  // Statistics
-  const totalTasks = items.length
+  // Statistics strictly for Content Management
+  const totalTasks = contentTasks.length
   const overdueCount = useMemo(() => {
-    return items.filter(
+    return contentTasks.filter(
       (i) =>
         computeDeadlineState(i.due_date, i.status) === 'Overdue' &&
         getTaskColumn(i.status) !== 'Completed'
     ).length
-  }, [items])
+  }, [contentTasks])
 
   const dueTodayCount = useMemo(() => {
-    return items.filter(
+    return contentTasks.filter(
       (i) =>
         i.due_date &&
         dayjs(i.due_date).format('YYYY-MM-DD') === todayStr &&
         getTaskColumn(i.status) !== 'Completed'
     ).length
-  }, [items, todayStr])
+  }, [contentTasks, todayStr])
 
   const dueThisWeekCount = useMemo(() => {
     const nextWeek = dayjs().add(7, 'day')
-    return items.filter((i) => {
+    return contentTasks.filter((i) => {
       if (!i.due_date || getTaskColumn(i.status) === 'Completed') return false
       const d = dayjs(i.due_date)
       return d.isAfter(dayjs().subtract(1, 'day')) && d.isBefore(nextWeek.add(1, 'day'))
     }).length
-  }, [items])
+  }, [contentTasks])
 
   const unassignedCount = useMemo(() => {
-    return items.filter((i) => !i.assigned_to_id && !i.assigned_to_name).length
-  }, [items])
+    return contentTasks.filter((i) => !i.assigned_to_id && !i.assigned_to_name).length
+  }, [contentTasks])
 
-  // Employee-wise assignments mapping for workload tracking
+  // Content Employee-wise workload tracking
   const employeeWorkloadList = useMemo(() => {
     const map: Record<
       string,
@@ -408,8 +466,8 @@ export function ContentManagementView({
       }
     > = {}
 
-    // Initialize with employees
-    employees.forEach((emp) => {
+    // Initialize with content department employees only
+    contentEmployees.forEach((emp) => {
       map[emp.id] = {
         id: emp.id,
         name: emp.name || (emp as any).employee_name || 'Staff Member',
@@ -422,8 +480,8 @@ export function ContentManagementView({
       }
     })
 
-    // Assign tasks
-    items.forEach((item) => {
+    // Assign content tasks
+    contentTasks.forEach((item) => {
       const key = item.assigned_to_id
       if (key && map[key]) {
         map[key].tasks.push(item)
@@ -441,7 +499,7 @@ export function ContentManagementView({
     })
 
     return Object.values(map)
-  }, [items, employees])
+  }, [contentTasks, contentEmployees])
 
   // HTML5 Drag and drop handlers
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
@@ -508,7 +566,7 @@ export function ContentManagementView({
 
   // In-place Reassign Employee Handler
   const handleReassignTask = async (itemId: string, newEmployeeId: string) => {
-    const emp = employees.find((e) => e.id === newEmployeeId)
+    const emp = contentEmployees.find((e) => e.id === newEmployeeId)
     const empName = emp ? (emp.name || (emp as any).employee_name) : null
 
     // Optimistic update
@@ -582,6 +640,57 @@ export function ContentManagementView({
     }
   }
 
+  // Synchronized Date Change Handler (Gantt Drag/Resize & Calendar Drag-and-Drop)
+  const handleDateChange = async (itemId: string, newStartDate: string, newDueDate: string) => {
+    // Optimistic UI update across all views (Kanban, Gantt, Calendar, Deadlines)
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === itemId
+          ? {
+              ...i,
+              start_date: newStartDate,
+              due_date: newDueDate,
+              updated_at: new Date().toISOString(),
+            }
+          : i
+      )
+    )
+
+    if (viewItem && viewItem.id === itemId) {
+      setViewItem((prev) => (prev ? { ...prev, start_date: newStartDate, due_date: newDueDate } : null))
+    }
+
+    try {
+      const res = await updateContentItem(itemId, {
+        start_date: newStartDate,
+        due_date: newDueDate,
+      })
+
+      if (res.success && res.data) {
+        setItems((prev) => prev.map((i) => (i.id === itemId ? res.data! : i)))
+        if (viewItem && viewItem.id === itemId) {
+          setViewItem(res.data)
+        }
+        toast({
+          title: 'Schedule Updated',
+          description: `Deliverable scheduled: ${dayjs(newStartDate).format('DD MMM')} – ${dayjs(newDueDate).format('DD MMM YYYY')}.`,
+        })
+      } else {
+        toast({
+          title: 'Update Failed',
+          description: res.error || 'Failed to update schedule dates.',
+          variant: 'destructive',
+        })
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err.message || 'Could not update task dates.',
+        variant: 'destructive',
+      })
+    }
+  }
+
   // Delete Task Handler
   const handleDeleteTask = async () => {
     if (!itemToDelete) return
@@ -622,7 +731,7 @@ export function ContentManagementView({
     try {
       let selectedEmpName = ''
       if (formData.assigned_to_id) {
-        const emp = employees.find((e) => e.id === formData.assigned_to_id)
+        const emp = contentEmployees.find((e) => e.id === formData.assigned_to_id)
         if (emp) {
           selectedEmpName = emp.name || (emp as any).employee_name || ''
         }
@@ -719,7 +828,7 @@ export function ContentManagementView({
     try {
       let selectedEmpName = editingItem.assigned_to_name || ''
       if (editingItem.assigned_to_id) {
-        const emp = employees.find((e) => e.id === editingItem.assigned_to_id)
+        const emp = contentEmployees.find((e) => e.id === editingItem.assigned_to_id)
         if (emp) {
           selectedEmpName = emp.name || (emp as any).employee_name || selectedEmpName
         }
@@ -803,8 +912,7 @@ export function ContentManagementView({
       />
 
       {/* ========================================================= */}
-      {/* MAIN NAVIGATION: EXACTLY TWO TABS AS REQUESTED             */}
-      {/* 1. Task Board | 2. Assignments & Deadlines                */}
+      {/* MAIN NAVIGATION: Task Board | Assignments | Deadlines      */}
       {/* ========================================================= */}
       <div className="p-1.5 bg-card border border-border rounded-2xl flex items-center justify-between gap-3 shadow-xs">
         <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border/60 shadow-xs overflow-x-auto">
@@ -825,18 +933,35 @@ export function ContentManagementView({
             </span>
           </button>
 
-          {/* Main Tab 2: Assignments & Deadlines */}
+          {/* Main Tab 2: Assignments */}
           <button
-            onClick={() => setActiveTab('assignments_deadlines')}
+            onClick={() => setActiveTab('assignments')}
             className={cn(
               "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
-              activeTab === 'assignments_deadlines'
+              activeTab === 'assignments'
                 ? "bg-background text-foreground shadow-xs border border-border/80"
                 : "text-muted-foreground hover:text-foreground"
             )}
           >
-            <UserCheck className="w-4 h-4 text-indigo-400 shrink-0" />
-            <span>Assignments & Deadlines</span>
+            <Users className="w-4 h-4 text-indigo-400 shrink-0" />
+            <span>Assignments</span>
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-indigo-500/10 text-indigo-400">
+              {contentEmployees.length} Staff
+            </span>
+          </button>
+
+          {/* Main Tab 3: Deadlines */}
+          <button
+            onClick={() => setActiveTab('deadlines')}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+              activeTab === 'deadlines'
+                ? "bg-background text-foreground shadow-xs border border-border/80"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Clock className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>Deadlines</span>
             {overdueCount > 0 && (
               <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
                 {overdueCount} Overdue
@@ -853,6 +978,51 @@ export function ContentManagementView({
       {/* ========================================================= */}
       {activeTab === 'board' && (
         <div className="space-y-4">
+          {/* Compact Task Summary: Exactly 4 Small Summary Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="p-3 rounded-xl bg-card border border-border shadow-xs flex items-center justify-between">
+              <div className="space-y-0.5">
+                <span className="text-[11px] font-semibold text-muted-foreground">Overdue Tasks</span>
+                <p className={cn("text-xl font-bold font-mono", overdueCount > 0 ? "text-rose-400" : "text-foreground")}>
+                  {overdueCount}
+                </p>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center shrink-0">
+                <AlertTriangle className="w-4 h-4 text-rose-400" />
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-card border border-border shadow-xs flex items-center justify-between">
+              <div className="space-y-0.5">
+                <span className="text-[11px] font-semibold text-muted-foreground">Due This Week</span>
+                <p className="text-xl font-bold font-mono text-foreground">{dueThisWeekCount}</p>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                <CalendarIcon className="w-4 h-4 text-primary" />
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-card border border-border shadow-xs flex items-center justify-between">
+              <div className="space-y-0.5">
+                <span className="text-[11px] font-semibold text-muted-foreground">Unassigned Tasks</span>
+                <p className="text-xl font-bold font-mono text-foreground">{unassignedCount}</p>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
+                <Users className="w-4 h-4 text-indigo-400" />
+              </div>
+            </div>
+
+            <div className="p-3 rounded-xl bg-card border border-border shadow-xs flex items-center justify-between">
+              <div className="space-y-0.5">
+                <span className="text-[11px] font-semibold text-muted-foreground">Total Tasks</span>
+                <p className="text-xl font-bold font-mono text-foreground">{totalTasks}</p>
+              </div>
+              <div className="w-8 h-8 rounded-lg bg-muted border border-border flex items-center justify-center shrink-0">
+                <KanbanSquare className="w-4 h-4 text-muted-foreground" />
+              </div>
+            </div>
+          </div>
+
           {/* Controls Bar: Search & Filters on Left/Center, Compact Secondary View Switcher on Right */}
           <div className="p-3 bg-card border border-border rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
             {/* Search Input */}
@@ -869,13 +1039,13 @@ export function ContentManagementView({
 
             {/* Filter Dropdowns matching Project Management Task Board */}
             <div className="flex items-center gap-2 flex-wrap">
-              {/* All Assignees Filter */}
+              {/* All Assignees Filter (Content Department Only) */}
               <Dropdown
                 value={selectedAssignee}
                 onChange={(val) => setSelectedAssignee(val || 'ALL')}
                 options={[
                   { value: 'ALL', label: 'All Assignees' },
-                  ...employees.map((e) => ({
+                  ...contentEmployees.map((e) => ({
                     value: e.id,
                     label: e.name || (e as any).employee_name || 'Staff Member',
                   })),
@@ -947,7 +1117,7 @@ export function ContentManagementView({
               )}
             </div>
 
-            {/* Small Compact Secondary View Options: Kanban Board | Gantt Chart | Calendar */}
+            {/* Three Compact View Icons Only (No text, compact buttons) */}
             <div
               role="radiogroup"
               aria-label="Task board view options"
@@ -957,58 +1127,55 @@ export function ContentManagementView({
                 type="button"
                 role="radio"
                 aria-checked={boardView === 'kanban'}
-                aria-label="Kanban board view"
-                title="Kanban Board"
+                aria-label="Kanban View"
+                title="Kanban View"
                 onClick={() => setBoardView('kanban')}
                 className={cn(
-                  "h-7.5 px-2.5 flex items-center gap-1.5 rounded-md transition-colors text-xs font-semibold cursor-pointer",
+                  "h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer",
                   boardView === 'kanban'
-                    ? "bg-background text-foreground shadow-xs"
+                    ? "bg-background text-primary shadow-xs"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                 )}
               >
-                <Columns3 className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Kanban</span>
+                <Columns3 className="h-4 w-4" />
               </button>
 
-              <div className="w-px h-4 bg-border/60 mx-0.5 shrink-0" aria-hidden="true" />
+              <div className="w-px h-4 bg-border/60 mx-0.5" aria-hidden="true" />
 
               <button
                 type="button"
                 role="radio"
                 aria-checked={boardView === 'gantt'}
-                aria-label="Gantt chart view"
-                title="Gantt Chart"
+                aria-label="Gantt Chart View"
+                title="Gantt Chart View"
                 onClick={() => setBoardView('gantt')}
                 className={cn(
-                  "h-7.5 px-2.5 flex items-center gap-1.5 rounded-md transition-colors text-xs font-semibold cursor-pointer",
+                  "h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer",
                   boardView === 'gantt'
-                    ? "bg-background text-foreground shadow-xs"
+                    ? "bg-background text-primary shadow-xs"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                 )}
               >
-                <Workflow className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Gantt</span>
+                <Workflow className="h-4 w-4" />
               </button>
 
-              <div className="w-px h-4 bg-border/60 mx-0.5 shrink-0" aria-hidden="true" />
+              <div className="w-px h-4 bg-border/60 mx-0.5" aria-hidden="true" />
 
               <button
                 type="button"
                 role="radio"
                 aria-checked={boardView === 'calendar'}
-                aria-label="Calendar view"
+                aria-label="Calendar View"
                 title="Calendar View"
                 onClick={() => setBoardView('calendar')}
                 className={cn(
-                  "h-7.5 px-2.5 flex items-center gap-1.5 rounded-md transition-colors text-xs font-semibold cursor-pointer",
+                  "h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer",
                   boardView === 'calendar'
-                    ? "bg-background text-foreground shadow-xs"
+                    ? "bg-background text-primary shadow-xs"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                 )}
               >
-                <Calendar className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Calendar</span>
+                <CalendarIcon className="h-4 w-4" />
               </button>
             </div>
           </div>
@@ -1238,12 +1405,13 @@ export function ContentManagementView({
             <div className="space-y-4">
               <ContentGanttChart
                 items={filteredTasks}
-                employees={employees}
+                employees={contentEmployees}
                 onItemClick={(item) => {
                   setViewItem(item)
                   setIsViewModalOpen(true)
                 }}
                 onStatusChange={(itemId, status) => handleDropTask(itemId, getTaskColumn(status))}
+                onDateChange={handleDateChange}
               />
             </div>
           )}
@@ -1253,12 +1421,13 @@ export function ContentManagementView({
             <div className="space-y-4">
               <ContentCalendarView
                 items={filteredTasks}
-                employees={employees}
+                employees={contentEmployees}
                 onItemClick={(item) => {
                   setViewItem(item)
                   setIsViewModalOpen(true)
                 }}
                 onStatusChange={(itemId, status) => handleDropTask(itemId, getTaskColumn(status))}
+                onDateChange={handleDateChange}
               />
             </div>
           )}
@@ -1266,59 +1435,61 @@ export function ContentManagementView({
       )}
 
       {/* ========================================================= */}
-      {/* MAIN TAB 2: ASSIGNMENTS & DEADLINES (COMBINED TAB)         */}
+      {/* MAIN TAB 2: ASSIGNMENTS (CONTENT TEAM WORKLOAD & TASKS)    */}
       {/* ========================================================= */}
-      {activeTab === 'assignments_deadlines' && (
+      {activeTab === 'assignments' && (
         <div className="space-y-5">
-          {/* Top KPI Summary Strip */}
+          {/* Top KPI Summary Strip for Assignments */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
-              <span className="text-xs text-rose-400 font-semibold flex items-center justify-between">
-                <span>Overdue Deadlines</span>
-                <AlertTriangle className="w-4 h-4 text-rose-400" />
+              <span className="text-xs text-indigo-400 font-semibold flex items-center justify-between">
+                <span>Content Staff</span>
+                <Users className="w-4 h-4 text-indigo-400" />
               </span>
-              <p className={cn("text-2xl font-bold mt-1", overdueCount > 0 ? "text-rose-400" : "text-foreground")}>
-                {overdueCount}
-              </p>
-              <span className="text-[10px] text-muted-foreground">Requires immediate review</span>
-            </div>
-
-            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
-              <span className="text-xs text-amber-400 font-semibold flex items-center justify-between">
-                <span>Due Today</span>
-                <Clock className="w-4 h-4 text-amber-400" />
-              </span>
-              <p className="text-2xl font-bold text-amber-400 mt-1">{dueTodayCount}</p>
-              <span className="text-[10px] text-muted-foreground">Due by end of day</span>
+              <p className="text-2xl font-bold text-foreground mt-1">{contentEmployees.length}</p>
+              <span className="text-[10px] text-muted-foreground">Active department members</span>
             </div>
 
             <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
               <span className="text-xs text-primary font-semibold flex items-center justify-between">
-                <span>Due This Week</span>
-                <Calendar className="w-4 h-4 text-primary" />
+                <span>Assigned Tasks</span>
+                <UserCheck className="w-4 h-4 text-primary" />
               </span>
-              <p className="text-2xl font-bold text-foreground mt-1">{dueThisWeekCount}</p>
-              <span className="text-[10px] text-muted-foreground">Next 7 calendar days</span>
+              <p className="text-2xl font-bold text-primary mt-1">
+                {contentTasks.filter((t) => t.assigned_to_id).length}
+              </p>
+              <span className="text-[10px] text-muted-foreground">Deliverables in progress</span>
             </div>
 
             <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
-              <span className="text-xs text-indigo-400 font-semibold flex items-center justify-between">
-                <span>Unassigned Tasks</span>
-                <Users className="w-4 h-4 text-indigo-400" />
+              <span className="text-xs text-amber-400 font-semibold flex items-center justify-between">
+                <span>Unassigned Backlog</span>
+                <Clock className="w-4 h-4 text-amber-400" />
               </span>
-              <p className="text-2xl font-bold text-foreground mt-1">{unassignedCount}</p>
+              <p className="text-2xl font-bold text-amber-400 mt-1">{unassignedCount}</p>
               <span className="text-[10px] text-muted-foreground">Awaiting team allocation</span>
+            </div>
+
+            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-emerald-400 font-semibold flex items-center justify-between">
+                <span>Completed Tasks</span>
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              </span>
+              <p className="text-2xl font-bold text-emerald-400 mt-1">
+                {contentTasks.filter((t) => getTaskColumn(t.status) === 'Completed').length}
+              </p>
+              <span className="text-[10px] text-muted-foreground">Finished deliverables</span>
             </div>
           </div>
 
-          {/* Sub-navigation & Filters for Assignments & Deadlines */}
+          {/* Sub-navigation & Filters for Assignments */}
           <div className="p-3 bg-card border border-border rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
             {/* Search Input */}
             <div className="relative min-w-[200px] flex-1 max-w-sm">
               <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="text"
-                placeholder="Search assignments & deadlines..."
+                placeholder="Search assignments & staff..."
                 value={adSearchQuery}
                 onChange={(e) => setAdSearchQuery(e.target.value)}
                 className="pl-9 h-9 text-xs bg-muted/30 border-border/80 shadow-xs"
@@ -1327,20 +1498,20 @@ export function ContentManagementView({
 
             {/* Filter Dropdowns */}
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Employee Filter */}
+              {/* Employee Filter (Content Department Only) */}
               <Dropdown
                 value={adSelectedEmployee}
                 onChange={(val) => setAdSelectedEmployee(val || 'ALL')}
                 options={[
-                  { value: 'ALL', label: 'All Staff' },
+                  { value: 'ALL', label: 'All Content Staff' },
                   { value: 'UNASSIGNED', label: 'Unassigned Only' },
-                  ...employees.map((e) => ({
+                  ...contentEmployees.map((e) => ({
                     value: e.id,
                     label: e.name || (e as any).employee_name || 'Staff',
                   })),
                 ]}
                 className="w-auto space-y-0 shrink-0"
-                buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[125px] shadow-xs hover:border-foreground/30 transition-colors"
+                buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[130px] shadow-xs hover:border-foreground/30 transition-colors"
               />
 
               {/* Priority Filter */}
@@ -1356,21 +1527,6 @@ export function ContentManagementView({
                 ]}
                 className="w-auto space-y-0 shrink-0"
                 buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[110px] shadow-xs hover:border-foreground/30 transition-colors"
-              />
-
-              {/* Deadline Status Filter */}
-              <Dropdown
-                value={adSelectedDeadlineType}
-                onChange={(val) => setAdSelectedDeadlineType(val || 'ALL')}
-                options={[
-                  { value: 'ALL', label: 'All Deadlines' },
-                  { value: 'OVERDUE', label: 'Overdue Only' },
-                  { value: 'TODAY', label: 'Due Today' },
-                  { value: 'THIS_WEEK', label: 'Due This Week' },
-                  { value: 'UPCOMING', label: 'Upcoming' },
-                ]}
-                className="w-auto space-y-0 shrink-0"
-                buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[125px] shadow-xs hover:border-foreground/30 transition-colors"
               />
 
               {/* Status Filter */}
@@ -1414,7 +1570,7 @@ export function ContentManagementView({
             </div>
           </div>
 
-          {/* VIEW MODE 1: DELIVERABLES TABLE (ASSIGNMENTS & DEADLINES DETAILS) */}
+          {/* VIEW MODE 1: DELIVERABLES ASSIGNMENT TABLE */}
           {adViewMode === 'table' && (
             <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
               <div className="overflow-x-auto">
@@ -1422,28 +1578,23 @@ export function ContentManagementView({
                   <thead className="bg-muted/40 border-b border-border text-muted-foreground font-semibold">
                     <tr>
                       <th className="p-3.5">Task Deliverable</th>
-                      <th className="p-3.5">Assigned Employee</th>
+                      <th className="p-3.5">Assigned Content Staff</th>
                       <th className="p-3.5">Assignment Date</th>
-                      <th className="p-3.5">Start Date</th>
-                      <th className="p-3.5">Deadline</th>
+                      <th className="p-3.5">Content Type</th>
                       <th className="p-3.5">Priority</th>
                       <th className="p-3.5">Status</th>
-                      <th className="p-3.5 text-right">Quick Actions</th>
+                      <th className="p-3.5 text-right">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/60">
                     {filteredAssignmentsDeadlines.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="p-12 text-center text-muted-foreground">
-                          No tasks found matching your filter criteria.
+                        <td colSpan={7} className="p-12 text-center text-muted-foreground">
+                          No deliverables found matching your filter criteria.
                         </td>
                       </tr>
                     ) : (
                       filteredAssignmentsDeadlines.map((task) => {
-                        const deadlineState = computeDeadlineState(task.due_date, task.status)
-                        const isOverdue =
-                          deadlineState === 'Overdue' && getTaskColumn(task.status) !== 'Completed'
-
                         return (
                           <tr
                             key={task.id}
@@ -1468,16 +1619,16 @@ export function ContentManagementView({
                               </div>
                             </td>
 
-                            {/* Assigned Employee with In-place Reassign Dropdown */}
+                            {/* Assigned Content Employee with In-place Reassign Dropdown */}
                             <td className="p-3.5">
                               <select
                                 value={task.assigned_to_id || ''}
                                 onChange={(e) => handleReassignTask(task.id, e.target.value)}
-                                className="h-8 px-2 rounded-lg text-xs bg-muted/40 border border-border text-foreground font-medium outline-none cursor-pointer max-w-[140px] truncate"
-                                title="Change assigned employee"
+                                className="h-8 px-2 rounded-lg text-xs bg-muted/40 border border-border text-foreground font-medium outline-none cursor-pointer max-w-[150px] truncate"
+                                title="Change assigned content staff"
                               >
                                 <option value="">Unassigned</option>
-                                {employees.map((e) => (
+                                {contentEmployees.map((e) => (
                                   <option key={e.id} value={e.id}>
                                     {e.name || (e as any).employee_name}
                                   </option>
@@ -1490,25 +1641,11 @@ export function ContentManagementView({
                               {dayjs(task.created_at).format('DD MMM YYYY')}
                             </td>
 
-                            {/* Start Date */}
-                            <td className="p-3.5 text-foreground font-mono text-[11px]">
-                              {task.start_date ? dayjs(task.start_date).format('DD MMM YYYY') : '-'}
-                            </td>
-
-                            {/* Due Date / Deadline */}
+                            {/* Content Type */}
                             <td className="p-3.5">
-                              <div className="flex items-center gap-1.5 font-mono text-[11px]">
-                                {isOverdue ? (
-                                  <span className="flex items-center gap-1 text-rose-400 font-bold">
-                                    <AlertTriangle className="w-3 h-3 shrink-0" />
-                                    <span>{dayjs(task.due_date).format('DD MMM')} (Overdue)</span>
-                                  </span>
-                                ) : (
-                                  <span className="text-foreground">
-                                    {task.due_date ? dayjs(task.due_date).format('DD MMM YYYY') : 'Flexible'}
-                                  </span>
-                                )}
-                              </div>
+                              <Badge variant="outline" className="text-[10px] border-border">
+                                {task.content_type || 'Content'}
+                              </Badge>
                             </td>
 
                             {/* Priority */}
@@ -1530,37 +1667,17 @@ export function ContentManagementView({
                               </Badge>
                             </td>
 
-                            {/* Quick Actions (Extend Deadline / Edit) */}
+                            {/* Actions */}
                             <td className="p-3.5 text-right">
-                              <div className="flex items-center justify-end gap-1.5">
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleExtendDeadline(task.id, 3)}
-                                  className="h-7 text-[10px] px-2 border-border"
-                                  title="Extend deadline by 3 days"
-                                >
-                                  +3d
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleExtendDeadline(task.id, 7)}
-                                  className="h-7 text-[10px] px-2 border-border"
-                                  title="Extend deadline by 1 week"
-                                >
-                                  +1w
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setEditingItem(task)}
-                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
-                                  title="Edit Task Details"
-                                >
-                                  <Edit className="w-3.5 h-3.5" />
-                                </Button>
-                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setEditingItem(task)}
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                title="Edit Task Details"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </Button>
                             </td>
                           </tr>
                         )
@@ -1626,7 +1743,7 @@ export function ContentManagementView({
 
                     <CardContent className="p-4 space-y-2.5 flex-1">
                       <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                        Assigned Tasks ({member.tasks.length})
+                        Assigned Deliverables ({member.tasks.length})
                       </p>
 
                       {member.tasks.length === 0 ? (
@@ -1646,7 +1763,7 @@ export function ContentManagementView({
                               </span>
                             </div>
 
-                            {/* In-place Reassign Dropdown */}
+                            {/* In-place Reassign Dropdown (Content Staff Only) */}
                             <select
                               value={member.id}
                               onChange={(e) => handleReassignTask(task.id, e.target.value)}
@@ -1654,11 +1771,13 @@ export function ContentManagementView({
                               title="Reassign to another staff member"
                             >
                               <option value={member.id}>{member.name.split(' ')[0]}</option>
-                              {employees.filter((e) => e.id !== member.id).map((e) => (
-                                <option key={e.id} value={e.id}>
-                                  &rarr; {e.name?.split(' ')[0] || 'Staff'}
-                                </option>
-                              ))}
+                              {contentEmployees
+                                .filter((e) => e.id !== member.id)
+                                .map((e) => (
+                                  <option key={e.id} value={e.id}>
+                                    &rarr; {e.name?.split(' ')[0] || 'Staff'}
+                                  </option>
+                                ))}
                             </select>
                           </div>
                         ))
@@ -1669,6 +1788,259 @@ export function ContentManagementView({
               })}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ========================================================= */}
+      {/* MAIN TAB 3: DEADLINES (SCHEDULE & TIMELINE MANAGEMENT)    */}
+      {/* ========================================================= */}
+      {activeTab === 'deadlines' && (
+        <div className="space-y-5">
+          {/* Top KPI Summary Strip for Deadlines */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-rose-400 font-semibold flex items-center justify-between">
+                <span>Overdue Deadlines</span>
+                <AlertTriangle className="w-4 h-4 text-rose-400" />
+              </span>
+              <p className={cn("text-2xl font-bold mt-1", overdueCount > 0 ? "text-rose-400" : "text-foreground")}>
+                {overdueCount}
+              </p>
+              <span className="text-[10px] text-muted-foreground">Requires immediate review</span>
+            </div>
+
+            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-amber-400 font-semibold flex items-center justify-between">
+                <span>Due Today</span>
+                <Clock className="w-4 h-4 text-amber-400" />
+              </span>
+              <p className="text-2xl font-bold text-amber-400 mt-1">{dueTodayCount}</p>
+              <span className="text-[10px] text-muted-foreground">Due by end of day</span>
+            </div>
+
+            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-primary font-semibold flex items-center justify-between">
+                <span>Due This Week</span>
+                <Calendar className="w-4 h-4 text-primary" />
+              </span>
+              <p className="text-2xl font-bold text-foreground mt-1">{dueThisWeekCount}</p>
+              <span className="text-[10px] text-muted-foreground">Next 7 calendar days</span>
+            </div>
+
+            <div className="p-4 rounded-xl bg-card border border-border shadow-xs">
+              <span className="text-xs text-emerald-400 font-semibold flex items-center justify-between">
+                <span>Upcoming & Flexible</span>
+                <CalendarDays className="w-4 h-4 text-emerald-400" />
+              </span>
+              <p className="text-2xl font-bold text-foreground mt-1">
+                {contentTasks.filter((t) => !t.due_date || dayjs(t.due_date).isAfter(dayjs().add(7, 'day'))).length}
+              </p>
+              <span className="text-[10px] text-muted-foreground">Scheduled beyond 7 days</span>
+            </div>
+          </div>
+
+          {/* Sub-navigation & Filters for Deadlines */}
+          <div className="p-3 bg-card border border-border rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
+            {/* Search Input */}
+            <div className="relative min-w-[200px] flex-1 max-w-sm">
+              <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search deadlines & tasks..."
+                value={adSearchQuery}
+                onChange={(e) => setAdSearchQuery(e.target.value)}
+                className="pl-9 h-9 text-xs bg-muted/30 border-border/80 shadow-xs"
+              />
+            </div>
+
+            {/* Filter Dropdowns */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Employee Filter */}
+              <Dropdown
+                value={adSelectedEmployee}
+                onChange={(val) => setAdSelectedEmployee(val || 'ALL')}
+                options={[
+                  { value: 'ALL', label: 'All Content Staff' },
+                  ...contentEmployees.map((e) => ({
+                    value: e.id,
+                    label: e.name || (e as any).employee_name || 'Staff',
+                  })),
+                ]}
+                className="w-auto space-y-0 shrink-0"
+                buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[130px] shadow-xs hover:border-foreground/30 transition-colors"
+              />
+
+              {/* Deadline Status Filter */}
+              <Dropdown
+                value={adSelectedDeadlineType}
+                onChange={(val) => setAdSelectedDeadlineType(val || 'ALL')}
+                options={[
+                  { value: 'ALL', label: 'All Deadlines' },
+                  { value: 'OVERDUE', label: 'Overdue Only' },
+                  { value: 'TODAY', label: 'Due Today' },
+                  { value: 'THIS_WEEK', label: 'Due This Week' },
+                  { value: 'UPCOMING', label: 'Upcoming' },
+                ]}
+                className="w-auto space-y-0 shrink-0"
+                buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[125px] shadow-xs hover:border-foreground/30 transition-colors"
+              />
+
+              {/* Priority Filter */}
+              <Dropdown
+                value={adSelectedPriority}
+                onChange={(val) => setAdSelectedPriority(val || 'ALL')}
+                options={[
+                  { value: 'ALL', label: 'All Priority' },
+                  { value: 'LOW', label: 'Low' },
+                  { value: 'MEDIUM', label: 'Medium' },
+                  { value: 'HIGH', label: 'High' },
+                  { value: 'URGENT', label: 'Urgent' },
+                ]}
+                className="w-auto space-y-0 shrink-0"
+                buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-card font-normal min-w-[110px] shadow-xs hover:border-foreground/30 transition-colors"
+              />
+            </div>
+          </div>
+
+          {/* DEADLINES TABLE */}
+          <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs text-left">
+                <thead className="bg-muted/40 border-b border-border text-muted-foreground font-semibold">
+                  <tr>
+                    <th className="p-3.5">Task Deliverable</th>
+                    <th className="p-3.5">Assigned Employee</th>
+                    <th className="p-3.5">Start Date</th>
+                    <th className="p-3.5">Deadline</th>
+                    <th className="p-3.5">Priority</th>
+                    <th className="p-3.5">Status</th>
+                    <th className="p-3.5 text-right">Quick Reschedule</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60">
+                  {filteredAssignmentsDeadlines.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-12 text-center text-muted-foreground">
+                        No deliverables found matching your filter criteria.
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredAssignmentsDeadlines.map((task) => {
+                      const deadlineState = computeDeadlineState(task.due_date, task.status)
+                      const isOverdue =
+                        deadlineState === 'Overdue' && getTaskColumn(task.status) !== 'Completed'
+
+                      return (
+                        <tr
+                          key={task.id}
+                          className="hover:bg-muted/20 transition-colors group"
+                        >
+                          {/* Task Name & Description */}
+                          <td className="p-3.5 max-w-[260px]">
+                            <div className="space-y-0.5">
+                              <span
+                                className="font-bold text-foreground hover:text-primary transition-colors cursor-pointer block truncate"
+                                onClick={() => {
+                                  setViewItem(task)
+                                  setIsViewModalOpen(true)
+                                }}
+                                title={task.title}
+                              >
+                                {task.title}
+                              </span>
+                              <span className="text-[11px] text-muted-foreground line-clamp-1">
+                                {task.summary || task.body || 'No description'}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Assigned Employee */}
+                          <td className="p-3.5">
+                            <span className="font-medium text-foreground">
+                              {task.assigned_to_name || 'Unassigned'}
+                            </span>
+                          </td>
+
+                          {/* Start Date */}
+                          <td className="p-3.5 text-foreground font-mono text-[11px]">
+                            {task.start_date ? dayjs(task.start_date).format('DD MMM YYYY') : '-'}
+                          </td>
+
+                          {/* Due Date / Deadline */}
+                          <td className="p-3.5">
+                            <div className="flex items-center gap-1.5 font-mono text-[11px]">
+                              {isOverdue ? (
+                                <span className="flex items-center gap-1 text-rose-400 font-bold">
+                                  <AlertTriangle className="w-3 h-3 shrink-0" />
+                                  <span>{dayjs(task.due_date).format('DD MMM')} (Overdue)</span>
+                                </span>
+                              ) : (
+                                <span className="text-foreground">
+                                  {task.due_date ? dayjs(task.due_date).format('DD MMM YYYY') : 'Flexible'}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Priority */}
+                          <td className="p-3.5">
+                            <span
+                              className={cn(
+                                "text-[10px] px-2 py-0.5 rounded-[3.5px] border uppercase tracking-wider font-bold inline-block",
+                                getPriorityVariant(task.priority)
+                              )}
+                            >
+                              {task.priority || 'MEDIUM'}
+                            </span>
+                          </td>
+
+                          {/* Task Status */}
+                          <td className="p-3.5">
+                            <Badge variant="outline" className="text-[10px] font-mono border-border">
+                              {task.status}
+                            </Badge>
+                          </td>
+
+                          {/* Quick Actions (Extend Deadline / Edit) */}
+                          <td className="p-3.5 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleExtendDeadline(task.id, 3)}
+                                className="h-7 text-[10px] px-2 border-border"
+                                title="Extend deadline by 3 days"
+                              >
+                                +3d
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => handleExtendDeadline(task.id, 7)}
+                                className="h-7 text-[10px] px-2 border-border"
+                                title="Extend deadline by 1 week"
+                              >
+                                +1w
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setEditingItem(task)}
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                title="Edit Task Details"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      )
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       )}
 
@@ -1737,7 +2109,7 @@ export function ContentManagementView({
                     className="w-full h-10 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground font-medium outline-none cursor-pointer"
                   >
                     <option value="">Unassigned</option>
-                    {employees.map((emp) => (
+                    {contentEmployees.map((emp) => (
                       <option key={emp.id} value={emp.id}>
                         {emp.name || (emp as any).employee_name}
                       </option>
@@ -1955,7 +2327,7 @@ export function ContentManagementView({
                     className="w-full h-9 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground outline-none"
                   >
                     <option value="">Unassigned</option>
-                    {employees.map((emp) => (
+                    {contentEmployees.map((emp) => (
                       <option key={emp.id} value={emp.id}>
                         {emp.name || (emp as any).employee_name}
                       </option>
