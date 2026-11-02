@@ -1,41 +1,31 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useMemo } from 'react'
 import {
-  FileText,
-  FolderKanban,
-  Plus,
-  Search,
-  Filter,
-  Eye,
-  Edit,
-  Archive,
-  Trash2,
+  KanbanSquare,
+  PlusCircle,
   Clock,
   CheckCircle2,
   AlertTriangle,
-  RotateCcw,
-  Send,
-  Layers,
-  Settings2,
+  User,
   Calendar,
-  Tag,
-  ArrowUpDown,
+  Paperclip,
+  Search,
   MoreVertical,
-  ShieldCheck,
-  UserCheck,
-  AlertCircle,
-  XCircle,
-  History,
-  LayoutDashboard,
-  Bell,
+  Trash2,
+  Edit,
   Check,
-  ExternalLink,
-  Users,
-  Tags,
-  GitBranch,
+  Eye,
+  RefreshCw,
+  X,
+  FileText,
+  Layers,
+  ArrowRight,
   Sparkles,
-  BarChart3,
+  Send,
+  SlidersHorizontal,
+  ChevronDown,
+  UploadCloud
 } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -46,14 +36,8 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 import {
   ContentItem,
   ContentType,
-  ContentCategory,
-  ContentTag,
   ContentStatus,
   ContentPriority,
-  ReviewDecision,
-  ContentActivityRecord,
-  ContentNotificationRecord,
-  ContentAttachment,
   CreateContentInput,
   UpdateContentInput,
   computeDeadlineState,
@@ -65,108 +49,113 @@ import {
   createContentItem,
   updateContentItem,
   updateContentStatus,
-  archiveContentItem,
   deleteContentItem,
-  createContentType,
-  toggleContentTypeStatus,
-  submitForReview,
-  publishContentItem,
-  markContentNotificationRead,
-  restoreContentVersion,
-  updateContentQualityFlags,
-  createContentCategory,
-  updateContentCategory,
-  toggleContentCategoryStatus,
-  deleteContentCategory,
-  createContentTag,
-  deleteContentTag,
+  uploadContentAttachment,
 } from '@/lib/actions/content-management'
 import { ViewContentModal } from './ViewContentModal'
-import { CreateEditContentModal } from './CreateEditContentModal'
-import { ManageContentTypesModal } from './ManageContentTypesModal'
-import { ReviewModal } from './ReviewModal'
-import { MediaFilesSection } from './MediaFilesSection'
-import { AssignReassignModal } from './AssignReassignModal'
-import { CategoriesTagsSection } from './CategoriesTagsSection'
-import { VersionHistorySection } from './VersionHistorySection'
-import { AdvancedSearchFilterSection } from './AdvancedSearchFilterSection'
-import { ReportsAnalyticsSection } from './ReportsAnalyticsSection'
-import { QualityFreshnessSection } from './QualityFreshnessSection'
 import { useToast } from '@/hooks/use-toast'
 import dayjs from 'dayjs'
+import { cn } from '@/lib/utils'
 
 interface ContentManagementViewProps {
   initialItems: ContentItem[]
-  initialTypes: ContentType[]
-  initialCategories?: ContentCategory[]
-  initialTags?: ContentTag[]
-  initialActivities?: ContentActivityRecord[]
-  initialNotifications?: ContentNotificationRecord[]
-  initialAttachments?: ContentAttachment[]
-  projects: Project[]
-  employees: AssignableEmployee[]
+  initialTypes?: ContentType[]
+  initialCategories?: any[]
+  initialTags?: any[]
+  initialActivities?: any[]
+  initialNotifications?: any[]
+  initialAttachments?: any[]
+  projects?: Project[]
+  employees?: AssignableEmployee[]
   user: AuthUser
 }
 
+type BoardColumnKey = 'To Do' | 'In Progress' | 'In Review' | 'Completed'
+
+const BOARD_COLUMNS: { key: BoardColumnKey; title: string; color: string; badgeClass: string; dotClass: string }[] = [
+  {
+    key: 'To Do',
+    title: 'To Do',
+    color: 'zinc',
+    badgeClass: 'bg-zinc-500/15 text-zinc-300 border-zinc-600',
+    dotClass: 'bg-zinc-400',
+  },
+  {
+    key: 'In Progress',
+    title: 'In Progress',
+    color: 'amber',
+    badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+    dotClass: 'bg-amber-400',
+  },
+  {
+    key: 'In Review',
+    title: 'In Review',
+    color: 'indigo',
+    badgeClass: 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30',
+    dotClass: 'bg-indigo-400',
+  },
+  {
+    key: 'Completed',
+    title: 'Completed',
+    color: 'emerald',
+    badgeClass: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+    dotClass: 'bg-emerald-400',
+  },
+]
+
+const STANDARD_CONTENT_TYPES = [
+  'Blog',
+  'Article',
+  'Social Media Post',
+  'Website Content',
+  'Advertisement',
+  'Email Content',
+  'Other',
+]
+
 export function ContentManagementView({
   initialItems,
-  initialTypes,
-  initialCategories = [],
-  initialTags = [],
-  initialActivities = [],
-  initialNotifications = [],
-  initialAttachments = [],
-  projects,
-  employees,
+  initialTypes = [],
+  projects = [],
+  employees = [],
   user,
 }: ContentManagementViewProps) {
   const [items, setItems] = useState<ContentItem[]>(initialItems || [])
-  const [types, setTypes] = useState<ContentType[]>(initialTypes || [])
-  const [categories, setCategories] = useState<ContentCategory[]>(initialCategories || [])
-  const [tags, setTags] = useState<ContentTag[]>(initialTags || [])
-  const [activities, setActivities] = useState<ContentActivityRecord[]>(initialActivities)
-  const [notifications, setNotifications] = useState<ContentNotificationRecord[]>(initialNotifications)
-  const [attachments, setAttachments] = useState<ContentAttachment[]>(initialAttachments)
+  const [activeTab, setActiveTab] = useState<'board' | 'create'>('board')
 
-  // Active top-level section/tab
-  const [activeSection, setActiveSection] = useState<
-    | 'dashboard'
-    | 'content'
-    | 'assignments'
-    | 'approvals'
-    | 'deadlines'
-    | 'categories'
-    | 'versions'
-    | 'search'
-    | 'reports'
-    | 'quality'
-    | 'media'
-    | 'activity'
-  >('dashboard')
-
-  // Content sub-status filter
-  const [statusFilter, setStatusFilter] = useState<string>('All')
-  const [typeFilter, setTypeFilter] = useState<string>('All')
-  const [projectFilter, setProjectFilter] = useState<string>('All')
+  // Board filters
   const [searchQuery, setSearchQuery] = useState('')
+  const [typeFilter, setTypeFilter] = useState<string>('All')
+  const [priorityFilter, setPriorityFilter] = useState<string>('All')
+  const [assigneeFilter, setAssigneeFilter] = useState<string>('All')
 
   // Modals state
   const [viewItem, setViewItem] = useState<ContentItem | null>(null)
   const [isViewModalOpen, setIsViewModalOpen] = useState(false)
-
-  const [createEditItem, setCreateEditItem] = useState<ContentItem | null>(null)
-  const [isCreateEditModalOpen, setIsCreateEditModalOpen] = useState(false)
-
-  const [reviewItem, setReviewItem] = useState<ContentItem | null>(null)
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
-
-  const [assignItem, setAssignItem] = useState<ContentItem | null>(null)
-  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
-
-  const [isManageTypesOpen, setIsManageTypesOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<ContentItem | null>(null)
+  const [updatingStatusId, setUpdatingStatusId] = useState<string | null>(null)
 
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false)
+  // Edit Task modal state
+  const [editingItem, setEditingItem] = useState<ContentItem | null>(null)
+
+  // Task Creation Form State
+  const todayStr = useMemo(() => dayjs().format('YYYY-MM-DD'), [])
+  const defaultDueStr = useMemo(() => dayjs().add(7, 'day').format('YYYY-MM-DD'), [])
+
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    assigned_to_id: '',
+    content_type: 'Blog',
+    priority: 'Medium' as ContentPriority,
+    start_date: todayStr,
+    due_date: defaultDueStr,
+    instructions: '',
+    reference_attachment: '',
+  })
+
+  const [attachmentFile, setAttachmentFile] = useState<File | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const { toast } = useToast()
 
@@ -174,1796 +163,1180 @@ export function ContentManagementView({
   const isAdmin = user.role === 'Admin'
   const isAuthorizedManager = isAdmin || isHod
 
-  // Stats calculation
-  const totalCount = items.length
-  const draftCount = items.filter((i) => i.status === 'Draft').length
-  const inReviewCount = items.filter((i) => i.status === 'In Review').length
-  const changesRequestedCount = items.filter((i) => i.status === 'Changes Requested').length
-  const approvedCount = items.filter((i) => i.status === 'Approved').length
-  const publishedCount = items.filter((i) => i.status === 'Published').length
-  const rejectedCount = items.filter((i) => i.status === 'Rejected').length
-  const archivedCount = items.filter((i) => i.status === 'Archived').length
-
-  const overdueCount = items.filter((i) => computeDeadlineState(i.due_date, i.status) === 'Overdue').length
-  const upcomingCount = items.filter((i) => computeDeadlineState(i.due_date, i.status) === 'Upcoming').length
-  const now = dayjs()
-  const weekFromNow = now.add(7, 'day')
-  const dueThisWeekCount = items.filter((i) => {
-    if (!i.due_date || i.status === 'Published' || i.status === 'Archived') return false
-    const d = dayjs(i.due_date)
-    return d.isAfter(now.subtract(1, 'day')) && d.isBefore(weekFromNow.add(1, 'day'))
-  }).length
-  const awaitingMyApprovalCount = items.filter((i) => {
-    if (i.status !== 'In Review') return false
-    if (i.current_reviewer_id && i.current_reviewer_id === user.id) return true
-    if (isAuthorizedManager) return true
-    return false
-  }).length
-  const rejectedItems = items.filter((i) => i.status === 'Rejected')
-  const [isRejectedReasonModalOpen, setIsRejectedReasonModalOpen] = useState(false)
-  const unreadNotifsCount = notifications.filter((n) => !n.is_read).length
-
-  // Filtered content for Content Catalog
-  const filteredItems = items.filter((item) => {
-    if (statusFilter !== 'All' && item.status !== statusFilter) return false
-    if (typeFilter !== 'All' && item.content_type !== typeFilter) return false
-    if (projectFilter !== 'All' && item.project_id !== projectFilter) return false
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase()
-      const matchesTitle = item.title.toLowerCase().includes(q)
-      const matchesSummary = item.summary.toLowerCase().includes(q)
-      const matchesOwner = item.owner_name.toLowerCase().includes(q)
-      const matchesAssignee = item.assigned_to_name?.toLowerCase().includes(q)
-      const matchesTags = item.tags.some((t) => t.toLowerCase().includes(q))
-      if (!matchesTitle && !matchesSummary && !matchesOwner && !matchesAssignee && !matchesTags) {
-        return false
-      }
-    }
-    return true
-  })
-
-  // Pending Approvals
-  const pendingApprovals = items.filter((i) => i.status === 'In Review')
-
-  // Assigned items
-  const assignedItems = items.filter((i) => i.assigned_to_id || i.assigned_to_name)
-
-  // Status Badge Component
-  const renderStatusBadge = (status: ContentStatus) => {
+  // Map any ContentStatus into one of the 4 Kanban columns
+  const getTaskColumn = (status: ContentStatus): BoardColumnKey => {
     switch (status) {
-      case 'Published':
-        return <Badge className="bg-emerald-500/15 text-emerald-400 border-emerald-500/30">Published</Badge>
-      case 'Approved':
-        return <Badge className="bg-teal-500/15 text-teal-400 border-teal-500/30">Approved</Badge>
-      case 'In Review':
-        return <Badge className="bg-indigo-500/15 text-indigo-400 border-indigo-500/30">In Review</Badge>
+      case 'In Progress':
       case 'Changes Requested':
-        return <Badge className="bg-amber-500/15 text-amber-400 border-amber-500/30">Changes Requested</Badge>
-      case 'Draft':
-        return <Badge className="bg-zinc-500/15 text-zinc-400 border-zinc-500/30">Draft</Badge>
-      case 'Rejected':
-        return <Badge className="bg-rose-500/15 text-rose-400 border-rose-500/30">Rejected</Badge>
-      case 'Archived':
-        return <Badge className="bg-purple-500/15 text-purple-400 border-purple-500/30">Archived</Badge>
-      default:
-        return <Badge>{status}</Badge>
-    }
-  }
-
-  // Deadline Badge Component
-  const renderDeadlineBadge = (item: ContentItem) => {
-    const state = computeDeadlineState(item.due_date, item.status)
-    switch (state) {
-      case 'Overdue':
-        return <Badge className="bg-rose-500/20 text-rose-300 border-rose-500/40">Overdue</Badge>
-      case 'Upcoming':
-        return <Badge className="bg-amber-500/20 text-amber-300 border-amber-500/40">Due Soon</Badge>
+        return 'In Progress'
+      case 'In Review':
+        return 'In Review'
       case 'Completed':
-        return <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/40">Completed</Badge>
+      case 'Approved':
+      case 'Published':
+        return 'Completed'
+      case 'To Do':
+      case 'Draft':
+      case 'Rejected':
+      case 'Archived':
       default:
-        return <Badge className="bg-zinc-800 text-zinc-400 border-zinc-700">Pending</Badge>
+        return 'To Do'
     }
   }
 
-  // Priority Badge Component
+  // Calculate task progress percentage
+  const getTaskProgress = (item: ContentItem): number => {
+    if (typeof item.progress === 'number' && !isNaN(item.progress)) {
+      return Math.min(100, Math.max(0, item.progress))
+    }
+    const col = getTaskColumn(item.status)
+    switch (col) {
+      case 'Completed':
+        return 100
+      case 'In Review':
+        return 75
+      case 'In Progress':
+        return 40
+      case 'To Do':
+      default:
+        return 0
+    }
+  }
+
+  // Filtered items for the Task Board
+  const filteredItems = useMemo(() => {
+    return items.filter((item) => {
+      if (typeFilter !== 'All' && item.content_type !== typeFilter) return false
+      if (priorityFilter !== 'All' && item.priority !== priorityFilter) return false
+      if (assigneeFilter !== 'All' && item.assigned_to_id !== assigneeFilter) return false
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase()
+        const matchesTitle = item.title.toLowerCase().includes(q)
+        const matchesSummary = (item.summary || '').toLowerCase().includes(q)
+        const matchesAssignee = (item.assigned_to_name || '').toLowerCase().includes(q)
+        const matchesType = (item.content_type || '').toLowerCase().includes(q)
+        if (!matchesTitle && !matchesSummary && !matchesAssignee && !matchesType) {
+          return false
+        }
+      }
+      return true
+    })
+  }, [items, typeFilter, priorityFilter, assigneeFilter, searchQuery])
+
+  // Tasks grouped by column
+  const columnTasks = useMemo(() => {
+    const map: Record<BoardColumnKey, ContentItem[]> = {
+      'To Do': [],
+      'In Progress': [],
+      'In Review': [],
+      'Completed': [],
+    }
+    filteredItems.forEach((item) => {
+      const col = getTaskColumn(item.status)
+      map[col].push(item)
+    })
+    return map
+  }, [filteredItems])
+
+  // Statistics
+  const totalTasks = items.length
+  const todoCount = items.filter((i) => getTaskColumn(i.status) === 'To Do').length
+  const inProgressCount = items.filter((i) => getTaskColumn(i.status) === 'In Progress').length
+  const inReviewCount = items.filter((i) => getTaskColumn(i.status) === 'In Review').length
+  const completedCount = items.filter((i) => getTaskColumn(i.status) === 'Completed').length
+  const overdueCount = items.filter(
+    (i) =>
+      computeDeadlineState(i.due_date, i.status) === 'Overdue' &&
+      getTaskColumn(i.status) !== 'Completed'
+  ).length
+
+  // Update Task Status Handler
+  const handleUpdateStatus = async (itemId: string, newStatus: ContentStatus) => {
+    setUpdatingStatusId(itemId)
+    const newProgress =
+      newStatus === 'Completed' || newStatus === 'Approved' || newStatus === 'Published'
+        ? 100
+        : newStatus === 'In Review'
+        ? 75
+        : newStatus === 'In Progress'
+        ? 40
+        : 0
+
+    // Optimistic UI update
+    setItems((prev) =>
+      prev.map((i) =>
+        i.id === itemId
+          ? {
+              ...i,
+              status: newStatus,
+              progress: newProgress,
+              updated_at: new Date().toISOString(),
+            }
+          : i
+      )
+    )
+
+    if (viewItem && viewItem.id === itemId) {
+      setViewItem((prev) => (prev ? { ...prev, status: newStatus, progress: newProgress } : null))
+    }
+
+    try {
+      const res = await updateContentStatus(itemId, newStatus)
+      if (res.success && res.data) {
+        setItems((prev) => prev.map((i) => (i.id === itemId ? res.data! : i)))
+        if (viewItem && viewItem.id === itemId) {
+          setViewItem(res.data)
+        }
+        toast({
+          title: 'Status Updated',
+          description: `Task status changed to "${newStatus}".`,
+        })
+      } else {
+        toast({
+          title: 'Update Failed',
+          description: res.error || 'Failed to update task status.',
+          variant: 'destructive',
+        })
+      }
+    } finally {
+      setUpdatingStatusId(null)
+    }
+  }
+
+  // Delete Task Handler
+  const handleDeleteTask = async () => {
+    if (!itemToDelete) return
+    const res = await deleteContentItem(itemToDelete.id)
+    if (res.success) {
+      setItems((prev) => prev.filter((i) => i.id !== itemToDelete.id))
+      if (viewItem && viewItem.id === itemToDelete.id) {
+        setIsViewModalOpen(false)
+        setViewItem(null)
+      }
+      toast({ title: 'Task Deleted', description: 'Task has been permanently removed.' })
+    } else {
+      toast({
+        title: 'Delete Failed',
+        description: res.error || 'Unauthorized or delete failed',
+        variant: 'destructive',
+      })
+    }
+    setItemToDelete(null)
+  }
+
+  // Submit New Task Form (Tab 2)
+  const handleCreateTask = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!formData.title.trim()) {
+      toast({ title: 'Title Required', description: 'Please enter a task title.', variant: 'destructive' })
+      return
+    }
+
+    if (!formData.description.trim()) {
+      toast({ title: 'Description Required', description: 'Please enter a task description.', variant: 'destructive' })
+      return
+    }
+
+    setIsSubmitting(true)
+
+    try {
+      let selectedEmpName = ''
+      if (formData.assigned_to_id) {
+        const emp = employees.find((e) => e.id === formData.assigned_to_id)
+        if (emp) {
+          selectedEmpName = emp.name || (emp as any).employee_name || ''
+        }
+      }
+
+      let referenceAttachmentName = formData.reference_attachment.trim() || undefined
+
+      // If user selected a file for reference attachment, upload it
+      let uploadedAttachments: any[] = []
+      if (attachmentFile) {
+        try {
+          const fd = new FormData()
+          fd.append('file', attachmentFile)
+          const upRes = await uploadContentAttachment(fd)
+          if (upRes.success && upRes.data) {
+            uploadedAttachments = [upRes.data]
+            referenceAttachmentName = attachmentFile.name
+          }
+        } catch (uploadErr) {
+          console.warn('File upload fallback:', uploadErr)
+          referenceAttachmentName = attachmentFile.name
+        }
+      }
+
+      const createInput: CreateContentInput = {
+        title: formData.title.trim(),
+        summary: formData.description.trim(),
+        body: formData.instructions.trim() || formData.description.trim(),
+        content_type: formData.content_type,
+        priority: formData.priority,
+        start_date: formData.start_date || todayStr,
+        due_date: formData.due_date || null,
+        instructions: formData.instructions.trim() || null,
+        assigned_to_id: formData.assigned_to_id || null,
+        assigned_to_name: selectedEmpName || null,
+        reference_attachment: referenceAttachmentName || null,
+        attachments: uploadedAttachments,
+        status: 'To Do',
+        progress: 0,
+      }
+
+      const res = await createContentItem(createInput)
+
+      if (res.success && res.data) {
+        // Automatically add newly created task to state
+        setItems((prev) => [res.data!, ...prev])
+
+        // Reset form
+        setFormData({
+          title: '',
+          description: '',
+          assigned_to_id: '',
+          content_type: 'Blog',
+          priority: 'Medium',
+          start_date: todayStr,
+          due_date: defaultDueStr,
+          instructions: '',
+          reference_attachment: '',
+        })
+        setAttachmentFile(null)
+
+        toast({
+          title: 'Task Created Successfully',
+          description: `"${res.data.title}" is now added to the To Do column.`,
+        })
+
+        // Automatically switch to Task Board tab
+        setActiveTab('board')
+      } else {
+        toast({
+          title: 'Creation Failed',
+          description: res.error || 'Could not create task.',
+          variant: 'destructive',
+        })
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err.message || 'An unexpected error occurred.',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Update Existing Task (Edit Modal)
+  const handleSaveEditedTask = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingItem) return
+
+    setIsSubmitting(true)
+    try {
+      let selectedEmpName = editingItem.assigned_to_name || ''
+      if (editingItem.assigned_to_id) {
+        const emp = employees.find((e) => e.id === editingItem.assigned_to_id)
+        if (emp) {
+          selectedEmpName = emp.name || (emp as any).employee_name || selectedEmpName
+        }
+      }
+
+      const res = await updateContentItem(editingItem.id, {
+        title: editingItem.title,
+        summary: editingItem.summary,
+        body: editingItem.instructions || editingItem.body || editingItem.summary,
+        content_type: editingItem.content_type,
+        priority: editingItem.priority,
+        start_date: editingItem.start_date,
+        due_date: editingItem.due_date,
+        instructions: editingItem.instructions,
+        assigned_to_id: editingItem.assigned_to_id,
+        assigned_to_name: selectedEmpName,
+      })
+
+      if (res.success && res.data) {
+        setItems((prev) => prev.map((i) => (i.id === res.data!.id ? res.data! : i)))
+        if (viewItem && viewItem.id === res.data.id) {
+          setViewItem(res.data)
+        }
+        toast({ title: 'Task Updated', description: 'Task details updated successfully.' })
+        setEditingItem(null)
+      } else {
+        toast({
+          title: 'Update Failed',
+          description: res.error || 'Could not update task.',
+          variant: 'destructive',
+        })
+      }
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  // Priority Badge Helper
   const renderPriorityBadge = (p?: ContentPriority) => {
     switch (p) {
       case 'Urgent':
-        return <Badge className="bg-rose-500/20 text-rose-400 border-rose-500/40">Urgent</Badge>
+        return <Badge className="bg-rose-500/15 text-rose-400 border-rose-500/30 text-[10px] px-2 py-0.5">Urgent</Badge>
       case 'High':
-        return <Badge className="bg-orange-500/20 text-orange-400 border-orange-500/40">High</Badge>
+        return <Badge className="bg-orange-500/15 text-orange-400 border-orange-500/30 text-[10px] px-2 py-0.5">High</Badge>
       case 'Medium':
-        return <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/40">Medium</Badge>
+        return <Badge className="bg-blue-500/15 text-blue-400 border-blue-500/30 text-[10px] px-2 py-0.5">Medium</Badge>
       case 'Low':
-        return <Badge className="bg-zinc-700/50 text-zinc-400 border-zinc-600">Low</Badge>
+        return <Badge className="bg-zinc-700/50 text-zinc-400 border-zinc-600 text-[10px] px-2 py-0.5">Low</Badge>
       default:
         return null
     }
   }
 
-  // CRUD Handlers
-  const handleSaveContent = async (
-    input: CreateContentInput | UpdateContentInput,
-    statusToSave: 'Draft' | 'In Review'
-  ) => {
-    if (createEditItem) {
-      const res = await updateContentItem(createEditItem.id, {
-        ...input,
-        status: statusToSave,
-      })
-      if (res.success && res.data) {
-        setItems((prev) => prev.map((i) => (i.id === res.data!.id ? res.data! : i)))
-        toast({ title: 'Content Updated', description: `"${res.data.title}" updated successfully.` })
-      } else {
-        toast({ title: 'Update Failed', description: res.error || 'Could not update content', variant: 'destructive' })
+  // Content Type options list (merging standard and custom if any)
+  const contentTypeOptions = useMemo(() => {
+    const list = [...STANDARD_CONTENT_TYPES]
+    initialTypes.forEach((t) => {
+      if (!list.includes(t.name)) {
+        list.push(t.name)
       }
-    } else {
-      const res = await createContentItem({
-        ...(input as CreateContentInput),
-        status: statusToSave,
-      })
-      if (res.success && res.data) {
-        setItems((prev) => [res.data!, ...prev])
-        toast({ title: 'Content Created', description: `"${res.data.title}" created successfully.` })
-      } else {
-        toast({ title: 'Creation Failed', description: res.error || 'Could not create content', variant: 'destructive' })
-      }
-    }
-  }
-
-  const handleSubmitForReview = async (item: ContentItem) => {
-    const res = await submitForReview(item.id)
-    if (res.success && res.data) {
-      setItems((prev) => prev.map((i) => (i.id === res.data!.id ? res.data! : i)))
-      toast({ title: 'Submitted for Review', description: `"${item.title}" is now awaiting approval.` })
-    } else {
-      toast({ title: 'Submission Failed', description: res.error || 'Error submitting content', variant: 'destructive' })
-    }
-  }
-
-  const handlePublish = async (item: ContentItem) => {
-    const res = await publishContentItem(item.id)
-    if (res.success && res.data) {
-      setItems((prev) => prev.map((i) => (i.id === res.data!.id ? res.data! : i)))
-      toast({ title: 'Content Published', description: `"${item.title}" is now published and live.` })
-    } else {
-      toast({ title: 'Publishing Failed', description: res.error || 'Content must be in Approved status.', variant: 'destructive' })
-    }
-  }
-
-  const handleArchive = async (item: ContentItem) => {
-    const res = await archiveContentItem(item.id)
-    if (res.success && res.data) {
-      setItems((prev) => prev.map((i) => (i.id === res.data!.id ? res.data! : i)))
-      toast({ title: 'Content Archived', description: `"${item.title}" has been archived.` })
-    } else {
-      toast({ title: 'Archive Failed', description: res.error || 'Failed to archive content', variant: 'destructive' })
-    }
-  }
-
-  const handleDelete = async () => {
-    if (!itemToDelete) return
-    const res = await deleteContentItem(itemToDelete.id)
-    if (res.success) {
-      setItems((prev) => prev.filter((i) => i.id !== itemToDelete.id))
-      toast({ title: 'Content Deleted', description: 'Record permanently deleted.' })
-    } else {
-      toast({ title: 'Delete Failed', description: res.error || 'Unauthorized or delete failed', variant: 'destructive' })
-    }
-    setItemToDelete(null)
-  }
-
-  const handleMarkNotifRead = async (id: string) => {
-    await markContentNotificationRead(id)
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)))
-  }
-
-  const handleRestoreVersion = async (contentId: string, versionNumber: number) => {
-    const res = await restoreContentVersion(contentId, versionNumber)
-    if (res.success && res.data) {
-      setItems((prev) => prev.map((i) => (i.id === res.data!.id ? res.data! : i)))
-      if (viewItem?.id === res.data.id) {
-        setViewItem(res.data)
-      }
-      toast({
-        title: 'Version Restored',
-        description: `Restored v${versionNumber}.0 as new version ${res.data.version_number || res.data.version}. Complete audit trail preserved.`,
-      })
-    } else {
-      toast({
-        title: 'Restore Failed',
-        description: res.error || 'Failed to restore previous version',
-        variant: 'destructive',
-      })
-    }
-  }
-
-  const handleUpdateQualityFlags = async (
-    contentId: string,
-    flags: {
-      is_duplicate?: boolean
-      duplicate_of_id?: string
-      duplicate_reason?: string
-      related_content_ids?: string[]
-      follow_up_required?: boolean
-      follow_up_note?: string
-      follow_up_date?: string
-      next_review_date?: string
-      review_frequency?: 'monthly' | 'quarterly' | 'biannual' | 'annual'
-    }
-  ) => {
-    const res = await updateContentQualityFlags(contentId, flags)
-    if (res.success && res.data) {
-      setItems((prev) => prev.map((i) => (i.id === res.data!.id ? res.data! : i)))
-      if (viewItem?.id === res.data.id) {
-        setViewItem(res.data)
-      }
-      toast({
-        title: 'Quality Flags Updated',
-        description: `Quality attributes updated for "${res.data.title}".`,
-      })
-    } else {
-      toast({
-        title: 'Update Failed',
-        description: res.error || 'Failed to update quality attributes',
-        variant: 'destructive',
-      })
-    }
-  }
-
-  const handleCreateCategory = async (input: {
-    name: string
-    description?: string
-    color?: string
-    department?: string
-  }) => {
-    const res = await createContentCategory(input.name, input.description, input.color)
-    if (res.success && res.data) {
-      setCategories((prev) => [...prev, res.data!])
-      toast({ title: 'Category Created', description: `Category "${res.data.name}" added successfully.` })
-    } else {
-      toast({ title: 'Error', description: res.error || 'Failed to create category', variant: 'destructive' })
-    }
-  }
-
-  const handleUpdateCategory = async (id: string, updates: any) => {
-    const res = await updateContentCategory(id, updates)
-    if (res.success && res.data) {
-      setCategories((prev) => prev.map((c) => (c.id === id ? res.data! : c)))
-      toast({ title: 'Category Updated', description: 'Changes saved successfully.' })
-    } else {
-      toast({ title: 'Error', description: res.error || 'Failed to update category', variant: 'destructive' })
-    }
-  }
-
-  const handleToggleCategory = async (id: string) => {
-    const res = await toggleContentCategoryStatus(id)
-    if (res.success && res.data) {
-      setCategories((prev) => prev.map((c) => (c.id === id ? res.data! : c)))
-      toast({
-        title: 'Category Status Toggled',
-        description: `Category is now ${res.data.is_active ? 'Active' : 'Inactive'}.`,
-      })
-    } else {
-      toast({ title: 'Error', description: res.error || 'Failed to toggle category', variant: 'destructive' })
-    }
-  }
-
-  const handleDeleteCategory = async (id: string) => {
-    const res = await deleteContentCategory(id)
-    if (res.success) {
-      setCategories((prev) => prev.filter((c) => c.id !== id))
-      toast({ title: 'Category Deleted', description: 'Category removed successfully.' })
-    } else {
-      toast({ title: 'Error', description: res.error || 'Failed to delete category', variant: 'destructive' })
-    }
-  }
-
-  const handleCreateTag = async (name: string, color?: string) => {
-    const res = await createContentTag(name, color)
-    if (res.success && res.data) {
-      setTags((prev) => [...prev, res.data!])
-      toast({ title: 'Tag Created', description: `Tag #${res.data.name} added successfully.` })
-    } else {
-      toast({ title: 'Error', description: res.error || 'Failed to create tag', variant: 'destructive' })
-    }
-  }
-
-  const handleDeleteTag = async (id: string) => {
-    const res = await deleteContentTag(id)
-    if (res.success) {
-      setTags((prev) => prev.filter((t) => t.id !== id))
-      toast({ title: 'Tag Deleted', description: 'Tag removed successfully.' })
-    } else {
-      toast({ title: 'Error', description: res.error || 'Failed to delete tag', variant: 'destructive' })
-    }
-  }
+    })
+    return list
+  }, [initialTypes])
 
   return (
-    <div className="space-y-6">
-      {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-2 border-b border-zinc-800">
-        <div>
+    <div className="space-y-6 max-w-7xl mx-auto pb-16 animate-in fade-in duration-200">
+      {/* Page Header */}
+      <PageHeader
+        title={
+          <div className="flex items-center gap-3">
+            <span>Content Management</span>
+          </div>
+        }
+        subtitle="Organize, track, and assign content creation tasks in a streamlined Kanban workflow."
+        icon={FileText}
+        iconClassName="text-primary"
+        actions={
           <div className="flex items-center gap-2">
-            <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-lg border border-indigo-500/20">
-              <FileText className="w-5 h-5" />
+            <Button
+              variant={activeTab === 'create' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setActiveTab('create')}
+              className={cn(
+                "h-9 px-3.5 text-xs font-semibold gap-1.5 transition-all shadow-xs",
+                activeTab === 'create'
+                  ? "bg-primary text-primary-foreground"
+                  : "border-border bg-card text-foreground hover:bg-muted"
+              )}
+            >
+              <PlusCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+              <span>Create Task</span>
+            </Button>
+          </div>
+        }
+      />
+
+      {/* Main Two-Tab Navigation Bar */}
+      <div className="p-1.5 bg-card border border-border rounded-2xl flex items-center justify-between gap-3 shadow-xs">
+        <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border/60 shadow-xs">
+          {/* Tab 1: Task Board */}
+          <button
+            onClick={() => setActiveTab('board')}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all",
+              activeTab === 'board'
+                ? "bg-background text-foreground shadow-xs border border-border/80"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <KanbanSquare className="w-4 h-4 text-primary shrink-0" />
+            <span>Task Board</span>
+            <span className="px-1.5 py-0.5 rounded-full text-[10px] font-bold bg-primary/10 text-primary">
+              {totalTasks}
+            </span>
+          </button>
+
+          {/* Tab 2: Task Creation */}
+          <button
+            onClick={() => setActiveTab('create')}
+            className={cn(
+              "flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-semibold transition-all",
+              activeTab === 'create'
+                ? "bg-background text-foreground shadow-xs border border-border/80"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <PlusCircle className="w-4 h-4 text-emerald-500 shrink-0" />
+            <span>Task Creation</span>
+          </button>
+        </div>
+
+        {/* Quick Summary Counts (Desktop) */}
+        <div className="hidden lg:flex items-center gap-4 text-xs font-medium text-muted-foreground px-3">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-zinc-400" />
+            <span>To Do: <strong className="text-foreground">{todoCount}</strong></span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-400" />
+            <span>In Progress: <strong className="text-foreground">{inProgressCount}</strong></span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-indigo-400" />
+            <span>In Review: <strong className="text-foreground">{inReviewCount}</strong></span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400" />
+            <span>Completed: <strong className="text-foreground">{completedCount}</strong></span>
+          </div>
+          {overdueCount > 0 && (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[11px] font-semibold">
+              <AlertTriangle className="w-3 h-3" />
+              <span>{overdueCount} Overdue</span>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-zinc-100">Content Management</h1>
-              <p className="text-xs text-zinc-400">
-                Departmental documentation, multi-tier approvals, workload assignments, and deadline tracking.
+          )}
+        </div>
+      </div>
+
+      {/* ========================================================= */}
+      {/* TAB 1: TASK BOARD                                         */}
+      {/* ========================================================= */}
+      {activeTab === 'board' && (
+        <div className="space-y-6">
+          {/* Quick Metrics Bar */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="p-3.5 rounded-xl bg-card border border-border shadow-xs">
+              <p className="text-[11px] font-medium text-muted-foreground">Total Tasks</p>
+              <p className="text-xl font-bold text-foreground mt-0.5">{totalTasks}</p>
+            </div>
+            <div className="p-3.5 rounded-xl bg-card border border-border shadow-xs">
+              <p className="text-[11px] font-medium text-muted-foreground">To Do</p>
+              <p className="text-xl font-bold text-zinc-300 mt-0.5">{todoCount}</p>
+            </div>
+            <div className="p-3.5 rounded-xl bg-card border border-border shadow-xs">
+              <p className="text-[11px] font-medium text-muted-foreground">In Progress</p>
+              <p className="text-xl font-bold text-amber-400 mt-0.5">{inProgressCount}</p>
+            </div>
+            <div className="p-3.5 rounded-xl bg-card border border-border shadow-xs">
+              <p className="text-[11px] font-medium text-muted-foreground">In Review</p>
+              <p className="text-xl font-bold text-indigo-400 mt-0.5">{inReviewCount}</p>
+            </div>
+            <div className="p-3.5 rounded-xl bg-card border border-border shadow-xs">
+              <p className="text-[11px] font-medium text-muted-foreground">Completed</p>
+              <p className="text-xl font-bold text-emerald-400 mt-0.5">{completedCount}</p>
+            </div>
+            <div className="p-3.5 rounded-xl bg-card border border-border shadow-xs">
+              <p className="text-[11px] font-medium text-muted-foreground">Overdue</p>
+              <p className={cn("text-xl font-bold mt-0.5", overdueCount > 0 ? "text-rose-400" : "text-muted-foreground")}>
+                {overdueCount}
               </p>
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2.5">
-          {/* Notifications Bell */}
-          <div className="relative">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsNotificationsOpen(!isNotificationsOpen)}
-              className="relative border-zinc-800 bg-zinc-900/60 text-zinc-300 hover:text-zinc-100"
-            >
-              <Bell className="w-4 h-4 mr-1.5" />
-              <span>Notifications</span>
-              {unreadNotifsCount > 0 && (
-                <span className="ml-1.5 px-1.5 py-0.2 bg-rose-600 text-[10px] font-bold rounded-full text-white">
-                  {unreadNotifsCount}
-                </span>
-              )}
-            </Button>
-
-            {/* Notification Drawer Popover */}
-            {isNotificationsOpen && (
-              <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl z-50 overflow-hidden animate-in fade-in duration-150">
-                <div className="p-3 bg-zinc-950/80 border-b border-zinc-800 flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-xs font-semibold text-zinc-200">
-                    <Bell className="w-3.5 h-3.5 text-indigo-400" />
-                    <span>Content Notifications</span>
-                  </div>
-                  <span className="text-[11px] text-zinc-500">{unreadNotifsCount} unread</span>
-                </div>
-                <div className="max-h-80 overflow-y-auto divide-y divide-zinc-800/60">
-                  {notifications.length === 0 ? (
-                    <div className="p-6 text-center text-xs text-zinc-500">No notifications.</div>
-                  ) : (
-                    notifications.map((n) => (
-                      <div
-                        key={n.id}
-                        className={`p-3 text-xs space-y-1 transition-colors ${
-                          !n.is_read ? 'bg-indigo-950/20' : 'bg-transparent'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-zinc-200">{n.title}</span>
-                          <span className="text-[10px] text-zinc-500">
-                            {dayjs(n.created_at).format('DD MMM, hh:mm A')}
-                          </span>
-                        </div>
-                        <p className="text-zinc-400 text-xs leading-relaxed">{n.message}</p>
-                        {n.reason && (
-                          <div className="p-2 bg-zinc-950/60 rounded border border-zinc-800 text-amber-300 text-[11px]">
-                            Reason: {n.reason}
-                          </div>
-                        )}
-                        <div className="flex items-center justify-between pt-1">
-                          <button
-                            onClick={() => {
-                              const found = items.find((i) => i.id === n.content_id)
-                              if (found) {
-                                setViewItem(found)
-                                setIsViewModalOpen(true)
-                              }
-                              setIsNotificationsOpen(false)
-                            }}
-                            className="text-indigo-400 hover:text-indigo-300 font-medium text-[11px] flex items-center gap-1"
-                          >
-                            <span>View Content</span>
-                            <ExternalLink className="w-3 h-3" />
-                          </button>
-                          {!n.is_read && (
-                            <button
-                              onClick={() => handleMarkNotifRead(n.id)}
-                              className="text-zinc-500 hover:text-zinc-300 text-[10px]"
-                            >
-                              Mark as read
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {isAdmin && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsManageTypesOpen(true)}
-              className="border-zinc-800 bg-zinc-900/60 text-zinc-300 hover:text-zinc-100"
-            >
-              <Settings2 className="w-4 h-4 mr-1.5" />
-              Content Types
-            </Button>
-          )}
-
-          <Button
-            size="sm"
-            onClick={() => {
-              setCreateEditItem(null)
-              setIsCreateEditModalOpen(true)
-            }}
-            className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium"
-          >
-            <Plus className="w-4 h-4 mr-1.5" />
-            Create Content
-          </Button>
-        </div>
-      </div>
-
-      {/* Main Section Navigation Bar (Matching Section 10) */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-zinc-800 text-xs font-semibold">
-        <button
-          onClick={() => setActiveSection('dashboard')}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
-            activeSection === 'dashboard'
-              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-          }`}
-        >
-          <LayoutDashboard className="w-3.5 h-3.5" />
-          <span>Dashboard</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSection('content')}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
-            activeSection === 'content'
-              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-          }`}
-        >
-          <FileText className="w-3.5 h-3.5" />
-          <span>Content ({totalCount})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSection('assignments')}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
-            activeSection === 'assignments'
-              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-          }`}
-        >
-          <UserCheck className="w-3.5 h-3.5" />
-          <span>Assignments ({assignedItems.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSection('approvals')}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
-            activeSection === 'approvals'
-              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-          }`}
-        >
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span>Approval / Review ({inReviewCount})</span>
-          {inReviewCount > 0 && (
-            <span className="px-1.5 py-0.2 bg-amber-500/20 text-amber-300 text-[10px] rounded-full">
-              {inReviewCount}
-            </span>
-          )}
-        </button>
-
-        <button
-          onClick={() => setActiveSection('deadlines')}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
-            activeSection === 'deadlines'
-              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-          }`}
-        >
-          <Clock className="w-3.5 h-3.5" />
-          <span>Deadlines</span>
-          {overdueCount > 0 && (
-            <span className="px-1.5 py-0.2 bg-rose-500/20 text-rose-300 text-[10px] rounded-full">
-              {overdueCount} Overdue
-            </span>
-          )}
-        </button>
-
-        <button
-          onClick={() => setActiveSection('categories')}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
-            activeSection === 'categories'
-              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-          }`}
-        >
-          <Tags className="w-3.5 h-3.5" />
-          <span>Categories & Tags</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSection('versions')}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
-            activeSection === 'versions'
-              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-          }`}
-        >
-          <GitBranch className="w-3.5 h-3.5" />
-          <span>Version History</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSection('search')}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
-            activeSection === 'search'
-              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-          }`}
-        >
-          <Search className="w-3.5 h-3.5" />
-          <span>Search & Filters</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSection('reports')}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
-            activeSection === 'reports'
-              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-          }`}
-        >
-          <BarChart3 className="w-3.5 h-3.5" />
-          <span>Reports & Analytics</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSection('quality')}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
-            activeSection === 'quality'
-              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-          }`}
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span>Quality & Freshness</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSection('media')}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
-            activeSection === 'media'
-              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-          }`}
-        >
-          <FolderKanban className="w-3.5 h-3.5" />
-          <span>Media & Files ({attachments.length})</span>
-        </button>
-
-        <button
-          onClick={() => setActiveSection('activity')}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg transition-colors ${
-            activeSection === 'activity'
-              ? 'bg-indigo-600/20 text-indigo-400 border border-indigo-500/30'
-              : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-          }`}
-        >
-          <History className="w-3.5 h-3.5" />
-          <span>Activity / History</span>
-        </button>
-      </div>
-
-      {/* ---------------- 1. DASHBOARD OVERVIEW ---------------- */}
-      {activeSection === 'dashboard' && (
-        <div className="space-y-6">
-          {/* Quick Action Buttons (Section 2 Checklist) */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-zinc-900/40 border border-zinc-800 rounded-xl">
-            <Button
-              size="sm"
-              onClick={() => {
-                setCreateEditItem(null)
-                setIsCreateEditModalOpen(true)
-              }}
-              className="bg-indigo-600 hover:bg-indigo-500 text-white font-medium justify-start h-9 text-xs"
-            >
-              <Plus className="w-3.5 h-3.5 mr-2 shrink-0" />
-              <span>Create Content</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setActiveSection('assignments')}
-              className="border-zinc-800 bg-zinc-950/60 text-zinc-200 hover:text-white justify-start h-9 text-xs"
-            >
-              <UserCheck className="w-3.5 h-3.5 mr-2 text-indigo-400 shrink-0" />
-              <span>Assign Content</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setActiveSection('approvals')}
-              className="border-zinc-800 bg-zinc-950/60 text-zinc-200 hover:text-white justify-start h-9 text-xs"
-            >
-              <ShieldCheck className="w-3.5 h-3.5 mr-2 text-amber-400 shrink-0" />
-              <span>Review Approvals ({inReviewCount})</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setActiveSection('reports')}
-              className="border-zinc-800 bg-zinc-950/60 text-zinc-200 hover:text-white justify-start h-9 text-xs"
-            >
-              <BarChart3 className="w-3.5 h-3.5 mr-2 text-emerald-400 shrink-0" />
-              <span>View Reports</span>
-            </Button>
-          </div>
-
-          {/* Summary Metric Cards (Section 1 Checklist) */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-            <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardContent className="p-3">
-                <span className="text-[11px] text-zinc-400 font-medium">Total Content</span>
-                <div className="text-xl font-bold text-zinc-100 mt-1">{totalCount}</div>
-                <span className="text-[10px] text-zinc-500">All assets</span>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardContent className="p-3">
-                <span className="text-[11px] text-zinc-400 font-medium">Draft Content</span>
-                <div className="text-xl font-bold text-zinc-300 mt-1">{draftCount}</div>
-                <span className="text-[10px] text-zinc-500">In authoring</span>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardContent className="p-3">
-                <span className="text-[11px] text-amber-400 font-medium">Pending Approval</span>
-                <div className="text-xl font-bold text-amber-300 mt-1">{inReviewCount}</div>
-                <span className="text-[10px] text-zinc-500">In review</span>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardContent className="p-3">
-                <span className="text-[11px] text-indigo-400 font-medium">Awaiting My Review</span>
-                <div className="text-xl font-bold text-indigo-300 mt-1">{awaitingMyApprovalCount}</div>
-                <span className="text-[10px] text-zinc-500">Assigned reviewer</span>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardContent className="p-3">
-                <span className="text-[11px] text-emerald-400 font-medium">Published</span>
-                <div className="text-xl font-bold text-emerald-300 mt-1">{publishedCount}</div>
-                <span className="text-[10px] text-zinc-500">Live documents</span>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardContent className="p-3">
-                <span className="text-[11px] text-cyan-400 font-medium">Due This Week</span>
-                <div className="text-xl font-bold text-cyan-300 mt-1">{dueThisWeekCount}</div>
-                <span className="text-[10px] text-zinc-500">Upcoming deadlines</span>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardContent className="p-3">
-                <span className="text-[11px] text-rose-400 font-medium">Overdue Content</span>
-                <div className="text-xl font-bold text-rose-300 mt-1">{overdueCount}</div>
-                <span className="text-[10px] text-zinc-500">Past target date</span>
-              </CardContent>
-            </Card>
-
-            <Card
-              onClick={() => rejectedCount > 0 && setIsRejectedReasonModalOpen(true)}
-              className={`border-zinc-800 transition-colors ${
-                rejectedCount > 0
-                  ? 'bg-rose-950/20 border-rose-500/30 cursor-pointer hover:border-rose-500'
-                  : 'bg-zinc-900/60'
-              }`}
-            >
-              <CardContent className="p-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-[11px] text-rose-400 font-medium">Rejected</span>
-                  {rejectedCount > 0 && (
-                    <span className="text-[9px] bg-rose-500/20 text-rose-300 px-1 py-0.2 rounded font-bold">
-                      View Reason
-                    </span>
-                  )}
-                </div>
-                <div className="text-xl font-bold text-rose-400 mt-1">{rejectedCount}</div>
-                <span className="text-[10px] text-zinc-500">
-                  {rejectedCount > 0 ? 'Click to inspect reason' : 'Zero rejections'}
-                </span>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Content Status Overview Breakdown (Section 2 Checklist) */}
-          <div className="p-4 bg-zinc-900/40 border border-zinc-800 rounded-xl space-y-2">
-            <div className="flex items-center justify-between text-xs font-semibold text-zinc-200">
-              <span>Content Status Overview Breakdown</span>
-              <span className="text-zinc-500 font-normal">{totalCount} Total Items</span>
-            </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2 pt-1">
-              {[
-                { label: 'Draft', count: draftCount, color: 'text-zinc-300', bg: 'bg-zinc-950/80 border border-zinc-800' },
-                { label: 'In Review', count: inReviewCount, color: 'text-indigo-400', bg: 'bg-indigo-950/40 border border-indigo-500/30' },
-                { label: 'Changes Requested', count: changesRequestedCount, color: 'text-amber-400', bg: 'bg-amber-950/40 border border-amber-500/30' },
-                { label: 'Approved', count: approvedCount, color: 'text-teal-400', bg: 'bg-teal-950/40 border border-teal-500/30' },
-                { label: 'Published', count: publishedCount, color: 'text-emerald-400', bg: 'bg-emerald-950/40 border border-emerald-500/30' },
-                { label: 'Rejected', count: rejectedCount, color: 'text-rose-400', bg: 'bg-rose-950/40 border border-rose-500/30' },
-                { label: 'Archived', count: archivedCount, color: 'text-purple-400', bg: 'bg-purple-950/40 border border-purple-500/30' },
-              ].map((s) => (
-                <div key={s.label} className={`p-2.5 rounded-lg ${s.bg}`}>
-                  <div className="text-[10px] text-zinc-400 truncate">{s.label}</div>
-                  <div className={`text-base font-bold ${s.color} mt-0.5`}>{s.count}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Dual Widget: Pending Approvals Queue & Team Workload */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Pending Approvals Queue */}
-            <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardHeader className="p-4 pb-2 border-b border-zinc-800/80 flex flex-row items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-indigo-400" />
-                  <CardTitle className="text-sm font-semibold text-zinc-100">
-                    Pending Approval Queue ({pendingApprovals.length})
-                  </CardTitle>
-                </div>
-                <button
-                  onClick={() => setActiveSection('approvals')}
-                  className="text-xs text-indigo-400 hover:text-indigo-300"
-                >
-                  View All &rarr;
-                </button>
-              </CardHeader>
-              <CardContent className="p-4 space-y-3">
-                {pendingApprovals.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-zinc-500">
-                    No content waiting for review. All submissions cleared!
-                  </div>
-                ) : (
-                  pendingApprovals.slice(0, 4).map((item) => (
-                    <div
-                      key={item.id}
-                      className="p-3 bg-zinc-950/60 border border-zinc-800 rounded-lg flex items-center justify-between gap-3 text-xs"
-                    >
-                      <div className="space-y-1 min-w-0">
-                        <div className="font-semibold text-zinc-200 truncate">{item.title}</div>
-                        <div className="text-zinc-500 flex items-center gap-3">
-                          <span>By: <strong className="text-zinc-400">{item.owner_name}</strong></span>
-                          <span>Type: <strong className="text-zinc-400">{item.content_type}</strong></span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setViewItem(item)
-                            setIsViewModalOpen(true)
-                          }}
-                          className="h-7 text-xs text-zinc-400 hover:text-zinc-200"
-                        >
-                          View
-                        </Button>
-                        {isAuthorizedManager && (
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              setReviewItem(item)
-                              setIsReviewModalOpen(true)
-                            }}
-                            className="h-7 text-xs bg-indigo-600 hover:bg-indigo-500 text-white"
-                          >
-                            Review
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Team Workload */}
-            <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardHeader className="p-4 pb-2 border-b border-zinc-800/80 flex flex-row items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Users className="w-4 h-4 text-indigo-400" />
-                  <CardTitle className="text-sm font-semibold text-zinc-100">
-                    Team Workload & Assignments
-                  </CardTitle>
-                </div>
-                <button
-                  onClick={() => setActiveSection('assignments')}
-                  className="text-xs text-indigo-400 hover:text-indigo-300"
-                >
-                  Manage &rarr;
-                </button>
-              </CardHeader>
-              <CardContent className="p-4">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-zinc-800 text-zinc-500 uppercase tracking-wider">
-                        <th className="pb-2 font-medium">Team Member</th>
-                        <th className="pb-2 font-medium text-center">Assigned</th>
-                        <th className="pb-2 font-medium text-center">Completed</th>
-                        <th className="pb-2 font-medium text-center">Pending</th>
-                        <th className="pb-2 font-medium text-center">Overdue</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-zinc-800/60">
-                      {employees.slice(0, 5).map((emp) => {
-                        const empAssigned = items.filter((i) => i.assigned_to_id === emp.id || i.assigned_to_name === emp.name)
-                        const completed = empAssigned.filter((i) => i.status === 'Published' || i.status === 'Approved').length
-                        const overdue = empAssigned.filter((i) => computeDeadlineState(i.due_date, i.status) === 'Overdue').length
-                        const pending = empAssigned.length - completed
-                        return (
-                          <tr key={emp.id} className="hover:bg-zinc-900/40">
-                            <td className="py-2.5 font-medium text-zinc-200">
-                              <div>{emp.name}</div>
-                              <span className="text-[10px] text-zinc-500">{emp.designation || 'Staff'}</span>
-                            </td>
-                            <td className="py-2.5 text-center text-zinc-300 font-semibold">{empAssigned.length}</td>
-                            <td className="py-2.5 text-center text-emerald-400 font-semibold">{completed}</td>
-                            <td className="py-2.5 text-center text-indigo-400 font-semibold">{pending}</td>
-                            <td className="py-2.5 text-center font-semibold">
-                              <span className={overdue > 0 ? 'text-rose-400' : 'text-zinc-500'}>{overdue}</span>
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Dual Widget: Upcoming Deadlines & Recent Activities */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Upcoming Deadlines Widget */}
-            <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardHeader className="p-4 pb-2 border-b border-zinc-800/80 flex flex-row items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-indigo-400" />
-                  <CardTitle className="text-sm font-semibold text-zinc-100">
-                    Deadline Schedule ({overdueCount + upcomingCount} Alerting)
-                  </CardTitle>
-                </div>
-                <button
-                  onClick={() => setActiveSection('deadlines')}
-                  className="text-xs text-indigo-400 hover:text-indigo-300"
-                >
-                  View All &rarr;
-                </button>
-              </CardHeader>
-              <CardContent className="p-4 space-y-2.5">
-                {items
-                  .filter((i) => {
-                    const st = computeDeadlineState(i.due_date, i.status)
-                    return st === 'Overdue' || st === 'Upcoming'
-                  })
-                  .slice(0, 4)
-                  .map((item) => (
-                    <div
-                      key={item.id}
-                      className="p-3 bg-zinc-950/60 border border-zinc-800 rounded-lg flex items-center justify-between gap-3 text-xs"
-                    >
-                      <div className="space-y-0.5 min-w-0">
-                        <div className="font-semibold text-zinc-200 truncate">{item.title}</div>
-                        <div className="text-zinc-500 flex items-center gap-2">
-                          <span>Owner: {item.owner_name}</span>
-                          <span>&bull;</span>
-                          <span>Due: {item.due_date ? dayjs(item.due_date).format('DD MMM YYYY') : 'None'}</span>
-                        </div>
-                      </div>
-                      <div className="shrink-0">
-                        {renderDeadlineBadge(item)}
-                      </div>
-                    </div>
-                  ))}
-              </CardContent>
-            </Card>
-
-            {/* Recent Activity Feed */}
-            <Card className="bg-zinc-900/60 border-zinc-800">
-              <CardHeader className="p-4 pb-2 border-b border-zinc-800/80 flex flex-row items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <History className="w-4 h-4 text-indigo-400" />
-                  <CardTitle className="text-sm font-semibold text-zinc-100">Recent Activity</CardTitle>
-                </div>
-                <button
-                  onClick={() => setActiveSection('activity')}
-                  className="text-xs text-indigo-400 hover:text-indigo-300"
-                >
-                  Full History &rarr;
-                </button>
-              </CardHeader>
-              <CardContent className="p-4 space-y-3">
-                {activities.slice(0, 5).map((act) => (
-                  <div key={act.id} className="flex items-start gap-3 text-xs">
-                    <span className="px-2 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono text-[10px] shrink-0">
-                      {act.action}
-                    </span>
-                    <div className="flex-1 min-w-0">
-                      <div className="text-zinc-300 truncate">{act.details}</div>
-                      <div className="text-zinc-500 text-[10px]">{act.timestamp_display}</div>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
-
-      {/* ---------------- 2. CONTENT CATALOG ---------------- */}
-      {activeSection === 'content' && (
-        <div className="space-y-4">
-          {/* Sub-status filters */}
-          <div className="flex flex-wrap items-center gap-2 pb-2">
-            {[
-              'All',
-              'Draft',
-              'In Review',
-              'Changes Requested',
-              'Approved',
-              'Published',
-              'Rejected',
-              'Archived',
-            ].map((st) => (
-              <button
-                key={st}
-                onClick={() => setStatusFilter(st)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
-                  statusFilter === st
-                    ? 'bg-zinc-100 text-zinc-900 shadow'
-                    : 'bg-zinc-900/80 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
-                }`}
-              >
-                {st}
-              </button>
-            ))}
-          </div>
-
-          {/* Search and Filters Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+          {/* Board Search & Filter Controls */}
+          <div className="p-3 bg-card border border-border rounded-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-[200px]">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <Input
-                placeholder="Search title, summary, owner, tags..."
+                type="text"
+                placeholder="Search tasks by title, description, or assignee..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 bg-zinc-900/80 border-zinc-800 text-xs text-zinc-100"
+                className="pl-9 pr-8 h-9 text-xs bg-muted/40 border-border"
               />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="bg-zinc-900/80 border border-zinc-800 rounded-md px-3 py-2 text-xs text-zinc-200 focus:outline-none"
-            >
-              <option value="All">All Content Types</option>
-              {types.map((t) => (
-                <option key={t.id} value={t.name}>
-                  {t.name}
-                </option>
-              ))}
-            </select>
+            {/* Filter Dropdowns */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Content Type Filter */}
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="h-9 px-3 rounded-lg text-xs bg-muted/40 border border-border text-foreground font-medium outline-none cursor-pointer"
+              >
+                <option value="All">All Types</option>
+                {contentTypeOptions.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
 
-            <select
-              value={projectFilter}
-              onChange={(e) => setProjectFilter(e.target.value)}
-              className="bg-zinc-900/80 border border-zinc-800 rounded-md px-3 py-2 text-xs text-zinc-200 focus:outline-none"
-            >
-              <option value="All">All Projects</option>
-              {projects.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
+              {/* Priority Filter */}
+              <select
+                value={priorityFilter}
+                onChange={(e) => setPriorityFilter(e.target.value)}
+                className="h-9 px-3 rounded-lg text-xs bg-muted/40 border border-border text-foreground font-medium outline-none cursor-pointer"
+              >
+                <option value="All">All Priorities</option>
+                <option value="Urgent">Urgent</option>
+                <option value="High">High</option>
+                <option value="Medium">Medium</option>
+                <option value="Low">Low</option>
+              </select>
+
+              {/* Assignee Filter */}
+              <select
+                value={assigneeFilter}
+                onChange={(e) => setAssigneeFilter(e.target.value)}
+                className="h-9 px-3 rounded-lg text-xs bg-muted/40 border border-border text-foreground font-medium outline-none cursor-pointer max-w-[150px] truncate"
+              >
+                <option value="All">All Assignees</option>
+                {employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.name || (emp as any).employee_name}
+                  </option>
+                ))}
+              </select>
+
+              {(searchQuery || typeFilter !== 'All' || priorityFilter !== 'All' || assigneeFilter !== 'All') && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearchQuery('')
+                    setTypeFilter('All')
+                    setPriorityFilter('All')
+                    setAssigneeFilter('All')
+                  }}
+                  className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Reset
+                </Button>
+              )}
+            </div>
           </div>
 
-          {/* Table */}
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-zinc-800 bg-zinc-900/80 text-zinc-400 uppercase tracking-wider font-semibold">
-                    <th className="py-3 px-4">Title</th>
-                    <th className="py-3 px-3">Content Type</th>
-                    <th className="py-3 px-3">Project</th>
-                    <th className="py-3 px-3">Owner / Author</th>
-                    <th className="py-3 px-3">Reviewer</th>
-                    <th className="py-3 px-3">Status</th>
-                    <th className="py-3 px-3">Due Date</th>
-                    <th className="py-3 px-3">Last Updated</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800/60">
-                  {filteredItems.length === 0 ? (
-                    <tr>
-                      <td colSpan={9} className="py-12 text-center text-zinc-500">
-                        No content items found matching current filters.
-                      </td>
-                    </tr>
-                  ) : (
-                    filteredItems.map((item) => (
-                      <tr key={item.id} className="hover:bg-zinc-800/30 transition-colors">
-                        <td className="py-3 px-4">
+          {/* Kanban Board Columns (4 Columns: To Do, In Progress, In Review, Completed) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
+            {BOARD_COLUMNS.map((col) => {
+              const tasks = columnTasks[col.key] || []
+
+              return (
+                <div
+                  key={col.key}
+                  className="bg-card/70 border border-border rounded-2xl p-3 space-y-3 min-h-[500px] flex flex-col shadow-xs"
+                >
+                  {/* Column Header */}
+                  <div className="flex items-center justify-between px-1 pt-1">
+                    <div className="flex items-center gap-2">
+                      <span className={cn("w-2.5 h-2.5 rounded-full", col.dotClass)} />
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                        {col.title}
+                      </h3>
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-muted text-muted-foreground">
+                        {tasks.length}
+                      </span>
+                    </div>
+
+                    {col.key === 'To Do' && (
+                      <button
+                        onClick={() => setActiveTab('create')}
+                        className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                        title="Add Task"
+                      >
+                        <PlusCircle className="w-4 h-4 text-emerald-500" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Tasks List */}
+                  <div className="space-y-3 flex-1 overflow-y-auto">
+                    {tasks.length === 0 ? (
+                      <div className="p-6 text-center border border-dashed border-border/80 rounded-xl space-y-1 my-4">
+                        <p className="text-xs text-muted-foreground">No tasks in {col.title}</p>
+                        {col.key === 'To Do' && (
                           <button
-                            onClick={() => {
-                              setViewItem(item)
-                              setIsViewModalOpen(true)
-                            }}
-                            className="font-semibold text-zinc-200 hover:text-indigo-400 text-left line-clamp-1"
+                            onClick={() => setActiveTab('create')}
+                            className="text-xs text-primary hover:underline font-semibold"
                           >
-                            {item.title}
+                            + Create a task
                           </button>
-                          <span className="text-[10px] text-zinc-500 font-mono">{item.id}</span>
-                        </td>
-                        <td className="py-3 px-3 text-zinc-300">{item.content_type}</td>
-                        <td className="py-3 px-3 text-zinc-400">{item.project_name || 'General'}</td>
-                        <td className="py-3 px-3 text-zinc-300 font-medium">{item.owner_name}</td>
-                        <td className="py-3 px-3">
-                          <span className={item.current_reviewer_name ? 'text-zinc-300 font-medium' : 'text-zinc-600'}>
-                            {item.current_reviewer_name || '—'}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3">{renderStatusBadge(item.status)}</td>
-                        <td className="py-3 px-3">
-                          <div className="space-y-0.5">
-                            <span className="text-zinc-300">
-                              {item.due_date ? dayjs(item.due_date).format('DD MMM YYYY') : '—'}
-                            </span>
-                            <div>{renderDeadlineBadge(item)}</div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-3 text-zinc-400 font-mono text-[11px]">
-                          {item.updated_at ? dayjs(item.updated_at).format('DD MMM YYYY') : '—'}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setViewItem(item)
-                                setIsViewModalOpen(true)
-                              }}
-                              className="h-7 px-2 text-zinc-400 hover:text-zinc-100"
-                              title="View Details"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </Button>
+                        )}
+                      </div>
+                    ) : (
+                      tasks.map((task) => {
+                        const progress = getTaskProgress(task)
+                        const deadlineState = computeDeadlineState(task.due_date, task.status)
+                        const isOverdue =
+                          deadlineState === 'Overdue' &&
+                          col.key !== 'Completed'
 
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setCreateEditItem(item)
-                                setIsCreateEditModalOpen(true)
-                              }}
-                              className="h-7 px-2 text-zinc-400 hover:text-zinc-100"
-                              title="Edit Content"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </Button>
-
-                            {/* Review Action */}
-                            {item.status === 'In Review' && isAuthorizedManager && (
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setReviewItem(item)
-                                  setIsReviewModalOpen(true)
-                                }}
-                                className="h-7 px-2 bg-indigo-600/30 text-indigo-300 hover:bg-indigo-600 hover:text-white"
-                                title="Review / Decision"
-                              >
-                                <ShieldCheck className="w-3.5 h-3.5" />
-                              </Button>
-                            )}
-
-                            {/* Publish Action (Approved -> Published) */}
-                            {item.status === 'Approved' && isAuthorizedManager && (
-                              <Button
-                                size="sm"
-                                onClick={() => handlePublish(item)}
-                                className="h-7 px-2 bg-emerald-600/30 text-emerald-300 hover:bg-emerald-600 hover:text-white"
-                                title="Publish"
-                              >
-                                <CheckCircle2 className="w-3.5 h-3.5" />
-                              </Button>
-                            )}
-
-                            {/* Assign / Reassign */}
-                            {isAuthorizedManager && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => {
-                                  setAssignItem(item)
-                                  setIsAssignModalOpen(true)
-                                }}
-                                className="h-7 px-2 text-zinc-400 hover:text-indigo-400"
-                                title={item.assigned_to_id ? 'Reassign' : 'Assign'}
-                              >
-                                <UserCheck className="w-3.5 h-3.5" />
-                              </Button>
-                            )}
-
-                            {/* Archive */}
-                            {item.status !== 'Archived' && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => handleArchive(item)}
-                                className="h-7 px-2 text-zinc-400 hover:text-purple-400"
-                                title="Archive"
-                              >
-                                <Archive className="w-3.5 h-3.5" />
-                              </Button>
-                            )}
-
-                            {/* Admin Delete */}
-                            {isAdmin && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setItemToDelete(item)}
-                                className="h-7 px-2 text-zinc-400 hover:text-rose-400"
-                                title="Delete"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ---------------- 3. ASSIGNMENTS ---------------- */}
-      {activeSection === 'assignments' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-base font-bold text-zinc-100">Content Workload & Assignments</h2>
-              <p className="text-xs text-zinc-400">
-                Assign and rebalance technical writing and review workloads across developers and leads.
-              </p>
-            </div>
-          </div>
-
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-zinc-800 bg-zinc-900/80 text-zinc-400 uppercase tracking-wider font-semibold">
-                    <th className="py-3 px-4">Content</th>
-                    <th className="py-3 px-3">Assignee</th>
-                    <th className="py-3 px-3">Role</th>
-                    <th className="py-3 px-3">Priority</th>
-                    <th className="py-3 px-3">Workflow Status</th>
-                    <th className="py-3 px-3">Due Date</th>
-                    <th className="py-3 px-3">Deadline State</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800/60">
-                  {items.map((item) => (
-                    <tr key={item.id} className="hover:bg-zinc-800/30 transition-colors">
-                      <td className="py-3 px-4">
-                        <button
-                          onClick={() => {
-                            setViewItem(item)
-                            setIsViewModalOpen(true)
-                          }}
-                          className="font-semibold text-zinc-200 hover:text-indigo-400 text-left line-clamp-1"
-                        >
-                          {item.title}
-                        </button>
-                        <span className="text-[10px] text-zinc-500 font-mono">{item.content_type}</span>
-                      </td>
-                      <td className="py-3 px-3 font-medium">
-                        <span className={item.assigned_to_name ? 'text-indigo-300' : 'text-zinc-500'}>
-                          {item.assigned_to_name || 'Unassigned'}
-                        </span>
-                      </td>
-                      <td className="py-3 px-3 text-zinc-400">{item.assigned_role || 'Developer'}</td>
-                      <td className="py-3 px-3">{renderPriorityBadge(item.priority)}</td>
-                      <td className="py-3 px-3">{renderStatusBadge(item.status)}</td>
-                      <td className="py-3 px-3 text-zinc-300">
-                        {item.due_date ? dayjs(item.due_date).format('DD MMM YYYY') : 'Not set'}
-                      </td>
-                      <td className="py-3 px-3">{renderDeadlineBadge(item)}</td>
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {isAuthorizedManager && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                setAssignItem(item)
-                                setIsAssignModalOpen(true)
-                              }}
-                              className="h-7 text-xs border-zinc-700 text-zinc-200 hover:bg-zinc-800"
-                            >
-                              <UserCheck className="w-3.5 h-3.5 mr-1" />
-                              <span>{item.assigned_to_id ? 'Reassign' : 'Assign'}</span>
-                            </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
+                        return (
+                          <div
+                            key={task.id}
+                            className="group p-3.5 rounded-xl bg-card border border-border hover:border-primary/50 transition-all duration-150 space-y-3 shadow-xs hover:shadow-md cursor-pointer relative"
                             onClick={() => {
-                              setViewItem(item)
+                              setViewItem(task)
                               setIsViewModalOpen(true)
                             }}
-                            className="h-7 text-xs text-zinc-400 hover:text-zinc-200"
                           >
-                            Details
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
+                            {/* Card Top: Badges & Quick Menu */}
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] font-mono font-bold text-primary px-1.5 py-0.5 rounded bg-primary/10">
+                                  {task.id}
+                                </span>
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-border">
+                                  {task.content_type || 'Content'}
+                                </Badge>
+                                {renderPriorityBadge(task.priority)}
+                              </div>
 
-      {/* ---------------- 4. APPROVAL / REVIEW ---------------- */}
-      {activeSection === 'approvals' && (
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-base font-bold text-zinc-100">Pending Review & Approval Queue</h2>
-            <p className="text-xs text-zinc-400">
-              Submissions waiting for sign-off from Head of Content Department or designated reviewers.
-            </p>
-          </div>
+                              {/* Overdue Badge */}
+                              {isOverdue && (
+                                <Badge className="bg-rose-500/20 text-rose-300 border-rose-500/40 text-[9px] px-1.5 py-0 font-bold shrink-0 flex items-center gap-1">
+                                  <AlertTriangle className="w-2.5 h-2.5" />
+                                  <span>Overdue</span>
+                                </Badge>
+                              )}
+                            </div>
 
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-zinc-800 bg-zinc-900/80 text-zinc-400 uppercase tracking-wider font-semibold">
-                    <th className="py-3 px-4">Content Title</th>
-                    <th className="py-3 px-3">Project</th>
-                    <th className="py-3 px-3">Author / Owner</th>
-                    <th className="py-3 px-3">Content Type</th>
-                    <th className="py-3 px-3">Submission Date</th>
-                    <th className="py-3 px-3">Reviewer</th>
-                    <th className="py-3 px-3">Due Date</th>
-                    <th className="py-3 px-4 text-right">Review Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-zinc-800/60">
-                  {pendingApprovals.length === 0 ? (
-                    <tr>
-                      <td colSpan={8} className="py-12 text-center text-zinc-500">
-                        <ShieldCheck className="w-8 h-8 mx-auto mb-2 text-zinc-600" />
-                        No submissions currently in review.
-                      </td>
-                    </tr>
-                  ) : (
-                    pendingApprovals.map((item) => (
-                      <tr key={item.id} className="hover:bg-zinc-800/30 transition-colors">
-                        <td className="py-3 px-4">
-                          <button
-                            onClick={() => {
-                              setViewItem(item)
-                              setIsViewModalOpen(true)
-                            }}
-                            className="font-semibold text-zinc-200 hover:text-indigo-400 text-left line-clamp-1"
-                          >
-                            {item.title}
-                          </button>
-                          <span className="text-[10px] text-zinc-500 font-mono">{item.id}</span>
-                        </td>
-                        <td className="py-3 px-3 text-zinc-400">{item.project_name || 'General'}</td>
-                        <td className="py-3 px-3 text-zinc-200 font-medium">{item.owner_name}</td>
-                        <td className="py-3 px-3 text-zinc-300">{item.content_type}</td>
-                        <td className="py-3 px-3 text-zinc-400">
-                          {item.submission_date ? dayjs(item.submission_date).format('DD MMM YYYY') : 'Recently'}
-                        </td>
-                        <td className="py-3 px-3 text-indigo-400 font-medium">
-                          {item.current_reviewer_name || user.employee_name || 'Head of Content'}
-                        </td>
-                        <td className="py-3 px-3">
-                          <div className="space-y-0.5">
-                            <span className="text-zinc-300">
-                              {item.due_date ? dayjs(item.due_date).format('DD MMM YYYY') : 'None'}
-                            </span>
-                            <div>{renderDeadlineBadge(item)}</div>
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => {
-                                setViewItem(item)
-                                setIsViewModalOpen(true)
-                              }}
-                              className="h-7 text-xs text-zinc-400 hover:text-zinc-200"
+                            {/* Task Title & Summary */}
+                            <div className="space-y-1">
+                              <h4 className="text-xs font-bold text-foreground group-hover:text-primary transition-colors line-clamp-2 leading-snug">
+                                {task.title}
+                              </h4>
+                              {task.summary && (
+                                <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
+                                  {task.summary}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Progress Bar */}
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between text-[10px] text-muted-foreground font-medium">
+                                <span>Progress</span>
+                                <span className="font-bold text-foreground">{progress}%</span>
+                              </div>
+                              <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className={cn(
+                                    "h-full rounded-full transition-all duration-300",
+                                    progress >= 100
+                                      ? "bg-emerald-500"
+                                      : progress >= 60
+                                      ? "bg-indigo-500"
+                                      : progress >= 30
+                                      ? "bg-amber-500"
+                                      : "bg-zinc-500"
+                                  )}
+                                  style={{ width: `${progress}%` }}
+                                />
+                              </div>
+                            </div>
+
+                            {/* Meta: Assignee & Due Date */}
+                            <div className="pt-2 border-t border-border/60 flex items-center justify-between gap-2 text-[11px]">
+                              {/* Assignee */}
+                              <div className="flex items-center gap-1.5 truncate max-w-[140px]" title={task.assigned_to_name || 'Unassigned'}>
+                                <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[9px] shrink-0">
+                                  {task.assigned_to_name ? task.assigned_to_name.charAt(0).toUpperCase() : '?'}
+                                </div>
+                                <span className="truncate text-foreground font-medium">
+                                  {task.assigned_to_name || 'Unassigned'}
+                                </span>
+                              </div>
+
+                              {/* Due Date */}
+                              <div className={cn(
+                                "flex items-center gap-1 text-[10px] shrink-0 font-medium",
+                                isOverdue ? "text-rose-400 font-bold" : "text-muted-foreground"
+                              )}>
+                                <Calendar className="w-3 h-3 shrink-0" />
+                                <span>
+                                  {task.due_date ? dayjs(task.due_date).format('DD MMM') : 'No date'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Status Quick Move Actions */}
+                            <div
+                              className="pt-2 border-t border-border/40 flex items-center justify-between gap-1"
+                              onClick={(e) => e.stopPropagation()}
                             >
-                              Inspect
-                            </Button>
-                            {isAuthorizedManager && (
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setReviewItem(item)
-                                  setIsReviewModalOpen(true)
-                                }}
-                                className="h-7 text-xs bg-indigo-600 hover:bg-indigo-500 text-white font-medium"
-                              >
-                                <ShieldCheck className="w-3.5 h-3.5 mr-1" />
-                                Review
-                              </Button>
-                            )}
+                              <span className="text-[10px] text-muted-foreground">Move to:</span>
+                              <div className="flex items-center gap-1">
+                                {BOARD_COLUMNS.filter((c) => c.key !== col.key).map((targetCol) => (
+                                  <button
+                                    key={targetCol.key}
+                                    disabled={updatingStatusId === task.id}
+                                    onClick={() => handleUpdateStatus(task.id, targetCol.key as ContentStatus)}
+                                    className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground transition-colors border border-border/50"
+                                    title={`Move to ${targetCol.title}`}
+                                  >
+                                    {targetCol.title === 'To Do' ? 'To Do' : targetCol.title === 'In Progress' ? 'Progress' : targetCol.title === 'In Review' ? 'Review' : 'Done'}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                           </div>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ---------------- 5. DEADLINES ---------------- */}
-      {activeSection === 'deadlines' && (
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-base font-bold text-zinc-100">Deadline Tracking & Delivery Schedule</h2>
-            <p className="text-xs text-zinc-400">
-              Categorized view of overdue submissions, imminent deliverables, and completed assets.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {/* Overdue */}
-            <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-xl space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-rose-400 uppercase tracking-wider">Overdue</span>
-                <span className="px-2 py-0.5 bg-rose-500/20 text-rose-300 font-bold text-xs rounded-full">
-                  {overdueCount}
-                </span>
-              </div>
-              <div className="space-y-2">
-                {items
-                  .filter((i) => computeDeadlineState(i.due_date, i.status) === 'Overdue')
-                  .map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => {
-                        setViewItem(item)
-                        setIsViewModalOpen(true)
-                      }}
-                      className="p-3 bg-zinc-900/80 border border-rose-500/30 rounded-lg cursor-pointer hover:border-rose-500 transition-colors text-xs space-y-1"
-                    >
-                      <div className="font-semibold text-zinc-200 line-clamp-1">{item.title}</div>
-                      <div className="text-[11px] text-zinc-400 flex justify-between">
-                        <span>Owner: {item.owner_name}</span>
-                        <span className="text-rose-400 font-medium">Due: {item.due_date}</span>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
-
-            {/* Upcoming / Due Soon */}
-            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-amber-400 uppercase tracking-wider">Due Soon (≤ 3 Days)</span>
-                <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 font-bold text-xs rounded-full">
-                  {upcomingCount}
-                </span>
-              </div>
-              <div className="space-y-2">
-                {items
-                  .filter((i) => computeDeadlineState(i.due_date, i.status) === 'Upcoming')
-                  .map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => {
-                        setViewItem(item)
-                        setIsViewModalOpen(true)
-                      }}
-                      className="p-3 bg-zinc-900/80 border border-amber-500/30 rounded-lg cursor-pointer hover:border-amber-500 transition-colors text-xs space-y-1"
-                    >
-                      <div className="font-semibold text-zinc-200 line-clamp-1">{item.title}</div>
-                      <div className="text-[11px] text-zinc-400 flex justify-between">
-                        <span>Owner: {item.owner_name}</span>
-                        <span className="text-amber-400 font-medium">Due: {item.due_date}</span>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
-
-            {/* Pending Scheduled */}
-            <div className="p-4 bg-zinc-900/40 border border-zinc-800 rounded-xl space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Scheduled (Pending)</span>
-                <span className="px-2 py-0.5 bg-zinc-800 text-zinc-300 font-bold text-xs rounded-full">
-                  {items.filter((i) => computeDeadlineState(i.due_date, i.status) === 'Pending').length}
-                </span>
-              </div>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {items
-                  .filter((i) => computeDeadlineState(i.due_date, i.status) === 'Pending')
-                  .map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => {
-                        setViewItem(item)
-                        setIsViewModalOpen(true)
-                      }}
-                      className="p-3 bg-zinc-950/60 border border-zinc-800 rounded-lg cursor-pointer hover:border-zinc-700 transition-colors text-xs space-y-1"
-                    >
-                      <div className="font-semibold text-zinc-200 line-clamp-1">{item.title}</div>
-                      <div className="text-[11px] text-zinc-400 flex justify-between">
-                        <span>Owner: {item.owner_name}</span>
-                        <span>Due: {item.due_date || 'Unscheduled'}</span>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
-
-            {/* Completed */}
-            <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider">Completed</span>
-                <span className="px-2 py-0.5 bg-emerald-500/20 text-emerald-300 font-bold text-xs rounded-full">
-                  {items.filter((i) => computeDeadlineState(i.due_date, i.status) === 'Completed').length}
-                </span>
-              </div>
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {items
-                  .filter((i) => computeDeadlineState(i.due_date, i.status) === 'Completed')
-                  .map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => {
-                        setViewItem(item)
-                        setIsViewModalOpen(true)
-                      }}
-                      className="p-3 bg-zinc-950/60 border border-emerald-500/30 rounded-lg cursor-pointer hover:border-emerald-500 transition-colors text-xs space-y-1"
-                    >
-                      <div className="font-semibold text-zinc-200 line-clamp-1">{item.title}</div>
-                      <div className="text-[11px] text-zinc-400 flex justify-between">
-                        <span>Status: {item.status}</span>
-                        <span className="text-emerald-400 font-medium">Delivered</span>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ---------------- MEDIA & FILES ---------------- */}
-      {activeSection === 'media' && (
-        <MediaFilesSection initialAttachments={attachments} user={user} />
-      )}
-
-      {/* ---------------- CATEGORIES & TAGS ---------------- */}
-      {activeSection === 'categories' && (
-        <CategoriesTagsSection
-          categories={categories}
-          tags={tags}
-          items={items}
-          isAuthorizedManager={isAuthorizedManager}
-          onCategoriesUpdated={(newCats) => setCategories(newCats)}
-          onTagsUpdated={(newTags) => setTags(newTags)}
-        />
-      )}
-
-      {/* ---------------- VERSION HISTORY ---------------- */}
-      {activeSection === 'versions' && (
-        <VersionHistorySection
-          items={items}
-          user={user}
-          isAuthorizedManager={isAuthorizedManager}
-          onRestoreVersion={handleRestoreVersion}
-          onViewItem={(it: ContentItem) => {
-            setViewItem(it)
-            setIsViewModalOpen(true)
-          }}
-        />
-      )}
-
-      {/* ---------------- ADVANCED SEARCH & FILTERS ---------------- */}
-      {activeSection === 'search' && (
-        <AdvancedSearchFilterSection
-          items={items}
-          contentTypes={types}
-          categories={categories}
-          tags={tags}
-          projects={projects}
-          employees={employees}
-          onViewItem={(it: ContentItem) => {
-            setViewItem(it)
-            setIsViewModalOpen(true)
-          }}
-          onEditItem={(it: ContentItem) => {
-            setCreateEditItem(it)
-            setIsCreateEditModalOpen(true)
-          }}
-          onSubmitForReview={handleSubmitForReview}
-          onPublish={handlePublish}
-        />
-      )}
-
-      {/* ---------------- REPORTS & ANALYTICS ---------------- */}
-      {activeSection === 'reports' && (
-        <ReportsAnalyticsSection
-          items={items}
-          types={types}
-          categories={categories}
-          activities={activities}
-          projects={projects}
-          employees={employees}
-          onViewItem={(it) => {
-            setViewItem(it)
-            setIsViewModalOpen(true)
-          }}
-        />
-      )}
-
-      {/* ---------------- CONTENT QUALITY & FRESHNESS ---------------- */}
-      {activeSection === 'quality' && (
-        <QualityFreshnessSection
-          items={items}
-          user={user}
-          onViewItem={(it) => {
-            setViewItem(it)
-            setIsViewModalOpen(true)
-          }}
-          onUpdateQuality={(it) => {
-            setViewItem(it)
-            setIsViewModalOpen(true)
-          }}
-        />
-      )}
-
-      {/* ---------------- 6. ACTIVITY / HISTORY ---------------- */}
-      {activeSection === 'activity' && (
-        <div className="space-y-4">
-          <div>
-            <h2 className="text-base font-bold text-zinc-100">Audit Trail & Activity Log</h2>
-            <p className="text-xs text-zinc-400">
-              Chronological ledger of content creation, reviewer decisions, reassignments, and publications.
-            </p>
-          </div>
-
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl divide-y divide-zinc-800/70 overflow-hidden">
-            {activities.length === 0 ? (
-              <div className="p-12 text-center text-zinc-500 text-xs">No activity logged yet.</div>
-            ) : (
-              activities.map((act) => (
-                <div key={act.id} className="p-4 hover:bg-zinc-800/30 transition-colors flex items-start gap-4 text-xs">
-                  <span
-                    className={`px-2.5 py-1 rounded font-mono text-[10px] uppercase font-bold shrink-0 ${
-                      act.action === 'Approved' || act.action === 'Published'
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                        : act.action === 'Changes Requested'
-                        ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                        : act.action === 'Rejected'
-                        ? 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                        : act.action === 'Reassigned' || act.action === 'Assigned'
-                        ? 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30'
-                        : 'bg-zinc-800 text-zinc-300 border border-zinc-700'
-                    }`}
-                  >
-                    {act.action}
-                  </span>
-
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-semibold text-zinc-200">{act.content_title}</span>
-                      <span className="text-[11px] text-zinc-500">{act.timestamp_display}</span>
-                    </div>
-                    <p className="text-zinc-400 leading-relaxed">{act.details}</p>
-                    <div className="text-[10px] text-zinc-500">
-                      User: <strong className="text-zinc-400">{act.user_name}</strong>
-                    </div>
+                        )
+                      })
+                    )}
                   </div>
                 </div>
-              ))
-            )}
+              )
+            })}
           </div>
         </div>
       )}
 
-      {/* MODALS */}
+      {/* ========================================================= */}
+      {/* TAB 2: TASK CREATION FORM                                 */}
+      {/* ========================================================= */}
+      {activeTab === 'create' && (
+        <Card className="border-border shadow-xs max-w-4xl mx-auto">
+          <CardHeader className="p-6 border-b border-border bg-muted/20">
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <PlusCircle className="w-5 h-5 text-emerald-500" />
+                  <span>Create Content Task</span>
+                </CardTitle>
+                <p className="text-xs text-muted-foreground">
+                  Fill in the details below to schedule and assign a content production task. The new task will immediately appear on the Task Board under To Do.
+                </p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setActiveTab('board')}
+                className="text-xs border-border"
+              >
+                Cancel & View Board
+              </Button>
+            </div>
+          </CardHeader>
+
+          <CardContent className="p-6">
+            <form onSubmit={handleCreateTask} className="space-y-6">
+              {/* Task Title */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                  <span>Task Title <span className="text-rose-500">*</span></span>
+                  <span className="text-[11px] text-muted-foreground font-normal">Clear & descriptive headline</span>
+                </label>
+                <Input
+                  required
+                  placeholder="e.g. Q4 Growth Case Study & Customer Story"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="bg-muted/30 border-border text-sm h-10"
+                />
+              </div>
+
+              {/* Task Description */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                  <span>Task Description <span className="text-rose-500">*</span></span>
+                  <span className="text-[11px] text-muted-foreground font-normal">Overview and goals of this content</span>
+                </label>
+                <textarea
+                  required
+                  rows={4}
+                  placeholder="Outline what needs to be produced, key objectives, target audience, and expected outcome..."
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-y"
+                />
+              </div>
+
+              {/* Grid: Assign Employee & Content Type */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Assign Employee */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-primary" />
+                    <span>Assign Employee</span>
+                  </label>
+                  <select
+                    value={formData.assigned_to_id}
+                    onChange={(e) => setFormData({ ...formData, assigned_to_id: e.target.value })}
+                    className="w-full h-10 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground font-medium outline-none cursor-pointer"
+                  >
+                    <option value="">Unassigned (Assign Later)</option>
+                    {employees.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.name || (emp as any).employee_name} {emp.designation ? `(${emp.designation})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Content Type */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-primary" />
+                    <span>Content Type</span>
+                  </label>
+                  <select
+                    value={formData.content_type}
+                    onChange={(e) => setFormData({ ...formData, content_type: e.target.value })}
+                    className="w-full h-10 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground font-medium outline-none cursor-pointer"
+                  >
+                    {contentTypeOptions.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Grid: Priority, Start Date & Due Date */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                {/* Priority */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-foreground">Priority</label>
+                  <div className="grid grid-cols-4 gap-1.5">
+                    {(['Low', 'Medium', 'High', 'Urgent'] as ContentPriority[]).map((p) => (
+                      <button
+                        type="button"
+                        key={p}
+                        onClick={() => setFormData({ ...formData, priority: p })}
+                        className={cn(
+                          "py-2 rounded-lg text-xs font-semibold border transition-all text-center",
+                          formData.priority === p
+                            ? p === 'Urgent'
+                              ? "bg-rose-500/20 text-rose-300 border-rose-500/50 shadow-xs"
+                              : p === 'High'
+                              ? "bg-orange-500/20 text-orange-300 border-orange-500/50 shadow-xs"
+                              : p === 'Medium'
+                              ? "bg-blue-500/20 text-blue-300 border-blue-500/50 shadow-xs"
+                              : "bg-zinc-700 text-zinc-200 border-zinc-600 shadow-xs"
+                            : "bg-muted/40 border-border text-muted-foreground hover:text-foreground"
+                        )}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Start Date */}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5 text-primary" />
+                    <span>Start Date</span>
+                  </label>
+                  <Input
+                    type="date"
+                    value={formData.start_date}
+                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                    className="bg-muted/30 border-border text-xs h-10 font-mono"
+                  />
+                </div>
+
+                {/* Due Date */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-primary" />
+                      <span>Due Date</span>
+                    </label>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, due_date: dayjs().add(3, 'day').format('YYYY-MM-DD') })}
+                        className="text-[10px] text-primary hover:underline"
+                      >
+                        +3d
+                      </button>
+                      <span className="text-muted-foreground text-[10px]">|</span>
+                      <button
+                        type="button"
+                        onClick={() => setFormData({ ...formData, due_date: dayjs().add(7, 'day').format('YYYY-MM-DD') })}
+                        className="text-[10px] text-primary hover:underline"
+                      >
+                        +1w
+                      </button>
+                    </div>
+                  </div>
+                  <Input
+                    type="date"
+                    value={formData.due_date}
+                    onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
+                    className="bg-muted/30 border-border text-xs h-10 font-mono"
+                  />
+                </div>
+              </div>
+
+              {/* Task Instructions */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                  <span>Task Instructions & Guidelines (Optional)</span>
+                  <span className="text-[11px] text-muted-foreground font-normal">
+                    Style, tone of voice, word count, or required sections
+                  </span>
+                </label>
+                <textarea
+                  rows={3}
+                  placeholder="Provide detailed instructions, formatting rules, reference links, or key bullet points the assigned employee must follow..."
+                  value={formData.instructions}
+                  onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
+                  className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-y"
+                />
+              </div>
+
+              {/* Reference Attachment (Optional) */}
+              <div className="space-y-2">
+                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Paperclip className="w-3.5 h-3.5 text-primary" />
+                  <span>Reference Attachment (Optional)</span>
+                </label>
+                <div className="p-4 rounded-xl border border-dashed border-border bg-muted/20 flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="space-y-1 text-center sm:text-left">
+                    <p className="text-xs font-semibold text-foreground">
+                      {attachmentFile ? attachmentFile.name : formData.reference_attachment || 'Upload a file or provide a link'}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">
+                      Attach project brief, brand asset, or reference documentation (PDF, Word, Image)
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="cursor-pointer px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors flex items-center gap-1.5">
+                      <UploadCloud className="w-3.5 h-3.5" />
+                      <span>{attachmentFile ? 'Replace File' : 'Choose File'}</span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          if (file) {
+                            setAttachmentFile(file)
+                            setFormData({ ...formData, reference_attachment: file.name })
+                          }
+                        }}
+                      />
+                    </label>
+                    {attachmentFile && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAttachmentFile(null)
+                          setFormData({ ...formData, reference_attachment: '' })
+                        }}
+                        className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Action Buttons: Submit Task & Cancel */}
+              <div className="pt-4 border-t border-border flex items-center justify-end gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setActiveTab('board')}
+                  disabled={isSubmitting}
+                  className="border-border text-xs h-10 px-4"
+                >
+                  Cancel
+                </Button>
+
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold h-10 px-5 gap-2 shadow-xs"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Creating Task...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>Submit Task</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Task View Details Modal */}
       <ViewContentModal
         item={viewItem}
         isOpen={isViewModalOpen}
-        onClose={() => setIsViewModalOpen(false)}
-        onEdit={(it) => {
-          setCreateEditItem(it)
-          setIsCreateEditModalOpen(true)
+        onClose={() => {
+          setIsViewModalOpen(false)
+          setViewItem(null)
         }}
-        onSubmitForReview={handleSubmitForReview}
-        onOpenReview={(it) => {
-          setReviewItem(it)
-          setIsReviewModalOpen(true)
-        }}
-        onOpenAssign={(it) => {
-          setAssignItem(it)
-          setIsAssignModalOpen(true)
-        }}
-        onPublish={handlePublish}
-        onRestoreVersion={handleRestoreVersion}
-        onUpdateQualityFlags={handleUpdateQualityFlags}
-        allItems={items}
+        onEdit={(item) => setEditingItem(item)}
+        onStatusChange={handleUpdateStatus}
         user={user}
       />
 
-      <CreateEditContentModal
-        isOpen={isCreateEditModalOpen}
-        onClose={() => setIsCreateEditModalOpen(false)}
-        item={createEditItem}
-        contentTypes={types}
-        projects={projects}
-        employees={employees}
-        availableCategories={categories}
-        availableTags={tags.map((t) => t.name)}
-        currentUserId={user.id}
-        currentUserName={user.employee_name || undefined}
-        onSubmit={handleSaveContent}
-      />
-
-      <ReviewModal
-        item={reviewItem}
-        isOpen={isReviewModalOpen}
-        onClose={() => setIsReviewModalOpen(false)}
-        onSuccess={(updated) => {
-          setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))
-        }}
-      />
-
-      <AssignReassignModal
-        item={assignItem}
-        employees={employees}
-        isOpen={isAssignModalOpen}
-        onClose={() => setIsAssignModalOpen(false)}
-        onSuccess={(updated) => {
-          setItems((prev) => prev.map((i) => (i.id === updated.id ? updated : i)))
-        }}
-      />
-
-      {isAdmin && (
-        <ManageContentTypesModal
-          isOpen={isManageTypesOpen}
-          onClose={() => setIsManageTypesOpen(false)}
-          contentTypes={types}
-          onCreateType={async (name, desc) => {
-            const res = await createContentType(name, desc)
-            if (res.success && res.data) {
-              setTypes((prev) => [...prev, res.data!])
-              toast({ title: 'Content Type Added', description: `"${res.data.name}" is now available.` })
-            } else {
-              toast({ title: 'Failed to Add Type', description: res.error || 'Error adding type', variant: 'destructive' })
-            }
-          }}
-          onToggleStatus={async (id: string) => {
-            const res = await toggleContentTypeStatus(id)
-            if (res.success && res.data) {
-              setTypes((prev) => prev.map((t) => (t.id === id ? res.data! : t)))
-              toast({
-                title: 'Content Type Updated',
-                description: `"${res.data.name}" marked as ${res.data.is_active ? 'Active' : 'Inactive'}.`,
-              })
-            } else {
-              toast({ title: 'Update Failed', description: res.error || 'Error toggling type', variant: 'destructive' })
-            }
-          }}
-        />
-      )}
-
-      {/* Confirm Permanent Delete Modal */}
-      <ConfirmModal
-        open={Boolean(itemToDelete)}
-        onOpenChange={(open) => !open && setItemToDelete(null)}
-        onConfirm={handleDelete}
-        title="Permanently Delete Content"
-        description={`Are you sure you want to permanently delete "${itemToDelete?.title}"? This action is irrevocable and permitted only for Administrators.`}
-        confirmText="Delete"
-        variant="destructive"
-      />
-
-      {/* Rejected Content Reason Modal */}
-      {isRejectedReasonModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
-          <div className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden p-5 space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
-              <h3 className="text-sm font-bold text-rose-300 flex items-center gap-2">
-                <XCircle className="w-4 h-4 text-rose-400" />
-                <span>Rejected Content & Feedback</span>
-              </h3>
+      {/* Edit Task Modal */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150">
+          <div className="w-full max-w-xl bg-card border border-border rounded-2xl shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <h3 className="text-base font-bold text-foreground">Edit Task</h3>
               <button
-                onClick={() => setIsRejectedReasonModalOpen(false)}
-                className="text-zinc-500 hover:text-zinc-200 text-xs"
+                onClick={() => setEditingItem(null)}
+                className="p-1 rounded-lg text-muted-foreground hover:text-foreground"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3 max-h-80 overflow-y-auto">
-              {rejectedItems.length === 0 ? (
-                <div className="text-xs text-zinc-500 py-6 text-center">No rejected items found.</div>
-              ) : (
-                rejectedItems.map((item) => {
-                  const revs = item.reviews || item.review_history || []
-                  const rejectionReview = revs.slice().reverse().find((r) => r.decision === 'Rejected')
-                  return (
-                    <div key={item.id} className="p-3 rounded-lg bg-zinc-950 border border-rose-500/30 space-y-1.5 text-xs">
-                      <div className="font-semibold text-zinc-200">{item.title}</div>
-                      <div className="text-[11px] text-zinc-400">
-                        Author: {item.owner_name} &bull; Project: {item.project_name || 'General'}
-                      </div>
-                      <div className="p-2 rounded bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs">
-                        <strong>Rejection Reason:</strong>{' '}
-                        {rejectionReview?.comment || rejectionReview?.feedback || 'Specification guidelines were not met.'}
-                      </div>
-                    </div>
-                  )
-                })
-              )}
-            </div>
+            <form onSubmit={handleSaveEditedTask} className="space-y-4">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground">Title</label>
+                <Input
+                  required
+                  value={editingItem.title}
+                  onChange={(e) => setEditingItem({ ...editingItem, title: e.target.value })}
+                  className="bg-muted/30 border-border text-sm"
+                />
+              </div>
 
-            <div className="flex justify-end pt-2 border-t border-zinc-800">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setIsRejectedReasonModalOpen(false)}
-                className="border-zinc-800 text-xs"
-              >
-                Close
-              </Button>
-            </div>
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground">Description</label>
+                <textarea
+                  rows={3}
+                  value={editingItem.summary || ''}
+                  onChange={(e) => setEditingItem({ ...editingItem, summary: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-muted/30 border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-foreground">Assignee</label>
+                  <select
+                    value={editingItem.assigned_to_id || ''}
+                    onChange={(e) => setEditingItem({ ...editingItem, assigned_to_id: e.target.value })}
+                    className="w-full h-9 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground outline-none"
+                  >
+                    <option value="">Unassigned</option>
+                    {employees.map((emp) => (
+                      <option key={emp.id} value={emp.id}>
+                        {emp.name || (emp as any).employee_name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-foreground">Priority</label>
+                  <select
+                    value={editingItem.priority || 'Medium'}
+                    onChange={(e) => setEditingItem({ ...editingItem, priority: e.target.value as ContentPriority })}
+                    className="w-full h-9 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground outline-none"
+                  >
+                    <option value="Low">Low</option>
+                    <option value="Medium">Medium</option>
+                    <option value="High">High</option>
+                    <option value="Urgent">Urgent</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-foreground">Start Date</label>
+                  <Input
+                    type="date"
+                    value={editingItem.start_date || ''}
+                    onChange={(e) => setEditingItem({ ...editingItem, start_date: e.target.value })}
+                    className="bg-muted/30 border-border text-xs font-mono"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-xs font-semibold text-foreground">Due Date</label>
+                  <Input
+                    type="date"
+                    value={editingItem.due_date || ''}
+                    onChange={(e) => setEditingItem({ ...editingItem, due_date: e.target.value })}
+                    className="bg-muted/30 border-border text-xs font-mono"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground">Instructions</label>
+                <textarea
+                  rows={2}
+                  value={editingItem.instructions || ''}
+                  onChange={(e) => setEditingItem({ ...editingItem, instructions: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-muted/30 border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                />
+              </div>
+
+              <div className="pt-3 border-t border-border flex items-center justify-between">
+                {isAuthorizedManager && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setItemToDelete(editingItem)
+                      setEditingItem(null)
+                    }}
+                    className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 text-xs gap-1"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </Button>
+                )}
+
+                <div className="flex items-center gap-2 ml-auto">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingItem(null)}
+                    className="border-border text-xs"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isSubmitting}
+                    size="sm"
+                    className="bg-primary text-primary-foreground text-xs"
+                  >
+                    {isSubmitting ? 'Saving...' : 'Save Changes'}
+                  </Button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {itemToDelete && (
+        <ConfirmModal
+          open={true}
+          onOpenChange={(open) => {
+            if (!open) setItemToDelete(null)
+          }}
+          title="Delete Content Task"
+          description={`Are you sure you want to permanently delete "${itemToDelete.title}"? This action cannot be undone.`}
+          confirmText="Delete Task"
+          variant="destructive"
+          onConfirm={handleDeleteTask}
+        />
       )}
     </div>
   )

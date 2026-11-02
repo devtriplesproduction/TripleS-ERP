@@ -239,8 +239,16 @@ function normalizeContentItem(item: ContentItem): ContentItem {
   const reviewHistory = item.review_history || item.reviews || []
   const followUpReason = item.follow_up_reason || item.follow_up_note || null
 
+  const calculatedProgress = typeof item.progress === 'number'
+    ? item.progress
+    : (item.status === 'Completed' || item.status === 'Published' || item.status === 'Approved' ? 100 : item.status === 'In Review' ? 75 : item.status === 'In Progress' ? 40 : 0);
+
   return {
     ...item,
+    start_date: item.start_date || (item.created_at ? item.created_at.slice(0, 10) : null),
+    instructions: item.instructions || item.creative_brief || null,
+    progress: calculatedProgress,
+    reference_attachment: item.reference_attachment || null,
     version,
     version_number: versionNumber,
     version_history: versionHistory,
@@ -905,11 +913,15 @@ export async function createContentItem(input: CreateContentInput): Promise<{ su
       project_name: input.project_name || null,
       owner_id: input.owner_id || user?.id || 'unknown',
       owner_name: input.owner_name || user?.employee_name || 'Anonymous',
-      status: input.status || 'Draft',
+      status: input.status || 'To Do',
       tags: input.tags || [],
       created_at: now.toISOString(),
       updated_at: now.toISOString(),
+      start_date: input.start_date || now.toISOString().slice(0, 10),
       due_date: input.due_date || null,
+      instructions: input.instructions || null,
+      progress: input.progress ?? (input.status === 'Completed' ? 100 : input.status === 'In Review' ? 75 : input.status === 'In Progress' ? 40 : 0),
+      reference_attachment: input.reference_attachment || null,
       version: 1,
       version_history: [initialVersion],
       assigned_to_id: input.assigned_to_id || null,
@@ -1667,11 +1679,20 @@ export async function updateContentStatus(id: string, status: ContentStatus, com
     const now = new Date()
     const current = items[index]
 
+    const newProgress = (status === 'Completed' || status === 'Published' || status === 'Approved')
+      ? 100
+      : status === 'In Review'
+      ? 75
+      : status === 'In Progress'
+      ? 40
+      : 0;
+
     const updated: ContentItem = {
       ...current,
       status,
+      progress: newProgress,
       updated_at: now.toISOString(),
-      completion_date: status === 'Published' || status === 'Approved' ? now.toISOString() : current.completion_date,
+      completion_date: status === 'Completed' || status === 'Published' || status === 'Approved' ? now.toISOString() : current.completion_date,
     }
 
     items[index] = updated

@@ -1,6 +1,9 @@
 export type ContentStatus =
-  | 'Draft'
+  | 'To Do'
+  | 'In Progress'
   | 'In Review'
+  | 'Completed'
+  | 'Draft'
   | 'Changes Requested'
   | 'Approved'
   | 'Published'
@@ -159,7 +162,11 @@ export interface ContentItem {
   tags: string[]
   created_at: string
   updated_at: string
+  start_date?: string | null
   due_date?: string | null
+  instructions?: string | null
+  progress?: number | null
+  reference_attachment?: string | null
   published_at?: string | null
 
   // Version Management
@@ -256,7 +263,11 @@ export interface CreateContentInput {
   department?: string | null
   product?: string | null
   tags?: string[]
+  start_date?: string | null
   due_date?: string | null
+  instructions?: string | null
+  progress?: number | null
+  reference_attachment?: string | null
   assigned_to_id?: string | null
   assigned_to_name?: string | null
   assigned_role?: AssignedRole
@@ -301,7 +312,11 @@ export interface UpdateContentInput {
   department?: string | null
   product?: string | null
   tags?: string[]
+  start_date?: string | null
   due_date?: string | null
+  instructions?: string | null
+  progress?: number | null
+  reference_attachment?: string | null
   assigned_to_id?: string | null
   assigned_to_name?: string | null
   assigned_role?: AssignedRole
