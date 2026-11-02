@@ -34,7 +34,10 @@ import {
   ExternalLink,
   ChevronDown,
   Monitor,
-  RotateCcw
+  RotateCcw,
+  User,
+  Check,
+  LayoutDashboard
 } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import { EmployeeScreenshotsGallery } from './EmployeeScreenshotsGallery'
@@ -72,7 +75,7 @@ export function TimeTrackingAdminDashboard() {
     }
   }
 
-  // Mode: Daily, Screenshots, or Monthly
+  // View Mode: Daily, Screenshots, or Monthly
   const [viewMode, setViewMode] = useState<'daily' | 'screenshots' | 'monthly'>('daily')
 
   // Daily Filters
@@ -86,7 +89,7 @@ export function TimeTrackingAdminDashboard() {
   const [sortBy, setSortBy] = useState<'worked' | 'active' | 'name' | 'status' | 'sync'>('worked')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-  // Pagination for Daily
+  // Pagination for Daily Table
   const [dailyPage, setDailyPage] = useState<number>(1)
   const [dailyPageSize, setDailyPageSize] = useState<number>(10)
 
@@ -1081,8 +1084,8 @@ export function TimeTrackingAdminDashboard() {
   // MAIN DASHBOARD VIEW
   // -------------------------------------------------------------
   return (
-    <div className="space-y-8 max-w-7xl mx-auto pb-16 animate-in fade-in duration-200">
-      {/* Page Header & View Mode Switcher */}
+    <div className="space-y-6 max-w-7xl mx-auto pb-16 animate-in fade-in duration-200">
+      {/* Top Telemetry Header & Actions */}
       <PageHeader
         title={
           <div className="flex items-center gap-3">
@@ -1098,121 +1101,6 @@ export function TimeTrackingAdminDashboard() {
         iconClassName="text-foreground"
         actions={
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
-            {/* Mode Toggle: Daily vs Screenshots vs Monthly */}
-            <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border shadow-xs">
-              <button
-                onClick={() => setViewMode('daily')}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                  viewMode === 'daily'
-                    ? "bg-background text-foreground shadow-xs border border-border/60"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Clock size={13} />
-                <span>Daily Tracking</span>
-              </button>
-
-              <button
-                onClick={() => setViewMode('screenshots')}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                  viewMode === 'screenshots'
-                    ? "bg-background text-foreground shadow-xs border border-border/60"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <Camera size={13} />
-                <span>Screenshots</span>
-                {(overview.totalScreenshots || 0) > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-primary/15 text-primary">
-                    {overview.totalScreenshots}
-                  </span>
-                )}
-              </button>
-
-              <button
-                onClick={() => setViewMode('monthly')}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                  viewMode === 'monthly'
-                    ? "bg-background text-foreground shadow-xs border border-border/60"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                <BarChart2 size={13} />
-                <span>Monthly Summary</span>
-              </button>
-            </div>
-
-            {/* Date Navigation */}
-            {viewMode === 'daily' || viewMode === 'screenshots' ? (
-              <div className="flex items-center gap-1 bg-card border border-border p-1 rounded-xl shadow-xs">
-                <button
-                  onClick={() => stepDate(-1)}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-                  title="Previous Day"
-                >
-                  <ChevronLeft size={14} />
-                </button>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => {
-                    setSelectedDate(e.target.value)
-                    setDailyPage(1)
-                  }}
-                  className="px-2 py-1 bg-transparent text-xs font-medium text-foreground outline-none cursor-pointer border-none"
-                />
-                <button
-                  onClick={() => stepDate(1)}
-                  disabled={selectedDate >= getTodayIST()}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 disabled:opacity-30 transition-colors"
-                  title="Next Day"
-                >
-                  <ChevronRight size={14} />
-                </button>
-                {selectedDate !== getTodayIST() && (
-                  <button
-                    onClick={() => {
-                      setSelectedDate(getTodayIST())
-                      setDailyPage(1)
-                    }}
-                    className="px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10 rounded-lg transition-colors ml-1"
-                  >
-                    Today
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="flex items-center gap-1 bg-card border border-border p-1 rounded-xl shadow-xs">
-                <button
-                  onClick={() => stepMonth(-1)}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
-                  title="Previous Month"
-                >
-                  <ChevronLeft size={14} />
-                </button>
-                <input
-                  type="month"
-                  value={selectedMonth}
-                  onChange={(e) => {
-                    setSelectedMonth(e.target.value)
-                    setMonthlyPage(1)
-                  }}
-                  className="px-2 py-1 bg-transparent text-xs font-medium text-foreground outline-none cursor-pointer border-none"
-                />
-                <button
-                  onClick={() => stepMonth(1)}
-                  disabled={selectedMonth >= getCurrentMonthIST()}
-                  className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 disabled:opacity-30 transition-colors"
-                  title="Next Month"
-                >
-                  <ChevronRight size={14} />
-                </button>
-              </div>
-            )}
-
             {/* Auto-Refresh Toggle */}
             <button
               onClick={() => setAutoRefresh(!autoRefresh)}
@@ -1222,7 +1110,7 @@ export function TimeTrackingAdminDashboard() {
                   ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
                   : "border-border bg-card text-muted-foreground hover:text-foreground"
               )}
-              title={autoRefresh ? 'Live Auto-Sync active (30s)' : 'Auto-Sync paused'}
+              title={autoRefresh ? 'Live Auto-Sync active (30s interval)' : 'Auto-Sync paused'}
             >
               <span className={cn("w-2 h-2 rounded-full", autoRefresh ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/40")} />
               <span className="hidden md:inline font-semibold">{autoRefresh ? 'Live' : 'Paused'}</span>
@@ -1250,6 +1138,126 @@ export function TimeTrackingAdminDashboard() {
           </div>
         }
       />
+
+      {/* Segmented View Mode & Date Navigation Toolbar */}
+      <div className="p-3 sm:p-4 bg-card border border-border rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
+        {/* Left: Mode Toggle */}
+        <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border shadow-xs overflow-x-auto">
+          <button
+            onClick={() => setViewMode('daily')}
+            className={cn(
+              "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+              viewMode === 'daily'
+                ? "bg-background text-foreground shadow-xs border border-border/60"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Clock size={13} />
+            <span>Daily Tracking</span>
+          </button>
+
+          <button
+            onClick={() => setViewMode('screenshots')}
+            className={cn(
+              "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+              viewMode === 'screenshots'
+                ? "bg-background text-foreground shadow-xs border border-border/60"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <Camera size={13} />
+            <span>Screenshots</span>
+            {(overview.totalScreenshots || 0) > 0 && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-primary/15 text-primary">
+                {overview.totalScreenshots}
+              </span>
+            )}
+          </button>
+
+          <button
+            onClick={() => setViewMode('monthly')}
+            className={cn(
+              "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+              viewMode === 'monthly'
+                ? "bg-background text-foreground shadow-xs border border-border/60"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <BarChart2 size={13} />
+            <span>Monthly Summary</span>
+          </button>
+        </div>
+
+        {/* Right: Date Navigation */}
+        <div className="flex items-center justify-end gap-2">
+          {viewMode === 'daily' || viewMode === 'screenshots' ? (
+            <div className="flex items-center gap-1 bg-muted/30 border border-border p-1 rounded-xl shadow-xs">
+              <button
+                onClick={() => stepDate(-1)}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                title="Previous Day"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(e) => {
+                  setSelectedDate(e.target.value)
+                  setDailyPage(1)
+                }}
+                className="px-2 py-1 bg-transparent text-xs font-medium text-foreground outline-none cursor-pointer border-none font-mono"
+              />
+              <button
+                onClick={() => stepDate(1)}
+                disabled={selectedDate >= getTodayIST()}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 disabled:opacity-30 transition-colors"
+                title="Next Day"
+              >
+                <ChevronRight size={14} />
+              </button>
+              {selectedDate !== getTodayIST() && (
+                <button
+                  onClick={() => {
+                    setSelectedDate(getTodayIST())
+                    setDailyPage(1)
+                  }}
+                  className="px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10 rounded-lg transition-colors ml-1"
+                >
+                  Today
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex items-center gap-1 bg-muted/30 border border-border p-1 rounded-xl shadow-xs">
+              <button
+                onClick={() => stepMonth(-1)}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                title="Previous Month"
+              >
+                <ChevronLeft size={14} />
+              </button>
+              <input
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => {
+                  setSelectedMonth(e.target.value)
+                  setMonthlyPage(1)
+                }}
+                className="px-2 py-1 bg-transparent text-xs font-medium text-foreground outline-none cursor-pointer border-none font-mono"
+              />
+              <button
+                onClick={() => stepMonth(1)}
+                disabled={selectedMonth >= getCurrentMonthIST()}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 disabled:opacity-30 transition-colors"
+                title="Next Month"
+              >
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Error Banner */}
       {error && (
