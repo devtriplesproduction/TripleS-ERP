@@ -151,15 +151,23 @@ export function buildAttendanceRecords(
   
   if (leaveRequests) {
     for (const req of leaveRequests) {
-      const start = new Date(req.start_date);
-      const end = new Date(req.end_date);
-      for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      const sStr = (req.start_date || '').split('T')[0];
+      const eStr = (req.end_date || '').split('T')[0];
+      if (!sStr || !eStr) continue;
+
+      const [sY, sM, sD] = sStr.split('-').map(Number);
+      const [eY, eM, eD] = eStr.split('-').map(Number);
+      const curr = new Date(sY, sM - 1, sD);
+      const end = new Date(eY, eM - 1, eD);
+
+      while (curr <= end) {
+        const dateStr = `${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, '0')}-${String(curr.getDate()).padStart(2, '0')}`;
         if (req.request_type === 'WFH') {
           wfhMap.set(dateStr, req);
         } else {
           leavesMap.set(dateStr, req);
         }
+        curr.setDate(curr.getDate() + 1);
       }
     }
   }
@@ -253,12 +261,27 @@ export function buildAttendanceRecords(
     } else {
       // Normal working days (Mon-Sat, non-holiday)
       if (leave && !leave.is_half_day) {
-        status = 'Leave';
+        const lType = (leave.leave_type || '').trim().toLowerCase();
+        if (lType === 'compensatory off' || lType === 'comp-off' || lType.includes('comp')) {
+          status = 'Comp-Off';
+        } else if (lType === 'casual leave') {
+          status = 'Casual Leave';
+        } else if (lType === 'sick leave') {
+          status = 'Sick Leave';
+        } else if (lType === 'unpaid leave' || lType === 'unpaid') {
+          status = 'Unpaid Leave';
+        } else {
+          status = 'Leave';
+        }
       } else if (wfh && !wfh.is_half_day) {
         status = 'WFH';
       } else if (leave && leave.is_half_day && isApprovedEod) {
         status = 'Half Day';
       } else if (wfh && wfh.is_half_day && isApprovedEod) {
+        status = 'Half Day';
+      } else if (leave && leave.is_half_day) {
+        status = 'Half Day';
+      } else if (wfh && wfh.is_half_day) {
         status = 'Half Day';
       } else if (isApprovedEod) {
         if (workedMinutes < HALF_DAY_THRESHOLD) {

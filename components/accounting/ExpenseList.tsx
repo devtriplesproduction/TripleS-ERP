@@ -13,6 +13,7 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { ExpenseModal } from './ExpenseModal'
 import { AccountingNavTabs } from './AccountingNavTabs'
 import { deleteExpenseAction } from '@/lib/actions/accounting'
+import { formatDate } from '@/lib/utils/date'
 import { toast } from 'sonner'
 import {
   ArrowUpRight,
@@ -309,7 +310,7 @@ export function ExpenseList({
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
-                      {item.expense_date}
+                      {formatDate(item.expense_date)}
                     </TableCell>
                     <TableCell>
                       <div>

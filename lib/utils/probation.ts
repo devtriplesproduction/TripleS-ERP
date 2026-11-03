@@ -83,6 +83,8 @@ export function getDurationForDates(
   return 'custom'
 }
 
+import { formatDateReadable } from '@/lib/utils/date'
+
 /**
  * Formats a date string (YYYY-MM-DD or ISO) into "DD MMM YYYY" (e.g. 01 Oct 2026).
  * Returns fallback if invalid or missing.
@@ -92,31 +94,7 @@ export function formatProbationDateDisplay(
   fallback = '-'
 ): string {
   if (!dateStr) return fallback
-  const clean = dateStr.split('T')[0]?.trim()
-  if (!clean) return fallback
-
-  const parts = clean.split('-').map(Number)
-  if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
-    const d = new Date(parts[0], parts[1] - 1, parts[2])
-    if (!isNaN(d.getTime())) {
-      return d.toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-      })
-    }
-  }
-
-  const fallbackDate = new Date(dateStr)
-  if (!isNaN(fallbackDate.getTime())) {
-    return fallbackDate.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    })
-  }
-
-  return fallback
+  return formatDateReadable(dateStr, fallback)
 }
 
 /**

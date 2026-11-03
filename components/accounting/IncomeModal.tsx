@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { DatePicker } from '@/components/ui/date-picker'
 import { toast } from 'sonner'
 import {
   Loader2,
@@ -521,13 +522,11 @@ export function IncomeModal({
                   <Label htmlFor="income-date" className="text-xs font-semibold">
                     Income Date <span className="text-destructive">*</span>
                   </Label>
-                  <Input
-                    id="income-date"
-                    type="date"
+                  <DatePicker
                     value={incomeDate}
-                    onChange={(e) => setIncomeDate(e.target.value)}
+                    onChange={(val) => setIncomeDate(val)}
+                    placeholder="dd/mm/yyyy"
                     className="bg-background border-border text-sm h-9"
-                    required
                   />
                 </div>
 

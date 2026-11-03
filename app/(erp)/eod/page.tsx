@@ -172,10 +172,10 @@ export default async function EODPage({ searchParams }: PageProps) {
               </div>
               <div className="flex items-center gap-2 text-[13px] font-medium text-muted-foreground bg-card/50 px-3 py-1.5 rounded-md border border-border/40">
                 <CalendarDays className="w-3.5 h-3.5 opacity-70" />
-                {new Intl.DateTimeFormat('en-US', {
+                {new Intl.DateTimeFormat('en-IN', {
                   weekday: 'short',
+                  day: '2-digit',
                   month: 'short',
-                  day: 'numeric',
                   year: 'numeric',
                   timeZone: 'Asia/Kolkata',
                 }).format(new Date())}

@@ -41,9 +41,13 @@ CREATE TABLE IF NOT EXISTS public.payroll_items (
     short_hours NUMERIC(8, 2) NOT NULL DEFAULT 0,
     total_paid_hours NUMERIC(8, 2) NOT NULL DEFAULT 0,
 
-    -- Day counts
+    -- Day counts and payable hours
+    days_full_day NUMERIC(6, 2) NOT NULL DEFAULT 0,
     days_half_day NUMERIC(6, 2) NOT NULL DEFAULT 0,
     days_unpaid_leave_eod NUMERIC(6, 2) NOT NULL DEFAULT 0,
+    days_absent NUMERIC(6, 2) NOT NULL DEFAULT 0,
+    payable_worked_hours NUMERIC(8, 2) NOT NULL DEFAULT 0,
+    payable_hours NUMERIC(8, 2) NOT NULL DEFAULT 0,
     comp_off_minutes_earned NUMERIC(10, 2) NOT NULL DEFAULT 0,
 
     -- Financial calculations

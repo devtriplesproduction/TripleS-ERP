@@ -7,6 +7,11 @@ import crypto from 'crypto';
 const FALLBACK_DIR = path.join(process.cwd(), 'scratch');
 const DEFAULT_STORE_FILE = 'payroll_deductions_store.json';
 
+function isFallbackAllowed(): boolean {
+  if (process.env.NODE_ENV !== 'production') return true;
+  return process.env.ALLOW_PAYROLL_FILE_FALLBACK === 'true';
+}
+
 function getFallbackStorePath(): string {
   const customPath = process.env.PAYROLL_DEDUCTIONS_STORE_PATH;
   if (customPath) {
@@ -25,6 +30,7 @@ function ensureStoreDir(): void {
 }
 
 export function readFallbackDeductions(): PayrollDeduction[] {
+  if (!isFallbackAllowed()) return [];
   try {
     ensureStoreDir();
     const storePath = getFallbackStorePath();
@@ -40,6 +46,7 @@ export function readFallbackDeductions(): PayrollDeduction[] {
 }
 
 export function writeFallbackDeductions(deductions: PayrollDeduction[]): void {
+  if (!isFallbackAllowed()) return;
   try {
     ensureStoreDir();
     const storePath = getFallbackStorePath();
@@ -247,11 +254,21 @@ export async function createPayrollDeduction(
       .single();
 
     if (!error && data) {
-      saveToFallback(data as PayrollDeduction);
+      if (isFallbackAllowed()) {
+        saveToFallback(data as PayrollDeduction);
+      }
       return { success: true, data: data as PayrollDeduction };
     }
   } catch (err) {
-    console.warn('[PayrollDeductions] Supabase insert failed, using fallback:', err);
+    console.warn('[PayrollDeductions] Supabase insert failed:', err);
+  }
+
+  if (!isFallbackAllowed()) {
+    console.error('[CRITICAL SECURITY ERROR] Production deduction could not be saved to Supabase. Local file fallback is disallowed in production.');
+    return {
+      success: false,
+      error: 'Production database persistence failed. Payroll tables are not ready in Supabase. Please apply migration 20261102000000_complete_payroll_system.sql.'
+    };
   }
 
   saveToFallback(deductionRecord);

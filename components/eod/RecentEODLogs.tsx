@@ -6,6 +6,7 @@ import { CheckCircle2, Clock, History, FileText, User, Calendar, MapPin, AlertTr
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { formatWorkedTime, formatCanonicalDuration } from '@/lib/utils/time';
+import { formatDate } from '@/lib/utils/date';
 import { EodCard } from './EodCard';
 
 type EODLog = {
@@ -85,8 +86,8 @@ function HistoryRow({ eod }: { eod: EODLog }) {
   const [expanded, setExpanded] = useState(false);
 
   // Date parsing
+  const dateStr = formatDate(eod.report_date);
   const [y, m, d] = eod.report_date.split('-');
-  const dateStr = `${d}/${m}`;
   const dateObj = new Date(Number(y), Number(m) - 1, Number(d));
   const dayStr = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
 

@@ -118,7 +118,7 @@ export function ProjectOverviewTab({
                         <div className="flex items-center gap-2 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {t.due_date ? dayjs(t.due_date).format('MMM DD') : 'No date'}
+                            {t.due_date ? dayjs(t.due_date).format('DD MMM') : 'No date'}
                           </span>
                         </div>
                       </div>

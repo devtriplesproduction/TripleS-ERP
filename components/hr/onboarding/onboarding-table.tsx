@@ -17,6 +17,7 @@ import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { DatePicker } from '@/components/ui/date-picker'
+import { formatDateReadable } from '@/lib/utils/date'
 import { ChevronLeft, ChevronRight, Trash2, Search, Filter, Loader2, Eye, Calendar, Building2, Briefcase, Star, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -287,7 +288,7 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
                     <TableCell className="text-sm text-foreground">{emp.department || 'Not Set'}</TableCell>
                     <TableCell className="text-sm text-foreground">{emp.job_title || 'Not Set'}</TableCell>
                     <TableCell className="text-sm text-foreground">
-                      {new Date(emp.joining_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {formatDateReadable(emp.joining_date)}
                     </TableCell>
                     <TableCell>
                       <Badge className={cn(
@@ -417,7 +418,7 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
                       <Calendar className="w-3 h-3" /> Joined
                     </span>
                     <span className="font-medium text-foreground">
-                      {new Date(emp.joining_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {formatDateReadable(emp.joining_date)}
                     </span>
                   </div>
                 </div>

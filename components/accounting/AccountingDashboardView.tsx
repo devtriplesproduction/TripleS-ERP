@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { AccountingDashboardData, BankAccount } from '@/types/accounting'
+import { formatDate } from '@/lib/utils/date'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -414,7 +415,7 @@ export function AccountingDashboardView({
                 data.recentTransactions.map((tx) => (
                   <TableRow key={tx.id} className="hover:bg-muted/30 transition-colors">
                     <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
-                      {tx.transaction_date}
+                      {formatDate(tx.transaction_date)}
                     </TableCell>
                     <TableCell className="font-mono text-xs font-semibold text-foreground whitespace-nowrap">
                       {tx.reference_number}

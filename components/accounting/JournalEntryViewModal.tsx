@@ -16,6 +16,7 @@ import {
   Briefcase,
 } from 'lucide-react'
 import { JournalEntry } from '@/types/accounting'
+import { formatDate } from '@/lib/utils/date'
 
 interface JournalEntryViewModalProps {
   isOpen: boolean
@@ -94,7 +95,7 @@ export function JournalEntryViewModal({
               </div>
               <div className="text-sm font-semibold flex items-center gap-1.5 text-foreground">
                 <Calendar className="w-3.5 h-3.5 text-primary" />
-                <span>{entry.entry_date}</span>
+                <span>{formatDate(entry.entry_date)}</span>
               </div>
             </div>
 

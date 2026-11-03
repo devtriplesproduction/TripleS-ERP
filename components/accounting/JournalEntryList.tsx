@@ -21,6 +21,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { DatePicker } from '@/components/ui/date-picker'
+import { formatDate } from '@/lib/utils/date'
 import { toast } from 'sonner'
 import { JournalEntry, LedgerAccount } from '@/types/accounting'
 import {
@@ -217,21 +219,25 @@ export function JournalEntryList({
 
           {/* Date range filters */}
           <div className="flex items-center gap-1.5">
-            <Input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="text-xs h-9 w-32 bg-background"
-              title="Filter from date"
-            />
+            <div className="w-32">
+              <DatePicker
+                value={startDate}
+                onChange={(val) => setStartDate(val)}
+                placeholder="From date"
+                isClearable
+                className="text-xs h-9 bg-background"
+              />
+            </div>
             <span className="text-muted-foreground text-xs font-bold">to</span>
-            <Input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="text-xs h-9 w-32 bg-background"
-              title="Filter to date"
-            />
+            <div className="w-32">
+              <DatePicker
+                value={endDate}
+                onChange={(val) => setEndDate(val)}
+                placeholder="To date"
+                isClearable
+                className="text-xs h-9 bg-background"
+              />
+            </div>
           </div>
 
           {(search || statusFilter !== 'ALL' || startDate || endDate) && (
@@ -316,7 +322,7 @@ export function JournalEntryList({
 
                     {/* Date */}
                     <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
-                      {entry.entry_date}
+                      {formatDate(entry.entry_date)}
                     </td>
 
                     {/* Narration */}

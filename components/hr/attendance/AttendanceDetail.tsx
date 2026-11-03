@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect } from "react"
@@ -8,6 +9,7 @@ import { getEmployeeAttendance, getAttendanceEmployeeProfile, DerivedAttendance,
 import { calculateAttendanceSummary } from "@/lib/utils/attendance-summary"
 import { getEmploymentNavigationBounds } from "@/lib/utils/attendance-builder"
 import { getISTDateString, formatMinutesAsHHMM, formatOfficeHoursAsHHMM } from "@/lib/utils/time"
+import { formatDateReadable } from "@/lib/utils/date"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
 import { Progress } from "@/components/ui/progress"
@@ -20,7 +22,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
   const [attendance, setAttendance] = useState<DerivedAttendance[]>([])
   const [currentDate, setCurrentDate] = useState(new Date())
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date())
-  
+
   const router = useRouter()
 
   const isHRAdmin = basePath.includes('/hr') || basePath.includes('/super-admin')
@@ -29,9 +31,9 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
     async function loadData() {
       setLoading(true)
       const emp = await getAttendanceEmployeeProfile(employeeId)
-      
+
       if (emp) setEmployee(emp)
-      
+
       const month = currentDate.getMonth() + 1
       const year = currentDate.getFullYear()
       const data = await getEmployeeAttendance(employeeId, month, year)
@@ -52,10 +54,14 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
   ) : false;
 
   const getStatusColor = (status: string) => {
-    switch(status) {
+    switch (status) {
       case 'Present': return 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
       case 'WFH': return 'bg-blue-500/10 text-blue-500 border-blue-500/20'
+      case 'Comp-Off': return 'bg-purple-500/10 text-purple-400 border-purple-500/20'
+      case 'Casual Leave': return 'bg-sky-500/10 text-sky-400 border-sky-500/20'
+      case 'Sick Leave': return 'bg-rose-500/10 text-rose-400 border-rose-500/20'
       case 'Leave': return 'bg-orange-500/10 text-orange-500 border-orange-500/20'
+      case 'Unpaid Leave': return 'bg-amber-500/10 text-amber-500 border-amber-500/20'
       case 'Half Day + Present': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
       case 'Half Day + WFH': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
       case 'Half Day': return 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20'
@@ -66,12 +72,16 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
       default: return 'bg-transparent text-transparent border-transparent'
     }
   }
-  
+
   const getStatusIconColor = (status: string) => {
-    switch(status) {
+    switch (status) {
       case 'Present': return 'bg-emerald-500'
       case 'WFH': return 'bg-blue-500'
+      case 'Comp-Off': return 'bg-purple-400'
+      case 'Casual Leave': return 'bg-sky-400'
+      case 'Sick Leave': return 'bg-rose-400'
       case 'Leave': return 'bg-orange-500'
+      case 'Unpaid Leave': return 'bg-amber-500'
       case 'Half Day + Present': return 'bg-yellow-500'
       case 'Half Day + WFH': return 'bg-yellow-500'
       case 'Half Day': return 'bg-yellow-500'
@@ -89,7 +99,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
   // Calendar generation logic
   const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate()
   const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1).getDay()
-  
+
   const calendarDays = []
   for (let i = 0; i < firstDayOfMonth; i++) {
     calendarDays.push(null)
@@ -97,14 +107,14 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
   for (let i = 1; i <= daysInMonth; i++) {
     calendarDays.push(i)
   }
-  
+
   const totalCells = Math.ceil(calendarDays.length / 7) * 7
   while (calendarDays.length < totalCells) {
     calendarDays.push(null)
   }
 
   // Selected date details
-  const selectedDateStr = selectedDate 
+  const selectedDateStr = selectedDate
     ? `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, '0')}-${String(selectedDate.getDate()).padStart(2, '0')}`
     : null;
   const selectedAtt = attendance.find(a => a.date === selectedDateStr);
@@ -158,7 +168,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
 
       {/* Main Grid */}
       <div className="flex flex-col lg:flex-row gap-3">
-        
+
         {/* Left Area - Calendar */}
         <div className="flex-1">
           <div className="bg-card border border-border rounded-[16px] overflow-hidden">
@@ -170,23 +180,23 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
                 </div>
               ))}
             </div>
-            
+
             {/* Calendar Grid */}
             <div className="grid grid-cols-7">
               {calendarDays.map((dayNum, i) => {
                 if (!dayNum) {
                   return <div key={`empty-${i}`} className="min-h-[90px] border-b border-r border-border/50 bg-muted/20" />
                 }
-                
+
                 const dStr = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}-${String(dayNum).padStart(2, '0')}`
                 const att = attendance.find(a => a.date === dStr)
-                
+
                 const isSelected = selectedDate?.getDate() === dayNum && selectedDate?.getMonth() === currentDate.getMonth() && selectedDate?.getFullYear() === currentDate.getFullYear()
                 const isToday = dStr === todayStr
-                
+
                 return (
-                  <div 
-                    key={dStr} 
+                  <div
+                    key={dStr}
                     onClick={() => setSelectedDate(new Date(currentDate.getFullYear(), currentDate.getMonth(), dayNum))}
                     className={`min-h-[90px] p-2 sm:p-2.5 border-b border-r border-border relative cursor-pointer transition-colors hover:bg-muted/50 flex flex-col items-center justify-between
                       ${isSelected ? 'bg-muted/60 ring-1 ring-inset ring-foreground/60' : isToday ? 'ring-1 ring-inset ring-foreground/25 bg-muted/20' : 'bg-transparent'}`}
@@ -199,10 +209,10 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
                         </span>
                       )}
                     </div>
-                    
+
                     {att && att.status !== 'Weekend' && att.status !== 'Not Marked' && (
                       <div className="mt-auto w-full flex justify-center pb-0.5">
-                        <div 
+                        <div
                           title={att.holiday?.name ? `${att.status} (${att.holiday.name})` : att.status}
                           className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[11px] font-medium whitespace-nowrap ${getStatusColor(att.status)}`}
                         >
@@ -220,7 +230,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
 
         {/* Right Area - Context, Details & Insights */}
         <div className="w-full lg:w-[340px] shrink-0 flex flex-col gap-3">
-          
+
           {/* Personnel Context Card */}
           <Card className="bg-card border-border rounded-[16px] p-3 shadow-none">
             <div className="flex items-center gap-2 mb-3">
@@ -229,7 +239,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
               </div>
               <h3 className="font-semibold text-base">Personnel Context</h3>
             </div>
-            
+
             <div className="space-y-3">
               {employee && (
                 <div className="flex items-center gap-3">
@@ -243,7 +253,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
                   </div>
                 </div>
               )}
-              
+
               {employee && (
                 <div className="grid grid-cols-[1fr_auto] gap-y-2 text-[13px] pt-1">
                   <div className="text-muted-foreground">Department</div>
@@ -266,7 +276,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
               </div>
               {selectedDate && (
                 <span className="text-[12px] font-medium text-muted-foreground">
-                  {selectedDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                  {selectedDate.toLocaleDateString('en-IN', { weekday: 'short' })}, {formatDateReadable(selectedDate)}
                 </span>
               )}
             </div>
@@ -297,8 +307,8 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
                     {selectedAtt.eod ? (
                       <span className={
                         selectedAtt.eod.status === 'Approved' ? 'text-emerald-500 font-semibold' :
-                        selectedAtt.eod.status === 'Pending' ? 'text-amber-500 font-semibold' :
-                        selectedAtt.eod.status === 'Rejected' ? 'text-red-500 font-semibold' : 'text-foreground'
+                          selectedAtt.eod.status === 'Pending' ? 'text-amber-500 font-semibold' :
+                            selectedAtt.eod.status === 'Rejected' ? 'text-red-500 font-semibold' : 'text-foreground'
                       }>
                         {selectedAtt.eod.status}
                       </span>
@@ -309,7 +319,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
 
                   <div className="text-muted-foreground">Worked Hours</div>
                   <div className="text-right font-medium text-foreground">
-                    {selectedAtt.workedHours > 0 
+                    {selectedAtt.workedHours > 0
                       ? `${formatOfficeHoursAsHHMM(selectedAtt.workedHours)} hrs`
                       : '0.00 hrs'}
                   </div>
@@ -345,8 +355,19 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
                         {selectedAtt.holiday.name} {selectedAtt.holiday.name === 'Sunday' ? '(Weekly Off)' : '(Holiday)'}
                       </span>
                     ) : selectedAtt.leave ? (
-                      <span className="text-orange-500">
-                        {selectedAtt.leave.request_type || 'Leave'}{selectedAtt.leave.is_half_day ? ' (Half Day)' : ''}
+                      <span className={
+                        (selectedAtt.leave.leave_type || '').toLowerCase().includes('comp')
+                          ? 'text-purple-400 font-semibold'
+                          : selectedAtt.leave.leave_type === 'Sick Leave'
+                          ? 'text-rose-400 font-semibold'
+                          : selectedAtt.leave.leave_type === 'Casual Leave'
+                          ? 'text-sky-400 font-semibold'
+                          : 'text-orange-500'
+                      }>
+                        {(selectedAtt.leave.leave_type || '').toLowerCase().includes('comp')
+                          ? 'Comp-Off'
+                          : (selectedAtt.leave.leave_type || (selectedAtt.leave.request_type === 'LEAVE' ? 'Leave' : selectedAtt.leave.request_type))}
+                        {selectedAtt.leave.is_half_day ? ' (Half Day)' : ''}
                       </span>
                     ) : selectedAtt.wfh ? (
                       <span className="text-blue-500">
@@ -364,7 +385,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
               </div>
             )}
           </Card>
-          
+
           {/* Monthly Insights Card */}
           <Card className="bg-card border-border rounded-[16px] p-3 shadow-none flex flex-col">
             <div className="flex items-center gap-2 mb-3">
@@ -373,7 +394,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
               </div>
               <h3 className="font-semibold text-base">Monthly Insights</h3>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-0 border border-border rounded-xl overflow-hidden">
               <div className="p-2 sm:p-2.5 border-b border-r border-border flex flex-col gap-0.5 relative justify-center">
                 <span className="text-[12px] text-muted-foreground">Present</span>
@@ -414,7 +435,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
               </div>
             </div>
           </Card>
-          
+
         </div>
       </div>
     </div>

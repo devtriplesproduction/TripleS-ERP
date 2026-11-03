@@ -167,7 +167,7 @@ export function ProjectListTab({ tasks, onTaskClick }: ProjectListTabProps) {
                       <td className="px-5 py-2 text-xs">
                         <span className={`flex items-center gap-1.5 font-medium ${t.is_overdue ? 'text-destructive' : 'text-foreground'}`}>
                           {t.is_overdue ? <AlertCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5 text-muted-foreground" />}
-                          {t.due_date ? dayjs(t.due_date).format('MMM DD, YYYY') : '-'}
+                          {t.due_date ? dayjs(t.due_date).format('DD MMM YYYY') : '-'}
                         </span>
                       </td>
                       <td className="px-5 py-2 text-right">

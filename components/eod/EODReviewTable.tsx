@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { formatCanonicalDuration } from "@/lib/utils/time";
+import { formatDate } from "@/lib/utils/date";
 
 export function EODReviewTable({ eods }: { eods: (EODReport & { profiles: { first_name: string, last_name: string, employee_id: string } | null })[] }) {
   const [loading, setLoading] = useState<string | null>(null);
@@ -190,7 +191,7 @@ export function EODReviewTable({ eods }: { eods: (EODReport & { profiles: { firs
                   {eod.profiles?.first_name} {eod.profiles?.last_name}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {eod.report_date}
+                  {formatDate(eod.report_date)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                   {eod.location}

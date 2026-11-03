@@ -784,7 +784,7 @@ export function DeveloperManagementView({
                                         )}
                                       >
                                         <Clock className="h-3 w-3" />
-                                        Due {dayjs(task.due_date).format('MMM D, YYYY')}
+                                        Due {dayjs(task.due_date).format('DD MMM YYYY')}
                                         {isOverdue && ' (Overdue)'}
                                       </span>
                                     </>
@@ -890,7 +890,7 @@ export function DeveloperManagementView({
                             <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1 border-t border-border/60">
                               <span>
                                 {project.deadline
-                                  ? `Deadline: ${dayjs(project.deadline).format('MMM D, YYYY')}`
+                                  ? `Deadline: ${dayjs(project.deadline).format('DD MMM YYYY')}`
                                   : 'No deadline'}
                               </span>
                               <Link

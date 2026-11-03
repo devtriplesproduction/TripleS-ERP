@@ -25,6 +25,7 @@ import {
   Camera
 } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
+import { DatePicker } from '@/components/ui/date-picker'
 import { EmployeeScreenshotsGallery } from './EmployeeScreenshotsGallery'
 import type {
   EmployeeReportItem,
@@ -821,12 +822,14 @@ export function TimeTrackingAdminDashboard() {
             {/* Date Picker (Daily & Screenshots) or Month Picker (Monthly) */}
             {viewMode === 'daily' || viewMode === 'screenshots' ? (
               <div className="flex items-center gap-2">
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="px-3 py-1.5 rounded-xl border border-border bg-card text-xs font-medium text-foreground outline-none cursor-pointer shadow-sm hover:border-foreground/30 focus:border-foreground transition-colors"
-                />
+                <div className="w-[140px]">
+                  <DatePicker
+                    value={selectedDate}
+                    onChange={(val) => setSelectedDate(val)}
+                    placeholder="dd/mm/yyyy"
+                    className="h-9 px-3 text-xs font-medium rounded-xl border-border bg-card text-foreground shadow-sm"
+                  />
+                </div>
                 <div className="hidden sm:flex items-center gap-1 bg-muted/50 p-1 rounded-xl border border-border">
                   <button
                     onClick={() => setQuickDate('today')}

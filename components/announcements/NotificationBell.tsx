@@ -212,7 +212,7 @@ export function NotificationBell() {
     if (now.diff(d, 'day') < 2) {
       return d.fromNow()
     }
-    return d.format('MMM D, YYYY')
+    return d.format('DD MMM YYYY')
   }
 
   // Icon and badge styling per type
@@ -480,7 +480,7 @@ export function NotificationBell() {
             <div>
               Published on{' '}
               {selectedAnnouncement?.date
-                ? dayjs(selectedAnnouncement.date).format('MMMM D, YYYY [at] h:mm A')
+                ? dayjs(selectedAnnouncement.date).format('DD MMM YYYY, h:mm A')
                 : 'Recent'}
             </div>
             <div>By {selectedAnnouncement?.creatorName}</div>

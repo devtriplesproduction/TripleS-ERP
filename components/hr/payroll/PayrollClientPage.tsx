@@ -151,8 +151,8 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
     if (payrollResults.length === 0) return;
     const headers = [
       'Employee Name', 'Department', 'Monthly Base (₹)', 'Standard Hrs',
-      'Worked Hrs', 'Credited Leave Hrs', 'Paid Holiday Hrs', 'Half Days',
-      'Unpaid Days (<4h)', 'Comp-Off Earned (mins)', 'Attendance Deduction (₹)',
+      'Worked Hrs', 'Credited Leave Hrs', 'Paid Holiday Hrs', 'Full Days (8h+)', 'Half Days',
+      'Unpaid Days (<4h)', 'Absent Days', 'Comp-Off Earned (mins)', 'Attendance Deduction (₹)',
       'Custom Deductions (₹)', 'Total Deductions (₹)', 'Gross Pay (₹)', 'Net Payable (₹)', 'Status'
     ];
 
@@ -164,8 +164,10 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
       r.actualWorkedHours || 0,
       r.creditedLeaveHours || 0,
       r.paidHolidayHours || 0,
+      r.daysFullDay || 0,
       r.daysHalfDay || 0,
       r.daysUnpaidLeaveEod || 0,
+      r.daysAbsent || 0,
       r.compOffMinutesEarned || 0,
       r.unpaidLeaveDeduction || r.attendanceDeduction || 0,
       r.manualDeductions || 0,

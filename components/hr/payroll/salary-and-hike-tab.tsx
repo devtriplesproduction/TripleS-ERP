@@ -9,6 +9,7 @@ import { IndianRupee, TrendingUp, Calendar, X, Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { addSalaryIncrementAction, getSalaryHistoryAction } from '@/lib/actions/payroll'
 import { calculateMonthlyBasicSalary, calculateIncrementPercentage, resolveCurrentSalary } from '@/lib/utils/salary'
+import { formatDateReadable } from '@/lib/utils/date'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
@@ -183,7 +184,7 @@ export function SalaryAndHikeTab({ employee }: { employee: any }) {
             {nextHikeDate ? (
               <>
                 <h3 className={`text-lg font-bold relative z-10 ${isOverdue ? 'text-destructive' : 'text-foreground'}`}>
-                  {nextHikeDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {formatDateReadable(nextHikeDate)}
                 </h3>
                 <p className={`text-[11px] font-semibold mt-1 relative z-10 ${isOverdue ? 'text-destructive/80' : 'text-muted-foreground'}`}>
                   {isOverdue ? `${Math.abs(daysLeft!)} days overdue` : `in ${daysLeft} days`}
@@ -242,7 +243,7 @@ export function SalaryAndHikeTab({ employee }: { employee: any }) {
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-bold text-foreground">
-                    {new Date(hist.effective_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {formatDateReadable(hist.effective_date)}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">Effective Date</div>
                 </div>

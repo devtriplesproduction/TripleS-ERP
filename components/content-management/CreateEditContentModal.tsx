@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Badge } from '@/components/ui/badge'
 import {
   ContentItem,
@@ -422,10 +423,10 @@ export function CreateEditContentModal({
                       <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider block mb-1">
                         Due Date
                       </label>
-                      <Input
-                        type="date"
+                      <DatePicker
                         value={dueDate}
-                        onChange={(e) => setDueDate(e.target.value)}
+                        onChange={(val) => setDueDate(val)}
+                        placeholder="dd/mm/yyyy"
                         className="bg-zinc-900 border-zinc-800 text-xs focus:border-indigo-500"
                       />
                     </div>
@@ -515,10 +516,10 @@ export function CreateEditContentModal({
                     </div>
                     <div>
                       <label className="text-xs font-semibold text-zinc-300 uppercase tracking-wider block mb-1">Due Date</label>
-                      <Input
-                        type="date"
+                      <DatePicker
                         value={dueDate}
-                        onChange={(e) => setDueDate(e.target.value)}
+                        onChange={(val) => setDueDate(val)}
+                        placeholder="dd/mm/yyyy"
                         className="bg-zinc-900 border-zinc-800 text-xs"
                       />
                     </div>

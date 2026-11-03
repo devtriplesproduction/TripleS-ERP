@@ -9,6 +9,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 import { Button } from "@/components/ui/button";
+import { parseDate, formatDateReadable, toISODateString } from "@/lib/utils/date";
+
 interface PremiumDatePickerProps {
   value?: string;
   onChange?: (date: string) => void;
@@ -22,14 +24,14 @@ interface PremiumDatePickerProps {
 
 export function PremiumDatePicker({ value, onChange, className, align = 'left', side = 'bottom', disabled = false, triggerClassName, minDate }: PremiumDatePickerProps) {
   const [isOpen, setIsOpen] = React.useState(false);
-  const [currentMonth, setCurrentMonth] = React.useState(value ? new Date(value) : new Date());
+  const [currentMonth, setCurrentMonth] = React.useState(() => parseDate(value) || new Date());
   const [mounted, setMounted] = React.useState(false);
   const [coords, setCoords] = React.useState({ top: 0, left: 0 });
 
   const containerRef = React.useRef<HTMLDivElement>(null);
   const portalRef = React.useRef<HTMLDivElement>(null);
 
-  const selectedDate = value ? new Date(value) : null;
+  const selectedDate = value ? parseDate(value) : null;
 
   React.useEffect(() => {
     const timeoutId = setTimeout(() => {
@@ -80,7 +82,7 @@ export function PremiumDatePicker({ value, onChange, className, align = 'left', 
   };
 
   const handleDateSelect = (date: Date) => {
-    const formattedDate = format(date, "yyyy-MM-dd");
+    const formattedDate = toISODateString(date);
     onChange?.(formattedDate);
     setIsOpen(false);
   };
@@ -123,10 +125,13 @@ export function PremiumDatePicker({ value, onChange, className, align = 'left', 
   // Keep currentMonth in sync if value changes externally
   React.useEffect(() => {
     if (value) {
-      const timeoutId = setTimeout(() => {
-        setCurrentMonth(new Date(value));
-      }, 0);
-      return () => clearTimeout(timeoutId);
+      const parsed = parseDate(value);
+      if (parsed) {
+        const timeoutId = setTimeout(() => {
+          setCurrentMonth(parsed);
+        }, 0);
+        return () => clearTimeout(timeoutId);
+      }
     }
   }, [value]);
 
@@ -288,7 +293,7 @@ export function PremiumDatePicker({ value, onChange, className, align = 'left', 
       >
         <CalendarIcon className="w-4 h-4 text-slate-500 group-hover:text-orange-500 transition-colors" />
         <span className={cn("flex-1 font-medium", !value ? "text-slate-400 " : "text-slate-900 ")}>
-          {value ? format(new Date(value), "PPP") : "Select Date"}
+          {value ? formatDateReadable(value) : "Select Date"}
         </span>
         <ChevronDown className="w-4 h-4 text-slate-500" />
       </div>

@@ -20,6 +20,7 @@ import { Input } from '@/components/ui/input';
 import { EODReport } from '@/lib/actions/eod';
 import { reviewEODAction, batchReviewEODAction, updateEODAction } from '@/actions/eod.actions';
 import { DatePicker } from '@/components/ui/date-picker';
+import { parseDate } from '@/lib/utils/date';
 import { EodCard } from './EodCard';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -439,7 +440,7 @@ export function ReviewDashboard({
               )
               .sort((a, b) => b[0].localeCompare(a[0]))
               .map(([date, groupEods]) => {
-                const dateObj = new Date(date);
+                const dateObj = parseDate(date) || new Date();
                 const dateString = dateObj.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
                 return (
                   <div key={date} className="space-y-4">

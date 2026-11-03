@@ -368,7 +368,7 @@ export function DocumentUploadSection({
                   if (!doc.created_at) return null
                   try {
                     const d = new Date(doc.created_at)
-                    return isNaN(d.getTime()) ? null : format(d, 'MMM dd, yyyy')
+                    return isNaN(d.getTime()) ? null : format(d, 'dd MMM yyyy')
                   } catch {
                     return null
                   }

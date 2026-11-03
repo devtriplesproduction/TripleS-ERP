@@ -5,6 +5,7 @@ import { UserCheck, Calendar, AlertTriangle, Send, UserX } from 'lucide-react'
 import { ContentItem, ContentPriority, AssignedRole } from '@/types/content-management'
 import { AssignableEmployee } from '@/lib/actions/team'
 import { assignContentItem } from '@/lib/actions/content-management'
+import { DatePicker } from '@/components/ui/date-picker'
 import { useToast } from '@/hooks/use-toast'
 
 interface AssignReassignModalProps {
@@ -195,14 +196,12 @@ export function AssignReassignModal({
             <label className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
               Due Date *
             </label>
-            <div className="relative">
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full bg-zinc-950/70 border border-zinc-800 rounded-lg p-2.5 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              />
-            </div>
+            <DatePicker
+              value={dueDate}
+              onChange={(val) => setDueDate(val)}
+              placeholder="dd/mm/yyyy"
+              className="w-full bg-zinc-950/70 border border-zinc-800 rounded-lg h-10 text-sm text-zinc-100 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+            />
           </div>
 
           {/* Reason for Reassignment */}

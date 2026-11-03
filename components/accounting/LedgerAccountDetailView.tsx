@@ -22,6 +22,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { DatePicker } from '@/components/ui/date-picker'
+import { formatDate } from '@/lib/utils/date'
 import { toast } from 'sonner'
 import {
   LedgerAccount,
@@ -298,21 +300,25 @@ export function LedgerAccountDetailView({
           </div>
 
           <div className="flex items-center gap-1.5">
-            <Input
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              className="text-xs h-9 w-32 bg-background"
-              title="From date"
-            />
+            <div className="w-32">
+              <DatePicker
+                value={startDate}
+                onChange={(val) => setStartDate(val)}
+                placeholder="From date"
+                isClearable
+                className="text-xs h-9 bg-background"
+              />
+            </div>
             <span className="text-muted-foreground text-xs font-bold">to</span>
-            <Input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              className="text-xs h-9 w-32 bg-background"
-              title="To date"
-            />
+            <div className="w-32">
+              <DatePicker
+                value={endDate}
+                onChange={(val) => setEndDate(val)}
+                placeholder="To date"
+                isClearable
+                className="text-xs h-9 bg-background"
+              />
+            </div>
           </div>
 
           {(search || typeFilter !== 'ALL' || campaignFilter || startDate || endDate) && (
@@ -373,7 +379,7 @@ export function LedgerAccountDetailView({
                 filtered.map((tx) => (
                   <tr key={tx.id} className="hover:bg-muted/30 transition-colors">
                     <td className="py-2.5 px-4 text-muted-foreground whitespace-nowrap">
-                      {tx.transaction_date}
+                      {formatDate(tx.transaction_date)}
                     </td>
 
                     <td className="py-2.5 px-4 font-mono font-medium whitespace-nowrap">

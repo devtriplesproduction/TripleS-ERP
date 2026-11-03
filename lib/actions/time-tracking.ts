@@ -2,6 +2,17 @@
 
 import { getCurrentUser, guardServerAction } from '@/lib/auth'
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
+import { getTodayIST, getYesterdayIST, getDaysAgoIST } from '@/lib/utils/date'
+import {
+  parseTimeMinutes,
+  getISTTimeMinutes,
+  normalizeStoragePath,
+  extractStoragePathFromUrl,
+  getCurrentMonthIST,
+  formatISTTime,
+  formatMinutesToHours,
+  formatBytes
+} from '@/lib/utils/time-tracking'
 
 export interface ScreenshotItem {
   id: string
@@ -137,54 +148,14 @@ export interface MonthlyOverviewMetrics {
   dailyTrends: Array<{ date: string; workedHours: number; activeHours: number }>
 }
 
-function getTodayIST(): string {
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Kolkata',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  }).format(new Date())
-}
-
-function getCurrentMonthIST(): string {
-  return getTodayIST().slice(0, 7)
-}
-
-function formatISTTime(isoDate: string | null | undefined): string {
-  if (!isoDate) return '-'
-  try {
-    const d = new Date(isoDate)
-    if (isNaN(d.getTime())) return '-'
-    return new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Kolkata',
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: true
-    }).format(d)
-  } catch {
-    return '-'
-  }
-}
-
-function formatMinutesToHours(minutes: number): string {
-  const h = Math.floor(minutes / 60)
-  const m = minutes % 60
-  return `${h}h ${m.toString().padStart(2, '0')}m`
-}
-
-function formatBytes(bytes: number): string {
-  if (!bytes || bytes <= 0) return '0 B'
-  const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`
-}
-
 function getAdminSupabase() {
-  return createSupabaseAdmin(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const url = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL)?.trim().replace(/^["']|["']$/g, '') || ''
+  const key = (
+    process.env.SUPABASE_SERVICE_ROLE_KEY ||
+    process.env.SUPABASE_SERVICE_KEY ||
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  )?.trim().replace(/^["']|["']$/g, '') || ''
+  return createSupabaseAdmin(url, key)
 }
 
 /**
@@ -203,10 +174,9 @@ export async function getTimeTrackingDashboardData(params?: {
   employees: EmployeeReportItem[]
   error?: string
 }> {
-  // STRICT ADMIN ROLE GUARD
-  await guardServerAction(['Admin'])
-
   try {
+    // STRICT ADMIN & HR ROLE GUARD
+    await guardServerAction(['Admin', 'HR'])
     const adminSupa = getAdminSupabase()
     const targetDate = params?.date || getTodayIST()
     const filterDept = params?.department || 'All'
@@ -717,10 +687,9 @@ export async function getMonthlyTrackingSummary(params?: {
   employees: MonthlyEmployeeSummary[]
   error?: string
 }> {
-  // STRICT ADMIN ROLE GUARD
-  await guardServerAction(['Admin'])
-
   try {
+    // STRICT ADMIN & HR ROLE GUARD
+    await guardServerAction(['Admin', 'HR'])
     const adminSupa = getAdminSupabase()
     const targetMonth = params?.month || getCurrentMonthIST()
     const filterDept = params?.department || 'All'
@@ -847,26 +816,45 @@ export async function getMonthlyTrackingSummary(params?: {
   }
 }
 
-/**
- * Fetch Screenshots for Admin Dashboard
- * Strictly restricted to Admin role.
- */
-export async function getScreenshotsForEmployeeAndDate(params?: {
+export interface ScreenshotQueryParams {
   employeeId?: string
   date?: string
+  startDate?: string
+  endDate?: string
+  startTime?: string
+  endTime?: string
   sessionId?: string
-}): Promise<{
+}
+
+export interface DeleteScreenshotsResult {
+  success: boolean
+  deletedCount: number
+  failedCount: number
+  deletedIds: string[]
+  error?: string
+  warnings?: string[]
+}
+
+/**
+ * Fetch Screenshots for Admin Dashboard
+ * Accessible to Admin and HR roles.
+ * Supports date range (startDate, endDate) and start/end time in Asia/Kolkata.
+ */
+export async function getScreenshotsForEmployeeAndDate(params?: ScreenshotQueryParams): Promise<{
   success: boolean
   date: string
+  startDate: string
+  endDate: string
   screenshots: ScreenshotItem[]
   totalCount: number
   error?: string
 }> {
-  await guardServerAction(['Admin'])
+  await guardServerAction(['Admin', 'HR'])
 
   try {
     const adminSupa = getAdminSupabase()
-    const targetDate = params?.date || getTodayIST()
+    const startDate = params?.startDate || params?.date || getTodayIST()
+    const endDate = params?.endDate || params?.date || startDate
     const filterEmpId = params?.employeeId && params.employeeId !== 'All' ? params.employeeId : undefined
     const filterSessionId = params?.sessionId && params.sessionId !== 'All' ? params.sessionId : undefined
 
@@ -883,12 +871,18 @@ export async function getScreenshotsForEmployeeAndDate(params?: {
       }
     }
 
-    // 2. Query screenshots
+    // 2. Query screenshots within date range
     let query = adminSupa
       .from('session_screenshots')
       .select('id, session_id, employee_id, session_date, captured_at, storage_path, image_url, file_size_bytes, app_name, window_title')
-      .eq('session_date', targetDate)
-      .order('captured_at', { ascending: false })
+
+    if (startDate === endDate) {
+      query = query.eq('session_date', startDate)
+    } else {
+      query = query.gte('session_date', startDate).lte('session_date', endDate)
+    }
+
+    query = query.order('captured_at', { ascending: false })
 
     if (filterEmpId) {
       query = query.eq('employee_id', filterEmpId)
@@ -904,10 +898,32 @@ export async function getScreenshotsForEmployeeAndDate(params?: {
       throw new Error(`Failed to query screenshots: ${error.message}`)
     }
 
-    const screenshots: ScreenshotItem[] = (rawScreens || []).map(s => {
+    let filteredScreens = rawScreens || []
+
+    // 3. Time-of-day filtering in Asia/Kolkata
+    const startMin = params?.startTime ? parseTimeMinutes(params.startTime) : null
+    const endMin = params?.endTime ? parseTimeMinutes(params.endTime) : null
+
+    if (startMin !== null || endMin !== null) {
+      const min = startMin !== null ? startMin : 0
+      const max = endMin !== null ? endMin : 24 * 60 - 1
+
+      filteredScreens = filteredScreens.filter(s => {
+        const shotMin = getISTTimeMinutes(s.captured_at)
+        if (min <= max) {
+          return shotMin >= min && shotMin <= max
+        } else {
+          // Overnight boundary (e.g. 22:00 to 06:00)
+          return shotMin >= min || shotMin <= max
+        }
+      })
+    }
+
+    const screenshots: ScreenshotItem[] = filteredScreens.map(s => {
       let url = s.image_url
       if (!url && s.storage_path) {
-        const { data: pubData } = adminSupa.storage.from('screenshots').getPublicUrl(s.storage_path)
+        const cleanPath = normalizeStoragePath(s.storage_path)
+        const { data: pubData } = adminSupa.storage.from('screenshots').getPublicUrl(cleanPath)
         url = pubData?.publicUrl || ''
       }
       return {
@@ -929,7 +945,9 @@ export async function getScreenshotsForEmployeeAndDate(params?: {
 
     return {
       success: true,
-      date: targetDate,
+      date: startDate,
+      startDate,
+      endDate,
       screenshots,
       totalCount: screenshots.length
     }
@@ -937,10 +955,188 @@ export async function getScreenshotsForEmployeeAndDate(params?: {
     console.error('[getScreenshotsForEmployeeAndDate] Error:', err)
     return {
       success: false,
-      date: params?.date || getTodayIST(),
+      date: params?.startDate || params?.date || getTodayIST(),
+      startDate: params?.startDate || params?.date || getTodayIST(),
+      endDate: params?.endDate || params?.date || getTodayIST(),
       screenshots: [],
       totalCount: 0,
       error: err.message || 'Failed to fetch screenshots'
+    }
+  }
+}
+
+/**
+ * Delete Screenshots and Corresponding Storage Objects
+ * Restricted strictly to Admin and HR roles according to existing RBAC.
+ * Deletes from Supabase storage bucket 'screenshots' and records from 'session_screenshots'.
+ * Logs append-only security audit trail; NEVER touches activity logs, sessions, or breaks.
+ */
+export async function deleteScreenshotsAction(
+  screenshotIds: string[]
+): Promise<DeleteScreenshotsResult> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) {
+      return {
+        success: false,
+        deletedCount: 0,
+        failedCount: screenshotIds?.length || 0,
+        deletedIds: [],
+        error: 'Authentication required'
+      }
+    }
+
+    if (user.role !== 'Admin' && user.role !== 'HR') {
+      return {
+        success: false,
+        deletedCount: 0,
+        failedCount: screenshotIds?.length || 0,
+        deletedIds: [],
+        error: 'Access Denied: Only Admin and authorized HR personnel can delete screenshots.'
+      }
+    }
+
+    if (!Array.isArray(screenshotIds) || screenshotIds.length === 0) {
+      return {
+        success: false,
+        deletedCount: 0,
+        failedCount: 0,
+        deletedIds: [],
+        error: 'No screenshot IDs specified for deletion.'
+      }
+    }
+
+    const adminSupa = getAdminSupabase()
+
+    // 1. Fetch metadata of screenshots to resolve storage paths and audit details
+    const { data: records, error: fetchErr } = await adminSupa
+      .from('session_screenshots')
+      .select('id, storage_path, image_url, employee_id, session_date')
+      .in('id', screenshotIds)
+
+    if (fetchErr) {
+      return {
+        success: false,
+        deletedCount: 0,
+        failedCount: screenshotIds.length,
+        deletedIds: [],
+        error: `Failed to query screenshots for deletion: ${fetchErr.message}`
+      }
+    }
+
+    if (!records || records.length === 0) {
+      return {
+        success: true,
+        deletedCount: 0,
+        failedCount: 0,
+        deletedIds: [],
+        warnings: ['Selected screenshots were already deleted or could not be found.']
+      }
+    }
+
+    // 2. Extract storage paths
+    const storagePathsToRemove: string[] = []
+    for (const r of records) {
+      let path = r.storage_path ? normalizeStoragePath(r.storage_path) : null
+      if (!path && r.image_url) {
+        path = extractStoragePathFromUrl(r.image_url)
+      }
+      if (path && !storagePathsToRemove.includes(path)) {
+        storagePathsToRemove.push(path)
+      }
+    }
+
+    const warnings: string[] = []
+
+    // 3. Remove files from Supabase Storage bucket 'screenshots'
+    if (storagePathsToRemove.length > 0) {
+      try {
+        const { error: storageErr } = await adminSupa.storage
+          .from('screenshots')
+          .remove(storagePathsToRemove)
+
+        if (storageErr) {
+          console.warn('[deleteScreenshotsAction] Storage remove notice:', storageErr.message)
+          warnings.push(`Storage deletion warning: ${storageErr.message}`)
+        }
+      } catch (stErr: any) {
+        console.warn('[deleteScreenshotsAction] Storage remove threw error:', stErr?.message)
+        warnings.push(`Storage exception: ${stErr?.message || 'Storage clean failed'}`)
+      }
+    }
+
+    // 4. Delete database records from session_screenshots
+    const targetIds = records.map(r => r.id)
+    const { error: dbErr } = await adminSupa
+      .from('session_screenshots')
+      .delete()
+      .in('id', targetIds)
+
+    if (dbErr) {
+      return {
+        success: false,
+        deletedCount: 0,
+        failedCount: screenshotIds.length,
+        deletedIds: [],
+        error: `Database deletion failed: ${dbErr.message}`,
+        warnings
+      }
+    }
+
+    // 5. Append-only Security Audit Trail: Record who, when, and how many deleted
+    // Preserves activity logs, sessions, breaks, and other telemetry completely
+    try {
+      const employeeIds = Array.from(new Set(records.map(r => r.employee_id)))
+      const dates = Array.from(new Set(records.map(r => r.session_date)))
+
+      await adminSupa.from('security_audit_logs').insert({
+        user_id: user.id,
+        employee_id: user.onboarding_id || null,
+        employee_id_number: user.employee_id || null,
+        employee_name: user.employee_name || user.email,
+        event_type: targetIds.length === 1 ? 'screenshot_deleted' : 'screenshot_bulk_deleted',
+        status: 'Success',
+        auth_method: 'Session',
+        flag_reason: `Deleted ${targetIds.length} screenshot(s) by ${user.role} (${user.employee_name || user.email})`,
+        metadata: {
+          action: 'delete_screenshots',
+          deleted_count: targetIds.length,
+          requested_count: screenshotIds.length,
+          screenshot_ids: targetIds,
+          employee_ids: employeeIds,
+          session_dates: dates,
+          storage_paths_removed: storagePathsToRemove,
+          deleted_by_role: user.role,
+          deleted_by_name: user.employee_name || user.email,
+          timestamp_ist: new Intl.DateTimeFormat('en-IN', {
+            timeZone: 'Asia/Kolkata',
+            dateStyle: 'medium',
+            timeStyle: 'long'
+          }).format(new Date()),
+          warnings: warnings.length > 0 ? warnings : undefined
+        },
+        created_at: new Date().toISOString()
+      })
+    } catch (auditErr: any) {
+      console.warn('[deleteScreenshotsAction] Failed to write security audit log:', auditErr?.message)
+    }
+
+    const failedCount = Math.max(0, screenshotIds.length - targetIds.length)
+    return {
+      success: true,
+      deletedCount: targetIds.length,
+      failedCount,
+      deletedIds: targetIds,
+      warnings: warnings.length > 0 ? warnings : undefined
+    }
+  } catch (err: any) {
+    console.error('[deleteScreenshotsAction] Unexpected error:', err)
+    return {
+      success: false,
+      deletedCount: 0,
+      failedCount: screenshotIds?.length || 0,
+      deletedIds: [],
+      error: err.message || 'An unexpected error occurred while deleting screenshots.'
     }
   }
 }

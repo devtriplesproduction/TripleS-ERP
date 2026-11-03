@@ -66,6 +66,31 @@ export const getAttendanceStatusConfig = (status: string, holidayName?: string) 
         dot: 'bg-blue-400',
         color: 'text-blue-400'
       }
+    case 'Comp-Off':
+    case 'Compensatory Off':
+      return {
+        label: 'Comp-Off',
+        shortLabel: 'Comp-Off',
+        bg: 'bg-purple-500/10 text-purple-400 border-purple-500/25',
+        dot: 'bg-purple-400',
+        color: 'text-purple-400'
+      }
+    case 'Casual Leave':
+      return {
+        label: 'Casual Leave',
+        shortLabel: 'Casual Leave',
+        bg: 'bg-sky-500/10 text-sky-400 border-sky-500/25',
+        dot: 'bg-sky-400',
+        color: 'text-sky-400'
+      }
+    case 'Sick Leave':
+      return {
+        label: 'Sick Leave',
+        shortLabel: 'Sick Leave',
+        bg: 'bg-rose-500/10 text-rose-400 border-rose-500/25',
+        dot: 'bg-rose-400',
+        color: 'text-rose-400'
+      }
     case 'Leave':
     case 'Unpaid Leave':
       return {
@@ -625,6 +650,7 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
                   'Pending',
                   'Half Day',
                   'Leave',
+                  'Comp-Off',
                   'WFH',
                   'Holiday',
                   'Holiday Work'
@@ -775,8 +801,18 @@ export function EmployeeAttendanceCalendar({ employee }: EmployeeAttendanceCalen
                           {selectedAtt.holiday.name === 'Sunday' ? '(Weekly Off)' : '(Holiday)'}
                         </span>
                       ) : selectedAtt.leave ? (
-                        <span className="text-orange-400">
-                          {selectedAtt.leave.request_type || 'Leave'}
+                        <span className={
+                          (selectedAtt.leave.leave_type || '').toLowerCase().includes('comp')
+                            ? 'text-purple-400'
+                            : selectedAtt.leave.leave_type === 'Sick Leave'
+                            ? 'text-rose-400'
+                            : selectedAtt.leave.leave_type === 'Casual Leave'
+                            ? 'text-sky-400'
+                            : 'text-orange-400'
+                        }>
+                          {(selectedAtt.leave.leave_type || '').toLowerCase().includes('comp')
+                            ? 'Comp-Off'
+                            : (selectedAtt.leave.leave_type || (selectedAtt.leave.request_type === 'LEAVE' ? 'Leave' : selectedAtt.leave.request_type))}
                           {selectedAtt.leave.is_half_day ? ' (Half Day)' : ''}
                           {selectedAtt.leave.reason ? ` - ${selectedAtt.leave.reason}` : ''}
                         </span>

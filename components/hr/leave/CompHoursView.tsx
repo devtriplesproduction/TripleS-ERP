@@ -28,6 +28,7 @@ import {
 import { Dropdown } from "@/components/ui/Dropdown"
 import { cn } from "@/lib/utils"
 import { formatHoursMinutes, formatKolkataDateTime, formatCanonicalDuration } from "@/lib/utils/time"
+import { formatDateReadable } from "@/lib/utils/date"
 import { format } from "date-fns"
 import {
   CompOffOverviewData,
@@ -425,7 +426,7 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
 
                   <div className="flex items-center justify-between text-xs pt-1">
                     <span className="text-[11px] text-muted-foreground">
-                      Updated: {emp.lastUpdated ? format(new Date(emp.lastUpdated), "MMM d, yyyy") : "—"}
+                      Updated: {emp.lastUpdated ? formatDateReadable(emp.lastUpdated) : "—"}
                     </span>
                     <Button
                       variant="ghost"

@@ -8,6 +8,11 @@ const FALLBACK_DIR = path.join(process.cwd(), 'scratch');
 const RUNS_FILE = 'payroll_runs_store.json';
 const ITEMS_FILE = 'payroll_items_store.json';
 
+function isFallbackAllowed(): boolean {
+  if (process.env.NODE_ENV !== 'production') return true;
+  return process.env.ALLOW_PAYROLL_FILE_FALLBACK === 'true';
+}
+
 function ensureStoreDir(): void {
   if (!fs.existsSync(FALLBACK_DIR)) {
     fs.mkdirSync(FALLBACK_DIR, { recursive: true });
@@ -15,6 +20,7 @@ function ensureStoreDir(): void {
 }
 
 function readFallbackRuns(): PayrollRun[] {
+  if (!isFallbackAllowed()) return [];
   try {
     ensureStoreDir();
     const filePath = path.join(FALLBACK_DIR, RUNS_FILE);
@@ -27,6 +33,7 @@ function readFallbackRuns(): PayrollRun[] {
 }
 
 function writeFallbackRuns(runs: PayrollRun[]): void {
+  if (!isFallbackAllowed()) return;
   try {
     ensureStoreDir();
     const filePath = path.join(FALLBACK_DIR, RUNS_FILE);
@@ -37,6 +44,7 @@ function writeFallbackRuns(runs: PayrollRun[]): void {
 }
 
 function readFallbackItems(): PayrollItem[] {
+  if (!isFallbackAllowed()) return [];
   try {
     ensureStoreDir();
     const filePath = path.join(FALLBACK_DIR, ITEMS_FILE);
@@ -49,6 +57,7 @@ function readFallbackItems(): PayrollItem[] {
 }
 
 function writeFallbackItems(items: PayrollItem[]): void {
+  if (!isFallbackAllowed()) return;
   try {
     ensureStoreDir();
     const filePath = path.join(FALLBACK_DIR, ITEMS_FILE);
@@ -173,8 +182,12 @@ export async function getFinalizedPayroll(
     extraHours: item.extra_hours,
     shortHours: item.short_hours,
 
+    daysFullDay: item.days_full_day ?? 0,
     daysHalfDay: item.days_half_day,
     daysUnpaidLeaveEod: item.days_unpaid_leave_eod,
+    daysAbsent: item.days_absent ?? 0,
+    payableWorkedHours: item.payable_worked_hours,
+    payableHours: item.payable_hours,
     compOffMinutesEarned: item.comp_off_minutes_earned,
 
     overtimePay: item.overtime_pay,
@@ -191,7 +204,9 @@ export async function getFinalizedPayroll(
 
     hasPayrollData: item.has_payroll_data,
     isLocked: item.is_locked,
-    prorationDetail: item.metadata?.proration
+    prorationDetail: item.metadata?.proration,
+    dailyBreakdown: item.metadata?.dailyBreakdown,
+    reconciliation: item.metadata?.reconciliation
   }));
 }
 
@@ -246,8 +261,12 @@ export async function finalizePayrollRun(
     extra_hours: r.extraHours,
     short_hours: r.shortHours,
     total_paid_hours: r.totalPaidHours,
+    days_full_day: r.daysFullDay ?? 0,
     days_half_day: r.daysHalfDay,
     days_unpaid_leave_eod: r.daysUnpaidLeaveEod,
+    days_absent: r.daysAbsent ?? 0,
+    payable_worked_hours: r.payableWorkedHours,
+    payable_hours: r.payableHours,
     comp_off_minutes_earned: r.compOffMinutesEarned,
     overtime_pay: r.overtimePay,
     attendance_deduction: r.unpaidLeaveDeduction,
@@ -261,13 +280,16 @@ export async function finalizePayrollRun(
     has_payroll_data: r.hasPayrollData,
     metadata: {
       proration: r.prorationDetail,
-      deductionsList: r.deductionsList
+      deductionsList: r.deductionsList,
+      dailyBreakdown: r.dailyBreakdown,
+      reconciliation: r.reconciliation
     },
     created_at: now,
     updated_at: now
   }));
 
   // 2. Persist to Supabase if tables exist
+  let supabaseSuccess = false;
   try {
     const supabase = await createAdminClient();
     const { error: runErr } = await supabase
@@ -279,15 +301,28 @@ export async function finalizePayrollRun(
         .from('payroll_items')
         .insert(payrollItems);
 
-      if (itemsErr) {
+      if (!itemsErr) {
+        supabaseSuccess = true;
+      } else {
         console.warn('[PayrollRecords] Failed to insert payroll_items in Supabase:', itemsErr);
       }
+    } else {
+      console.warn('[PayrollRecords] Failed to upsert payroll_runs in Supabase:', runErr);
     }
   } catch (err) {
-    console.warn('[PayrollRecords] Supabase finalization error, falling back to local store:', err);
+    console.warn('[PayrollRecords] Supabase finalization error:', err);
   }
 
-  // 3. Write through to fallback stores for persistence guarantee
+  // If in production and Supabase failed, do not silently fallback to ephemeral local disk
+  if (!supabaseSuccess && !isFallbackAllowed()) {
+    console.error('[CRITICAL SECURITY ERROR] Payroll persistence failed in Supabase. Local file fallback is disallowed in production. Please run migration 20261102000000_complete_payroll_system.sql.');
+    return {
+      success: false,
+      error: 'Production database persistence failed. Payroll tables are not ready in Supabase. Please apply migration 20261102000000_complete_payroll_system.sql.'
+    };
+  }
+
+  // 3. Write through to fallback stores for persistence guarantee (test/dev environments)
   const allRuns = readFallbackRuns();
   const runIdx = allRuns.findIndex(r => Number(r.year) === Number(year) && Number(r.month) === Number(month));
   if (runIdx >= 0) {

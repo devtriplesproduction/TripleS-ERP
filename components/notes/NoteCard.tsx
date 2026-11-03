@@ -292,7 +292,7 @@ export function NoteCard({
 
       {/* Footer: Date on left, Pencil/Delete/More on right */}
       <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-border/40 text-[10px] text-muted-foreground">
-        <span>{dayjs(note.updated_at).format('MMM D')}</span>
+        <span>{dayjs(note.updated_at).format('DD MMM')}</span>
 
         <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
           {/* Edit (Pencil) Icon */}

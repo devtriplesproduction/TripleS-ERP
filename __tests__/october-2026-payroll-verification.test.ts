@@ -40,8 +40,9 @@ describe('October 2026 Live Supabase Payroll Verification', () => {
   it('evaluates all 12 eligible employees and calculates accurate payroll', async () => {
     const results = await calculateMonthlyPayroll(2026, 10)
 
-    // 1. Processed employee count must equal 12
-    expect(results).toHaveLength(12)
+    // 1. Processed employee count for October 2026: exactly 11 active/onboarded employees
+    // (EMP-014 princes dyna joined on 2026-11-03 and is correctly excluded from October)
+    expect(results).toHaveLength(11)
 
     // Verify all 12 employees are evaluated with hasPayrollData = true
     results.forEach(emp => {

@@ -25,9 +25,14 @@ import {
   Lock,
   CalendarCheck,
   TrendingUp,
-  SlidersHorizontal
+  SlidersHorizontal,
+  CheckCircle2,
+  ShieldCheck,
+  AlertTriangle,
+  Calendar
 } from 'lucide-react'
 import { PayrollResult } from '@/lib/services/payroll.service'
+import { formatDate, formatDateReadable } from '@/lib/utils/date'
 import { cancelPayrollDeductionAction, adjustMonthlyPayrollAction } from '@/lib/actions/payroll'
 import { useToast } from '@/hooks/use-toast'
 
@@ -212,7 +217,7 @@ export function PayrollDetailModal({
               </Badge>
             </div>
             <p className="text-muted-foreground dark:text-amber-300/80">
-              {proration.reason || `Active employment period: ${proration.effectiveStartDate} to ${proration.effectiveEndDate}. Absence deductions are only calculated within this window.`}
+              {proration.reason || `Active employment period: ${formatDate(proration.effectiveStartDate)} to ${formatDate(proration.effectiveEndDate)}. Absence deductions are only calculated within this window.`}
             </p>
 
             {proration.hikeSplits && proration.hikeSplits.length > 0 && (
@@ -225,7 +230,7 @@ export function PayrollDetailModal({
                   {proration.hikeSplits.map((split, i) => (
                     <div key={i} className="p-2 bg-background/80 rounded border border-border text-[11px] space-y-0.5">
                       <div className="flex justify-between font-medium">
-                        <span>{split.startDate} → {split.endDate}</span>
+                        <span>{formatDate(split.startDate)} → {formatDate(split.endDate)}</span>
                         <span className="font-bold text-foreground">₹{split.subtotal.toFixed(2)}</span>
                       </div>
                       <div className="text-muted-foreground flex justify-between">
@@ -288,8 +293,14 @@ export function PayrollDetailModal({
               <StatItem label="WFH Hours" value={`${payroll.wfhHours.toFixed(1)}h`} />
 
               <div className="mt-4 pt-4 border-t border-border space-y-1">
+                {payroll.daysFullDay !== undefined && (
+                  <StatItem label="Full Working Days (8h+)" value={payroll.daysFullDay.toString()} valueClass="text-emerald-500 font-semibold" />
+                )}
                 <StatItem label="Half Days (4h-7h59m)" value={payroll.daysHalfDay.toString()} />
                 <StatItem label="Unpaid Days (<4h)" value={payroll.daysUnpaidLeaveEod.toString()} valueClass="text-rose-500" />
+                {payroll.daysAbsent !== undefined && payroll.daysAbsent > 0 && (
+                  <StatItem label="Absent Days (Unexcused)" value={payroll.daysAbsent.toString()} valueClass="text-rose-500 font-semibold" />
+                )}
                 <StatItem
                   label="Comp Off Earned (Informational)"
                   value={`${(payroll.compOffMinutesEarned / 60).toFixed(1)} hrs (${payroll.compOffMinutesEarned} mins)`}
@@ -299,6 +310,178 @@ export function PayrollDetailModal({
             </CardContent>
           </Card>
         </div>
+
+        {/* Automated Reconciliation Audit Card */}
+        {payroll.reconciliation && (
+          <Card className="mt-4 bg-card/50 border-border">
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <CardTitle className="text-xs sm:text-sm flex items-center gap-2 text-foreground">
+                <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                Automated Reconciliation Audit
+              </CardTitle>
+              <Badge
+                variant="outline"
+                className={`text-xs gap-1 font-semibold ${
+                  payroll.reconciliation.status === 'RECONCILED'
+                    ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10'
+                    : 'border-rose-500 text-rose-600 dark:text-rose-400 bg-rose-500/10'
+                }`}
+              >
+                {payroll.reconciliation.status === 'RECONCILED' ? (
+                  <>
+                    <CheckCircle2 className="h-3 w-3" />
+                    100% Reconciled
+                  </>
+                ) : (
+                  <>
+                    <AlertTriangle className="h-3 w-3" />
+                    Discrepancy Detected
+                  </>
+                )}
+              </Badge>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-3 rounded-lg border border-border bg-background/50 space-y-1">
+                <span className="font-semibold text-foreground flex items-center gap-1.5">
+                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                  Scheduled Working Days Baseline
+                </span>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Payable Days:</span>
+                  <span className="font-medium text-foreground">{payroll.reconciliation.payableDays} days</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Deducted Days:</span>
+                  <span className="font-medium text-rose-500">{payroll.reconciliation.deductedDays} days</span>
+                </div>
+                <div className="pt-1 border-t border-border/50 flex justify-between font-semibold">
+                  <span>Total Accounted:</span>
+                  <span className="text-emerald-500">{payroll.reconciliation.payableDays + payroll.reconciliation.deductedDays} / {payroll.reconciliation.scheduledWorkingDays} scheduled days</span>
+                </div>
+                <div className="pt-1 text-[10px] text-muted-foreground flex justify-between">
+                  <span>Divisor Policy:</span>
+                  <span className="font-mono text-foreground">
+                    {payroll.reconciliation.divisorMode === 'fixed_26' ? 'Fixed (26 Days)' : `Mon–Sat (${payroll.reconciliation.scheduledWorkingDays} Days)`}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-3 rounded-lg border border-border bg-background/50 space-y-1">
+                <span className="font-semibold text-foreground flex items-center gap-1.5">
+                  <Wallet className="h-3.5 w-3.5 text-muted-foreground" />
+                  Financial Baseline Reconciliation
+                </span>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Net Payable:</span>
+                  <span className="font-medium text-emerald-500">₹{payroll.reconciliation.netPayable.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Total Deductions:</span>
+                  <span className="font-medium text-rose-500">₹{payroll.reconciliation.totalDeductions.toFixed(2)}</span>
+                </div>
+                <div className="pt-1 border-t border-border/50 flex justify-between font-semibold">
+                  <span>Reconciled Sum:</span>
+                  <span className="text-foreground">₹{(payroll.reconciliation.netPayable + payroll.reconciliation.totalDeductions).toFixed(2)} / ₹{payroll.reconciliation.baseSalary.toFixed(2)}</span>
+                </div>
+                <div className="pt-1 text-[10px] text-muted-foreground flex justify-between">
+                  <span>Daily Rate:</span>
+                  <span className="font-mono text-foreground">
+                    ₹{(payroll.reconciliation.dailyRate || (payroll.salary / (payroll.reconciliation.scheduledWorkingDays || 26))).toFixed(2)}/day
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Date-wise Payroll Calculation Breakdown (31 Days) */}
+        {payroll.dailyBreakdown && payroll.dailyBreakdown.length > 0 && (
+          <Card className="mt-4 bg-card/50 border-border">
+            <CardHeader className="pb-3 flex flex-row items-center justify-between">
+              <CardTitle className="text-xs sm:text-sm flex items-center gap-2 text-foreground">
+                <CalendarCheck className="h-4 w-4 text-emerald-500" />
+                Date-wise Calculation Breakdown ({payroll.dailyBreakdown.length} Days)
+              </CardTitle>
+              <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
+                {payroll.dailyBreakdown.filter(d => d.payableFraction > 0).length} Payable Days · {payroll.dailyBreakdown.filter(d => d.deductionDays > 0).length} Deducted Days
+              </Badge>
+            </CardHeader>
+            <CardContent className="p-0 sm:p-4">
+              <div className="overflow-x-auto max-h-[340px] overflow-y-auto border-t sm:border border-border rounded-none sm:rounded-lg">
+                <table className="w-full text-[11px] sm:text-xs">
+                  <thead className="bg-muted/70 sticky top-0 border-b border-border text-muted-foreground font-semibold">
+                    <tr>
+                      <th className="py-2 px-3 text-left">Date</th>
+                      <th className="py-2 px-2 text-left">Day</th>
+                      <th className="py-2 px-3 text-left">Activity / Classification</th>
+                      <th className="py-2 px-2 text-right">Logged</th>
+                      <th className="py-2 px-2 text-right">Payable</th>
+                      <th className="py-2 px-2 text-right">Pay Frac</th>
+                      <th className="py-2 px-2 text-right">Credit (₹)</th>
+                      <th className="py-2 px-2 text-right">Deduct (₹)</th>
+                      <th className="py-2 px-2 text-right">Comp-Off</th>
+                      <th className="py-2 px-3 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/50">
+                    {payroll.dailyBreakdown.map(d => (
+                      <tr key={d.date} className="hover:bg-muted/30 transition-colors">
+                        <td className="py-2 px-3 font-mono text-[11px] whitespace-nowrap">{formatDate(d.date)}</td>
+                        <td className="py-2 px-2 text-muted-foreground">{d.dayOfWeek}</td>
+                        <td className="py-2 px-3 max-w-[220px] truncate" title={d.activity + (d.notes ? ` - ${d.notes}` : '')}>
+                          <span className="font-medium text-foreground">{d.activity}</span>
+                          {d.notes && <span className="text-[10px] text-muted-foreground block truncate">{d.notes}</span>}
+                        </td>
+                        <td className="py-2 px-2 text-right font-mono">{d.officeHoursLogged > 0 ? `${d.officeHoursLogged}h` : '-'}</td>
+                        <td className="py-2 px-2 text-right font-mono">{d.payableWorkedHours > 0 ? `${d.payableWorkedHours}h` : '-'}</td>
+                        <td className="py-2 px-2 text-right font-mono font-medium">
+                          {d.payableFraction > 0 ? (
+                            <span className="text-emerald-600 dark:text-emerald-400">{d.payableFraction}</span>
+                          ) : (
+                            <span className="text-muted-foreground">0</span>
+                          )}
+                        </td>
+                        <td className="py-2 px-2 text-right font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                          {d.salaryCredit > 0 ? `₹${d.salaryCredit.toFixed(2)}` : '-'}
+                        </td>
+                        <td className="py-2 px-2 text-right font-mono font-medium text-rose-500">
+                          {d.deductionAmount > 0 ? `-₹${d.deductionAmount.toFixed(2)}` : '-'}
+                        </td>
+                        <td className="py-2 px-2 text-right font-mono">
+                          {d.compOffMinutesEarned > 0 ? (
+                            <span className="text-emerald-500 font-semibold">{d.compOffMinutesEarned}m ({(d.compOffMinutesEarned / 60).toFixed(1)}h)</span>
+                          ) : '-'}
+                        </td>
+                        <td className="py-2 px-3 text-center">
+                          <Badge
+                            variant="outline"
+                            className={`text-[10px] px-1.5 py-0 font-medium ${
+                              d.status === 'FULL_DAY'
+                                ? 'border-emerald-500/50 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10'
+                                : d.status === 'HALF_DAY'
+                                ? 'border-amber-500/50 text-amber-600 dark:text-amber-400 bg-amber-500/10'
+                                : d.status === 'LEAVE'
+                                ? 'border-blue-500/50 text-blue-600 dark:text-blue-400 bg-blue-500/10'
+                                : d.status === 'HOLIDAY'
+                                ? 'border-purple-500/50 text-purple-600 dark:text-purple-400 bg-purple-500/10'
+                                : d.status === 'SUNDAY'
+                                ? 'border-sky-500/50 text-sky-600 dark:text-sky-400 bg-sky-500/10'
+                                : d.status === 'ABSENT' || d.status === 'UNPAID'
+                                ? 'border-rose-500/50 text-rose-600 dark:text-rose-400 bg-rose-500/10'
+                                : 'border-border text-muted-foreground'
+                            }`}
+                          >
+                            {d.status}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Employee Specific Deductions Breakdown */}
         <Card className="mt-4 bg-card/50 border-border">

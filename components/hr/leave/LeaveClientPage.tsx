@@ -22,6 +22,7 @@ import {
   TrendingUp,
 } from "lucide-react"
 import { format } from "date-fns"
+import { formatDateReadable } from "@/lib/utils/date"
 import {
   Select,
   SelectContent,
@@ -99,8 +100,8 @@ function calculateDuration(startDate: string, endDate: string, isHalfDay?: boole
 
 function formatDateRange(startDate: string, endDate: string): string {
   try {
-    const s = format(new Date(startDate), 'MMM d, yyyy')
-    const e = format(new Date(endDate), 'MMM d, yyyy')
+    const s = formatDateReadable(startDate)
+    const e = formatDateReadable(endDate)
     return `${s} — ${e}`
   } catch {
     return `${startDate} — ${endDate}`

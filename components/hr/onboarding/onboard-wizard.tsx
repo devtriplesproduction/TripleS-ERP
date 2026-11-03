@@ -21,6 +21,7 @@ import { DatePicker } from "@/components/ui/date-picker"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { PageHeader } from "@/components/PageHeader"
 import { format } from "date-fns"
+import { formatDateReadable } from "@/lib/utils/date"
 import { useRouter } from "next/navigation"
 import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
@@ -562,7 +563,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
       addSection("Personal Information", [
         ["First Name", vals.first_name],
         ["Last Name", vals.last_name],
-        ["Date of Birth", vals.dob ? format(new Date(vals.dob as string), "dd MMM yyyy") : "-"],
+        ["Date of Birth", formatDateReadable(vals.dob, "-")],
         ["Gender", vals.gender],
         ["Phone", vals.phone_number],
         ["Personal Email", vals.personal_email],
@@ -582,7 +583,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
         ["Status", vals.employment_status],
         ...(vals.employment_type !== 'Intern' ? [
         ] : []),
-        ["Joining Date", vals.joining_date ? format(new Date(vals.joining_date as string), "dd MMM yyyy") : "-"],
+        ["Joining Date", formatDateReadable(vals.joining_date, "-")],
         ...(vals.employment_type !== 'Intern' ? [
           ["Experience", formatExperience(vals.experience_type, vals.experience_years, vals.experience_months)] as [string, any],
         ] : []),
@@ -595,8 +596,8 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
         ]),
         ...(vals.employment_status === 'Probation' ? [
           ["Probation Period", vals.probation_period] as [string, any],
-          ["Probation Start", vals.probation_start_date ? format(new Date(vals.probation_start_date as string), "dd MMM yyyy") : "-"] as [string, any],
-          ["Probation End", vals.probation_end_date ? format(new Date(vals.probation_end_date as string), "dd MMM yyyy") : "-"] as [string, any],
+          ["Probation Start", formatDateReadable(vals.probation_start_date, "-")] as [string, any],
+          ["Probation End", formatDateReadable(vals.probation_end_date, "-")] as [string, any],
         ] : [])
       ])
 
@@ -1301,7 +1302,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">First Name</label><div className="text-sm font-medium break-words">{getValues("first_name")}</div></div>
                         <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Last Name</label><div className="text-sm font-medium break-words">{getValues("last_name")}</div></div>
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Date of Birth</label><div className="text-sm font-medium break-words">{getValues("dob") ? format(new Date(getValues("dob") as string), "dd MMM yyyy") : "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Date of Birth</label><div className="text-sm font-medium break-words">{formatDateReadable(getValues("dob"), "-")}</div></div>
                         <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Gender</label><div className="text-sm font-medium capitalize break-words">{getValues("gender") || "-"}</div></div>
                         <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Phone</label><div className="text-sm font-medium break-words">{getValues("phone_number") || "-"}</div></div>
                         <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Personal Email</label><div className="text-sm font-medium break-words">{getValues("personal_email") || "-"}</div></div>
@@ -1334,7 +1335,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Employment Type</label><div className="text-sm font-medium break-words">{getValues("employment_type") || "-"}</div></div>
                         
 
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Joining Date</label><div className="text-sm font-medium break-words">{getValues("joining_date") ? format(new Date(getValues("joining_date") as string), "dd MMM yyyy") : "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Joining Date</label><div className="text-sm font-medium break-words">{formatDateReadable(getValues("joining_date"), "-")}</div></div>
                         {getValues("employment_type") !== 'Intern' && (
                           <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Experience</label><div className="text-sm font-medium break-words">{formatExperience(getValues("experience_type"), getValues("experience_years"), getValues("experience_months"))}</div></div>
                         )}

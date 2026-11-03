@@ -71,6 +71,39 @@ export interface SalaryProrationDetail {
   reason?: string;
 }
 
+export interface DayPayrollBreakdown {
+  date: string;
+  dayOfWeek: string;
+  dayType: 'WORKING_DAY' | 'WEEKLY_OFF' | 'COMPANY_HOLIDAY';
+  activity: string;
+  officeHoursLogged: number;
+  payableWorkedHours: number;
+  payableFraction: number;
+  salaryCredit: number;
+  deductionDays: number;
+  deductionAmount: number;
+  compOffMinutesEarned: number;
+  status: 'FULL_DAY' | 'HALF_DAY' | 'UNPAID' | 'LEAVE' | 'HOLIDAY' | 'SUNDAY' | 'ABSENT' | 'OFF';
+  notes?: string;
+}
+
+export interface PayrollReconciliation {
+  isScheduledDaysReconciled: boolean;
+  scheduledWorkingDays: number;
+  payableDays: number;
+  deductedDays: number;
+  isFinancialReconciled: boolean;
+  baseSalary: number;
+  netPayable: number;
+  totalDeductions: number;
+  earnedPay: number;
+  compOffMinutesEarned: number;
+  status: 'RECONCILED' | 'DISCREPANCY';
+  notes?: string;
+  divisorMode?: 'actual_mon_sat' | 'fixed_26';
+  dailyRate?: number;
+}
+
 export interface PayrollItem {
   id: string;
   payroll_run_id: string;
@@ -89,8 +122,12 @@ export interface PayrollItem {
   extra_hours: number;
   short_hours: number;
   total_paid_hours: number;
+  days_full_day?: number;
   days_half_day: number;
   days_unpaid_leave_eod: number;
+  days_absent?: number;
+  payable_worked_hours?: number;
+  payable_hours?: number;
   comp_off_minutes_earned: number;
   overtime_pay: number;
   attendance_deduction: number;
@@ -105,6 +142,8 @@ export interface PayrollItem {
   metadata?: {
     proration?: SalaryProrationDetail;
     deductionsList?: any[];
+    dailyBreakdown?: DayPayrollBreakdown[];
+    reconciliation?: PayrollReconciliation;
     adjustments?: Array<{
       amount: number;
       reason: string;

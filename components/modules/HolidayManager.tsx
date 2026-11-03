@@ -308,11 +308,11 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
               <Label className="text-xs sm:text-sm font-semibold ml-1">Date</Label>
               <DatePicker 
                 value={date} 
-                onChange={(d) => setDate(d ? new Date(d) : undefined)} 
+                onChange={(d) => setDate(d ? parseLocalDate(d) : undefined)} 
                 className="bg-muted/30 border-transparent focus-visible:bg-background focus-visible:border-primary focus-visible:ring-primary/20 min-h-[44px] sm:h-[52px] px-3 sm:px-4 rounded-xl text-sm"
                 iconLeft={true}
                 showChevron={true}
-                placeholder="Select Date"
+                placeholder="dd/mm/yyyy"
               />
             </div>
 

@@ -32,6 +32,9 @@ export function calculateAttendanceSummary(attendance: DerivedAttendance[]): Att
         acc.wfh += 1;
         break;
       case 'Leave':
+      case 'Comp-Off':
+      case 'Casual Leave':
+      case 'Sick Leave':
         acc.leave += 1;
         break;
       case 'Half Day':

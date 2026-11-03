@@ -286,7 +286,7 @@ export function NoteEditModal({
               )}
               {saveStatus === 'idle' && note.updated_at && (
                 <span className="hidden sm:inline text-muted-foreground/70">
-                  Edited {dayjs(note.updated_at).format('MMM D, h:mm A')}
+                  Edited {dayjs(note.updated_at).format('DD MMM YYYY, h:mm A')}
                 </span>
               )}
             </div>

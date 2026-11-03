@@ -4,6 +4,7 @@ import React from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { DatePicker } from '@/components/ui/date-picker'
 import {
   CreditCard,
   Building2,
@@ -228,11 +229,10 @@ export function DynamicPaymentFields({
               <Label htmlFor="upi-date" className="text-xs font-medium">
                 Payment Date
               </Label>
-              <Input
-                id="upi-date"
-                type="date"
+              <DatePicker
                 value={paymentDate}
-                onChange={(e) => onPaymentDateChange(e.target.value)}
+                onChange={onPaymentDateChange}
+                placeholder="dd/mm/yyyy"
                 className="bg-background border-border text-xs h-9"
               />
             </div>
@@ -302,11 +302,10 @@ export function DynamicPaymentFields({
               <Label htmlFor="cc-date" className="text-xs font-medium">
                 Payment Date
               </Label>
-              <Input
-                id="cc-date"
-                type="date"
+              <DatePicker
                 value={paymentDate}
-                onChange={(e) => onPaymentDateChange(e.target.value)}
+                onChange={onPaymentDateChange}
+                placeholder="dd/mm/yyyy"
                 className="bg-background border-border text-xs h-9"
               />
             </div>
@@ -376,11 +375,10 @@ export function DynamicPaymentFields({
               <Label htmlFor="dc-date" className="text-xs font-medium">
                 Payment Date
               </Label>
-              <Input
-                id="dc-date"
-                type="date"
+              <DatePicker
                 value={paymentDate}
-                onChange={(e) => onPaymentDateChange(e.target.value)}
+                onChange={onPaymentDateChange}
+                placeholder="dd/mm/yyyy"
                 className="bg-background border-border text-xs h-9"
               />
             </div>
@@ -440,11 +438,10 @@ export function DynamicPaymentFields({
               <Label htmlFor="bt-date" className="text-xs font-medium">
                 Payment Date
               </Label>
-              <Input
-                id="bt-date"
-                type="date"
+              <DatePicker
                 value={paymentDate}
-                onChange={(e) => onPaymentDateChange(e.target.value)}
+                onChange={onPaymentDateChange}
+                placeholder="dd/mm/yyyy"
                 className="bg-background border-border text-xs h-9"
               />
             </div>
@@ -491,11 +488,10 @@ export function DynamicPaymentFields({
               <Label htmlFor="chq-date" className="text-xs font-medium">
                 Cheque Date
               </Label>
-              <Input
-                id="chq-date"
-                type="date"
+              <DatePicker
                 value={chequeDate}
-                onChange={(e) => onChequeDateChange(e.target.value)}
+                onChange={onChequeDateChange}
+                placeholder="dd/mm/yyyy"
                 className="bg-background border-border text-xs h-9"
               />
             </div>
@@ -529,11 +525,10 @@ export function DynamicPaymentFields({
               <Label htmlFor="chq-pay-date" className="text-xs font-medium">
                 Payment / Clearance Date
               </Label>
-              <Input
-                id="chq-pay-date"
-                type="date"
+              <DatePicker
                 value={paymentDate}
-                onChange={(e) => onPaymentDateChange(e.target.value)}
+                onChange={onPaymentDateChange}
+                placeholder="dd/mm/yyyy"
                 className="bg-background border-border text-xs h-9"
               />
             </div>
@@ -554,11 +549,10 @@ export function DynamicPaymentFields({
               <Label htmlFor="cash-date" className="text-xs font-medium">
                 Payment Date
               </Label>
-              <Input
-                id="cash-date"
-                type="date"
+              <DatePicker
                 value={paymentDate}
-                onChange={(e) => onPaymentDateChange(e.target.value)}
+                onChange={onPaymentDateChange}
+                placeholder="dd/mm/yyyy"
                 className="bg-background border-border text-xs h-9"
               />
             </div>

@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast'
 import { PageHeader } from '@/components/PageHeader'
 import { getMyMonthlyPayrollAction, getMySalaryHistoryAction } from '@/lib/actions/payroll'
 import { PayrollResult } from '@/lib/services/payroll.service'
+import { formatDate, formatDateReadable } from '@/lib/utils/date'
 import { jsPDF } from 'jspdf'
 
 interface EmployeePayrollClientPageProps {
@@ -328,6 +329,7 @@ export function EmployeePayrollClientPage({ user }: EmployeePayrollClientPagePro
         ['Paid Holidays', `${payroll?.paidHolidayHours || 0} hrs`],
         ['Half Days', `${payroll?.daysHalfDay || 0}`],
         ['Unpaid Days (<4h)', `${payroll?.daysUnpaidLeaveEod || 0}`],
+        ['Absent Days', `${payroll?.daysAbsent || 0}`],
         ['Comp-Off Earned', `${((payroll?.compOffMinutesEarned || 0) / 60).toFixed(1)} hrs`],
       ]
 
@@ -709,6 +711,12 @@ export function EmployeePayrollClientPage({ user }: EmployeePayrollClientPagePro
                 </div>
 
                 <div className="p-3.5 rounded-xl border border-border/40 bg-card/40">
+                  <div className="text-xs text-muted-foreground">Full Days (8h+)</div>
+                  <div className="text-lg font-bold text-emerald-500 mt-1">{payroll?.daysFullDay ?? 0} days</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">100% daily pay credited</div>
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-border/40 bg-card/40">
                   <div className="text-xs text-muted-foreground">Half Days (4h – 7h59m)</div>
                   <div className="text-lg font-bold text-amber-500 mt-1">{payroll?.daysHalfDay || 0} days</div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">50% daily pay proration</div>
@@ -721,11 +729,76 @@ export function EmployeePayrollClientPage({ user }: EmployeePayrollClientPagePro
                 </div>
 
                 <div className="p-3.5 rounded-xl border border-border/40 bg-card/40">
+                  <div className="text-xs text-muted-foreground">Absent Days (Unexcused)</div>
+                  <div className="text-lg font-bold text-rose-500 mt-1">{payroll?.daysAbsent ?? 0} days</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">Missed working days deducted</div>
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-border/40 bg-card/40">
                   <div className="text-xs text-muted-foreground">Unpaid Leave Hours</div>
                   <div className="text-lg font-bold text-rose-500 mt-1">{payroll?.unpaidLeaveHours || 0} hrs</div>
                   <div className="text-[11px] text-muted-foreground mt-0.5">Non-payable time</div>
                 </div>
               </div>
+
+              {/* Date-wise Breakdown Table */}
+              {payroll?.dailyBreakdown && payroll.dailyBreakdown.length > 0 && (
+                <div className="mt-6 space-y-3">
+                  <div className="text-xs font-bold text-foreground uppercase tracking-wider flex items-center justify-between">
+                    <span>Date-Wise Attendance & Salary Accounting</span>
+                    <span className="text-[11px] text-muted-foreground font-normal">
+                      {payroll.dailyBreakdown.length} Days Evaluated
+                    </span>
+                  </div>
+                  <div className="overflow-x-auto max-h-[360px] overflow-y-auto border border-border/60 rounded-xl">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted/60 sticky top-0 border-b border-border text-muted-foreground font-semibold">
+                        <tr>
+                          <th className="py-2.5 px-3 text-left">Date</th>
+                          <th className="py-2.5 px-2 text-left">Day</th>
+                          <th className="py-2.5 px-3 text-left">Activity / Classification</th>
+                          <th className="py-2.5 px-2 text-right">Logged</th>
+                          <th className="py-2.5 px-2 text-right">Payable</th>
+                          <th className="py-2.5 px-2 text-right">Pay Frac</th>
+                          <th className="py-2.5 px-2 text-right">Credit (₹)</th>
+                          <th className="py-2.5 px-2 text-right">Deduct (₹)</th>
+                          <th className="py-2.5 px-2 text-right">Comp-Off</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/40">
+                        {payroll.dailyBreakdown.map(d => (
+                          <tr key={d.date} className="hover:bg-muted/20">
+                            <td className="py-2 px-3 font-mono text-[11px]">{formatDate(d.date)}</td>
+                            <td className="py-2 px-2 text-muted-foreground">{d.dayOfWeek}</td>
+                            <td className="py-2 px-3">
+                              <span className="font-medium text-foreground">{d.activity}</span>
+                              {d.notes && <span className="text-[10px] text-muted-foreground block truncate">{d.notes}</span>}
+                            </td>
+                            <td className="py-2 px-2 text-right font-mono">{d.officeHoursLogged > 0 ? `${d.officeHoursLogged}h` : '-'}</td>
+                            <td className="py-2 px-2 text-right font-mono">{d.payableWorkedHours > 0 ? `${d.payableWorkedHours}h` : '-'}</td>
+                            <td className="py-2 px-2 text-right font-mono font-medium">
+                              {d.payableFraction > 0 ? (
+                                <span className="text-emerald-500">{d.payableFraction}</span>
+                              ) : (
+                                <span className="text-muted-foreground">0</span>
+                              )}
+                            </td>
+                            <td className="py-2 px-2 text-right font-mono text-emerald-500 font-medium">
+                              {d.salaryCredit > 0 ? `₹${d.salaryCredit.toFixed(2)}` : '-'}
+                            </td>
+                            <td className="py-2 px-2 text-right font-mono text-rose-500 font-medium">
+                              {d.deductionAmount > 0 ? `-₹${d.deductionAmount.toFixed(2)}` : '-'}
+                            </td>
+                            <td className="py-2 px-2 text-right font-mono">
+                              {d.compOffMinutesEarned > 0 ? `${d.compOffMinutesEarned}m` : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -767,9 +840,7 @@ export function EmployeePayrollClientPage({ user }: EmployeePayrollClientPagePro
                 <div>
                   <div className="text-xs text-muted-foreground">Date of Joining</div>
                   <div className="text-xl font-bold text-foreground mt-1">
-                    {employeeInfo?.joining_date
-                      ? new Date(employeeInfo.joining_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-                      : '—'}
+                    {formatDateReadable(employeeInfo?.joining_date, '—')}
                   </div>
                 </div>
               </div>
@@ -802,9 +873,7 @@ export function EmployeePayrollClientPage({ user }: EmployeePayrollClientPagePro
                         {salaryHistory.map((item: any) => (
                           <tr key={item.id} className="hover:bg-muted/30 transition-colors">
                             <td className="px-4 py-3 font-medium text-foreground">
-                              {item.effective_date
-                                ? new Date(item.effective_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-                                : '—'}
+                              {formatDateReadable(item.effective_date, '—')}
                             </td>
                             <td className="px-4 py-3 text-right text-muted-foreground">
                               ₹{Number(item.previous_salary || 0).toLocaleString('en-IN', { minimumFractionDigits: 2 })}

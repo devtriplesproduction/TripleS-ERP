@@ -86,7 +86,7 @@ export function DashboardAnnouncementReader({ announcement }: { announcement: an
               <span className="leading-tight">{announcement.title}</span>
             </DialogTitle>
             <div className="text-sm text-muted-foreground font-medium pt-1">
-              By <span className="capitalize">{announcement.created_by_profile?.first_name || 'Admin'} {announcement.created_by_profile?.last_name || ''}</span> • {dayjs(announcement.published_at || announcement.created_at).format('MMMM D, YYYY h:mm A')}
+              By <span className="capitalize">{announcement.created_by_profile?.first_name || 'Admin'} {announcement.created_by_profile?.last_name || ''}</span> • {dayjs(announcement.published_at || announcement.created_at).format('DD MMM YYYY, h:mm A')}
             </div>
           </DialogHeader>
           <div className="py-4 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">

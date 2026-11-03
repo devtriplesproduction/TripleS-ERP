@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { DatePicker } from '@/components/ui/date-picker'
 import { toast } from 'sonner'
 import {
   Loader2,
@@ -500,13 +501,11 @@ export function ExpenseModal({
                   <Label htmlFor="expense-date" className="text-xs font-semibold">
                     Expense Date <span className="text-destructive">*</span>
                   </Label>
-                  <Input
-                    id="expense-date"
-                    type="date"
+                  <DatePicker
                     value={expenseDate}
-                    onChange={(e) => setExpenseDate(e.target.value)}
+                    onChange={(val) => setExpenseDate(val)}
+                    placeholder="dd/mm/yyyy"
                     className="bg-background border-border text-sm h-9"
-                    required
                   />
                 </div>
 

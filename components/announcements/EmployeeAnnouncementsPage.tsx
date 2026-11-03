@@ -176,7 +176,7 @@ export function EmployeeAnnouncementsPage({ announcements: initialAnnouncements 
                   <span className="leading-tight">{selectedAnnouncement.title}</span>
                 </DialogTitle>
                 <div className="text-sm text-muted-foreground font-medium pt-1">
-                  By <span className="capitalize">{selectedAnnouncement.created_by_profile?.first_name || 'Admin'} {selectedAnnouncement.created_by_profile?.last_name || ''}</span> • {dayjs(selectedAnnouncement.published_at || selectedAnnouncement.created_at).format('MMMM D, YYYY h:mm A')}
+                  By <span className="capitalize">{selectedAnnouncement.created_by_profile?.first_name || 'Admin'} {selectedAnnouncement.created_by_profile?.last_name || ''}</span> • {dayjs(selectedAnnouncement.published_at || selectedAnnouncement.created_at).format('DD MMM YYYY, h:mm A')}
                 </div>
               </DialogHeader>
               <div className="py-4 whitespace-pre-wrap text-[15px] leading-relaxed text-foreground">

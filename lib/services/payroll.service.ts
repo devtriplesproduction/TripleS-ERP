@@ -6,9 +6,10 @@ import {
   isWorkingDay,
   isSunday,
   canonicalOfficeHoursToMinutes,
+  getStandardWorkingDaysInMonth,
 } from '@/lib/utils/time';
 import { calculateMonthlyBasicSalary, resolveSalaryForPeriod, PeriodSalaryResolution } from '@/lib/utils/salary';
-import { SalaryProrationDetail } from '@/types/payroll';
+import { SalaryProrationDetail, DayPayrollBreakdown, PayrollReconciliation } from '@/types/payroll';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -28,10 +29,18 @@ export interface PayrollResult {
   extraHours: number;
   shortHours: number;
 
+  /** Number of full-day (8h+) working days */
+  daysFullDay?: number;
   /** Number of half-day (4h-7h59m) working days */
   daysHalfDay: number;
   /** Number of <4h unpaid leave days (excluded from payroll) */
   daysUnpaidLeaveEod: number;
+  /** Number of unexcused missing/absent working days */
+  daysAbsent?: number;
+  /** Payable worked regular hours (excluding comp-off/unpaid/overtime) */
+  payableWorkedHours?: number;
+  /** Total payable hours (worked + paid leave + paid holiday) */
+  payableHours?: number;
   /** Total comp off minutes earned this month (informational, not inserted into ledger during calculation) */
   compOffMinutesEarned: number;
 
@@ -64,6 +73,11 @@ export interface PayrollResult {
   validationWarning?: string;
   /** Explicit error message if individual calculation encountered a fatal failure */
   calculationError?: string;
+
+  /** Date-wise payroll calculation breakdown for all calendar days in the month */
+  dailyBreakdown?: DayPayrollBreakdown[];
+  /** Automated reconciliation checks between attendance baseline and financial totals */
+  reconciliation?: PayrollReconciliation;
 }
 
 // ─── Day context for classification ─────────────────────────────────
@@ -144,12 +158,17 @@ export function classifyDay(workedMinutes: number, context: DayContext): DayClas
   return { payFraction: 1, compOffMinutes: wm - FULL_DAY_MINUTES, status: 'FULL_DAY' };
 }
 
+export interface CalculatePayrollOptions {
+  divisorMode?: 'actual_mon_sat' | 'fixed_26';
+}
+
 // ─── Main Payroll Calculation ───────────────────────────────────────
 
 export async function calculateMonthlyPayroll(
   year: number,
   month: number,
-  employeeIds?: string[]
+  employeeIds?: string[],
+  options?: CalculatePayrollOptions
 ): Promise<PayrollResult[]> {
   const supabase = await createAdminClient();
 
@@ -219,12 +238,12 @@ export async function calculateMonthlyPayroll(
   const [eodsRes, holidaysRes, leavesRes, salaryHistoryRes] = await Promise.all([
     queryIds.length > 0
       ? supabase
-          .from('eod_reports')
-          .select('id, employee_id, office_hours, report_date, status')
-          .eq('status', 'Approved')
-          .gte('report_date', startDate)
-          .lte('report_date', endDate)
-          .in('employee_id', queryIds)
+        .from('eod_reports')
+        .select('id, employee_id, office_hours, report_date, status')
+        .eq('status', 'Approved')
+        .gte('report_date', startDate)
+        .lte('report_date', endDate)
+        .in('employee_id', queryIds)
       : { data: [], error: null },
     supabase
       .from('holidays')
@@ -233,21 +252,21 @@ export async function calculateMonthlyPayroll(
       .lte('date', endDate),
     queryIds.length > 0
       ? supabase
-          .from('leave_requests')
-          .select('id, employee_id, start_date, end_date, is_half_day, request_type, leave_type, status')
-          .in('status', ['Approved', 'Approved HR'])
-          .lte('start_date', endDate)
-          .gte('end_date', startDate)
-          .in('employee_id', queryIds)
+        .from('leave_requests')
+        .select('id, employee_id, start_date, end_date, is_half_day, request_type, leave_type, status')
+        .in('status', ['Approved', 'Approved HR', 'Approved (Auto)'])
+        .lte('start_date', endDate)
+        .gte('end_date', startDate)
+        .in('employee_id', queryIds)
       : { data: [], error: null },
     queryIds.length > 0
       ? (() => {
-          const q = supabase
-            .from('salary_history')
-            .select('id, employee_id, previous_salary, new_salary, increment_percentage, effective_date, created_at')
-            .in('employee_id', queryIds);
-          return typeof (q as any).order === 'function' ? (q as any).order('effective_date', { ascending: true }) : q;
-        })()
+        const q = supabase
+          .from('salary_history')
+          .select('id, employee_id, previous_salary, new_salary, increment_percentage, effective_date, created_at')
+          .in('employee_id', queryIds);
+        return typeof (q as any).order === 'function' ? (q as any).order('effective_date', { ascending: true }) : q;
+      })()
       : { data: [], error: null }
   ]);
 
@@ -289,9 +308,12 @@ export async function calculateMonthlyPayroll(
     }
   });
 
-  // 8. Standard payroll rule: 26 working days * 8 hours = 208 standard monthly working hours
-  const STANDARD_WORKING_DAYS = 26;
-  const standardHours = 208;
+  // 8. Dynamic standard working days calculation: total calendar days minus Sundays (Asia/Kolkata Mon–Sat baseline)
+  // Supports dynamic actual Mon–Sat working days policy (default) or configurable fixed 26 days.
+  const divisorMode = options?.divisorMode || (process.env.PAYROLL_DIVISOR_MODE === 'fixed_26' ? 'fixed_26' : 'actual_mon_sat');
+  const dynamicWorkingDays = getStandardWorkingDaysInMonth(year, month);
+  const STANDARD_WORKING_DAYS = divisorMode === 'fixed_26' ? 26 : dynamicWorkingDays;
+  const standardHours = STANDARD_WORKING_DAYS * 8;
 
   // 9. Fetch active employee-specific deductions for this month
   const { getDeductionsForMonth } = await import('@/lib/services/payroll-deductions.service');
@@ -329,9 +351,10 @@ export async function calculateMonthlyPayroll(
     // Filter leaves for THIS employee across their candidate IDs
     const empLeaves = leaves.filter(l => candIds.has(l.employee_id));
 
-    // Track dates of approved leaves for this employee
+    // Track dates of approved leaves for this employee (WFH is remote work, not leave)
     const approvedLeaveDates = new Set<string>();
     empLeaves.forEach(l => {
+      if (l.request_type === 'WFH') return;
       let curr = new Date(l.start_date);
       const end = new Date(l.end_date);
       while (curr <= end) {
@@ -340,128 +363,265 @@ export async function calculateMonthlyPayroll(
       }
     });
 
-    // ─── Process EODs ───────────────────────────────────────────
-    let totalWorkedMinutes = 0;
-    let compOffMinutesEarned = 0;
+    // ─── Daily Evaluation & Breakdown ───────────────────────────
+    const dailyBreakdown: DayPayrollBreakdown[] = [];
+    let scheduledWorkingDays = 0;
+    let daysFullDay = 0;
     let daysHalfDay = 0;
     let daysUnpaidLeaveEod = 0;
-    let daysFullDay = 0;
     let daysPaidHolidayWorked = 0;
     let daysSundayWorked = 0;
-    let totalPaidDayFractions = 0;
-
-    const holidaysWorkedDates = new Set<string>();
-    const processedEodDates = new Set<string>();
-
-    empEods.forEach(eod => {
-      // Disallow duplicate EOD credit for the same report date
-      if (processedEodDates.has(eod.report_date)) {
-        return;
-      }
-      processedEodDates.add(eod.report_date);
-
-      const wMins = canonicalOfficeHoursToMinutes(Number(eod.office_hours));
-      totalWorkedMinutes += wMins;
-
-      const context = getDayContext(eod.report_date, paidHolidayDates, approvedLeaveDates);
-      const classification = classifyDay(wMins, context);
-
-      compOffMinutesEarned += classification.compOffMinutes;
-      totalPaidDayFractions += classification.payFraction;
-
-      switch (classification.status) {
-        case 'UNPAID':
-          daysUnpaidLeaveEod++;
-          break;
-        case 'HALF_DAY':
-          daysHalfDay++;
-          break;
-        case 'FULL_DAY':
-          daysFullDay++;
-          break;
-        case 'HOLIDAY':
-          daysPaidHolidayWorked++;
-          holidaysWorkedDates.add(eod.report_date);
-          break;
-        case 'SUNDAY':
-          daysSundayWorked++;
-          break;
-      }
-    });
-
-    // ─── Paid Holidays where employee did NOT work ──────────────
-    // Paid holidays falling within the employee's active eligible window still count as paid days
+    let compOffMinutesEarned = 0;
+    let totalWorkedMinutes = 0;
+    let payableWorkedMinutes = 0;
+    let missingWorkingDays = 0;
     let paidHolidayMinutesNotWorked = 0;
-    paidHolidayDates.forEach(hDate => {
-      if (hDate >= effectiveStart && hDate <= effectiveEnd && !holidaysWorkedDates.has(hDate)) {
-        totalPaidDayFractions += 1;
-        paidHolidayMinutesNotWorked += STANDARD_WORK_MINUTES;
-      }
-    });
-
-    // ─── Leave tracking ─────────────────────────────────────────
     let creditedLeaveMinutes = 0;
     let unpaidLeaveMinutes = 0;
     let wfhMinutes = 0;
 
-    empLeaves.forEach(l => {
-      // Only count days in leave range that fall within employee's eligible window
-      const lStartStr = l.start_date < effectiveStart ? effectiveStart : l.start_date;
-      const lEndStr = l.end_date > effectiveEnd ? effectiveEnd : l.end_date;
-
-      let leaveDaysCount = 0;
-      let curr = new Date(lStartStr);
-      const endLimit = new Date(lEndStr);
-      while (curr <= endLimit) {
-        const dStr = curr.toISOString().split('T')[0];
-        // Only count Mon-Sat working days (excluding Sundays and holidays) as leave days
-        if (isWorkingDay(dStr) && !paidHolidayDates.has(dStr)) {
-          leaveDaysCount++;
-        }
-        curr.setDate(curr.getDate() + 1);
-      }
-
-      if (leaveDaysCount === 0 && l.start_date === l.end_date && l.start_date >= effectiveStart && l.start_date <= effectiveEnd) {
-        if (isWorkingDay(l.start_date) && !paidHolidayDates.has(l.start_date)) {
-          leaveDaysCount = 1;
-        }
-      }
-
-      const dayMins = l.is_half_day ? STANDARD_WORK_MINUTES / 2 : STANDARD_WORK_MINUTES;
-      const totalMins = dayMins * leaveDaysCount;
-
-      if (l.request_type === 'WFH') {
-        wfhMinutes += totalMins;
-      } else if (l.leave_type === 'Unpaid') {
-        unpaidLeaveMinutes += totalMins;
-      } else {
-        creditedLeaveMinutes += totalMins;
-      }
-    });
-
-    // ─── Financial calculation ──────────────────────────────────
-
-    // Determine how many working days were missed (Rule 6: ONLY within the employee's eligible employment window)
-    let missingWorkingDays = 0;
     for (let d = 1; d <= lastDay; d++) {
       const dStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-      // Rule 6: Never penalize dates before joining or after deactivation!
-      if (dStr >= effectiveStart && dStr <= effectiveEnd && isWorkingDay(dStr)) {
-        const hasEod = empEods.some(e => e.report_date === dStr);
-        const hasPaidLeave = empLeaves.some(l => l.start_date <= dStr && l.end_date >= dStr && l.leave_type !== 'Unpaid');
-        const hasUnpaidLeave = empLeaves.some(l => l.start_date <= dStr && l.end_date >= dStr && l.leave_type === 'Unpaid');
-        const isHoliday = paidHolidayDates.has(dStr);
-        if (!hasEod && !hasPaidLeave && !hasUnpaidLeave && !isHoliday) {
-          missingWorkingDays++;
-        }
+      const dateObj = new Date(dStr + 'T00:00:00');
+      const dayOfWeek = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
+      const isSun = isSunday(dStr);
+      const isHoliday = paidHolidayDates.has(dStr);
+      const isWorkDay = isWorkingDay(dStr);
+      const isWithinEligible = dStr >= effectiveStart && dStr <= effectiveEnd;
+
+      if (isWorkDay && isWithinEligible) {
+        scheduledWorkingDays++;
       }
+
+      const eod = empEods.find(e => e.report_date === dStr);
+      const leavesOnDay = empLeaves.filter(l => l.start_date <= dStr && l.end_date >= dStr);
+      const paidLeave = leavesOnDay.find(l => l.request_type !== 'WFH' && l.leave_type !== 'Unpaid' && l.leave_type !== 'Unpaid Leave');
+      const unpaidLeave = leavesOnDay.find(l => l.leave_type === 'Unpaid' || l.leave_type === 'Unpaid Leave');
+      const wfhLeave = leavesOnDay.find(l => l.request_type === 'WFH');
+
+      let officeHoursLogged = 0;
+      let payableDayWorkedHours = 0;
+      let payableFraction = 0;
+      let compOff = 0;
+      let deductionDays = 0;
+      let status: DayPayrollBreakdown['status'] = 'OFF';
+      let activity = isSun ? 'Sunday Weekly Off' : 'No Activity';
+      let notes = '';
+
+      if (isSun) {
+        if (eod) {
+          officeHoursLogged = Number(eod.office_hours);
+          const wMins = canonicalOfficeHoursToMinutes(officeHoursLogged);
+          totalWorkedMinutes += wMins;
+          compOff = wMins;
+          compOffMinutesEarned += compOff;
+          status = 'SUNDAY';
+          activity = 'Approved Sunday EOD';
+          notes = 'Sunday work: 100% credited to Comp-Off. 0 payroll pay.';
+          daysSundayWorked++;
+        }
+      } else if (!isWithinEligible) {
+        status = 'OFF';
+        activity = 'Outside Employment Window';
+        notes = 'Not employed on this date; zero deduction.';
+      } else if (isHoliday) {
+        activity = 'Paid Company Holiday';
+        if (eod) {
+          officeHoursLogged = Number(eod.office_hours);
+          const wMins = canonicalOfficeHoursToMinutes(officeHoursLogged);
+          totalWorkedMinutes += wMins;
+          compOff = wMins;
+          compOffMinutesEarned += compOff;
+          payableFraction = 1.0;
+          status = 'HOLIDAY';
+          activity = 'Paid Company Holiday (Worked)';
+          notes = 'Worked on Paid Holiday: Full day pay + 100% worked time to Comp-Off.';
+          daysPaidHolidayWorked++;
+        } else {
+          payableFraction = 1.0;
+          paidHolidayMinutesNotWorked += STANDARD_WORK_MINUTES;
+          status = 'HOLIDAY';
+          notes = 'Paid Holiday: 100% regular daily pay credited.';
+        }
+      } else if (paidLeave) {
+        if (paidLeave.is_half_day) {
+          creditedLeaveMinutes += STANDARD_WORK_MINUTES / 2;
+          activity = `Approved Half-Day ${paidLeave.leave_type || paidLeave.request_type}`;
+          status = 'HALF_DAY';
+          if (eod) {
+            officeHoursLogged = Number(eod.office_hours);
+            const wMins = canonicalOfficeHoursToMinutes(officeHoursLogged);
+            totalWorkedMinutes += wMins;
+            if (wMins >= HALF_DAY_THRESHOLD) {
+              // Worked other half: 0.5 leave + 0.5 work = 1.0 day pay!
+              payableFraction = 1.0;
+              payableDayWorkedHours = 4.0;
+              payableWorkedMinutes += HALF_DAY_THRESHOLD;
+              deductionDays = 0.0;
+              if (wMins > HALF_DAY_THRESHOLD) {
+                compOff = wMins - HALF_DAY_THRESHOLD;
+                compOffMinutesEarned += compOff;
+              }
+              notes = `Half-Day Paid Leave (4h) + Worked shift (${officeHoursLogged}h) -> Full day pay.`;
+            } else {
+              // Worked <4h on the other half: 0.5 pay, 0.5 deduction
+              payableFraction = 0.5;
+              deductionDays = 0.5;
+              compOff = wMins;
+              compOffMinutesEarned += compOff;
+              notes = `Half-Day Paid Leave (4h) + Short shift (<4h) -> 0.5 day pay, 0.5 day deduction. ${officeHoursLogged}h to Comp-Off.`;
+            }
+          } else {
+            // No EOD for the other half of the scheduled working day:
+            payableFraction = 0.5;
+            deductionDays = 0.5;
+            missingWorkingDays += 0.5;
+            notes = `Approved Half-Day Paid Leave (4h pay). Remaining half-day unexcused absence (0.5 day deduction).`;
+          }
+          if (paidLeave.leave_type === 'Compensatory Off' || (paidLeave.leave_type || '').toLowerCase().includes('comp')) {
+            notes += ' (4h debited from Comp-Off ledger)';
+          }
+        } else {
+          // Full Day Paid Leave
+          creditedLeaveMinutes += STANDARD_WORK_MINUTES;
+          activity = `Approved ${paidLeave.leave_type || paidLeave.request_type}`;
+          payableFraction = 1.0;
+          status = 'LEAVE';
+          notes = `Approved paid leave credited (8h). Zero deduction.`;
+          if (paidLeave.leave_type === 'Compensatory Off' || (paidLeave.leave_type || '').toLowerCase().includes('comp')) {
+            notes += ' (8h debited from Comp-Off ledger)';
+          }
+          if (eod) {
+            officeHoursLogged = Number(eod.office_hours);
+            const wMins = canonicalOfficeHoursToMinutes(officeHoursLogged);
+            totalWorkedMinutes += wMins;
+            compOff = wMins;
+            compOffMinutesEarned += compOff;
+            notes += ` Worked ${officeHoursLogged}h on leave -> 100% to Comp-Off.`;
+          }
+        }
+      } else if (unpaidLeave) {
+        if (unpaidLeave.is_half_day) {
+          unpaidLeaveMinutes += STANDARD_WORK_MINUTES / 2;
+          activity = 'Approved Half-Day Unpaid Leave';
+          status = 'HALF_DAY';
+          if (eod) {
+            officeHoursLogged = Number(eod.office_hours);
+            const wMins = canonicalOfficeHoursToMinutes(officeHoursLogged);
+            totalWorkedMinutes += wMins;
+            if (wMins >= HALF_DAY_THRESHOLD) {
+              payableFraction = 0.5;
+              payableDayWorkedHours = 4.0;
+              payableWorkedMinutes += HALF_DAY_THRESHOLD;
+              deductionDays = 0.5;
+              if (wMins > HALF_DAY_THRESHOLD) {
+                compOff = wMins - HALF_DAY_THRESHOLD;
+                compOffMinutesEarned += compOff;
+              }
+              notes = `Half-Day Unpaid Leave (0.5 deduction) + Worked other half (${officeHoursLogged}h -> 0.5 pay).`;
+            } else {
+              deductionDays = 1.0;
+              compOff = wMins;
+              compOffMinutesEarned += compOff;
+              status = 'UNPAID';
+              notes = `Half-Day Unpaid Leave (0.5 ded) + <4h short shift (0.5 ded) -> 1.0 day deduction.`;
+            }
+          } else {
+            deductionDays = 1.0;
+            missingWorkingDays += 0.5;
+            status = 'UNPAID';
+            notes = `Half-Day Unpaid Leave (0.5 deduction) + unexcused absence (0.5 deduction) = 1.0 day deduction.`;
+          }
+        } else {
+          const unpMins = STANDARD_WORK_MINUTES;
+          unpaidLeaveMinutes += unpMins;
+          activity = 'Approved Unpaid Leave';
+          deductionDays = 1.0;
+          status = 'UNPAID';
+          notes = `Approved unpaid leave (1.0 day salary deduction).`;
+        }
+      } else if (eod) {
+        officeHoursLogged = Number(eod.office_hours);
+        const wMins = canonicalOfficeHoursToMinutes(officeHoursLogged);
+        totalWorkedMinutes += wMins;
+        activity = wfhLeave ? 'Approved EOD (WFH Remote Work)' : 'Approved Office EOD';
+        if (wfhLeave) {
+          wfhMinutes += (wfhLeave.is_half_day ? STANDARD_WORK_MINUTES / 2 : STANDARD_WORK_MINUTES);
+        }
+
+        if (wMins < HALF_DAY_THRESHOLD) {
+          status = 'UNPAID';
+          compOff = wMins;
+          compOffMinutesEarned += compOff;
+          deductionDays = 1.0;
+          daysUnpaidLeaveEod++;
+          notes = `<4h shift: Unpaid day in payroll (1.0 day deduction). ${officeHoursLogged}h credited to Comp-Off.`;
+        } else if (wMins < FULL_DAY_MINUTES) {
+          status = 'HALF_DAY';
+          payableFraction = 0.5;
+          payableDayWorkedHours = 4.0;
+          payableWorkedMinutes += HALF_DAY_THRESHOLD;
+          deductionDays = 0.5;
+          daysHalfDay++;
+          notes = 'Half-Day shift (4h–<8h): 0.5 day pay (4h). 0.5 day deduction.';
+        } else {
+          status = 'FULL_DAY';
+          payableFraction = 1.0;
+          payableDayWorkedHours = 8.0;
+          payableWorkedMinutes += FULL_DAY_MINUTES;
+          compOff = wMins - FULL_DAY_MINUTES;
+          compOffMinutesEarned += compOff;
+          daysFullDay++;
+          notes = `Full-Day shift: 1.0 day pay (8h). ${(compOff / 60).toFixed(2)}h extra to Comp-Off.`;
+        }
+      } else if (wfhLeave) {
+        activity = 'Approved WFH (Remote)';
+        const wfhMins = wfhLeave.is_half_day ? STANDARD_WORK_MINUTES / 2 : STANDARD_WORK_MINUTES;
+        wfhMinutes += wfhMins;
+        payableFraction = wfhLeave.is_half_day ? 0.5 : 1.0;
+        payableDayWorkedHours = payableFraction * 8.0;
+        payableWorkedMinutes += wfhMins;
+        status = wfhLeave.is_half_day ? 'HALF_DAY' : 'FULL_DAY';
+        if (wfhLeave.is_half_day) {
+          daysHalfDay++;
+          deductionDays = 0.5;
+        } else {
+          daysFullDay++;
+        }
+        notes = 'Approved WFH: credited as payable working time. Zero deduction.';
+      } else {
+        activity = 'Unexcused Absence (No EOD / No Leave)';
+        status = 'ABSENT';
+        deductionDays = 1.0;
+        missingWorkingDays++;
+        notes = 'Missed working day without approved leave. 1.0 day deduction.';
+      }
+
+      const salaryCredit = Math.round(payableFraction * fullDayRate * 100) / 100;
+      const deductionAmount = Math.round(deductionDays * fullDayRate * 100) / 100;
+
+      dailyBreakdown.push({
+        date: dStr,
+        dayOfWeek,
+        dayType: isSun ? 'WEEKLY_OFF' : isHoliday ? 'COMPANY_HOLIDAY' : 'WORKING_DAY',
+        activity,
+        officeHoursLogged,
+        payableWorkedHours: payableDayWorkedHours,
+        payableFraction,
+        salaryCredit,
+        deductionDays,
+        deductionAmount,
+        compOffMinutesEarned: compOff,
+        status,
+        notes
+      });
     }
 
-    // Approved unpaid leave days
+    // ─── Financial calculation ──────────────────────────────────
     const unpaidLeaveDaysFromLeaves = unpaidLeaveMinutes / STANDARD_WORK_MINUTES;
 
-    // Total deducted days = EOD unpaid (<4h) + half-day fractions (0.5) + unexcused missing days + approved unpaid leaves
-    const totalDeductedDays = daysUnpaidLeaveEod + (daysHalfDay * 0.5) + missingWorkingDays + unpaidLeaveDaysFromLeaves;
+    // Total deducted days derived strictly from dailyBreakdown to ensure 100% mathematical consistency
+    const totalDeductedDays = Math.round(dailyBreakdown.reduce((sum, d) => sum + d.deductionDays, 0) * 10) / 10;
 
     // Employee-specific fixed manual deductions
     const empDeductions = activeDeductions.filter((d: any) => candIds.has(d.employee_id));
@@ -472,9 +632,9 @@ export async function calculateMonthlyPayroll(
     const hasConfiguredSalary = isIntern
       ? (emp.stipend !== null && emp.stipend !== undefined && Number(emp.stipend) > 0)
       : (
-          (emp.basic_salary !== null && emp.basic_salary !== undefined && Number(emp.basic_salary) > 0) ||
-          (emp.salary !== null && emp.salary !== undefined && Number(emp.salary) > 0)
-        );
+        (emp.basic_salary !== null && emp.basic_salary !== undefined && Number(emp.basic_salary) > 0) ||
+        (emp.salary !== null && emp.salary !== undefined && Number(emp.salary) > 0)
+      );
     const hasMissingSalary = !hasConfiguredSalary && empHistory.length === 0;
     const validationWarning = hasMissingSalary
       ? (isIntern ? 'Missing stipend configuration for intern' : 'Missing salary structure/basic salary configuration')
@@ -487,13 +647,13 @@ export async function calculateMonthlyPayroll(
     const attendanceDeduction = Math.min(monthlyPayBase, Math.round(totalDeductedDays * fullDayRate * 100) / 100);
 
     // Earned pay = monthly base - attendanceDeduction
-    const earnedPay = Math.max(0, monthlyPayBase - attendanceDeduction);
+    const earnedPay = Math.max(0, Math.round((monthlyPayBase - attendanceDeduction) * 100) / 100);
 
     // Total deductions = attendance deduction + manual deductions
     const totalDeductions = Math.round((attendanceDeduction + manualDeductions) * 100) / 100;
 
     // Net Payable: earnedPay reduced by manual deductions (cannot fall below 0)
-    const netPayable = Math.max(0, earnedPay - manualDeductions);
+    const netPayable = Math.max(0, Math.round((earnedPay - manualDeductions) * 100) / 100);
 
     // ─── Display values ─────────────────────────────────────────
     const actualWorkedHours = totalWorkedMinutes / 60;
@@ -502,9 +662,43 @@ export async function calculateMonthlyPayroll(
     const wfhHoursValue = wfhMinutes / 60;
     const unpaidLeaveHours = unpaidLeaveMinutes / 60;
     const extraHoursValue = compOffMinutesEarned / 60;
+    const payableWorkedHours = Math.round((payableWorkedMinutes / 60) * 100) / 100;
+    const payableHours = Math.round(((payableWorkedMinutes + creditedLeaveMinutes + paidHolidayMinutesNotWorked) / 60) * 100) / 100;
 
-    const totalPaidMinutes = totalWorkedMinutes + creditedLeaveMinutes + paidHolidayMinutesNotWorked;
-    const totalPaidHours = totalPaidMinutes / 60;
+    // Standard hourly rate based on regular monthly working hours
+    const standardHourlyRate = (monthlyPayBase > 0 && standardHours > 0)
+      ? monthlyPayBase / standardHours
+      : 0;
+
+    // True total paid hours earned: proportional to earned pay (excluding comp-off/unpaid time)
+    const totalPaidHours = standardHourlyRate > 0
+      ? Math.round((earnedPay / standardHourlyRate) * 100) / 100
+      : 0;
+
+    // ─── Reconciliation checks ──────────────────────────────────
+    const totalPayableDays = Math.round(dailyBreakdown.reduce((sum, d) => sum + d.payableFraction, 0) * 10) / 10;
+    const sumDeductedDays = Math.round(dailyBreakdown.reduce((sum, d) => sum + d.deductionDays, 0) * 10) / 10;
+    const isScheduledDaysReconciled = Math.abs((totalPayableDays + sumDeductedDays) - scheduledWorkingDays) < 0.01;
+    const isFinancialReconciled = Math.abs((netPayable + totalDeductions) - monthlyPayBase) < 0.05;
+
+    const reconciliation: PayrollReconciliation = {
+      isScheduledDaysReconciled,
+      scheduledWorkingDays,
+      payableDays: totalPayableDays,
+      deductedDays: sumDeductedDays,
+      isFinancialReconciled,
+      baseSalary: monthlyPayBase,
+      netPayable,
+      totalDeductions,
+      earnedPay,
+      compOffMinutesEarned,
+      divisorMode,
+      dailyRate: fullDayRate,
+      status: (isScheduledDaysReconciled && isFinancialReconciled) ? 'RECONCILED' : 'DISCREPANCY',
+      notes: isScheduledDaysReconciled && isFinancialReconciled
+        ? `Reconciled (${divisorMode} divisor: ${STANDARD_WORKING_DAYS} days): ${totalPayableDays} payable days + ${sumDeductedDays} deducted days = ${scheduledWorkingDays} scheduled days. Net pay (₹${netPayable.toFixed(2)}) + deductions (₹${totalDeductions.toFixed(2)}) = ₹${monthlyPayBase.toFixed(2)}.`
+        : `Discrepancy detected in reconciliation.`
+    };
 
     results.push({
       employeeId: emp.id,
@@ -522,8 +716,12 @@ export async function calculateMonthlyPayroll(
       extraHours: Math.round(extraHoursValue * 100) / 100,
       shortHours: 0,
 
+      daysFullDay,
       daysHalfDay,
       daysUnpaidLeaveEod,
+      daysAbsent: missingWorkingDays,
+      payableWorkedHours,
+      payableHours,
       compOffMinutesEarned,
 
       overtimePay: 0,
@@ -534,7 +732,7 @@ export async function calculateMonthlyPayroll(
       deductionsCount: empDeductions.length,
       deductionsList: empDeductions,
 
-      totalPaidHours: Math.round(totalPaidHours * 100) / 100,
+      totalPaidHours,
       grossPay: Math.round(monthlyPayBase * 100) / 100,
       totalDeductions,
       netPayable: Math.round(netPayable * 100) / 100,
@@ -543,7 +741,9 @@ export async function calculateMonthlyPayroll(
       isLocked: false,
       prorationDetail: salaryResolution.proration.isProrated ? salaryResolution.proration : undefined,
       hasMissingSalary,
-      validationWarning
+      validationWarning,
+      dailyBreakdown,
+      reconciliation
     });
   }
 

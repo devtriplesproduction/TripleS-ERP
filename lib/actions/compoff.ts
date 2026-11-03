@@ -402,7 +402,7 @@ export async function processLeaveCompOff(leaveId: string, employeeId: string, d
       .reduce((sum: number, r: any) => sum + (Number(r.hours) || 0), 0);
     const netActiveDebit = Math.max(0, Math.round((totalDebited - totalReversed) * 100) / 100);
 
-    if (status === 'Approved') {
+    if (status === 'Approved' || status === 'Approved HR' || status === 'Approved (Auto)' || status.startsWith('Approved')) {
       const hoursRequired = durationDays * 8;
       const hoursToDebit = Math.round((hoursRequired - netActiveDebit) * 100) / 100;
       if (hoursToDebit > 0) {

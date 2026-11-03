@@ -85,7 +85,8 @@ export async function reviewLeaveAction(leaveId: string, newStatus: string) {
   }
 
   // 2. Process Comp Off Deduction if it's a Comp Off leave being approved
-  if (leave.leave_type === 'Compensatory Off') {
+  const isCompOffLeave = leave.leave_type === 'Compensatory Off' || (leave.leave_type || '').toLowerCase().includes('comp')
+  if (isCompOffLeave) {
     // Determine duration
     const startDate = new Date(leave.start_date)
     const endDate = new Date(leave.end_date)
@@ -138,7 +139,7 @@ export async function submitLeaveAction(leaveData: any) {
     leaveData.employee_id = userOnboardingId || user.id
   }
 
-  if (leaveData.leave_type === 'Compensatory Off') {
+  if (leaveData.leave_type === 'Compensatory Off' || (leaveData.leave_type || '').toLowerCase().includes('comp')) {
     const balance = await getCompOffBalance(leaveData.employee_id)
     const sDate = new Date(leaveData.start_date)
     const eDate = new Date(leaveData.end_date)

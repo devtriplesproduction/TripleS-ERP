@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import {
@@ -481,12 +482,11 @@ export function JournalEntryModal({
                 <Label className="text-xs font-medium mb-1.5 block">
                   Entry Date <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  type="date"
+                <DatePicker
                   value={entryDate}
-                  onChange={(e) => setEntryDate(e.target.value)}
+                  onChange={(val) => setEntryDate(val)}
+                  placeholder="dd/mm/yyyy"
                   className="bg-background text-xs"
-                  required
                 />
               </div>
 

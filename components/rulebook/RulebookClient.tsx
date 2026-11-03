@@ -34,6 +34,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DatePicker } from '@/components/ui/date-picker'
+import { formatDateReadable } from '@/lib/utils/date'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/PageHeader'
@@ -91,22 +92,7 @@ const CATEGORY_META: Record<RulebookCategory, { title: string; subtitle: string;
 type SortOption = 'latest' | 'oldest' | 'title-asc' | 'title-desc' | 'pending-first' | 'acknowledged-first'
 
 function formatDate(dateStr?: string | null): string {
-  if (!dateStr) return '-'
-  try {
-    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-      const [year, month, day] = dateStr.split('-').map(Number)
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-      const formattedDay = day < 10 ? `0${day}` : `${day}`
-      return `${formattedDay} ${months[month - 1]} ${year}`
-    }
-    const d = new Date(dateStr)
-    if (isNaN(d.getTime())) return '-'
-    const day = d.getDate() < 10 ? `0${d.getDate()}` : `${d.getDate()}`
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-    return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`
-  } catch {
-    return '-'
-  }
+  return formatDateReadable(dateStr, '-')
 }
 
 function normalizeVersion(v: string | number | undefined | null) {

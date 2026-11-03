@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/server"
 import { guardServerAction } from "@/lib/auth"
 
 
-export type AttendanceStatus = 'Present' | 'Leave' | 'WFH' | 'Half Day + Present' | 'Half Day + WFH' | 'Half Day' | 'Unpaid Leave' | 'Absent' | 'Pending' | 'Holiday' | 'Weekend' | 'Not Marked' | 'Holiday Work';
+export type AttendanceStatus = 'Present' | 'Leave' | 'Comp-Off' | 'Casual Leave' | 'Sick Leave' | 'WFH' | 'Half Day + Present' | 'Half Day + WFH' | 'Half Day' | 'Unpaid Leave' | 'Absent' | 'Pending' | 'Holiday' | 'Weekend' | 'Not Marked' | 'Holiday Work';
 
 export interface DerivedAttendance {
   date: string;
@@ -88,7 +88,7 @@ export async function getAttendanceEmployees(month: number, year: number) {
       .lte('report_date', endDateStr),
     supabaseAdmin
       .from('leave_requests')
-      .select('id, employee_id, start_date, end_date, status, request_type, is_half_day')
+      .select('id, employee_id, start_date, end_date, status, request_type, leave_type, is_half_day')
       .in('employee_id', allEmpIds)
       .in('status', ['Approved', 'Approved HR', 'Approved (Auto)'])
       .lte('start_date', endDateStr)
@@ -133,9 +133,13 @@ export async function getAttendanceEmployees(month: number, year: number) {
         a.status === 'Holiday Work' ||
         a.status === 'WFH' ||
         a.status === 'Leave' ||
+        a.status === 'Comp-Off' ||
+        a.status === 'Casual Leave' ||
+        a.status === 'Sick Leave' ||
         a.status === 'Pending' ||
         a.status === 'Half Day + Present' ||
-        a.status === 'Half Day + WFH'
+        a.status === 'Half Day + WFH' ||
+        a.status === 'Half Day'
       );
       return { ...emp, summary, hasActivity };
     });
@@ -260,7 +264,7 @@ async function _calculateAttendance(employeeId: string, month: number, year: num
       .lte('date', endDateStr),
     supabase
       .from('leave_requests')
-      .select('id, employee_id, start_date, end_date, status, request_type, is_half_day, reason')
+      .select('id, employee_id, start_date, end_date, status, request_type, leave_type, is_half_day, reason')
       .or(`employee_id.eq.${onboardingId},employee_id.eq.${authUserId}`)
       .in('status', ['Approved', 'Approved HR', 'Approved (Auto)'])
       .lte('start_date', endDateStr)

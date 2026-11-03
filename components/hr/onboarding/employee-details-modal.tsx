@@ -29,6 +29,7 @@ import { DocumentUploadSection } from '@/components/documents/DocumentUploadSect
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DEPARTMENTS, DIVISIONS, DESIGNATIONS } from '@/config/roles'
 import { DatePicker } from '@/components/ui/date-picker'
+import { formatDateReadable } from '@/lib/utils/date'
 import {
   calculateProbationEndDate,
   parseMonthsFromDuration,
@@ -673,21 +674,7 @@ export function EmployeeDetailsClient({
   // ec is now parsed at the top using initialEc, but we can reuse it here for any other purposes if needed, though it's already in personalForm.
 
   const formatDateDisplay = (dateStr: string | null | undefined) => {
-    if (!dateStr) return '-'
-    try {
-      const parts = dateStr.split('T')[0].split('-')
-      if (parts.length === 3) {
-        const year = parseInt(parts[0], 10)
-        const month = parseInt(parts[1], 10) - 1
-        const day = parseInt(parts[2], 10)
-        const d = new Date(year, month, day)
-        return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-      }
-      const d = new Date(dateStr)
-      return isNaN(d.getTime()) ? dateStr : d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-    } catch {
-      return dateStr || '-'
-    }
+    return formatDateReadable(dateStr, '-')
   }
 
   const formatGenderDisplay = (val: string | null | undefined) => {
@@ -728,15 +715,24 @@ export function EmployeeDetailsClient({
       <div className="flex flex-col min-w-0 flex-1">
         <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider leading-none mb-0.5">{label}</span>
         {isEditing ? (
-          <Input
-            type={type}
-            className="h-7 text-xs bg-transparent border-border"
-            value={type === 'date' && formState[fieldKey] ? formState[fieldKey].split('T')[0] : (formState[fieldKey] ?? '')}
-            onChange={e => setFormState((prev: any) => ({ ...prev, [fieldKey]: e.target.value }))}
-          />
+          type === 'date' ? (
+            <DatePicker
+              value={formState[fieldKey]}
+              onChange={val => setFormState((prev: any) => ({ ...prev, [fieldKey]: val }))}
+              placeholder="dd/mm/yyyy"
+              className="h-7 text-xs bg-transparent border-border"
+            />
+          ) : (
+            <Input
+              type={type}
+              className="h-7 text-xs bg-transparent border-border"
+              value={formState[fieldKey] ?? ''}
+              onChange={e => setFormState((prev: any) => ({ ...prev, [fieldKey]: e.target.value }))}
+            />
+          )
         ) : (
           <span className="text-[13px] font-semibold text-foreground break-all leading-tight">
-            {type === 'date' && value ? new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : (value || '-')}
+            {type === 'date' && value ? formatDateReadable(value, '-') : (value || '-')}
           </span>
         )}
       </div>
@@ -1065,10 +1061,10 @@ export function EmployeeDetailsClient({
                         DATE OF BIRTH
                       </span>
                       {isEditingPersonalAddress ? (
-                        <Input
-                          type="date"
+                        <DatePicker
                           value={personalForm.dob}
-                          onChange={e => setPersonalForm(prev => ({ ...prev, dob: e.target.value }))}
+                          onChange={val => setPersonalForm(prev => ({ ...prev, dob: val }))}
+                          placeholder="dd/mm/yyyy"
                           className="h-7 text-xs bg-background/50 border-border/60"
                         />
                       ) : (

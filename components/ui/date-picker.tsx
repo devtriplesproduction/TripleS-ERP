@@ -1,5 +1,4 @@
 import * as React from "react"
-import { format } from "date-fns"
 import { Calendar as CalendarIcon, ChevronDown, X as XIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -9,11 +8,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { parseDate, formatDate, formatDateReadable, toISODateString, getTodayIST } from "@/lib/utils/date"
 
 export interface DatePickerProps {
   value?: string | Date | null
   onChange?: (date: string) => void
   placeholder?: string
+  displayFormat?: "DD/MM/YYYY" | "DD MMM YYYY"
   className?: string
   contentClassName?: string
   startMonth?: Date
@@ -22,12 +23,14 @@ export interface DatePickerProps {
   showChevron?: boolean
   popoverAlign?: "start" | "center" | "end"
   isClearable?: boolean
+  disabled?: boolean
 }
 
 export function DatePicker({ 
   value, 
   onChange, 
-  placeholder = "mm/dd/yyyy", 
+  placeholder = "dd/mm/yyyy", 
+  displayFormat = "DD/MM/YYYY",
   className,
   contentClassName,
   startMonth = new Date(1950, 0),
@@ -36,39 +39,40 @@ export function DatePicker({
   showChevron = false,
   popoverAlign = "start",
   isClearable = false,
+  disabled = false,
 }: DatePickerProps) {
   const [open, setOpen] = React.useState(false)
 
   const dateValue = React.useMemo(() => {
     if (!value) return undefined
-    if (value instanceof Date) return isNaN(value.getTime()) ? undefined : value
-    if (typeof value === "string") {
-      const trimmed = value.trim()
-      if (!trimmed) return undefined
-      if (trimmed.includes("-")) {
-        const parts = trimmed.split("T")[0].split("-").map(Number)
-        if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
-          return new Date(parts[0], parts[1] - 1, parts[2])
-        }
-      }
-      const d = new Date(trimmed)
-      return isNaN(d.getTime()) ? undefined : d
-    }
-    return undefined
+    const parsed = parseDate(value)
+    return parsed || undefined
   }, [value])
+
+  const displayText = React.useMemo(() => {
+    if (!dateValue) return placeholder
+    if (displayFormat === "DD MMM YYYY") {
+      return formatDateReadable(dateValue)
+    }
+    return formatDate(dateValue)
+  }, [dateValue, displayFormat, placeholder])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger className={cn(
-        "flex h-9 w-full items-center justify-between rounded-md border border-input bg-input-bg hover:border-input-hover dark:hover:border-input-hover px-3 py-1 text-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50",
-        !dateValue && "text-muted-foreground",
-        className
-      )}>
+      <PopoverTrigger 
+        disabled={disabled}
+        className={cn(
+          "flex h-9 w-full items-center justify-between rounded-md border border-input bg-input-bg hover:border-input-hover dark:hover:border-input-hover px-3 py-1 text-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50",
+          !dateValue && "text-muted-foreground",
+          disabled && "opacity-50 cursor-not-allowed pointer-events-none",
+          className
+        )}
+      >
         {iconLeft && <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground opacity-70 shrink-0" />}
         <span className={cn("flex-1 text-left truncate", dateValue ? "text-foreground font-medium" : "text-muted-foreground")}>
-          {dateValue ? format(dateValue, "MM/dd/yyyy") : placeholder}
+          {displayText}
         </span>
-        {isClearable && dateValue ? (
+        {isClearable && dateValue && !disabled ? (
           <span
             role="button"
             tabIndex={0}
@@ -97,7 +101,7 @@ export function DatePicker({
           endMonth={endMonth}
           selected={dateValue}
           onSelect={(date) => { 
-            onChange?.(date ? format(date, "yyyy-MM-dd") : ""); 
+            onChange?.(date ? toISODateString(date) : ""); 
             setOpen(false); 
           }}
         />
@@ -118,7 +122,7 @@ export function DatePicker({
               type="button"
               onClick={(e) => {
                 e.stopPropagation()
-                onChange?.(format(new Date(), "yyyy-MM-dd"))
+                onChange?.(getTodayIST())
                 setOpen(false)
               }}
               className="text-xs text-foreground font-medium hover:underline cursor-pointer"

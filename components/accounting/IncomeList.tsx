@@ -13,6 +13,7 @@ import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { IncomeModal } from './IncomeModal'
 import { AccountingNavTabs } from './AccountingNavTabs'
 import { deleteIncomeAction } from '@/lib/actions/accounting'
+import { formatDate } from '@/lib/utils/date'
 import { toast } from 'sonner'
 import {
   ArrowDownLeft,
@@ -315,7 +316,7 @@ export function IncomeList({
                       )}
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
-                      {item.income_date}
+                      {formatDate(item.income_date)}
                     </TableCell>
                     <TableCell>
                       <div>
