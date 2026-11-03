@@ -1042,7 +1042,7 @@ export function ContentManagementView({
             <Button
               onClick={() => setIsCreateModalOpen(true)}
               size="sm"
-              className="h-9 px-4 text-xs font-semibold gap-1.5 shadow-xs bg-primary hover:bg-primary/90 text-primary-foreground transition-all"
+              className="h-9 px-3.5 text-xs font-semibold gap-1.5 shadow-xs bg-foreground text-background hover:bg-foreground/90 rounded-lg transition-all"
             >
               <PlusCircle className="w-4 h-4 shrink-0" />
               <span>Create Task</span>
@@ -1054,13 +1054,13 @@ export function ContentManagementView({
               variant={activeTab === 'assignments' ? 'default' : 'outline'}
               size="sm"
               className={cn(
-                "h-9 px-3.5 text-xs font-semibold gap-1.5 shadow-xs transition-all",
+                "h-9 px-3.5 text-xs font-semibold gap-1.5 shadow-xs transition-all rounded-lg",
                 activeTab === 'assignments'
-                  ? "bg-indigo-600 hover:bg-indigo-700 text-white border-transparent"
-                  : "border-border text-foreground hover:bg-muted/60"
+                  ? "bg-foreground text-background hover:bg-foreground/90 border-transparent"
+                  : "border-border/80 bg-card text-foreground hover:bg-secondary/50"
               )}
             >
-              <Users className="w-4 h-4 shrink-0 text-indigo-400" />
+              <Users className="w-4 h-4 shrink-0" />
               <span>Assignments</span>
             </Button>
 
@@ -1070,16 +1070,21 @@ export function ContentManagementView({
               variant={activeTab === 'deadlines' ? 'default' : 'outline'}
               size="sm"
               className={cn(
-                "h-9 px-3.5 text-xs font-semibold gap-1.5 shadow-xs transition-all",
+                "h-9 px-3.5 text-xs font-semibold gap-1.5 shadow-xs transition-all rounded-lg",
                 activeTab === 'deadlines'
-                  ? "bg-amber-600 hover:bg-amber-700 text-white border-transparent"
-                  : "border-border text-foreground hover:bg-muted/60"
+                  ? "bg-foreground text-background hover:bg-foreground/90 border-transparent"
+                  : "border-border/80 bg-card text-foreground hover:bg-secondary/50"
               )}
             >
-              <Clock className="w-4 h-4 shrink-0 text-amber-400" />
+              <Clock className="w-4 h-4 shrink-0" />
               <span>Deadlines</span>
               {overdueCount > 0 && (
-                <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                <span className={cn(
+                  "ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold",
+                  activeTab === 'deadlines'
+                    ? "bg-background text-foreground"
+                    : "bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                )}>
                   {overdueCount}
                 </span>
               )}
@@ -1154,11 +1159,11 @@ export function ContentManagementView({
               />
             </div>
 
-            {/* Three Compact View Icons Only (No text, compact buttons) */}
+            {/* Three Compact View Icons Only (Matching KanbanBoard.tsx) */}
             <div
               role="radiogroup"
               aria-label="Task board view options"
-              className="flex items-center h-9 p-0.5 rounded-lg border border-border/80 bg-muted/40 shadow-xs shrink-0 self-end md:self-auto"
+              className="flex items-center h-9 p-0.5 rounded-lg border border-border/80 bg-card shadow-xs shrink-0 self-end md:self-auto"
             >
               <button
                 type="button"
@@ -1170,7 +1175,7 @@ export function ContentManagementView({
                 className={cn(
                   "h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer",
                   boardView === 'kanban'
-                    ? "bg-background text-primary shadow-xs"
+                    ? "bg-secondary text-foreground shadow-xs"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                 )}
               >
@@ -1189,7 +1194,7 @@ export function ContentManagementView({
                 className={cn(
                   "h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer",
                   boardView === 'gantt'
-                    ? "bg-background text-primary shadow-xs"
+                    ? "bg-secondary text-foreground shadow-xs"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                 )}
               >
@@ -1208,7 +1213,7 @@ export function ContentManagementView({
                 className={cn(
                   "h-7.5 w-8 flex items-center justify-center rounded-md transition-colors cursor-pointer",
                   boardView === 'calendar'
-                    ? "bg-background text-primary shadow-xs"
+                    ? "bg-secondary text-foreground shadow-xs"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                 )}
               >
@@ -1481,9 +1486,9 @@ export function ContentManagementView({
               variant="outline"
               size="sm"
               onClick={() => setActiveTab('board')}
-              className="text-xs font-semibold gap-1.5 border-border hover:bg-muted h-8 px-3"
+              className="text-xs font-semibold gap-1.5 border-border/80 bg-card hover:bg-secondary/50 text-foreground h-9 px-3 rounded-lg shadow-xs"
             >
-              <KanbanSquare className="w-3.5 h-3.5 text-primary" />
+              <KanbanSquare className="w-3.5 h-3.5 text-foreground" />
               <span>← Back to Task Board</span>
             </Button>
             <span className="text-xs text-muted-foreground font-medium">Viewing Department Assignments</span>
@@ -1594,13 +1599,13 @@ export function ContentManagementView({
               />
 
               {/* View Switcher: Table View vs Team Workload Grid */}
-              <div className="flex items-center bg-muted/40 p-0.5 rounded-lg border border-border/80 h-9 shrink-0 ml-1">
+              <div className="flex items-center bg-card p-0.5 rounded-lg border border-border/80 h-9 shrink-0 ml-1 shadow-xs">
                 <button
                   type="button"
                   onClick={() => setAdViewMode('table')}
                   className={cn(
-                    "px-2.5 py-1 text-xs font-semibold rounded-md transition-all",
-                    adViewMode === 'table' ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                    "px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer",
+                    adViewMode === 'table' ? "bg-secondary text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                   )}
                 >
                   Deliverables Table
@@ -1609,8 +1614,8 @@ export function ContentManagementView({
                   type="button"
                   onClick={() => setAdViewMode('workload')}
                   className={cn(
-                    "px-2.5 py-1 text-xs font-semibold rounded-md transition-all",
-                    adViewMode === 'workload' ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                    "px-3 py-1 text-xs font-semibold rounded-md transition-all cursor-pointer",
+                    adViewMode === 'workload' ? "bg-secondary text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
                   )}
                 >
                   Staff Workload
@@ -1684,7 +1689,7 @@ export function ContentManagementView({
                                   <select
                                     value={currentEmpId}
                                     onChange={(e) => handleReassignTask(task.id, e.target.value)}
-                                    className="h-8 px-2 rounded-lg text-xs bg-muted/40 border border-border text-foreground font-medium outline-none cursor-pointer max-w-[160px] truncate"
+                                    className="h-8 px-2.5 rounded-md text-xs bg-card border border-border/80 text-foreground font-medium outline-none cursor-pointer max-w-[160px] truncate hover:border-foreground/30 transition-colors shadow-xs"
                                     title="Change assigned content staff"
                                   >
                                     <option value="">
@@ -1709,7 +1714,7 @@ export function ContentManagementView({
 
                             {/* Content Type */}
                             <td className="p-3.5">
-                              <Badge variant="outline" className="text-[10px] border-border">
+                              <Badge variant="outline" className="text-[10px] border-border/80 bg-background/50">
                                 {task.content_type || 'Content'}
                               </Badge>
                             </td>
@@ -1728,7 +1733,7 @@ export function ContentManagementView({
 
                             {/* Task Status */}
                             <td className="p-3.5">
-                              <Badge variant="outline" className="text-[10px] font-mono border-border">
+                              <Badge variant="outline" className="text-[10px] font-mono border-border/80 bg-background/50">
                                 {task.status}
                               </Badge>
                             </td>
@@ -1739,7 +1744,7 @@ export function ContentManagementView({
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => setEditingItem(task)}
-                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary/50 rounded-md transition-colors"
                                 title="Edit Task Details"
                               >
                                 <Edit className="w-3.5 h-3.5" />
@@ -1868,9 +1873,9 @@ export function ContentManagementView({
               variant="outline"
               size="sm"
               onClick={() => setActiveTab('board')}
-              className="text-xs font-semibold gap-1.5 border-border hover:bg-muted h-8 px-3"
+              className="text-xs font-semibold gap-1.5 border-border/80 bg-card hover:bg-secondary/50 text-foreground h-9 px-3 rounded-lg shadow-xs"
             >
-              <KanbanSquare className="w-3.5 h-3.5 text-primary" />
+              <KanbanSquare className="w-3.5 h-3.5 text-foreground" />
               <span>← Back to Task Board</span>
             </Button>
             <span className="text-xs text-muted-foreground font-medium">Viewing Department Deadlines</span>
@@ -2062,7 +2067,7 @@ export function ContentManagementView({
                             <select
                               value={currentEmpId}
                               onChange={(e) => handleReassignTask(task.id, e.target.value)}
-                              className="h-8 px-2 rounded-lg text-xs bg-muted/40 border border-border text-foreground font-medium outline-none cursor-pointer max-w-[160px] truncate"
+                              className="h-8 px-2.5 rounded-md text-xs bg-card border border-border/80 text-foreground font-medium outline-none cursor-pointer max-w-[160px] truncate hover:border-foreground/30 transition-colors shadow-xs"
                               title="Change assigned content staff"
                             >
                               <option value="">
@@ -2108,7 +2113,7 @@ export function ContentManagementView({
                                 </Badge>
                               )}
                               {deadlineCat === 'Upcoming' && (
-                                <Badge variant="outline" className="text-muted-foreground border-border text-[10px] px-1.5 py-0 font-sans">
+                                <Badge variant="outline" className="text-muted-foreground border-border/80 bg-background/50 text-[10px] px-1.5 py-0 font-sans">
                                   Upcoming
                                 </Badge>
                               )}
@@ -2119,7 +2124,7 @@ export function ContentManagementView({
                                 </Badge>
                               )}
                               {deadlineCat === 'No Deadline' && (
-                                <Badge variant="outline" className="text-muted-foreground/60 border-border/60 text-[10px] px-1.5 py-0 font-sans">
+                                <Badge variant="outline" className="text-muted-foreground/60 border-border/60 bg-background/50 text-[10px] px-1.5 py-0 font-sans">
                                   No Deadline
                                 </Badge>
                               )}
@@ -2140,7 +2145,7 @@ export function ContentManagementView({
 
                           {/* Task Status */}
                           <td className="p-3.5">
-                            <Badge variant="outline" className="text-[10px] font-mono border-border">
+                            <Badge variant="outline" className="text-[10px] font-mono border-border/80 bg-background/50">
                               {task.status}
                             </Badge>
                           </td>
@@ -2152,7 +2157,7 @@ export function ContentManagementView({
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleExtendDeadline(task.id, 3)}
-                                className="h-7 text-[10px] px-2 border-border"
+                                className="h-7 text-[10px] px-2 rounded-md border-border/80 bg-card hover:bg-secondary/50 text-foreground shadow-xs"
                                 title="Extend deadline by 3 days"
                               >
                                 +3d
@@ -2161,7 +2166,7 @@ export function ContentManagementView({
                                 size="sm"
                                 variant="outline"
                                 onClick={() => handleExtendDeadline(task.id, 7)}
-                                className="h-7 text-[10px] px-2 border-border"
+                                className="h-7 text-[10px] px-2 rounded-md border-border/80 bg-card hover:bg-secondary/50 text-foreground shadow-xs"
                                 title="Extend deadline by 1 week"
                               >
                                 +1w
@@ -2170,7 +2175,7 @@ export function ContentManagementView({
                                 size="sm"
                                 variant="ghost"
                                 onClick={() => setEditingItem(task)}
-                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground"
+                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary/50 rounded-md transition-colors"
                                 title="Edit Task Details"
                               >
                                 <Edit className="w-3.5 h-3.5" />
@@ -2391,13 +2396,13 @@ export function ContentManagementView({
               </div>
 
               {/* Form Action Buttons: Submit Task & Cancel */}
-              <div className="pt-4 border-t border-border flex items-center justify-end gap-3">
+              <div className="pt-4 border-t border-border/80 flex items-center justify-end gap-3">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => setIsCreateModalOpen(false)}
                   disabled={isSubmitting}
-                  className="border-border text-xs h-10 px-4"
+                  className="border-border/80 bg-card hover:bg-secondary/50 text-foreground text-xs h-10 px-4 rounded-md shadow-xs"
                 >
                   Cancel
                 </Button>
@@ -2405,7 +2410,7 @@ export function ContentManagementView({
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground text-xs font-semibold h-10 px-5 gap-2 shadow-xs"
+                  className="bg-foreground text-background hover:bg-foreground/90 text-xs font-semibold h-10 px-5 gap-2 rounded-md shadow-xs"
                 >
                   {isSubmitting ? (
                     <>
@@ -2525,17 +2530,17 @@ export function ContentManagementView({
                 />
               </div>
 
-              <div className="pt-3 border-t border-border flex items-center justify-between">
+              <div className="pt-3 border-t border-border/80 flex items-center justify-between">
                 {isAuthorizedManager && (
                   <Button
                     type="button"
-                    variant="ghost"
+                    variant="destructive"
                     size="sm"
                     onClick={() => {
                       setItemToDelete(editingItem)
                       setEditingItem(null)
                     }}
-                    className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 text-xs gap-1"
+                    className="bg-destructive/15 text-destructive hover:bg-destructive/25 border border-destructive/30 text-xs gap-1.5 rounded-md px-3 h-9"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                     <span>Delete</span>
@@ -2548,7 +2553,7 @@ export function ContentManagementView({
                     variant="outline"
                     size="sm"
                     onClick={() => setEditingItem(null)}
-                    className="border-border text-xs"
+                    className="border-border/80 bg-card hover:bg-secondary/50 text-foreground text-xs rounded-md px-3.5 h-9"
                   >
                     Cancel
                   </Button>
@@ -2556,7 +2561,7 @@ export function ContentManagementView({
                     type="submit"
                     disabled={isSubmitting}
                     size="sm"
-                    className="bg-primary text-primary-foreground text-xs"
+                    className="bg-foreground text-background hover:bg-foreground/90 text-xs font-semibold rounded-md px-4 h-9 shadow-xs"
                   >
                     {isSubmitting ? 'Saving...' : 'Save Changes'}
                   </Button>

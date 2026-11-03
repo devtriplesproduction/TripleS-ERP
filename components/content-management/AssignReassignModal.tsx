@@ -98,32 +98,32 @@ export function AssignReassignModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-lg bg-card border border-border/80 rounded-xl shadow-2xl overflow-hidden text-foreground">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-border/80 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <UserCheck className="w-5 h-5 text-indigo-400" />
-            <h3 className="text-lg font-semibold text-zinc-100">
+            <UserCheck className="w-5 h-5 text-foreground" />
+            <h3 className="text-base font-bold text-foreground">
               {item.assigned_to_id ? 'Reassign Content' : 'Assign Content'}
             </h3>
           </div>
           <button
             onClick={onClose}
-            className="text-zinc-400 hover:text-zinc-200 text-sm font-medium p-1 rounded-md hover:bg-zinc-800 transition-colors"
+            className="text-muted-foreground hover:text-foreground text-sm font-medium p-1 rounded-md hover:bg-secondary/50 transition-colors"
           >
             ✕
           </button>
         </div>
 
         {/* Content details banner */}
-        <div className="px-6 py-3 bg-zinc-950/50 border-b border-zinc-800/80 text-xs text-zinc-400 space-y-1">
-          <div className="text-sm font-medium text-zinc-200 line-clamp-1">{item.title}</div>
+        <div className="px-6 py-3 bg-secondary/30 border-b border-border/80 text-xs text-muted-foreground space-y-1">
+          <div className="text-sm font-semibold text-foreground line-clamp-1">{item.title}</div>
           <div className="flex items-center gap-3">
-            <span>Current Status: <strong className="text-zinc-300">{item.status}</strong></span>
+            <span>Current Status: <strong className="text-foreground">{item.status}</strong></span>
             <span>
               Current Assignee:{' '}
-              <strong className={item.assigned_to_name ? 'text-indigo-400' : 'text-zinc-500'}>
+              <strong className={item.assigned_to_name ? 'text-foreground font-semibold' : 'text-muted-foreground'}>
                 {item.assigned_to_name || 'Unassigned'}
               </strong>
             </span>
@@ -225,19 +225,19 @@ export function AssignReassignModal({
           )}
 
           {/* Actions */}
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-zinc-800/80">
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-border/80">
             <button
               type="button"
               onClick={onClose}
               disabled={loading}
-              className="px-4 py-2 text-xs font-medium text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800 rounded-lg transition-colors"
+              className="px-4 py-2 text-xs font-medium border border-border/80 bg-card hover:bg-secondary/50 text-foreground rounded-md transition-colors shadow-xs"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg text-white bg-indigo-600 hover:bg-indigo-500 transition-colors shadow-md disabled:opacity-50"
+              className="flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-md text-background bg-foreground hover:bg-foreground/90 transition-colors shadow-xs disabled:opacity-50"
             >
               <Send className="w-3.5 h-3.5" />
               <span>{loading ? 'Assigning...' : isReassignment ? 'Confirm Reassignment' : 'Assign Content'}</span>

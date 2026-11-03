@@ -191,13 +191,13 @@ export function ContentCalendarView({
   return (
     <div className="space-y-4">
       {/* Calendar Controls & Navigation Bar */}
-      <div className="p-4 bg-card border border-border rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
+      <div className="p-3 bg-card border border-border/80 rounded-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
         {/* Left: Date Navigator */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1 bg-muted/40 border border-border p-1 rounded-xl shadow-xs">
+          <div className="flex items-center gap-1 bg-card border border-border/80 p-0.5 rounded-lg shadow-xs">
             <button
               onClick={() => stepDate(-1)}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors cursor-pointer"
               title="Previous"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -207,26 +207,28 @@ export function ContentCalendarView({
             </span>
             <button
               onClick={() => stepDate(1)}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors cursor-pointer"
               title="Next"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
-            <button
-              onClick={() => setCurrentDate(dayjs())}
-              className="px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10 rounded-lg transition-colors ml-1"
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setCurrentDate(dayjs().hour(12).minute(0).second(0).millisecond(0))}
+              className="h-7 px-2.5 text-[11px] font-semibold rounded-md border-border/80 bg-card hover:bg-secondary/50 text-foreground ml-1 shadow-xs"
             >
               Today
-            </button>
+            </Button>
           </div>
 
           {/* Mode Switcher: Daily vs Weekly vs Monthly */}
-          <div className="flex items-center bg-muted/40 border border-border p-1 rounded-xl">
+          <div className="flex items-center bg-card border border-border/80 p-0.5 rounded-lg shadow-xs">
             <button
               onClick={() => setMode('DAY')}
               className={cn(
-                "px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all",
-                mode === 'DAY' ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer",
+                mode === 'DAY' ? "bg-secondary text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
               )}
             >
               Daily
@@ -234,8 +236,8 @@ export function ContentCalendarView({
             <button
               onClick={() => setMode('WEEK')}
               className={cn(
-                "px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all",
-                mode === 'WEEK' ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer",
+                mode === 'WEEK' ? "bg-secondary text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
               )}
             >
               Weekly
@@ -243,8 +245,8 @@ export function ContentCalendarView({
             <button
               onClick={() => setMode('MONTH')}
               className={cn(
-                "px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all",
-                mode === 'MONTH' ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer",
+                mode === 'MONTH' ? "bg-secondary text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
               )}
             >
               Monthly
@@ -261,7 +263,7 @@ export function ContentCalendarView({
               placeholder="Search calendar..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 h-8 text-xs bg-muted/30 border-border"
+              className="pl-8 h-8 text-xs bg-muted/30 border-border/80 text-foreground rounded-lg shadow-xs"
             />
           </div>
         </div>
@@ -271,7 +273,7 @@ export function ContentCalendarView({
       {/* 1. MONTHLY VIEW                                           */}
       {/* ========================================================= */}
       {mode === 'MONTH' && (
-        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
+        <div className="bg-card border border-border/80 rounded-xl overflow-hidden shadow-xs">
           {/* Day of Week Headers */}
           <div className="grid grid-cols-7 border-b border-border bg-muted/30 text-center text-xs font-bold text-muted-foreground py-2.5">
             <span>Mon</span>
@@ -390,7 +392,7 @@ export function ContentCalendarView({
       {/* 2. WEEKLY VIEW                                            */}
       {/* ========================================================= */}
       {mode === 'WEEK' && (
-        <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
+        <div className="bg-card border border-border/80 rounded-xl overflow-hidden shadow-xs">
           <div className="grid grid-cols-1 sm:grid-cols-7 divide-y sm:divide-y-0 sm:divide-x divide-border/60">
             {weekDays.map((day) => {
               const dayStr = day.format('YYYY-MM-DD')

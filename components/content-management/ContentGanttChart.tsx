@@ -17,6 +17,7 @@ import {
 import { ContentItem, ContentStatus, ContentPriority, computeDeadlineState, computeDeadlineCategory } from '@/types/content-management'
 import { AssignableEmployee } from '@/lib/actions/team'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import dayjs from 'dayjs'
 import { cn } from '@/lib/utils'
@@ -242,13 +243,13 @@ export function ContentGanttChart({
   return (
     <div className="space-y-4">
       {/* Gantt Header & Controls Bar */}
-      <div className="p-4 bg-card border border-border rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
+      <div className="p-3 bg-card border border-border/80 rounded-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
         {/* Left: Date Navigator & Horizontal Navigation */}
         <div className="flex items-center gap-2 flex-wrap">
-          <div className="flex items-center gap-1 bg-muted/40 border border-border p-1 rounded-xl shadow-xs">
+          <div className="flex items-center gap-1 bg-card border border-border/80 p-0.5 rounded-lg shadow-xs">
             <button
               onClick={() => stepMonth(-1)}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors cursor-pointer"
               title="Previous Month"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -258,26 +259,28 @@ export function ContentGanttChart({
             </span>
             <button
               onClick={() => stepMonth(1)}
-              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors cursor-pointer"
               title="Next Month"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
-            <button
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setCurrentDate(dayjs())}
-              className="px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10 rounded-lg transition-colors ml-1"
+              className="h-7 px-2.5 text-[11px] font-semibold rounded-md border-border/80 bg-card hover:bg-secondary/50 text-foreground ml-1 shadow-xs"
             >
               Today
-            </button>
+            </Button>
           </div>
 
           {/* View Zoom Toggle (14 Days vs Full Month) */}
-          <div className="flex items-center bg-muted/40 border border-border p-1 rounded-xl">
+          <div className="flex items-center bg-card border border-border/80 p-0.5 rounded-lg shadow-xs">
             <button
               onClick={() => setViewWindow(14)}
               className={cn(
-                "px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all",
-                viewWindow === 14 ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer",
+                viewWindow === 14 ? "bg-secondary text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
               )}
             >
               14 Days
@@ -285,8 +288,8 @@ export function ContentGanttChart({
             <button
               onClick={() => setViewWindow(30)}
               className={cn(
-                "px-2.5 py-1 rounded-lg text-[11px] font-semibold transition-all",
-                viewWindow === 30 ? "bg-background text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                "px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all cursor-pointer",
+                viewWindow === 30 ? "bg-secondary text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground hover:bg-muted/40"
               )}
             >
               Full Month
@@ -303,14 +306,14 @@ export function ContentGanttChart({
               placeholder="Search schedule..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-8 h-8 text-xs bg-muted/30 border-border"
+              className="pl-8 h-8 text-xs bg-muted/30 border-border/80 text-foreground rounded-lg shadow-xs"
             />
           </div>
         </div>
       </div>
 
       {/* Gantt Chart Container */}
-      <div className="bg-card border border-border rounded-2xl overflow-hidden shadow-xs">
+      <div className="bg-card border border-border/80 rounded-xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <div className="min-w-[1000px]">
             {/* Header: Task Metadata on Left (340px), Timeline Grid on Right */}
@@ -414,14 +417,14 @@ export function ContentGanttChart({
                   const isOverdue = computeDeadlineCategory(item.due_date, item.status) === 'Overdue'
                   const isOverlapping = overlappingTaskIds.has(item.id)
 
-                  // Bar color styling
-                  let barGradient = 'from-zinc-600 to-zinc-500'
+                  // Bar color styling matching ERP dark theme
+                  let barGradient = 'from-zinc-800 to-zinc-700 border border-zinc-600/50'
                   if (item.status === 'Completed' || item.status === 'Published' || item.status === 'Approved') {
-                    barGradient = 'from-emerald-600 to-teal-500'
+                    barGradient = 'from-emerald-700 to-teal-700 border border-emerald-500/40'
                   } else if (item.status === 'In Review') {
-                    barGradient = 'from-indigo-600 to-violet-500'
+                    barGradient = 'from-indigo-700 to-violet-700 border border-indigo-500/40'
                   } else if (item.status === 'In Progress' || item.status === 'Changes Requested') {
-                    barGradient = 'from-amber-600 to-orange-500'
+                    barGradient = 'from-amber-700 to-orange-700 border border-amber-500/40'
                   }
 
                   // Match assigned employee for inline dropdown
@@ -441,13 +444,13 @@ export function ContentGanttChart({
                     >
                       {/* Left: Metadata info (340px) */}
                       <div
-                        className="w-[340px] shrink-0 p-3 border-r border-border flex flex-col justify-between space-y-1.5"
+                        className="w-[340px] shrink-0 p-3 border-r border-border/80 flex flex-col justify-between space-y-1.5 bg-card"
                       >
                         {/* Top: Badges and In-Place Status Selector */}
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span
                             onClick={() => onItemClick && onItemClick(item)}
-                            className="text-[10px] font-mono font-bold text-primary px-1.5 py-0.5 rounded bg-primary/10 hover:bg-primary/20 cursor-pointer transition-colors"
+                            className="text-[10px] font-mono font-bold text-foreground px-1.5 py-0.5 rounded bg-secondary/80 hover:bg-secondary cursor-pointer transition-colors border border-border/60"
                             title="Click to view task details"
                           >
                             {item.id}
@@ -468,14 +471,14 @@ export function ContentGanttChart({
                                 }
                               }}
                               className={cn(
-                                "text-[9px] font-semibold px-1 py-0.5 rounded border outline-none cursor-pointer transition-colors",
+                                "text-[10px] font-semibold px-1.5 py-0.5 rounded-md border outline-none cursor-pointer transition-colors shadow-xs",
                                 item.status === 'Completed' || item.status === 'Published' || item.status === 'Approved'
                                   ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
                                   : item.status === 'In Review'
                                   ? "bg-indigo-500/15 text-indigo-400 border-indigo-500/30"
                                   : item.status === 'In Progress' || item.status === 'Changes Requested'
                                   ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
-                                  : "bg-muted text-muted-foreground border-border"
+                                  : "bg-card text-muted-foreground border-border/80"
                               )}
                               title="Change task status"
                             >
@@ -516,7 +519,7 @@ export function ContentGanttChart({
                                 e.stopPropagation()
                                 onEditItem(item)
                               }}
-                              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+                              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors shrink-0"
                               title="Edit task details"
                             >
                               <Pencil className="w-3 h-3" />
@@ -527,7 +530,7 @@ export function ContentGanttChart({
                         {/* Assignee Reassignment & Timeline Dates */}
                         <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5 gap-2">
                           <div className="flex items-center gap-1.5 min-w-0" onClick={(e) => e.stopPropagation()}>
-                            <User className="w-3 h-3 text-primary shrink-0" />
+                            <User className="w-3 h-3 text-muted-foreground shrink-0" />
                             <select
                               value={selectedEmpId}
                               onChange={(e) => {
@@ -536,7 +539,7 @@ export function ContentGanttChart({
                                   onReassignTask(item.id, e.target.value)
                                 }
                               }}
-                              className="text-[11px] font-medium bg-muted/40 hover:bg-muted text-foreground border border-border/60 hover:border-border rounded px-1.5 py-0.5 outline-none cursor-pointer max-w-[130px] truncate transition-colors"
+                              className="text-[11px] font-medium bg-card hover:bg-secondary/50 text-foreground border border-border/80 hover:border-foreground/30 rounded-md px-2 py-0.5 outline-none cursor-pointer max-w-[130px] truncate transition-colors shadow-xs"
                               title="Change assigned employee"
                             >
                               <option value="" className="bg-popover text-popover-foreground">
@@ -627,7 +630,7 @@ export function ContentGanttChart({
 
                             {/* Live Date Preview Tooltip during Drag */}
                             {isDraggingThis && deltaDays !== 0 && (
-                              <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-40 px-2 py-0.5 rounded bg-black/90 text-white text-[10px] font-mono whitespace-nowrap shadow-lg border border-border">
+                              <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-40 px-2 py-0.5 rounded-md bg-card text-foreground text-[10px] font-mono whitespace-nowrap shadow-md border border-border/80">
                                 {rawStart.format('DD MMM')} &rarr; {rawDue.format('DD MMM')} ({totalDurationDays}d)
                               </div>
                             )}
@@ -647,7 +650,7 @@ export function ContentGanttChart({
                             <button
                               type="button"
                               onClick={() => setCurrentDate(rawStart)}
-                              className="px-2 py-0.5 rounded text-[10px] font-semibold bg-primary/10 hover:bg-primary/20 text-primary transition-colors flex items-center gap-1"
+                              className="px-2.5 py-1 rounded-md text-[11px] font-semibold bg-card hover:bg-secondary/50 text-foreground border border-border/80 transition-colors flex items-center gap-1.5 shadow-xs"
                               title={`Jump timeline to ${rawStart.format('MMMM YYYY')}`}
                             >
                               <Calendar className="w-3 h-3" />
@@ -665,23 +668,23 @@ export function ContentGanttChart({
         </div>
 
         {/* Gantt Legend & Summary Bar */}
-        <div className="p-3 bg-muted/20 border-t border-border flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-3">
+        <div className="p-3 bg-secondary/20 border-t border-border/80 flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-3">
           <div className="flex items-center gap-4 flex-wrap text-[11px]">
             <span className="font-semibold text-foreground">Timeline Guide:</span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-r from-zinc-600 to-zinc-500 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-r from-zinc-800 to-zinc-700 border border-zinc-600 inline-block" />
               <span>To Do</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-r from-amber-600 to-orange-500 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-r from-amber-700 to-orange-700 border border-amber-500/50 inline-block" />
               <span>In Progress</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-r from-indigo-600 to-violet-500 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-r from-indigo-700 to-violet-700 border border-indigo-500/50 inline-block" />
               <span>In Review</span>
             </span>
             <span className="flex items-center gap-1.5">
-              <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-r from-emerald-600 to-teal-500 inline-block" />
+              <span className="w-2.5 h-2.5 rounded-sm bg-gradient-to-r from-emerald-700 to-teal-700 border border-emerald-500/50 inline-block" />
               <span>Completed</span>
             </span>
           </div>
