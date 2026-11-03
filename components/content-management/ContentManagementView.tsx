@@ -105,6 +105,49 @@ const STANDARD_CONTENT_TYPES = [
   'Other',
 ]
 
+export const DEFAULT_CONTENT_STAFF: AssignableEmployee[] = [
+  {
+    id: 'af354098-e268-4294-889f-130387cf916b',
+    name: 'Kavita Verma',
+    employee_id: 'EMP-CNT-01',
+    department: 'Content Management',
+    designation: 'Head of Content',
+    profile_photo: null,
+  },
+  {
+    id: 'cnt-emp-02',
+    name: 'Rohan Joshi',
+    employee_id: 'EMP-CNT-02',
+    department: 'Content Management',
+    designation: 'Senior Content Writer',
+    profile_photo: null,
+  },
+  {
+    id: 'cnt-emp-03',
+    name: 'Sneha Patil',
+    employee_id: 'EMP-CNT-03',
+    department: 'Content Management',
+    designation: 'SEO & Technical Writer',
+    profile_photo: null,
+  },
+  {
+    id: 'cnt-emp-04',
+    name: 'Ananya Sharma',
+    employee_id: 'EMP-CNT-04',
+    department: 'Content Management',
+    designation: 'Content Editor & Copywriter',
+    profile_photo: null,
+  },
+  {
+    id: 'cnt-emp-05',
+    name: 'Vikram Desai',
+    employee_id: 'EMP-CNT-05',
+    department: 'Content Management',
+    designation: 'Media & Video Content Creator',
+    profile_photo: null,
+  },
+]
+
 export function ContentManagementView({
   initialItems,
   initialTypes = [],
@@ -209,7 +252,7 @@ export function ContentManagementView({
 
   // Department & Employee Restrictions: Strictly Content Management department
   const contentEmployees = useMemo(() => {
-    return employees.filter((emp) => {
+    const matched = employees.filter((emp) => {
       const dept = (emp.department || '').toLowerCase().trim()
       const desig = (emp.designation || '').toLowerCase().trim()
 
@@ -232,6 +275,7 @@ export function ContentManagementView({
       // Match content department or designations
       return (
         dept === 'content' ||
+        dept.includes('content') ||
         desig.includes('content') ||
         desig.includes('marketing') ||
         desig.includes('video') ||
@@ -241,6 +285,21 @@ export function ContentManagementView({
         desig.includes('writer')
       )
     })
+
+    // Merge default Content team members with any matching active staff from database
+    const map = new Map<string, AssignableEmployee>()
+    for (const emp of DEFAULT_CONTENT_STAFF) {
+      map.set(emp.id, emp)
+      map.set(emp.name.toLowerCase(), emp)
+    }
+    for (const emp of matched) {
+      map.set(emp.id, emp)
+      if (emp.name) {
+        map.set(emp.name.toLowerCase(), emp)
+      }
+    }
+
+    return Array.from(new Set(map.values()))
   }, [employees])
 
   // Filter tasks strictly to Content Management department
