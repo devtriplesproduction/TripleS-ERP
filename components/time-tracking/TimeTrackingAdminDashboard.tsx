@@ -42,6 +42,8 @@ import {
 import { PageHeader } from '@/components/PageHeader'
 import { EmployeeScreenshotsGallery } from './EmployeeScreenshotsGallery'
 import { Badge } from '@/components/ui/badge'
+import { DatePicker } from '@/components/ui/date-picker'
+import { Dropdown } from '@/components/ui/Dropdown'
 import { cn } from '@/lib/utils'
 import type {
   EmployeeReportItem,
@@ -1181,15 +1183,19 @@ export function TimeTrackingAdminDashboard() {
               >
                 <ChevronLeft size={14} />
               </button>
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(e) => {
-                  setSelectedDate(e.target.value)
-                  setDailyPage(1)
-                }}
-                className="px-2 py-1 bg-transparent text-xs font-medium text-foreground outline-none cursor-pointer border-none font-mono"
-              />
+              <div className="w-[145px]">
+                <DatePicker
+                  value={selectedDate}
+                  onChange={(date) => {
+                    if (date) {
+                      setSelectedDate(date)
+                      setDailyPage(1)
+                    }
+                  }}
+                  iconLeft
+                  className="h-8 text-xs font-medium rounded-lg border-none bg-transparent hover:bg-muted/50 text-foreground"
+                />
+              </div>
               <button
                 onClick={() => stepDate(1)}
                 disabled={selectedDate >= getTodayIST()}
@@ -1388,19 +1394,20 @@ export function TimeTrackingAdminDashboard() {
 
               {/* Department Selector */}
               <div className="flex items-center gap-2">
-                <Building2 size={14} className="text-muted-foreground" />
-                <select
+                <Building2 size={14} className="text-muted-foreground shrink-0" />
+                <Dropdown
                   value={selectedDept}
-                  onChange={(e) => {
-                    setSelectedDept(e.target.value)
+                  onChange={(val) => {
+                    setSelectedDept(val)
                     setDailyPage(1)
                   }}
-                  className="text-xs font-medium px-3 py-1.5 rounded-xl border border-border bg-card text-foreground outline-none cursor-pointer hover:border-foreground/30 focus:border-foreground shadow-xs transition-colors"
-                >
-                  {departmentOptions.map(dept => (
-                    <option key={dept} value={dept}>{dept === 'All' ? 'All Departments' : dept}</option>
-                  ))}
-                </select>
+                  options={departmentOptions.map(dept => ({
+                    value: dept,
+                    label: dept === 'All' ? 'All Departments' : dept
+                  }))}
+                  className="w-auto space-y-0 shrink-0"
+                  buttonClassName="!h-8 !min-h-[32px] !max-h-[32px] !text-xs px-3 rounded-xl border-border bg-card font-medium shadow-xs hover:border-foreground/30 transition-colors min-w-[140px]"
+                />
               </div>
             </div>
 
@@ -1540,33 +1547,34 @@ export function TimeTrackingAdminDashboard() {
                 </div>
 
                 {/* Department Filter */}
-                <select
+                <Dropdown
                   value={selectedDept}
-                  onChange={(e) => {
-                    setSelectedDept(e.target.value)
+                  onChange={(val) => {
+                    setSelectedDept(val)
                     setDailyPage(1)
                   }}
-                  className="text-xs font-medium px-3 py-1.5 rounded-xl border border-border bg-card text-foreground outline-none cursor-pointer hover:border-foreground/30 focus:border-foreground shadow-xs transition-colors"
-                >
-                  {departmentOptions.map(dept => (
-                    <option key={dept} value={dept}>{dept === 'All' ? 'All Departments' : dept}</option>
-                  ))}
-                </select>
+                  options={departmentOptions.map(dept => ({
+                    value: dept,
+                    label: dept === 'All' ? 'All Departments' : dept
+                  }))}
+                  className="w-auto space-y-0 shrink-0"
+                  buttonClassName="!h-8 !min-h-[32px] !max-h-[32px] !text-xs px-3 rounded-xl border-border bg-card font-medium shadow-xs hover:border-foreground/30 transition-colors min-w-[130px]"
+                />
 
                 {/* Staff Selector */}
-                <select
+                <Dropdown
                   value={selectedEmpId}
-                  onChange={(e) => {
-                    setSelectedEmpId(e.target.value)
+                  onChange={(val) => {
+                    setSelectedEmpId(val)
                     setDailyPage(1)
                   }}
-                  className="text-xs font-medium px-3 py-1.5 rounded-xl border border-border bg-card text-foreground outline-none cursor-pointer max-w-[180px] truncate hover:border-foreground/30 focus:border-foreground shadow-xs transition-colors"
-                >
-                  <option value="All">All Staff ({employees.length})</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.name}</option>
-                  ))}
-                </select>
+                  options={[
+                    { value: 'All', label: `All Staff (${employees.length})` },
+                    ...employees.map(emp => ({ value: emp.id, label: emp.name }))
+                  ]}
+                  className="w-auto space-y-0 shrink-0"
+                  buttonClassName="!h-8 !min-h-[32px] !max-h-[32px] !text-xs px-3 rounded-xl border-border bg-card font-medium shadow-xs hover:border-foreground/30 transition-colors min-w-[140px] max-w-[200px]"
+                />
 
                 {/* Reset Filters Shortcut */}
                 {hasActiveFilters && (
@@ -1584,17 +1592,19 @@ export function TimeTrackingAdminDashboard() {
               {/* Sorting Controls */}
               <div className="flex items-center gap-2">
                 <span className="text-xs text-muted-foreground hidden sm:inline">Sort by:</span>
-                <select
+                <Dropdown
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="text-xs font-semibold px-3 py-1.5 rounded-xl border border-border bg-card text-foreground outline-none cursor-pointer hover:border-foreground/30 focus:border-foreground shadow-xs transition-colors"
-                >
-                  <option value="worked">Worked Time</option>
-                  <option value="active">Active Time</option>
-                  <option value="name">Name (A-Z)</option>
-                  <option value="status">Status</option>
-                  <option value="sync">Last Sync</option>
-                </select>
+                  onChange={(val) => setSortBy(val as any)}
+                  options={[
+                    { value: 'worked', label: 'Worked Time' },
+                    { value: 'active', label: 'Active Time' },
+                    { value: 'name', label: 'Name (A-Z)' },
+                    { value: 'status', label: 'Status' },
+                    { value: 'sync', label: 'Last Sync' }
+                  ]}
+                  className="w-auto space-y-0 shrink-0"
+                  buttonClassName="!h-8 !min-h-[32px] !max-h-[32px] !text-xs px-3 rounded-xl border-border bg-card font-semibold shadow-xs hover:border-foreground/30 transition-colors min-w-[125px]"
+                />
 
                 <button
                   onClick={() => setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'))}
@@ -1778,20 +1788,22 @@ export function TimeTrackingAdminDashboard() {
                 </span>
 
                 {/* Page Size Selector */}
-                <div className="flex items-center gap-1 border-l border-border pl-2 ml-1">
-                  <span className="text-[11px] text-muted-foreground">Per page:</span>
-                  <select
-                    value={dailyPageSize}
-                    onChange={(e) => {
-                      setDailyPageSize(Number(e.target.value))
+                <div className="flex items-center gap-1.5 border-l border-border pl-2 ml-1">
+                  <span className="text-[11px] text-muted-foreground shrink-0">Per page:</span>
+                  <Dropdown
+                    value={String(dailyPageSize)}
+                    onChange={(val) => {
+                      setDailyPageSize(Number(val))
                       setDailyPage(1)
                     }}
-                    className="text-[11px] font-medium px-2 py-0.5 rounded-lg border border-border bg-card text-foreground outline-none cursor-pointer"
-                  >
-                    <option value={10}>10</option>
-                    <option value={25}>25</option>
-                    <option value={50}>50</option>
-                  </select>
+                    options={[
+                      { value: '10', label: '10' },
+                      { value: '25', label: '25' },
+                      { value: '50', label: '50' }
+                    ]}
+                    className="w-auto space-y-0 shrink-0"
+                    buttonClassName="!h-7 !min-h-[28px] !max-h-[28px] !text-[11px] px-2 rounded-lg border-border bg-card font-medium shadow-2xs"
+                  />
                 </div>
               </div>
 

@@ -23,6 +23,8 @@ import {
 } from 'lucide-react'
 import type { ScreenshotItem } from '@/lib/actions/time-tracking'
 import { ScreenshotLightboxModal } from './ScreenshotLightboxModal'
+import { DatePicker } from '@/components/ui/date-picker'
+import { Dropdown } from '@/components/ui/Dropdown'
 import { cn } from '@/lib/utils'
 
 interface EmployeeScreenshotsGalleryProps {
@@ -166,67 +168,67 @@ export function EmployeeScreenshotsGallery({
         <div className="flex flex-wrap items-center gap-2.5 pt-1 border-t border-border/60">
           {/* Date Picker (if change handler provided) */}
           {onDateChange && (
-            <div className="flex items-center gap-1.5">
-              <div className="relative">
-                <Calendar size={13} className="absolute left-2.5 top-2.5 text-muted-foreground pointer-events-none" />
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => onDateChange(e.target.value)}
-                  className="text-xs font-medium pl-8 pr-3 py-1.5 rounded-xl border border-border bg-card text-foreground outline-none cursor-pointer hover:border-foreground/30 focus:border-foreground shadow-xs transition-colors"
-                />
-              </div>
+            <div className="w-[145px]">
+              <DatePicker
+                value={selectedDate}
+                onChange={(date) => {
+                  if (date) onDateChange(date)
+                }}
+                iconLeft
+                className="h-8 text-xs font-medium rounded-xl border border-border bg-card text-foreground hover:border-foreground/30 shadow-xs"
+              />
             </div>
           )}
 
           {/* Employee Selector (if provided) */}
           {availableEmployees && onEmployeeChange && (
-            <div className="relative min-w-[170px]">
-              <select
-                value={selectedEmployeeId || 'All'}
-                onChange={(e) => onEmployeeChange(e.target.value)}
-                className="w-full text-xs font-medium px-3 py-1.5 rounded-xl border border-border bg-card text-foreground outline-none cursor-pointer hover:border-foreground/30 focus:border-foreground shadow-xs transition-colors"
-              >
-                <option value="All">All Staff ({availableEmployees.length})</option>
-                {availableEmployees.map((emp) => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.name} {typeof emp.count === 'number' ? `(${emp.count})` : ''}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <Dropdown
+              value={selectedEmployeeId || 'All'}
+              onChange={onEmployeeChange}
+              options={[
+                { value: 'All', label: `All Staff (${availableEmployees.length})` },
+                ...availableEmployees.map((emp) => ({
+                  value: emp.id,
+                  label: `${emp.name}${typeof emp.count === 'number' ? ` (${emp.count})` : ''}`
+                }))
+              ]}
+              className="w-auto space-y-0 shrink-0"
+              buttonClassName="!h-8 !min-h-[32px] !max-h-[32px] !text-xs px-3 rounded-xl border-border bg-card font-medium shadow-xs hover:border-foreground/30 transition-colors min-w-[150px]"
+            />
           )}
 
           {/* Session Selector */}
           {uniqueSessions.length > 1 && (
-            <select
+            <Dropdown
               value={selectedSessionId}
-              onChange={(e) => setSelectedSessionId(e.target.value)}
-              className="text-xs font-medium px-3 py-1.5 rounded-xl border border-border bg-card text-foreground outline-none cursor-pointer hover:border-foreground/30 focus:border-foreground shadow-xs transition-colors"
-            >
-              <option value="All">All Sessions ({uniqueSessions.length})</option>
-              {uniqueSessions.map((sid, idx) => (
-                <option key={sid} value={sid}>
-                  Session #{idx + 1} ({sid.slice(0, 8)}...)
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedSessionId}
+              options={[
+                { value: 'All', label: `All Sessions (${uniqueSessions.length})` },
+                ...uniqueSessions.map((sid, idx) => ({
+                  value: sid,
+                  label: `Session #${idx + 1} (${sid.slice(0, 8)}...)`
+                }))
+              ]}
+              className="w-auto space-y-0 shrink-0"
+              buttonClassName="!h-8 !min-h-[32px] !max-h-[32px] !text-xs px-3 rounded-xl border-border bg-card font-medium shadow-xs hover:border-foreground/30 transition-colors min-w-[130px]"
+            />
           )}
 
           {/* App Selector */}
           {uniqueApps.length > 0 && (
-            <select
+            <Dropdown
               value={selectedApp}
-              onChange={(e) => setSelectedApp(e.target.value)}
-              className="text-xs font-medium px-3 py-1.5 rounded-xl border border-border bg-card text-foreground outline-none cursor-pointer hover:border-foreground/30 focus:border-foreground shadow-xs transition-colors"
-            >
-              <option value="All">All Apps ({uniqueApps.length})</option>
-              {uniqueApps.map((app) => (
-                <option key={app} value={app}>
-                  {app}
-                </option>
-              ))}
-            </select>
+              onChange={setSelectedApp}
+              options={[
+                { value: 'All', label: `All Apps (${uniqueApps.length})` },
+                ...uniqueApps.map((app) => ({
+                  value: app,
+                  label: app
+                }))
+              ]}
+              className="w-auto space-y-0 shrink-0"
+              buttonClassName="!h-8 !min-h-[32px] !max-h-[32px] !text-xs px-3 rounded-xl border-border bg-card font-medium shadow-xs hover:border-foreground/30 transition-colors min-w-[120px]"
+            />
           )}
 
           {/* Search by Window Title */}
