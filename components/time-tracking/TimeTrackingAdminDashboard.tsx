@@ -41,6 +41,7 @@ import {
 } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import { EmployeeScreenshotsGallery } from './EmployeeScreenshotsGallery'
+import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import type {
   EmployeeReportItem,
@@ -478,12 +479,10 @@ export function TimeTrackingAdminDashboard() {
       'Worked Hours',
       'Active Hours',
       'Idle Hours',
-      'Efficiency %',
       'Screenshots',
       'Last Sync'
     ]
     const rows = filteredDailyEmployees.map(e => {
-      const eff = e.workedMinutes > 0 ? Math.round((e.activeMinutes / e.workedMinutes) * 100) : 0
       return [
         `"${e.employee_id || ''}"`,
         `"${e.name}"`,
@@ -495,7 +494,6 @@ export function TimeTrackingAdminDashboard() {
         `"${e.workedHours}"`,
         `"${e.activeHours}"`,
         `"${e.idleHours}"`,
-        `"${eff}%"`,
         `"${e.screenshotCount || 0}"`,
         `"${e.lastSyncFormatted}"`
       ].join(',')
@@ -591,10 +589,6 @@ export function TimeTrackingAdminDashboard() {
   // DETAIL DRILLDOWN VIEW FOR INDIVIDUAL EMPLOYEE
   // -------------------------------------------------------------
   if (selectedEmployee) {
-    const employeeEfficiency = selectedEmployee.workedMinutes > 0
-      ? Math.round((selectedEmployee.activeMinutes / selectedEmployee.workedMinutes) * 100)
-      : 0
-
     // Find current employee index for next/prev stepping
     const currentIndex = filteredDailyEmployees.findIndex(e => e.id === selectedEmployee.id)
     const prevEmployee = currentIndex > 0 ? filteredDailyEmployees[currentIndex - 1] : null
@@ -680,12 +674,12 @@ export function TimeTrackingAdminDashboard() {
           </div>
 
           {/* Metric Cards Header */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 w-full lg:w-auto">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 w-full lg:w-auto">
             {/* Worked Time */}
             <div className="p-3.5 rounded-xl border border-border bg-muted/20 min-w-[110px]">
               <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-medium">
-                <Clock size={13} className="text-blue-500" />
-                <span>Worked Time</span>
+                <Clock size={13} className="text-violet-500" />
+                <span>Worked Hours</span>
               </div>
               <span className="text-lg font-bold text-foreground mt-1 block font-mono">
                 {selectedEmployee.workedHours}
@@ -696,7 +690,7 @@ export function TimeTrackingAdminDashboard() {
             <div className="p-3.5 rounded-xl border border-border bg-muted/20 min-w-[110px]">
               <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-medium">
                 <Activity size={13} className="text-emerald-500" />
-                <span>Active Time</span>
+                <span>Active Hours</span>
               </div>
               <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-1 block font-mono">
                 {selectedEmployee.activeHours}
@@ -707,23 +701,11 @@ export function TimeTrackingAdminDashboard() {
             <div className="p-3.5 rounded-xl border border-border bg-muted/20 min-w-[110px]">
               <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-medium">
                 <Moon size={13} className="text-slate-500" />
-                <span>Idle Time</span>
+                <span>Idle Hours</span>
               </div>
               <span className="text-lg font-bold text-foreground mt-1 block font-mono">
                 {selectedEmployee.idleHours}
               </span>
-            </div>
-
-            {/* Efficiency */}
-            <div className="p-3.5 rounded-xl border border-border bg-muted/20 min-w-[110px]">
-              <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-medium">
-                <Timer size={13} className="text-cyan-500" />
-                <span>Efficiency</span>
-              </div>
-              <div className="flex items-baseline gap-1 mt-1">
-                <span className="text-lg font-bold text-foreground font-mono">{employeeEfficiency}%</span>
-                <span className="text-[10px] text-muted-foreground">active</span>
-              </div>
             </div>
 
             {/* Suspend */}
@@ -1353,7 +1335,7 @@ export function TimeTrackingAdminDashboard() {
                 </span>
               </div>
               <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                {overview.activeEfficiencyPercent}% efficiency
+                Active telemetry today
               </span>
             </div>
 
@@ -1634,7 +1616,8 @@ export function TimeTrackingAdminDashboard() {
                     <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4">Clock In</th>
                     <th className="py-3 px-4">Clock Out</th>
-                    <th className="py-3 px-4">Productivity & Efficiency</th>
+                    <th className="py-3 px-4">Worked Hours</th>
+                    <th className="py-3 px-4">Active Hours</th>
                     <th className="py-3 px-4">Screenshots</th>
                     <th className="py-3 px-4">Last Sync</th>
                     <th className="py-3 px-4 text-right">Action</th>
@@ -1643,10 +1626,6 @@ export function TimeTrackingAdminDashboard() {
                 <tbody className="divide-y divide-border">
                   {paginatedDailyEmployees.length > 0 ? (
                     paginatedDailyEmployees.map((emp) => {
-                      const efficiency = emp.workedMinutes > 0
-                        ? Math.round((emp.activeMinutes / emp.workedMinutes) * 100)
-                        : 0
-
                       return (
                         <tr
                           key={emp.id}
@@ -1693,36 +1672,36 @@ export function TimeTrackingAdminDashboard() {
                             )}
                           </td>
 
-                          {/* Visual Productivity & Efficiency Bar */}
+                          {/* Worked Hours */}
                           <td className="py-3 px-4">
-                            <div className="space-y-1 min-w-[130px]">
-                              <div className="flex items-center justify-between text-[11px]">
-                                <span className="font-mono font-bold text-foreground">{emp.activeHours}</span>
-                                <span className={cn(
-                                  "text-[10px] font-semibold px-1.5 py-0.5 rounded",
-                                  efficiency >= 75 ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400" :
-                                  efficiency >= 50 ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" :
-                                  "bg-rose-500/10 text-rose-600 dark:text-rose-400"
-                                )}>
-                                  {efficiency}%
-                                </span>
-                              </div>
-                              <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
-                                <div
-                                  className={cn(
-                                    "h-full rounded-full transition-all duration-300",
-                                    efficiency >= 75 ? "bg-emerald-500" :
-                                    efficiency >= 50 ? "bg-amber-500" :
-                                    "bg-rose-500"
-                                  )}
-                                  style={{ width: `${Math.min(100, efficiency)}%` }}
-                                />
-                              </div>
-                              <div className="text-[10px] text-muted-foreground flex justify-between font-mono">
-                                <span>of {emp.workedHours} worked</span>
-                                {emp.idleMinutes > 0 && <span>{Math.round(emp.idleMinutes / 60)}h idle</span>}
-                              </div>
-                            </div>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "font-mono text-xs font-semibold px-2.5 py-1 gap-1.5 border-border shadow-2xs",
+                                emp.workedMinutes > 0
+                                  ? "bg-muted/40 text-foreground"
+                                  : "bg-muted/20 text-muted-foreground opacity-60"
+                              )}
+                            >
+                              <Clock size={12} className={cn("shrink-0", emp.workedMinutes > 0 ? "text-violet-500" : "text-muted-foreground")} />
+                              <span>{emp.workedHours}</span>
+                            </Badge>
+                          </td>
+
+                          {/* Active Hours */}
+                          <td className="py-3 px-4">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "font-mono text-xs font-semibold px-2.5 py-1 gap-1.5 shadow-2xs",
+                                emp.activeMinutes > 0
+                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                                  : "border-border bg-muted/20 text-muted-foreground opacity-60"
+                              )}
+                            >
+                              <Activity size={12} className={cn("shrink-0", emp.activeMinutes > 0 ? "text-emerald-500" : "text-muted-foreground")} />
+                              <span>{emp.activeHours}</span>
+                            </Badge>
                           </td>
 
                           {/* Screenshots */}
@@ -1763,7 +1742,7 @@ export function TimeTrackingAdminDashboard() {
                     })
                   ) : (
                     <tr>
-                      <td colSpan={9} className="py-12 text-center text-muted-foreground">
+                      <td colSpan={10} className="py-12 text-center text-muted-foreground">
                         {loading ? (
                           <div className="flex flex-col items-center justify-center gap-2">
                             <RefreshCw size={20} className="animate-spin text-primary" />
