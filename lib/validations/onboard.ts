@@ -156,3 +156,30 @@ export const STEP_2_FIELDS: (keyof OnboardFormData)[] = [
   'role',
   'is_hod',
 ]
+
+export const professionalEditSchema = z.object({
+  employee_id_number: z.string().trim().min(1, 'Employee ID is required.'),
+  department: z.string().trim().min(1, 'Department is required.').optional().or(z.literal('')),
+  division: z.string().trim().min(1, 'Division is required.').optional().or(z.literal('')),
+  designation: z.string().trim().min(1, 'Designation is required.').optional().or(z.literal('')),
+  job_title: z.string().optional(),
+  employment_type: z.string().trim().min(1, 'Employment type is required.').optional().or(z.literal('')),
+  joining_date: z.string().optional().nullable(),
+  email: z.string().trim().email('Valid work email is required.'),
+  work_location: z.string().trim().min(1, 'Work location is required.'),
+  salary: z.union([z.number(), z.string(), z.null()]).optional(),
+  stipend: z.union([z.number(), z.string(), z.null()]).optional(),
+}).refine((data) => {
+  if (data.employment_type === 'Intern') {
+    if (data.stipend === null || data.stipend === undefined || data.stipend === '') {
+      return false
+    }
+    const num = Number(data.stipend)
+    return !isNaN(num) && num >= 0
+  }
+  return true
+}, {
+  message: 'Stipend is required for Interns.',
+  path: ['stipend'],
+})
+

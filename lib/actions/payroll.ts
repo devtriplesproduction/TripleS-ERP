@@ -140,8 +140,98 @@ export async function getMonthlyPayrollAction(year: number, month: number, emplo
       return { success: false, error: 'Unauthorized: Financial data access is restricted to HR and Admin.' }
     }
 
+    const { getFinalizedPayroll, isPayrollFinalized } = await import('@/lib/services/payroll-records.service')
+    const finalized = await isPayrollFinalized(year, month)
+
+    if (finalized) {
+      const finalizedData = await getFinalizedPayroll(year, month, employeeIds)
+      if (finalizedData && finalizedData.length > 0) {
+        return {
+          success: true,
+          data: finalizedData,
+          isFinalized: true
+        }
+      }
+    }
+
     const results = await calculateMonthlyPayroll(year, month, employeeIds)
-    return { success: true, data: results }
+    return { success: true, data: results, isFinalized: false }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+}
+
+export async function finalizeMonthlyPayrollAction(year: number, month: number) {
+  try {
+    const user = await getCurrentUser()
+    if (!user || (user.role !== 'HR' && user.role !== 'Admin')) {
+      return { success: false, error: 'Unauthorized: Finalizing payroll is restricted to HR and Admin.' }
+    }
+
+    const { isPayrollFinalized, finalizePayrollRun } = await import('@/lib/services/payroll-records.service')
+    const alreadyFinalized = await isPayrollFinalized(year, month)
+    if (alreadyFinalized) {
+      return { success: false, error: `Payroll for ${year}-${String(month).padStart(2, '0')} has already been finalized and locked.` }
+    }
+
+    // Compute fresh draft results to freeze
+    const results = await calculateMonthlyPayroll(year, month)
+    const hasUnresolvedErrors = results.some(r => r.hasMissingSalary || r.calculationError);
+    if (hasUnresolvedErrors) {
+      const errorCount = results.filter(r => r.hasMissingSalary || r.calculationError).length;
+      return {
+        success: false,
+        error: `Cannot finalize payroll: ${errorCount} employee(s) have missing salary structure or unresolved calculation errors. Please configure compensation before finalizing.`
+      }
+    }
+
+    const finalizeRes = await finalizePayrollRun(year, month, results, user.id)
+
+    if (!finalizeRes.success) {
+      return { success: false, error: finalizeRes.error || 'Failed to finalize payroll.' }
+    }
+
+    safeRevalidatePath('/payroll')
+    safeRevalidatePath('/hr/payroll')
+    safeRevalidatePath('/admin-payroll')
+    safeRevalidatePath('/my-payroll')
+
+    return {
+      success: true,
+      message: `Payroll for ${year}-${String(month).padStart(2, '0')} successfully finalized and locked.`,
+      run: finalizeRes.run
+    }
+  } catch (error: any) {
+    return { success: false, error: error.message }
+  }
+}
+
+export async function adjustMonthlyPayrollAction(
+  year: number,
+  month: number,
+  employeeId: string,
+  adjustmentAmount: number,
+  reason: string
+) {
+  try {
+    const user = await getCurrentUser()
+    if (!user || (user.role !== 'HR' && user.role !== 'Admin')) {
+      return { success: false, error: 'Unauthorized: Adjusting finalized payroll is restricted to HR and Admin.' }
+    }
+
+    const { adjustPayrollItem } = await import('@/lib/services/payroll-records.service')
+    const adjustRes = await adjustPayrollItem(year, month, employeeId, adjustmentAmount, reason, user.id)
+
+    if (!adjustRes.success) {
+      return { success: false, error: adjustRes.error || 'Failed to apply adjustment.' }
+    }
+
+    safeRevalidatePath('/payroll')
+    safeRevalidatePath('/hr/payroll')
+    safeRevalidatePath('/admin-payroll')
+    safeRevalidatePath('/my-payroll')
+
+    return { success: true, message: 'Audited adjustment applied successfully.' }
   } catch (error: any) {
     return { success: false, error: error.message }
   }
@@ -262,13 +352,29 @@ export async function getMyMonthlyPayrollAction(year: number, month: number) {
       return { success: false, error: 'Account inactive or access disabled.' }
     }
 
-    // Securely calculate payroll ONLY for this single employee
-    const results = await calculateMonthlyPayroll(year, month, [empRecord.id])
-    const payroll = results && results.length > 0 ? results[0] : null
+    const { getFinalizedPayroll, isPayrollFinalized } = await import('@/lib/services/payroll-records.service')
+    const finalized = await isPayrollFinalized(year, month)
+    let payroll: any = null
+    let isFinalized = false
+
+    if (finalized) {
+      const finalizedRecords = await getFinalizedPayroll(year, month, [empRecord.id])
+      if (finalizedRecords && finalizedRecords.length > 0) {
+        payroll = finalizedRecords[0]
+        isFinalized = true
+      }
+    }
+
+    if (!payroll) {
+      // Securely calculate payroll ONLY for this single employee
+      const results = await calculateMonthlyPayroll(year, month, [empRecord.id])
+      payroll = results && results.length > 0 ? results[0] : null
+    }
 
     return {
       success: true,
       data: payroll,
+      isFinalized,
       employee: {
         id: empRecord.id,
         employee_id_number: empRecord.employee_id_number,

@@ -1,7 +1,6 @@
 // @ts-nocheck
 
-import { createClient } from "@/lib/supabase/server";
-import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 
 
 
@@ -26,10 +25,7 @@ async function resolveCurrentEODUser(client: any) {
   const { data: { user }, error } = await client.auth.getUser();
   if (error || !user) return null;
 
-  const adminSupa = createSupabaseClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
+  const adminSupa = await createAdminClient();
   const { data: profile } = await adminSupa.from('profiles').select('role').eq('id', user.id).single();
   return {
     id: user.id,
@@ -512,7 +508,7 @@ export async function getAllEODs(filters?: { employeeId?: string; startDate?: st
     const _authSupabase = await createClient();
     const currentUser = await resolveCurrentEODUser(_authSupabase);
     if (!currentUser) return { success: false, error: "Unauthorized: Authentication required" };
-    const supabase = createSupabaseClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { auth: { persistSession: false }, global: { fetch: (url, options) => fetch(url, { ...options, cache: 'no-store' }) } });
+    const supabase = await createAdminClient();
 
     if (!canManageEOD(currentUser.roles)) {
       return { success: false, error: "Unauthorized: " + (currentUser ? JSON.stringify(currentUser) : "No User") };

@@ -219,7 +219,7 @@ describe('Comprehensive RBAC & Route Audit Suite', () => {
       })
     })
 
-    describe('/payroll (Admin & HR only)', () => {
+    describe('/payroll (Canonical Route with Server-Side View Partitioning)', () => {
       it('allows Admin access to /payroll', () => {
         expect(hasRouteAccess('Admin', '/payroll')).toBe(true)
       })
@@ -228,12 +228,12 @@ describe('Comprehensive RBAC & Route Audit Suite', () => {
         expect(hasRouteAccess('HR', '/payroll')).toBe(true)
       })
 
-      it('denies Employee access to /payroll', () => {
-        expect(hasRouteAccess('Employee', '/payroll')).toBe(false)
+      it('allows Employee access to /payroll (displays read-only My Payroll view)', () => {
+        expect(hasRouteAccess('Employee', '/payroll')).toBe(true)
       })
 
-      it('denies Manager access to /payroll', () => {
-        expect(hasRouteAccess('Manager', '/payroll')).toBe(false)
+      it('allows Manager access to /payroll (displays read-only My Payroll view)', () => {
+        expect(hasRouteAccess('Manager', '/payroll')).toBe(true)
       })
     })
 

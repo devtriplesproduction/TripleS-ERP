@@ -613,7 +613,8 @@ export function LeaveClientPage({
             filteredMyLeaves.map((leave: any) => {
               const isApproved = leave.status === 'Approved'
               const isPending = leave.status?.includes('Pending')
-              const canCancel = isPending || isApproved
+              const isPast = leave.end_date ? new Date(leave.end_date + 'T23:59:59') < new Date() : false
+              const canCancel = isPending || (isApproved && !isPast)
 
               return (
                 <div

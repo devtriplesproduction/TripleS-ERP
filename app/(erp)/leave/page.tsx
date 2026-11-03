@@ -19,13 +19,21 @@ export default async function LeaveManagementPage() {
   const canApprove = isSuperAdmin || isHR
 
   // Look up linked employee_onboarding record
-  let employeeId = ''
-  if (user.employee_id) {
+  let employeeId = user.onboarding_id || ''
+  if (!employeeId && user.employee_id) {
     const { data: empRecord } = await supabase
       .from('employee_onboarding')
       .select('id')
       .eq('employee_id_number', user.employee_id)
-      .single()
+      .maybeSingle()
+    employeeId = empRecord?.id || ''
+  }
+  if (!employeeId && user.email) {
+    const { data: empRecord } = await supabase
+      .from('employee_onboarding')
+      .select('id')
+      .eq('email', user.email)
+      .maybeSingle()
     employeeId = empRecord?.id || ''
   }
 
@@ -43,14 +51,22 @@ export default async function LeaveManagementPage() {
   }
 
   const leavesList = allLeaves || []
-  const myLeaves = leavesList.filter((l) => l.employee_id === employeeId)
+  const myLeaves = leavesList.filter((l) =>
+    (employeeId && l.employee_id === employeeId) ||
+    (user.id && l.employee_id === user.id) ||
+    (user.employee_id && l.employee_id === user.employee_id)
+  )
 
   // Leaves to approve based on role
   let leavesToApprove: any[] = []
   if (isSuperAdmin) {
     leavesToApprove = leavesList
   } else if (isHR) {
-    leavesToApprove = leavesList.filter((l) => l.employee_id !== employeeId)
+    leavesToApprove = leavesList.filter((l) => 
+      (!employeeId || l.employee_id !== employeeId) &&
+      (!user.id || l.employee_id !== user.id) &&
+      (!user.employee_id || l.employee_id !== user.employee_id)
+    )
   }
 
   const compOffBalance = employeeId ? await getCompOffBalance(employeeId) : 0

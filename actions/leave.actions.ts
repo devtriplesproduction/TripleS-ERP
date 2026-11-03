@@ -2,7 +2,67 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { processLeaveCompOff, getCompOffBalance } from "@/lib/actions/compoff"
-import { guardServerAction, getCurrentUser } from "@/lib/auth"
+import { guardServerAction, getCurrentUser, type AuthUser } from "@/lib/auth"
+
+/**
+ * Resolves the canonical employee_onboarding ID for an authenticated user.
+ * Supports users with onboarding_id, employee_id_number, profile id, or email.
+ */
+export async function resolveEmployeeOnboardingId(
+  user: { id?: string; employee_id?: string | null; email?: string | null; onboarding_id?: string | null },
+  supabase: any
+): Promise<string | null> {
+  if (user.onboarding_id) {
+    return user.onboarding_id
+  }
+
+  // 1. Look up by employee_id_number (e.g. 'EMP-004')
+  if (user.employee_id) {
+    const { data: empByNumber } = await supabase
+      .from('employee_onboarding')
+      .select('id')
+      .eq('employee_id_number', user.employee_id)
+      .maybeSingle()
+    if (empByNumber?.id) return empByNumber.id
+  }
+
+  // 2. Check if user.id is already an employee_onboarding id
+  if (user.id) {
+    const { data: empById } = await supabase
+      .from('employee_onboarding')
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (empById?.id) return empById.id
+
+    // 3. Or check profile to find employee_id
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('employee_id')
+      .eq('id', user.id)
+      .maybeSingle()
+    if (profile?.employee_id) {
+      const { data: empByProfileNum } = await supabase
+        .from('employee_onboarding')
+        .select('id')
+        .eq('employee_id_number', profile.employee_id)
+        .maybeSingle()
+      if (empByProfileNum?.id) return empByProfileNum.id
+    }
+  }
+
+  // 4. Fallback lookup by email
+  if (user.email) {
+    const { data: empByEmail } = await supabase
+      .from('employee_onboarding')
+      .select('id')
+      .eq('email', user.email)
+      .maybeSingle()
+    if (empByEmail?.id) return empByEmail.id
+  }
+
+  return null
+}
 
 export async function reviewLeaveAction(leaveId: string, newStatus: string) {
   await guardServerAction(['Admin', 'HR'])
@@ -17,6 +77,11 @@ export async function reviewLeaveAction(leaveId: string, newStatus: string) {
 
   if (fetchError || !leave) {
     return { success: false, error: "Leave request not found" }
+  }
+
+  // Cannot review an already cancelled leave request
+  if (leave.status === 'Cancelled') {
+    return { success: false, error: "Cannot review an already cancelled leave request" }
   }
 
   // 2. Process Comp Off Deduction if it's a Comp Off leave being approved
@@ -52,6 +117,26 @@ export async function submitLeaveAction(leaveData: any) {
   }
 
   const supabase = await createClient()
+  const userOnboardingId = await resolveEmployeeOnboardingId(user, supabase)
+  const isManagement = user.role === 'Admin' || user.role === 'HR' || (user.role as string) === 'Super Admin'
+
+  // Non-management employees can only submit for themselves using their canonical employee identity
+  if (!isManagement) {
+    if (!userOnboardingId) {
+      return { success: false, error: "Employee onboarding record not found" }
+    }
+    if (
+      leaveData.employee_id &&
+      leaveData.employee_id !== userOnboardingId &&
+      leaveData.employee_id !== user.id &&
+      leaveData.employee_id !== user.employee_id
+    ) {
+      return { success: false, error: "Unauthorized: You can only submit leave requests for yourself" }
+    }
+    leaveData.employee_id = userOnboardingId
+  } else if (!leaveData.employee_id) {
+    leaveData.employee_id = userOnboardingId || user.id
+  }
 
   if (leaveData.leave_type === 'Compensatory Off') {
     const balance = await getCompOffBalance(leaveData.employee_id)
@@ -80,6 +165,10 @@ export async function submitLeaveAction(leaveData: any) {
 }
 
 export async function cancelLeaveAction(leaveId: string) {
+  if (!leaveId || typeof leaveId !== 'string') {
+    return { success: false, error: "Invalid leave ID" }
+  }
+
   const user = await getCurrentUser()
   if (!user) {
     return { success: false, error: "Unauthorized: Authentication required" }
@@ -97,14 +186,38 @@ export async function cancelLeaveAction(leaveId: string) {
     return { success: false, error: "Leave request not found" }
   }
 
-  // Authorization check: Only Admin, HR, or the employee themselves can cancel
-  const isOwner = user.id === leave.employee_id || user.employee_id === leave.employee_id
-  const isManagement = user.role === 'Admin' || user.role === 'HR'
+  // Prevent cancellation of requests that are already cancelled or rejected
+  if (leave.status === 'Cancelled') {
+    return { success: false, error: "This request has already been cancelled" }
+  }
+
+  if (leave.status === 'Rejected') {
+    return { success: false, error: "Cannot cancel a rejected request" }
+  }
+
+  const isManagement = user.role === 'Admin' || user.role === 'HR' || (user.role as string) === 'Super Admin'
+
+  // Prevent regular employees from cancelling approved leaves that have already elapsed/completed in the past
+  const todayStr = new Date().toISOString().split('T')[0]
+  if (leave.status === 'Approved' && leave.end_date < todayStr && !isManagement) {
+    return { success: false, error: "Cannot cancel a leave request that has already been completed" }
+  }
+
+  // Resolve canonical onboarding ID for current user
+  const userOnboardingId = await resolveEmployeeOnboardingId(user, supabase)
+
+  // Authorization check: Compare using canonical employee identity
+  const isOwner = Boolean(
+    (userOnboardingId && leave.employee_id === userOnboardingId) ||
+    (user.id && leave.employee_id === user.id) ||
+    (user.employee_id && leave.employee_id === user.employee_id)
+  )
+
   if (!isOwner && !isManagement) {
     return { success: false, error: "Unauthorized: You can only cancel your own leave requests" }
   }
 
-  // If this was a Comp-Off leave, handle reversal of debit
+  // If this was an Approved Comp-Off leave, handle reversal of debit
   if (leave.leave_type === 'Compensatory Off') {
     const startDate = new Date(leave.start_date)
     const endDate = new Date(leave.end_date)

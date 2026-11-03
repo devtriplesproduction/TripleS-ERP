@@ -587,13 +587,13 @@ export function classifyWorkDay(workedMinutes: number, context: WorkDayContext):
 
   // Normal working day (Mon-Sat)
   if (wm < HALF_DAY_THRESHOLD) {
-    // Case A: Less than 4 hours → Unpaid Leave
+    // Case A: Less than 4 hours → Unpaid Leave with 0 Comp-Off credit
     return {
       context,
       workedMinutes: wm,
       payrollStatus: 'UNPAID_LEAVE',
       isPayableDay: false, // Excluded from payroll
-      compOffMinutes: 0, // No Comp Off under 8h threshold on normal days
+      compOffMinutes: 0,
       attendanceStatus: 'Unpaid Leave',
     };
   }

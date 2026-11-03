@@ -310,7 +310,7 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
                   <div className="text-muted-foreground">Worked Hours</div>
                   <div className="text-right font-medium text-foreground">
                     {selectedAtt.workedHours > 0 
-                      ? `${formatOfficeHoursAsHHMM(selectedAtt.workedHours)} hrs (${selectedAtt.workedHours}h)`
+                      ? `${formatOfficeHoursAsHHMM(selectedAtt.workedHours)} hrs`
                       : '0.00 hrs'}
                   </div>
 

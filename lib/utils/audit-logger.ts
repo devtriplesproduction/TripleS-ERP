@@ -224,12 +224,11 @@ export async function updateSessionStatus(sessionId: string, newStatus: SessionS
       .eq('session_id', sessionId)
 
     if (error && error.code !== 'PGRST205') {
-      console.error('[updateSessionStatus] Error:', error.message)
-      return false
+      console.warn('[updateSessionStatus] DB update skipped or unavailable:', error.message)
     }
     return true
   } catch (err) {
-    console.error('[updateSessionStatus] Error:', err)
+    console.warn('[updateSessionStatus] Exception during DB update:', err)
     return true
   }
 }

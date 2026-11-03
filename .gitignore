@@ -39,3 +39,30 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+
+# Local audit and temporary files
+/scratch/
+/scratch.sql
+/scratch_eod.ps1
+/scratch_fetch_tasks.ts
+/scratch_test_photos.ts
+/check_emp_state.js
+/check_eods.js
+/check_ledger_balance.js
+/diff_output.txt
+
+# Local Supabase CLI files
+/supabase/.temp/
+
+# Environment example file (allow committing the template)
+!.env.example
+
+# Private accounting documents and uploaded files
+/public/uploads/accounting/
+
+# Local verification and scratch scripts
+/reconcile.ts
+/test_compoff.js
+/verify_june.ts
+/verify_past_day.js

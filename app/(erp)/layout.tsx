@@ -8,8 +8,9 @@ import { checkEmployeeProjectAccess, checkEmployeeHasTasks } from '@/lib/actions
 export default async function ERPLayout({ children }: { children: ReactNode }) {
   const user = await requireAuth()
   
+  const isPrivileged = user.role === 'Admin' || user.role === 'Manager' || !!user.is_hod
   const [hasProjectAccess, hasTasks] = await Promise.all([
-    checkEmployeeProjectAccess(user.id),
+    isPrivileged ? true : checkEmployeeProjectAccess(user.id),
     checkEmployeeHasTasks(user.id)
   ])
 

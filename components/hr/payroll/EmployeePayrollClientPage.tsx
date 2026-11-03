@@ -17,7 +17,8 @@ import {
   TrendingDown,
   TrendingUp,
   AlertCircle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Lock
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { PageHeader } from '@/components/PageHeader'
@@ -68,6 +69,7 @@ export function EmployeePayrollClientPage({ user }: EmployeePayrollClientPagePro
   const [year, setYear] = useState(currentDate.getFullYear())
   const [loading, setLoading] = useState(true)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
+  const [isFinalized, setIsFinalized] = useState(false)
   
   const [payroll, setPayroll] = useState<PayrollResult | null>(null)
   const [employeeInfo, setEmployeeInfo] = useState<EmployeeInfo | null>(null)
@@ -84,6 +86,7 @@ export function EmployeePayrollClientPage({ user }: EmployeePayrollClientPagePro
       const res = await getMyMonthlyPayrollAction(targetYear, targetMonth)
       if (res.success) {
         setPayroll(res.data ?? null)
+        setIsFinalized(Boolean(res.isFinalized))
         if (res.employee) {
           setEmployeeInfo(res.employee)
         }
@@ -210,7 +213,7 @@ export function EmployeePayrollClientPage({ user }: EmployeePayrollClientPagePro
       doc.setTextColor(primaryColor[0], primaryColor[1], primaryColor[2])
       doc.text(designation, 140, 46)
       doc.text(`${monthName} 1 to ${new Date(year, month, 0).getDate()}, ${year}`, 140, 54)
-      doc.text('Calculated', 140, 62)
+      doc.text(isFinalized ? 'Finalized (Locked)' : 'Draft Preview', 140, 62)
 
       // Tables: Earnings & Deductions
       const startY = 76
@@ -227,7 +230,7 @@ export function EmployeePayrollClientPage({ user }: EmployeePayrollClientPagePro
 
       let ey = startY + 16
       const earningsItems = [
-        ['Monthly Base Salary', (payroll?.salary || employeeInfo?.monthlyBasic || 0).toFixed(2)],
+        ['Monthly Base Pay', (payroll?.salary || employeeInfo?.monthlyBasic || 0).toFixed(2)],
         ['Overtime Earnings', (payroll?.overtimePay || 0).toFixed(2)]
       ]
 
@@ -259,9 +262,11 @@ export function EmployeePayrollClientPage({ user }: EmployeePayrollClientPagePro
       doc.text('AMOUNT (INR)', dx + boxWidth - 4, startY + 5.5, { align: 'right' })
 
       let dy = startY + 16
+      const attendanceDeduct = payroll?.attendanceDeduction ?? payroll?.unpaidLeaveDeduction ?? 0
+      const manualDeduct = payroll?.manualDeductions || 0
       const deductionItems = [
-        ['Unpaid Days / Absent', (payroll?.unpaidLeaveDeduction || 0).toFixed(2)],
-        ['Short Hours Deduction', (payroll?.shortHoursDeduction || 0).toFixed(2)]
+        ['Attendance Deductions', Number(attendanceDeduct).toFixed(2)],
+        ['Custom / Manual Deductions', Number(manualDeduct).toFixed(2)]
       ]
 
       doc.setFont('helvetica', 'normal')
@@ -376,6 +381,12 @@ export function EmployeePayrollClientPage({ user }: EmployeePayrollClientPagePro
         icon={CreditCard}
         actions={
           <div className="flex items-center gap-2">
+            {isFinalized && (
+              <Badge variant="outline" className="px-2.5 py-1 text-xs border-emerald-500 text-emerald-600 dark:text-emerald-400 gap-1 font-semibold">
+                <Lock className="h-3 w-3" />
+                Finalized Payslip
+              </Badge>
+            )}
             <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-full border border-border shadow-xs shrink-0">
               <Button
                 variant="ghost"

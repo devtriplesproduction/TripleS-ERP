@@ -71,8 +71,13 @@ class AuditQueue {
 
         const { error } = await supabase.from('activity_logs').insert(records);
         if (error) {
-          if (error.code === 'PGRST205') {
-            // Table unmigrated in remote environment, fall back gracefully
+          if (
+            error.code === 'PGRST205' ||
+            error.code === 'PGRST204' ||
+            error.message?.includes('schema cache') ||
+            error.message?.includes('column')
+          ) {
+            // Table unmigrated or different column schema in remote environment, fall back gracefully
             return;
           }
           throw new Error(`Batch activity_logs insert failed: ${error.message}`);

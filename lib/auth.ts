@@ -19,6 +19,7 @@ export interface AuthUser {
   department?: string | null
   designation?: string | null
   division?: string | null
+  onboarding_id?: string | null
 }
 
 /**
@@ -70,11 +71,12 @@ export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
     let designation: string | null = null
     let division: string | null = null
     let resolvedRole = (profile.role || 'Employee') as AppRole
+    let onboarding_id: string | null = null
 
     if (profile.employee_id) {
       const { data: emp } = await supabase
         .from('employee_onboarding')
-        .select('is_hod, department, designation, division, role, employment_status')
+        .select('id, is_hod, department, designation, division, role, employment_status')
         .eq('employee_id_number', profile.employee_id)
         .maybeSingle()
 
@@ -83,11 +85,56 @@ export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
         if (emp.employment_status === 'Inactive' || emp.employment_status === 'Terminated') {
           return null
         }
+        onboarding_id = emp.id
         if (!is_hod) is_hod = !!emp.is_hod
         department = emp.department || null
         designation = emp.designation || null
         division = emp.division || null
         if (resolvedRole === 'Employee' && emp.role === 'Manager') {
+          resolvedRole = 'Manager'
+        }
+      }
+    }
+
+    if (!onboarding_id && user.email) {
+      const { data: empByEmail } = await supabase
+        .from('employee_onboarding')
+        .select('id, is_hod, department, designation, division, role, employment_status')
+        .eq('email', user.email)
+        .maybeSingle()
+
+      if (empByEmail) {
+        if (empByEmail.employment_status === 'Inactive' || empByEmail.employment_status === 'Terminated') {
+          return null
+        }
+        onboarding_id = empByEmail.id
+        if (!is_hod) is_hod = !!empByEmail.is_hod
+        department = department || empByEmail.department || null
+        designation = designation || empByEmail.designation || null
+        division = division || empByEmail.division || null
+        if (resolvedRole === 'Employee' && empByEmail.role === 'Manager') {
+          resolvedRole = 'Manager'
+        }
+      }
+    }
+
+    if (!onboarding_id) {
+      const { data: empById } = await supabase
+        .from('employee_onboarding')
+        .select('id, is_hod, department, designation, division, role, employment_status')
+        .eq('id', user.id)
+        .maybeSingle()
+
+      if (empById) {
+        if (empById.employment_status === 'Inactive' || empById.employment_status === 'Terminated') {
+          return null
+        }
+        onboarding_id = empById.id
+        if (!is_hod) is_hod = !!empById.is_hod
+        department = department || empById.department || null
+        designation = designation || empById.designation || null
+        division = division || empById.division || null
+        if (resolvedRole === 'Employee' && empById.role === 'Manager') {
           resolvedRole = 'Manager'
         }
       }
@@ -103,6 +150,7 @@ export const getCurrentUser = cache(async (): Promise<AuthUser | null> => {
       department,
       designation,
       division,
+      onboarding_id,
     }
   } catch (err: any) {
     if (err?.digest === 'DYNAMIC_SERVER_USAGE' || err?.digest?.startsWith('NEXT_')) {

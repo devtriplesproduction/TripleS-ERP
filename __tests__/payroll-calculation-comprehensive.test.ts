@@ -26,6 +26,7 @@ vi.mock('@/lib/supabase/server', () => ({
           data: filteredData,
           error: null,
           select: () => builder,
+          order: () => builder,
           in: (col: string, vals: any[]) => createQueryBuilder(filteredData.filter(item => vals.includes(item[col]))),
           eq: (col: string, val: any) => createQueryBuilder(filteredData.filter(item => item[col] === val)),
           gte: (col: string, val: any) => createQueryBuilder(filteredData.filter(item => item[col] >= val)),

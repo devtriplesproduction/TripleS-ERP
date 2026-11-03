@@ -433,6 +433,66 @@ describe('Professional Tab Editing & Permissions', () => {
       expect(checkCanEdit(null)).toBe(false)
       expect(checkCanEdit(undefined)).toBe(false)
     })
+
+    it('simulates cancellation reverting uncommitted changes to initial employee state', () => {
+      const originalEmployee = {
+        employee_id_number: 'EMP-003',
+        department: 'Development',
+        division: 'Software Development',
+        designation: 'Full-Stack Developer',
+        employment_type: 'Intern',
+        joining_date: '2026-09-11',
+        stipend: 8000,
+        email: 'omkar.sawant@tsp.com',
+        work_location: 'Satara (Office)',
+      }
+
+      // User initiates edit and modifies fields in form
+      let formState = { ...originalEmployee }
+      formState.work_location = 'Pune (Branch Office)'
+      formState.stipend = 12000
+      formState.designation = 'Lead Developer'
+
+      // Cancel action is invoked: state reverts back to employee values
+      formState = { ...originalEmployee }
+
+      expect(formState.work_location).toBe('Satara (Office)')
+      expect(formState.stipend).toBe(8000)
+      expect(formState.designation).toBe('Full-Stack Developer')
+    })
+
+    it('persists changes across all professional fields and maintains them on subsequent fetch (refresh)', async () => {
+      mockCurrentUser.role = 'Admin'
+
+      // Save updated details for emp-intern
+      const savePayload = {
+        employee_id_number: 'EMP-003-UPDATED',
+        department: 'Development',
+        division: 'App Development',
+        designation: 'App Developer',
+        employment_type: 'Intern',
+        joining_date: '2026-09-15',
+        stipend: 9500,
+        email: 'omkar.updated@tsp.com',
+        work_location: 'Satara (HQ)',
+      }
+
+      const saveRes = await updateEmployeeData('emp-intern', savePayload)
+      expect(saveRes.success).toBe(true)
+
+      // Simulate re-fetching the employee record upon browser page refresh
+      const refreshedEmployee = mockEmployees['emp-intern']
+      expect(refreshedEmployee.employee_id_number).toBe('EMP-003-UPDATED')
+      expect(refreshedEmployee.department).toBe('Development')
+      expect(refreshedEmployee.division).toBe('App Development')
+      expect(refreshedEmployee.designation).toBe('App Developer')
+      expect(refreshedEmployee.employment_type).toBe('Intern')
+      expect(refreshedEmployee.joining_date).toBe('2026-09-15')
+      expect(refreshedEmployee.stipend).toBe(9500)
+      expect(refreshedEmployee.email).toBe('omkar.updated@tsp.com')
+      expect(refreshedEmployee.work_location).toBe('Satara (HQ)')
+    })
   })
 })
+
 

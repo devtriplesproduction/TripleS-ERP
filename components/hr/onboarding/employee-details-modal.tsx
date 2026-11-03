@@ -36,6 +36,9 @@ import {
   formatProbationDateDisplay,
   getProbationStatus,
 } from '@/lib/utils/probation'
+import { extractWorkLocation } from '@/lib/utils/work-location'
+import { professionalEditSchema } from '@/lib/validations/onboard'
+
 
 import { SalaryAndHikeTab } from '@/components/hr/payroll/salary-and-hike-tab'
 import { HodAssignmentAction } from '@/components/hr/onboarding/hod-assignment-action'
@@ -273,29 +276,108 @@ export function EmployeeDetailsClient({
     department: employee.department || '',
     division: employee.division || '',
     designation: employee.designation || employee.job_title || '',
-    job_title: employee.job_title || '',
+    job_title: employee.job_title || employee.designation || '',
     employment_type: employee.employment_type || '',
-    joining_date: employee.joining_date || '',
+    joining_date: employee.joining_date ? employee.joining_date.split('T')[0] : '',
     email: employee.email || '',
     salary: employee.salary ? employee.salary.toString() : '',
-    stipend: employee.stipend ? employee.stipend.toString() : ''
+    stipend: employee.stipend ? employee.stipend.toString() : '',
+    work_location: employee.work_location || extractWorkLocation(employee) || 'Satara (Office)'
   })
 
+  useEffect(() => {
+    setProfessionalForm({
+      employee_id_number: employee.employee_id_number || '',
+      department: employee.department || '',
+      division: employee.division || '',
+      designation: employee.designation || employee.job_title || '',
+      job_title: employee.job_title || employee.designation || '',
+      employment_type: employee.employment_type || '',
+      joining_date: employee.joining_date ? employee.joining_date.split('T')[0] : '',
+      email: employee.email || '',
+      salary: employee.salary ? employee.salary.toString() : '',
+      stipend: employee.stipend ? employee.stipend.toString() : '',
+      work_location: employee.work_location || extractWorkLocation(employee) || 'Satara (Office)'
+    })
+  }, [employee])
+
+  const handleCancelProfessional = () => {
+    setProfessionalForm({
+      employee_id_number: employee.employee_id_number || '',
+      department: employee.department || '',
+      division: employee.division || '',
+      designation: employee.designation || employee.job_title || '',
+      job_title: employee.job_title || employee.designation || '',
+      employment_type: employee.employment_type || '',
+      joining_date: employee.joining_date ? employee.joining_date.split('T')[0] : '',
+      email: employee.email || '',
+      salary: employee.salary ? employee.salary.toString() : '',
+      stipend: employee.stipend ? employee.stipend.toString() : '',
+      work_location: employee.work_location || extractWorkLocation(employee) || 'Satara (Office)'
+    })
+    setIsEditingProfessional(false)
+  }
+
   const handleSaveProfessional = async () => {
+    if (!isAdminOrHr) {
+      toast({
+        title: 'Unauthorized',
+        description: 'Only Admin and HR roles are permitted to update professional details.',
+        variant: 'destructive',
+      })
+      return
+    }
+
+    const payloadToValidate = {
+      ...professionalForm,
+      employee_id_number: professionalForm.employee_id_number?.trim() || '',
+      department: professionalForm.department?.trim() || '',
+      division: professionalForm.division?.trim() || '',
+      designation: professionalForm.designation?.trim() || '',
+      job_title: professionalForm.designation?.trim() || '',
+      employment_type: professionalForm.employment_type?.trim() || '',
+      joining_date: professionalForm.joining_date ? professionalForm.joining_date.split('T')[0] : '',
+      email: professionalForm.email?.trim() || '',
+      work_location: professionalForm.work_location?.trim() || 'Satara (Office)',
+      salary: professionalForm.employment_type !== 'Intern'
+        ? (professionalForm.salary ? Number(professionalForm.salary) : null)
+        : null,
+      stipend: professionalForm.employment_type === 'Intern'
+        ? (professionalForm.stipend !== '' && professionalForm.stipend !== null && professionalForm.stipend !== undefined ? Number(professionalForm.stipend) : '')
+        : null,
+    }
+
+    const validation = professionalEditSchema.safeParse(payloadToValidate)
+    if (!validation.success) {
+      const firstError = validation.error.issues[0]?.message || 'Please check the entered professional details.'
+      toast({ title: 'Validation Error', description: firstError, variant: 'destructive' })
+      return
+    }
+
     setIsSavingProfessional(true)
     try {
-      const dataToSave = {
-        ...professionalForm,
-        job_title: professionalForm.designation,
-        salary: professionalForm.salary ? parseFloat(professionalForm.salary) : null,
-        stipend: professionalForm.stipend ? parseFloat(professionalForm.stipend) : null
+      const dataToSave: Partial<Employee> = {
+        employee_id_number: payloadToValidate.employee_id_number,
+        department: payloadToValidate.department,
+        division: payloadToValidate.division,
+        designation: payloadToValidate.designation,
+        job_title: payloadToValidate.designation,
+        employment_type: payloadToValidate.employment_type,
+        joining_date: payloadToValidate.joining_date || undefined,
+        email: payloadToValidate.email,
+        work_location: payloadToValidate.work_location,
+        salary: payloadToValidate.salary,
+        stipend: payloadToValidate.stipend === '' || payloadToValidate.stipend === null ? null : Number(payloadToValidate.stipend)
       }
-      await updateEmployeeData(employee.id, dataToSave)
+      const res = await updateEmployeeData(employee.id, dataToSave)
+      if (res && res.error) {
+        throw new Error(res.error)
+      }
       setIsEditingProfessional(false)
-      toast({ title: 'Success', description: 'Professional information updated!' })
+      toast({ title: 'Success', description: 'Professional details updated successfully!' })
       router.refresh()
     } catch (e: any) {
-      toast({ title: 'Error', description: e.message, variant: 'destructive' })
+      toast({ title: 'Error', description: e.message || 'Failed to update professional details', variant: 'destructive' })
     } finally {
       setIsSavingProfessional(false)
     }
@@ -649,7 +731,7 @@ export function EmployeeDetailsClient({
           <Input
             type={type}
             className="h-7 text-xs bg-transparent border-border"
-            value={formState[fieldKey] || ''}
+            value={type === 'date' && formState[fieldKey] ? formState[fieldKey].split('T')[0] : (formState[fieldKey] ?? '')}
             onChange={e => setFormState((prev: any) => ({ ...prev, [fieldKey]: e.target.value }))}
           />
         ) : (
@@ -1287,25 +1369,55 @@ export function EmployeeDetailsClient({
         </TabsContent>
 
         <TabsContent value="professional-info" className="m-0 space-y-5">
-          {isEditingProfessional && (
-            <div className="flex justify-end gap-2 mb-2">
-              <Button variant="ghost" size="sm" onClick={() => setIsEditingProfessional(false)}>Cancel</Button>
-              <Button size="sm" className="bg-foreground text-background" onClick={handleSaveProfessional} disabled={isSavingProfessional}>
-                {isSavingProfessional ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Save
-              </Button>
-            </div>
-          )}
-
           <div className="bg-card/30 border border-border/30 rounded-2xl p-5">
             <div className="space-y-6">
               {/* Employment Details */}
               <div className="space-y-3">
-                <div className="flex items-center gap-2">
-                  <Briefcase className="w-4 h-4 text-purple-500 dark:text-purple-400" />
-                  <h4 className="font-semibold text-sm">Employment Details</h4>
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-purple-500 dark:text-purple-400" />
+                    <h4 className="font-semibold text-sm">Employment Details</h4>
+                  </div>
+                  {isAdminOrHr && !isEditingProfessional && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditingProfessional(true)}
+                      className="h-8 px-3 rounded-xl border-border/60 hover:bg-muted/60 text-xs font-medium gap-1.5 cursor-pointer"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      Edit Details
+                    </Button>
+                  )}
+                  {isAdminOrHr && isEditingProfessional && (
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={handleCancelProfessional}
+                        disabled={isSavingProfessional}
+                        className="h-8 px-3 rounded-full text-xs hover:bg-muted/50 cursor-pointer"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleSaveProfessional}
+                        disabled={isSavingProfessional}
+                        className="h-8 px-3.5 rounded-full bg-foreground text-background hover:bg-foreground/90 text-xs font-medium cursor-pointer"
+                      >
+                        {isSavingProfessional ? (
+                          <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                        ) : (
+                          <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                        )}
+                        Save
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {renderEditableCard(<Hash className="w-4 h-4 text-muted-foreground" />, 'Employee ID', professionalForm.employee_id_number, isEditingProfessional, 'employee_id_number', professionalForm, setProfessionalForm, 'text', 'purple')}
+                  {renderEditableCard(<Hash className="w-4 h-4" />, 'Employee ID', professionalForm.employee_id_number, isEditingProfessional, 'employee_id_number', professionalForm, setProfessionalForm, 'text', 'purple')}
                   <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border/40 bg-card/60 hover:bg-card transition-colors">
                     <div className="w-7 h-7 rounded-md bg-purple-500/10 text-purple-500 dark:text-purple-400 flex items-center justify-center shrink-0">
                       <Building2 className="w-4 h-4" />
@@ -1315,7 +1427,12 @@ export function EmployeeDetailsClient({
                       {isEditingProfessional ? (
                         <Select value={professionalForm.department} onValueChange={v => setProfessionalForm(p => ({ ...p, department: v as string, division: '', designation: '' }))}>
                           <SelectTrigger className="h-8 bg-transparent border-border"><SelectValue placeholder="Select Department" /></SelectTrigger>
-                          <SelectContent>{DEPARTMENTS.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
+                          <SelectContent>
+                            {DEPARTMENTS.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                            {professionalForm.department && !DEPARTMENTS.some(d => d.id === professionalForm.department) && (
+                              <SelectItem value={professionalForm.department}>{professionalForm.department}</SelectItem>
+                            )}
+                          </SelectContent>
                         </Select>
                       ) : <span className="text-sm font-semibold text-foreground">{professionalForm.department || '-'}</span>}
                     </div>
@@ -1329,7 +1446,12 @@ export function EmployeeDetailsClient({
                       {isEditingProfessional ? (
                         <Select value={professionalForm.division} onValueChange={v => setProfessionalForm(p => ({ ...p, division: v as string, designation: '' }))} disabled={!professionalForm.department}>
                           <SelectTrigger className="h-8 bg-transparent border-border"><SelectValue placeholder="Select Division" /></SelectTrigger>
-                          <SelectContent>{professionalForm.department && DIVISIONS[professionalForm.department]?.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
+                          <SelectContent>
+                            {professionalForm.department && DIVISIONS[professionalForm.department]?.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
+                            {professionalForm.division && (!professionalForm.department || !DIVISIONS[professionalForm.department]?.some(d => d.id === professionalForm.division)) && (
+                              <SelectItem value={professionalForm.division}>{professionalForm.division}</SelectItem>
+                            )}
+                          </SelectContent>
                         </Select>
                       ) : <span className="text-sm font-semibold text-foreground">{professionalForm.division || '-'}</span>}
                     </div>
@@ -1343,12 +1465,53 @@ export function EmployeeDetailsClient({
                       {isEditingProfessional ? (
                         <Select value={professionalForm.designation} onValueChange={v => setProfessionalForm(p => ({ ...p, designation: v as string }))} disabled={!professionalForm.division}>
                           <SelectTrigger className="h-8 bg-transparent border-border"><SelectValue placeholder="Select Designation" /></SelectTrigger>
-                          <SelectContent>{professionalForm.division && DESIGNATIONS[professionalForm.division]?.map(d => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>)}</SelectContent>
+                          <SelectContent>
+                            {professionalForm.division && DESIGNATIONS[professionalForm.division]?.map(d => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>)}
+                            {professionalForm.designation && (!professionalForm.division || !DESIGNATIONS[professionalForm.division]?.some(d => d.name === professionalForm.designation)) && (
+                              <SelectItem value={professionalForm.designation}>{professionalForm.designation}</SelectItem>
+                            )}
+                          </SelectContent>
                         </Select>
                       ) : <span className="text-sm font-semibold text-foreground">{professionalForm.designation || '-'}</span>}
                     </div>
                   </div>
-                  {renderEditableCard(<Briefcase className="w-4 h-4" />, 'Employment Type', professionalForm.employment_type, isEditingProfessional, 'employment_type', professionalForm, setProfessionalForm, 'text', 'purple')}
+                  <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border/40 bg-card/60 hover:bg-card transition-colors">
+                    <div className="w-7 h-7 rounded-md bg-purple-500/10 text-purple-500 dark:text-purple-400 flex items-center justify-center shrink-0">
+                      <Briefcase className="w-4 h-4" />
+                    </div>
+                    <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                      <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider leading-none mb-0.5">Employment Type</span>
+                      {isEditingProfessional ? (
+                        <Select
+                          value={professionalForm.employment_type}
+                          onValueChange={v => {
+                            setProfessionalForm(p => ({
+                              ...p,
+                              employment_type: v || '',
+                              ...(v === 'Intern' ? { salary: '' } : { stipend: '' })
+                            }))
+                          }}
+                        >
+                          <SelectTrigger className="h-8 bg-transparent border-border">
+                            <SelectValue placeholder="Select Employment Type" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Full Time">Full Time</SelectItem>
+                            <SelectItem value="Intern">Intern</SelectItem>
+                            {professionalForm.employment_type &&
+                             professionalForm.employment_type !== 'Full Time' &&
+                             professionalForm.employment_type !== 'Intern' && (
+                              <SelectItem value={professionalForm.employment_type}>
+                                {professionalForm.employment_type}
+                              </SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <span className="text-sm font-semibold text-foreground">{professionalForm.employment_type || '-'}</span>
+                      )}
+                    </div>
+                  </div>
                   {renderEditableCard(<CalendarIcon className="w-4 h-4" />, 'Date of Joining', professionalForm.joining_date, isEditingProfessional, 'joining_date', professionalForm, setProfessionalForm, 'date', 'purple')}
                   {professionalForm.employment_type === 'Intern'
                     ? renderEditableCard(<Banknote className="w-4 h-4" />, 'Stipend', professionalForm.stipend ? `₹${professionalForm.stipend}` : '-', isEditingProfessional, 'stipend', professionalForm, setProfessionalForm, 'text', 'emerald')
@@ -1365,9 +1528,37 @@ export function EmployeeDetailsClient({
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                   {renderEditableCard(<Mail className="w-4 h-4" />, 'Work Email', professionalForm.email, isEditingProfessional, 'email', professionalForm, setProfessionalForm, 'email', 'cyan')}
-                  {renderInfoCard(<MapPin className="w-4 h-4" />, 'Work Location', 'Satara (Office)', 'amber')}
+                  {renderEditableCard(<MapPin className="w-4 h-4" />, 'Work Location', professionalForm.work_location, isEditingProfessional, 'work_location', professionalForm, setProfessionalForm, 'text', 'amber')}
                 </div>
               </div>
+
+              {/* Bottom Actions if editing */}
+              {isAdminOrHr && isEditingProfessional && (
+                <div className="flex justify-end gap-2 pt-4 border-t border-border/20">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCancelProfessional}
+                    disabled={isSavingProfessional}
+                    className="h-8 px-3 rounded-full text-xs hover:bg-muted/50 cursor-pointer"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveProfessional}
+                    disabled={isSavingProfessional}
+                    className="h-8 px-3.5 rounded-full bg-foreground text-background hover:bg-foreground/90 text-xs font-medium cursor-pointer"
+                  >
+                    {isSavingProfessional ? (
+                      <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                    )}
+                    Save
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         </TabsContent>
