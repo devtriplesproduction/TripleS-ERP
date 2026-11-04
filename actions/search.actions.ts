@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth'
+import { measureAsync } from '@/lib/utils/perf-monitor'
 
 export type SearchCategory = 
   | 'EMPLOYEES'
@@ -24,8 +25,9 @@ export interface SearchResult {
 }
 
 export async function globalSearchAction(query: string): Promise<SearchResult[]> {
-  const user = await getCurrentUser()
-  if (!user || !query || query.trim().length < 2) return []
+  return measureAsync('globalSearchAction', async () => {
+    const user = await getCurrentUser()
+    if (!user || !query || query.trim().length < 2) return []
 
   const supabase = await createClient()
   const searchTerm = `%${query.trim()}%`
@@ -77,7 +79,7 @@ export async function globalSearchAction(query: string): Promise<SearchResult[]>
 
   let leaveQuery = supabase
     .from('leave_requests')
-    .select('id, leave_type, status, start_date, employee_id, profiles!inner(first_name, last_name)')
+    .select('id, leave_type, status, start_date, employee_id, employee_onboarding!leave_requests_employee_id_fkey(first_name, last_name)')
     .or(`leave_type.ilike."${searchTerm}",status.ilike."${searchTerm}"`)
     .limit(5)
     
@@ -196,7 +198,7 @@ export async function globalSearchAction(query: string): Promise<SearchResult[]>
         title: `${name} - EOD`,
         subtitle: `${eod.report_date} · ${eod.tasks_accomplished?.substring(0, 50)}...`,
         category: 'EOD_REPORTS',
-        url: isAdminOrHR ? `/admin-eod` : `/employee-eod`
+        url: `/eod`
       })
     })
   }
@@ -204,13 +206,14 @@ export async function globalSearchAction(query: string): Promise<SearchResult[]>
   // 6. Leave
   if (leavesRes.data) {
     leavesRes.data.forEach((leave: any) => {
-      const name = `${leave.profiles?.first_name || ''} ${leave.profiles?.last_name || ''}`.trim() || 'Unknown'
+      const emp = leave.employee_onboarding || leave.profiles
+      const name = `${emp?.first_name || ''} ${emp?.last_name || ''}`.trim() || 'Employee'
       results.push({
         id: `leave-${leave.id}`,
         title: `${name} - ${leave.leave_type}`,
         subtitle: `${leave.start_date} · Status: ${leave.status}`,
         category: 'LEAVE',
-        url: isAdminOrHR ? `/hr/leave` : `/employee-holiday`
+        url: isAdminOrHR ? `/hr/leave` : `/leave`
       })
     })
   }
@@ -259,6 +262,7 @@ export async function globalSearchAction(query: string): Promise<SearchResult[]>
     })
   }
 
-  return results
+    return results
+  })
 }
 

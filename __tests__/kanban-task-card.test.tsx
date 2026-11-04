@@ -125,8 +125,8 @@ describe('Kanban TaskCard Component Layout', () => {
       />
     )
 
-    // Formatted due date Oct 07
-    expect(html).toContain('Oct 07')
+    // Formatted due date 07 Oct
+    expect(html).toContain('07 Oct')
 
     // Comments count
     expect(html).toContain('3')
@@ -189,7 +189,7 @@ describe('Kanban TaskCard Component Layout', () => {
 
     // Task title and metadata still render cleanly
     expect(html).toContain('Completed Task')
-    expect(html).toContain('Oct 07')
+    expect(html).toContain('07 Oct')
     // No avatars rendered
     expect(html).not.toContain('PF')
     expect(html).not.toContain('+2')

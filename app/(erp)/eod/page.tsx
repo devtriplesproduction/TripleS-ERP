@@ -9,7 +9,6 @@ import { EODSubmissionForm } from "@/components/eod/EODSubmissionForm"
 import { ReviewDashboard } from "@/components/eod/ReviewDashboard"
 import { CalendarDays, FileText, ClipboardList } from "lucide-react"
 import { PageHeader } from "@/components/PageHeader"
-import { LiveTaskCounter } from "@/components/eod/LiveTaskCounter"
 import { countTasks } from "@/lib/utils"
 import { formatOfficeHoursAsHHMM, formatMinutesAsHHMM } from "@/lib/utils/time"
 import { RecentEODLogs } from "@/components/eod/RecentEODLogs"
@@ -43,7 +42,6 @@ export default async function EODPage({ searchParams }: PageProps) {
 
   const isSuperAdmin = authUser.role === 'Admin'
   const canReview = authUser.role === 'Admin' || authUser.role === 'HR'
-  const canManage = canReview
 
   const params = searchParams ? await searchParams : {}
   const activeTab = canReview ? (params?.tab || 'review') : 'submit'
@@ -72,7 +70,7 @@ export default async function EODPage({ searchParams }: PageProps) {
     const targetUserId = authUser.id
     const { data: h } = await getEODHistory(targetUserId, roleCtx)
     history = (h || []) as EODReport[]
-    const { streak: s } = await getEODStreak(targetUserId, roleCtx)
+    const { streak: s } = await getEODStreak(targetUserId, roleCtx, history.map((r: any) => r.report_date))
     streak = s || 0
 
     const getISTDateString = () =>

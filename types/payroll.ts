@@ -94,13 +94,16 @@ export interface PayrollReconciliation {
   deductedDays: number;
   isFinancialReconciled: boolean;
   baseSalary: number;
-  netPayable: number;
-  totalDeductions: number;
+  grossScheduledPay?: number;
   earnedPay: number;
+  attendanceDeduction?: number;
+  totalDeductions: number;
+  netPayable: number;
   compOffMinutesEarned: number;
-  status: 'RECONCILED' | 'DISCREPANCY';
+  status: 'RECONCILED' | 'DISCREPANCY' | 'DISCREPANCY_DETECTED';
   notes?: string;
   divisorMode?: 'actual_mon_sat' | 'fixed_26';
+  divisorDays?: number;
   dailyRate?: number;
 }
 

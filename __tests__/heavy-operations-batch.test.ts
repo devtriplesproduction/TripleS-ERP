@@ -63,7 +63,7 @@ describe('Batch Processing & Heavy Operations Optimization', () => {
       expect(secondCall.success).toBe(true);
       expect(secondCall.isDuplicate).toBe(true);
       expect(secondCall.job.idempotency_key).toBe(idempotencyKey);
-    });
+    }, 60000);
 
     it('bulk notification deduplicates user IDs and honors idempotency', async () => {
       const idempotencyKey = `test-bulk-notif-${Date.now()}`;

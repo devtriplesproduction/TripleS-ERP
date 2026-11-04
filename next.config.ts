@@ -14,6 +14,9 @@ const nextConfig: NextConfig = {
     '/quick-tasks': ['./scratch/quick_tasks_store.json'],
     '/content-management': ['./scratch/content_items_store.json', './scratch/content_types_store.json', './scratch/content_activities_store.json', './scratch/content_notifications_store.json', './scratch/content_files_store.json'],
     '/payroll': ['./scratch/payroll_runs_store.json', './scratch/payroll_items_store.json', './scratch/payroll_deductions_store.json'],
+    '/employees': ['./scratch/security_audit_logs_store.json'],
+    '/employees/[id]': ['./scratch/security_audit_logs_store.json'],
+    '/hr/onboarding/[id]': ['./scratch/security_audit_logs_store.json'],
   },
   turbopack: {
     ignoreIssue: [

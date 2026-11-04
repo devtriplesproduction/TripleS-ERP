@@ -25,6 +25,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { getMyMonthlyPayrollAction, getMySalaryHistoryAction } from '@/lib/actions/payroll'
 import { PayrollResult } from '@/lib/services/payroll.service'
 import { formatDate, formatDateReadable } from '@/lib/utils/date'
+import { getStandardWorkingDaysInMonth } from '@/lib/utils/time'
 import { jsPDF } from 'jspdf'
 
 interface EmployeePayrollClientPageProps {
@@ -71,12 +72,15 @@ export function EmployeePayrollClientPage({ user }: EmployeePayrollClientPagePro
   const [loading, setLoading] = useState(true)
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false)
   const [isFinalized, setIsFinalized] = useState(false)
-  
+
   const [payroll, setPayroll] = useState<PayrollResult | null>(null)
   const [employeeInfo, setEmployeeInfo] = useState<EmployeeInfo | null>(null)
   const [salaryHistory, setSalaryHistory] = useState<SalaryHistoryItem[]>([])
   const [historyLoading, setHistoryLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const dynamicDivisor = getStandardWorkingDaysInMonth(year, month)
+  const standardExpectedHours = payroll?.standardHours || (dynamicDivisor * 8)
 
   const { toast } = useToast()
 
@@ -323,7 +327,7 @@ export function EmployeePayrollClientPage({ user }: EmployeePayrollClientPagePro
       doc.roundedRect(14, attY + 4, 182, 34, 2, 2, 'S')
 
       const attCols = [
-        ['Standard Hrs', `${payroll?.standardHours || 208} hrs`],
+        ['Standard Hrs', `${standardExpectedHours} hrs`],
         ['Worked Hrs', `${payroll?.actualWorkedHours || 0} hrs`],
         ['Paid Leaves', `${payroll?.creditedLeaveHours || 0} hrs`],
         ['Paid Holidays', `${payroll?.paidHolidayHours || 0} hrs`],
@@ -535,7 +539,7 @@ export function EmployeePayrollClientPage({ user }: EmployeePayrollClientPagePro
             ) : (
               <div>
                 <div className="text-2xl font-bold tracking-tight text-foreground">
-                  {payroll?.actualWorkedHours || 0} <span className="text-sm font-normal text-muted-foreground">/ {payroll?.standardHours || 208} hrs</span>
+                  {payroll?.actualWorkedHours || 0} <span className="text-sm font-normal text-muted-foreground">/ {standardExpectedHours} hrs</span>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {payroll?.daysHalfDay || 0} half-day(s) logged
@@ -674,8 +678,8 @@ export function EmployeePayrollClientPage({ user }: EmployeePayrollClientPagePro
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="p-3.5 rounded-xl border border-border/40 bg-card/40">
                   <div className="text-xs text-muted-foreground">Standard Expected Hours</div>
-                  <div className="text-lg font-bold text-foreground mt-1">{payroll?.standardHours || 208} hrs</div>
-                  <div className="text-[11px] text-muted-foreground mt-0.5">26 days × 8 hours basis</div>
+                  <div className="text-lg font-bold text-foreground mt-1">{standardExpectedHours} hrs</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5">{payroll?.reconciliation?.divisorDays || dynamicDivisor} days × 8 hours basis</div>
                 </div>
 
                 <div className="p-3.5 rounded-xl border border-border/40 bg-card/40">

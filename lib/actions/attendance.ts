@@ -2,6 +2,7 @@
 
 import { createAdminClient } from "@/lib/supabase/server"
 import { guardServerAction } from "@/lib/auth"
+import { measureAsync } from "@/lib/utils/perf-monitor"
 
 
 export type AttendanceStatus = 'Present' | 'Leave' | 'Comp-Off' | 'Casual Leave' | 'Sick Leave' | 'WFH' | 'Half Day + Present' | 'Half Day + WFH' | 'Half Day' | 'Unpaid Leave' | 'Absent' | 'Pending' | 'Holiday' | 'Weekend' | 'Not Marked' | 'Holiday Work';
@@ -23,10 +24,11 @@ import { calculateAttendanceSummary } from "@/lib/utils/attendance-summary"
 import { buildAttendanceRecords, extractOffboardingDate } from "@/lib/utils/attendance-builder"
 
 export async function getAttendanceEmployees(month: number, year: number) {
-  // Enforce role-based access for this action
-  await guardServerAction(['HR', 'Admin', 'Super Admin'] as any);
-  
-  const supabaseAdmin = await createAdminClient();
+  return measureAsync('getAttendanceEmployees', async () => {
+    // Enforce role-based access for this action
+    await guardServerAction(['HR', 'Admin', 'Super Admin'] as any);
+    
+    const supabaseAdmin = await createAdminClient();
   
   // Parallel fetch: profiles and employee_onboarding
   const [profilesRes, onboardingRes] = await Promise.all([
@@ -149,6 +151,7 @@ export async function getAttendanceEmployees(month: number, year: number) {
     console.error("Error calculating attendance summaries:", err);
     return [];
   }
+  })
 }
 
 export async function getAttendanceEmployeeProfile(employeeId: string) {

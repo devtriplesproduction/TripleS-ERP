@@ -1,8 +1,9 @@
 'use server'
 
 import { getCurrentUser, guardServerAction } from '@/lib/auth'
+import { checkRateLimit } from '@/lib/utils/rate-limiter'
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
-import { getTodayIST, getYesterdayIST, getDaysAgoIST } from '@/lib/utils/date'
+import { getTodayIST } from '@/lib/utils/date'
 import {
   parseTimeMinutes,
   getISTTimeMinutes,
@@ -993,6 +994,17 @@ export async function deleteScreenshotsAction(
         failedCount: screenshotIds?.length || 0,
         deletedIds: [],
         error: 'Access Denied: Only Admin and authorized HR personnel can delete screenshots.'
+      }
+    }
+
+    const rl = checkRateLimit(`screenshot-del:${user.id}`, 20, 60 * 1000)
+    if (!rl.success) {
+      return {
+        success: false,
+        deletedCount: 0,
+        failedCount: screenshotIds?.length || 0,
+        deletedIds: [],
+        error: `Too many deletion requests. Please wait ${rl.retryAfterSeconds || 10} seconds.`
       }
     }
 

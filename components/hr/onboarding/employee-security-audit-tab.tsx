@@ -26,7 +26,9 @@ import {
   Info,
   Calendar,
   Lock,
-  Radio
+  Radio,
+  Copy,
+  Check
 } from 'lucide-react'
 import { Employee } from '@/lib/supabase/types'
 import {
@@ -35,7 +37,7 @@ import {
   SecurityAuditResponse
 } from '@/lib/actions/security-audit'
 import { SecurityAuditRecord } from '@/lib/utils/audit-logger'
-import { formatToKolkataTime, classifyIp, IpClassification } from '@/lib/utils/device-parser'
+import { formatToKolkataTime, classifyIp, getIpVersion, IpClassification } from '@/lib/utils/device-parser'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -70,12 +72,55 @@ export function EmployeeSecurityAuditTab({ employee }: EmployeeSecurityAuditTabP
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | 'success' | 'failed' | 'suspicious'>('all')
   const [dateRangeFilter, setDateRangeFilter] = useState<'all' | 'today' | '7days' | '30days'>('all')
   const [currentPage, setCurrentPage] = useState(1)
 
+  // Debounce search query to prevent unnecessary queries on every key press
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      setCurrentPage(1)
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
   // Details Modal
   const [selectedRecord, setSelectedRecord] = useState<SecurityAuditRecord | null>(null)
+
+  // Copy to clipboard state
+  const [copiedIpId, setCopiedIpId] = useState<string | null>(null)
+  const [copiedEventId, setCopiedEventId] = useState<string | null>(null)
+  const [copiedSessionId, setCopiedSessionId] = useState<string | null>(null)
+
+  const handleCopy = (text: string, id: string, type: 'ip' | 'event' | 'session') => {
+    if (!text || text === '-' || text === 'Unavailable') return
+    navigator.clipboard.writeText(text)
+    if (type === 'ip') setCopiedIpId(id)
+    if (type === 'event') setCopiedEventId(id)
+    if (type === 'session') setCopiedSessionId(id)
+    toast({
+      title: 'Copied to Clipboard',
+      description: text,
+    })
+    setTimeout(() => {
+      if (type === 'ip') setCopiedIpId(null)
+      if (type === 'event') setCopiedEventId(null)
+      if (type === 'session') setCopiedSessionId(null)
+    }, 2000)
+  }
+
+  // Safe event metadata (sanitize any leftover emails or credentials)
+  const sanitizedModalMetadata = useMemo(() => {
+    if (!selectedRecord?.metadata) return null
+    const meta = { ...selectedRecord.metadata }
+    delete (meta as any).email
+    delete (meta as any).password
+    delete (meta as any).token
+    delete (meta as any).access_token
+    return Object.keys(meta).length > 0 ? meta : null
+  }, [selectedRecord?.metadata])
 
   // Revoke Dialog
   const [revokingSessionId, setRevokingSessionId] = useState<string | null>(null)
@@ -88,7 +133,7 @@ export function EmployeeSecurityAuditTab({ employee }: EmployeeSecurityAuditTabP
       setError(null)
       try {
         const res = await getEmployeeAuditLogs(employee.id, {
-          search: searchQuery,
+          search: debouncedSearch,
           status: statusFilter,
           dateRange: dateRangeFilter,
           page: pageToLoad,
@@ -103,7 +148,7 @@ export function EmployeeSecurityAuditTab({ employee }: EmployeeSecurityAuditTabP
         setLoading(false)
       }
     },
-    [employee.id, searchQuery, statusFilter, dateRangeFilter]
+    [employee.id, debouncedSearch, statusFilter, dateRangeFilter]
   )
 
   useEffect(() => {
@@ -149,7 +194,10 @@ export function EmployeeSecurityAuditTab({ employee }: EmployeeSecurityAuditTabP
     }
   }
 
-  const getDeviceIcon = (deviceType: string) => {
+  const getDeviceIcon = (deviceType?: string | null, clientType?: string | null) => {
+    if (clientType === 'desktop_app') {
+      return <Laptop className="w-3.5 h-3.5 text-purple-400" />
+    }
     switch (deviceType?.toLowerCase()) {
       case 'mobile':
         return <Smartphone className="w-3.5 h-3.5 text-blue-400" />
@@ -245,6 +293,13 @@ export function EmployeeSecurityAuditTab({ employee }: EmployeeSecurityAuditTabP
   }
 
   const getIpBadge = (classification?: string, ip?: string | null) => {
+    if (!ip) {
+      return (
+        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-zinc-500/10 text-zinc-400 border border-zinc-500/20">
+          Unavailable
+        </span>
+      )
+    }
     const cls = classification || classifyIp(ip)
     switch (cls) {
       case 'Localhost':
@@ -281,11 +336,31 @@ export function EmployeeSecurityAuditTab({ employee }: EmployeeSecurityAuditTabP
     }
   }
 
-  const formatLocationDisplay = (loc?: string | null) => {
-    if (!loc || loc === 'Approximate Location Unavailable' || loc === 'Local / Office Network') {
-      return 'Unknown'
+  const formatLocationDisplay = (loc?: string | null, ip?: string | null) => {
+    if (!ip) {
+      return 'Not captured'
+    }
+    if (!loc || loc === 'Approximate Location Unavailable' || loc === 'Unknown' || loc === 'Local / Office Network') {
+      return 'Not captured'
     }
     return loc
+  }
+
+  const getClientDisplay = (record: SecurityAuditRecord) => {
+    const isDesktopApp = record.client_type === 'desktop_app' || record.app_name === 'TripleS Time Tracker' || record.browser?.includes('Tracker')
+    if (isDesktopApp) {
+      const ver = record.app_version || '1.0.0'
+      return {
+        title: `TripleS Time Tracker v${ver}`,
+        subtitle: record.runtime || 'Electron 34.2.0 (Windows)',
+        isDesktop: true
+      }
+    }
+    return {
+      title: record.browser || 'Web Browser',
+      subtitle: record.os || 'Windows 11 / 10',
+      isDesktop: false
+    }
   }
 
   return (
@@ -412,7 +487,10 @@ export function EmployeeSecurityAuditTab({ employee }: EmployeeSecurityAuditTabP
           {/* Status Filter */}
           <Select
             value={statusFilter}
-            onValueChange={(val: any) => setStatusFilter(val)}
+            onValueChange={(val: any) => {
+              setStatusFilter(val)
+              setCurrentPage(1)
+            }}
           >
             <SelectTrigger className="h-8 w-[140px] text-xs bg-card/60 dark:bg-zinc-900/60 border-border/60 rounded-xl">
               <SelectValue placeholder="Status" />
@@ -428,7 +506,10 @@ export function EmployeeSecurityAuditTab({ employee }: EmployeeSecurityAuditTabP
           {/* Date Range Filter */}
           <Select
             value={dateRangeFilter}
-            onValueChange={(val: any) => setDateRangeFilter(val)}
+            onValueChange={(val: any) => {
+              setDateRangeFilter(val)
+              setCurrentPage(1)
+            }}
           >
             <SelectTrigger className="h-8 w-[130px] text-xs bg-card/60 dark:bg-zinc-900/60 border-border/60 rounded-xl">
               <SelectValue placeholder="Date Range" />
@@ -537,26 +618,78 @@ export function EmployeeSecurityAuditTab({ employee }: EmployeeSecurityAuditTabP
                       {/* 3. Source IP & Location */}
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-mono text-foreground font-semibold text-xs">
-                            {record.ip_address || '—'}
-                          </span>
-                          {getIpBadge(record.ip_classification, record.ip_address)}
+                          {record.ip_address ? (
+                            <>
+                              <span className="font-mono text-foreground font-semibold text-xs select-all">
+                                {record.ip_address}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleCopy(record.ip_address!, record.id, 'ip')
+                                }}
+                                className="text-muted-foreground hover:text-foreground p-0.5 rounded transition-colors inline-flex items-center"
+                                title="Copy IP Address"
+                              >
+                                {copiedIpId === record.id ? (
+                                  <Check className="w-3 h-3 text-emerald-400" />
+                                ) : (
+                                  <Copy className="w-3 h-3" />
+                                )}
+                              </button>
+                              <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9.5px] font-mono font-medium bg-zinc-500/10 text-zinc-400 border border-zinc-500/20">
+                                {getIpVersion(record.ip_address)}
+                              </span>
+                              {getIpBadge(record.ip_classification, record.ip_address)}
+                            </>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 text-[11px] font-mono text-muted-foreground/80 bg-muted/30 px-1.5 py-0.5 rounded border border-border/40">
+                              Unavailable
+                            </span>
+                          )}
                         </div>
-                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
-                          <MapPin className="w-3 h-3 shrink-0 text-muted-foreground/70" />
-                          <span className="truncate max-w-[160px]">{formatLocationDisplay(record.location)}</span>
+                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-1">
+                          <MapPin className="w-3 h-3 shrink-0 text-muted-foreground/60" />
+                          <span
+                            className={cn(
+                              "truncate max-w-[200px]",
+                              (!record.ip_address || record.ip_classification === 'Localhost') && "text-muted-foreground/70"
+                            )}
+                            title={
+                              record.ip_classification === 'Localhost'
+                                ? 'Localhost (Development Environment)'
+                                : (record.location || 'Unavailable')
+                            }
+                          >
+                            {record.ip_classification === 'Localhost'
+                              ? 'Localhost (Development Environment)'
+                              : formatLocationDisplay(record.location, record.ip_address)}
+                          </span>
                         </div>
                       </td>
 
                       {/* 4. Browser & OS */}
                       <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-1.5 text-foreground font-medium">
-                          {getDeviceIcon(record.device)}
-                          <span>{record.browser || 'Unknown'}</span>
-                        </div>
-                        <div className="text-[11px] text-muted-foreground mt-0.5 pl-5">
-                          {record.os || 'Unknown OS'}
-                        </div>
+                        {(() => {
+                          const client = getClientDisplay(record)
+                          return (
+                            <>
+                              <div className="flex items-center gap-1.5 text-foreground font-medium">
+                                {getDeviceIcon(record.device, record.client_type)}
+                                <span className="truncate max-w-[170px]" title={client.title}>{client.title}</span>
+                                {client.isDesktop && (
+                                  <span className="text-[9px] px-1 py-0.2 rounded bg-purple-500/10 text-purple-400 border border-purple-500/20 font-normal">
+                                    Desktop
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-muted-foreground mt-0.5 pl-5 truncate max-w-[180px]" title={client.subtitle}>
+                                {client.subtitle}
+                              </div>
+                            </>
+                          )
+                        })()}
                       </td>
 
                       {/* 5. Session Status */}
@@ -641,8 +774,8 @@ export function EmployeeSecurityAuditTab({ employee }: EmployeeSecurityAuditTabP
 
       {/* Details Dialog */}
       <Dialog open={Boolean(selectedRecord)} onOpenChange={open => !open && setSelectedRecord(null)}>
-        <DialogContent className="max-w-lg bg-card dark:bg-zinc-950 border border-border/60 dark:border-zinc-800 p-6 rounded-2xl shadow-xl">
-          <DialogHeader>
+        <DialogContent className="max-w-xl max-h-[88vh] flex flex-col p-0 overflow-hidden bg-card dark:bg-zinc-950 border border-border/60 dark:border-zinc-800 rounded-2xl shadow-2xl">
+          <DialogHeader className="p-5 pb-3 border-b border-border/40 dark:border-zinc-800/80 shrink-0">
             <div className="flex items-center gap-2 mb-1">
               <div className="w-7 h-7 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center">
                 <Shield className="w-4 h-4" />
@@ -657,122 +790,318 @@ export function EmployeeSecurityAuditTab({ employee }: EmployeeSecurityAuditTabP
           </DialogHeader>
 
           {selectedRecord && (
-            <div className="space-y-3.5 text-xs py-2 max-h-[70vh] overflow-y-auto">
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs pr-4">
               {/* Event Badge & Session Banner */}
               <div className="flex items-center justify-between p-3 rounded-xl border border-border/40 bg-card/60 dark:bg-zinc-900/40">
                 <div className="flex flex-col gap-1">
-                  <span className="text-[11px] text-muted-foreground">Audit Event</span>
+                  <span className="text-[11px] text-muted-foreground font-medium">Audit Event</span>
                   <div>{getEventBadge(selectedRecord)}</div>
                 </div>
                 <div className="flex flex-col gap-1 items-end">
-                  <span className="text-[11px] text-muted-foreground">Session Status</span>
+                  <span className="text-[11px] text-muted-foreground font-medium">Session Status</span>
                   <div>{getSessionPill(selectedRecord.session_status)}</div>
                 </div>
               </div>
 
-              {/* Data Grid */}
-              <div className="grid grid-cols-2 gap-2.5">
-                <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
-                  <span className="text-[10.5px] text-muted-foreground block mb-0.5">Timestamp (IST)</span>
-                  <span className="font-semibold text-foreground text-xs">
-                    {formatToKolkataTime(selectedRecord.created_at)}
-                  </span>
-                </div>
-
-                <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
-                  <span className="text-[10.5px] text-muted-foreground block mb-0.5">Authentication Method</span>
-                  <span className="font-semibold text-foreground text-xs">
-                    {selectedRecord.auth_method || 'Password'}
-                  </span>
-                </div>
-
-                <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
-                  <span className="text-[10.5px] text-muted-foreground block mb-0.5">Source IP Address</span>
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-mono font-semibold text-foreground text-xs">
-                      {selectedRecord.ip_address}
+              {/* Localhost Development Callout Banner */}
+              {selectedRecord.ip_classification === 'Localhost' && (
+                <div className="p-3 rounded-xl border border-blue-500/30 bg-blue-500/10 dark:bg-blue-950/30 text-blue-300 dark:text-blue-300 flex items-start gap-2.5">
+                  <Info className="w-4 h-4 text-blue-400 shrink-0 mt-0.5" />
+                  <div className="space-y-0.5">
+                    <span className="font-semibold text-xs block text-blue-200">
+                      Local Development Environment
                     </span>
-                    {getIpBadge(selectedRecord.ip_classification, selectedRecord.ip_address)}
+                    <p className="text-[11px] text-blue-300/90 leading-relaxed">
+                      Client connected via local loopback (<code className="font-mono bg-blue-900/40 px-1 py-0.2 rounded text-blue-200">{selectedRecord.ip_address || '::1'}</code>). In this local development configuration, the employee's genuine public client IP, carrier ISP, and geographic coordinates are not routed through a public reverse-proxy and are not available.
+                    </p>
                   </div>
                 </div>
+              )}
 
-                <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
-                  <span className="text-[10.5px] text-muted-foreground block mb-0.5">Network Classification</span>
-                  <span className="font-semibold text-foreground text-xs">
-                    {selectedRecord.ip_classification || classifyIp(selectedRecord.ip_address)}
-                  </span>
+              {/* SECTION 1: AUTHENTICATION & SESSION LIFECYCLE */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground uppercase tracking-wider text-[10.5px]">
+                  <Lock className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Authentication & Session Lifecycle</span>
                 </div>
-
-                <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30 col-span-2">
-                  <span className="text-[10.5px] text-muted-foreground block mb-0.5">Approximate Location</span>
-                  <div className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5 text-muted-foreground/70 shrink-0" />
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
+                    <span className="text-[10px] text-muted-foreground block mb-0.5">Login Timestamp (IST)</span>
                     <span className="font-semibold text-foreground text-xs">
-                      {formatLocationDisplay(selectedRecord.location)}
+                      {formatToKolkataTime(selectedRecord.created_at)}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
+                    <span className="text-[10px] text-muted-foreground block mb-0.5">Authentication Method</span>
+                    <span className="font-semibold text-foreground text-xs">
+                      {selectedRecord.auth_method || 'Password'}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
+                    <span className="text-[10px] text-muted-foreground block mb-0.5">Session Status</span>
+                    <div className="mt-0.5">{getSessionPill(selectedRecord.session_status)}</div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
+                    <span className="text-[10px] text-muted-foreground block mb-0.5">Session Identifier</span>
+                    <div className="flex items-center justify-between gap-1 mt-0.5">
+                      <span className="font-mono text-xs text-foreground truncate select-all" title={selectedRecord.session_id || 'Not assigned'}>
+                        {selectedRecord.session_id || 'Not assigned'}
+                      </span>
+                      {selectedRecord.session_id && (
+                        <button
+                          type="button"
+                          onClick={() => handleCopy(selectedRecord.session_id!, selectedRecord.id, 'session')}
+                          className="text-muted-foreground hover:text-foreground p-0.5 rounded shrink-0 transition-colors"
+                          title="Copy Session ID"
+                        >
+                          {copiedSessionId === selectedRecord.id ? (
+                            <Check className="w-3 h-3 text-emerald-400" />
+                          ) : (
+                            <Copy className="w-3 h-3" />
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* SECTION 2: TIME TRACKER WORK ACTIVITY (Only if time tracking telemetry is recorded) */}
+              {(selectedRecord.clock_in || selectedRecord.clock_out || selectedRecord.worked_minutes != null || selectedRecord.active_minutes != null || selectedRecord.client_type === 'desktop_app') && (
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground uppercase tracking-wider text-[10.5px]">
+                    <Clock className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Time Tracker Work Session</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
+                      <span className="text-[10px] text-muted-foreground block mb-0.5">Clock-in Timestamp</span>
+                      <span className="font-semibold text-foreground text-xs">
+                        {selectedRecord.clock_in ? formatToKolkataTime(selectedRecord.clock_in) : '—'}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
+                      <span className="text-[10px] text-muted-foreground block mb-0.5">Clock-out Timestamp</span>
+                      <span className="font-semibold text-foreground text-xs">
+                        {selectedRecord.clock_out
+                          ? formatToKolkataTime(selectedRecord.clock_out)
+                          : (selectedRecord.session_status === 'Active' ? 'Active / In Progress' : '—')}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
+                      <span className="text-[10px] text-muted-foreground block mb-0.5">Worked Duration</span>
+                      <span className="font-semibold text-foreground text-xs">
+                        {selectedRecord.worked_minutes != null ? `${selectedRecord.worked_minutes} mins` : '—'}
+                      </span>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
+                      <span className="text-[10px] text-muted-foreground block mb-0.5">Active Duration</span>
+                      <span className="font-semibold text-foreground text-xs">
+                        {selectedRecord.active_minutes != null ? `${selectedRecord.active_minutes} mins` : '—'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION 3: NETWORK DETAILS */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground uppercase tracking-wider text-[10.5px]">
+                  <Globe className="w-3.5 h-3.5 text-blue-400" />
+                  <span>Network & Connectivity Details</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
+                    <span className="text-[10px] text-muted-foreground block mb-0.5">Source IP Address</span>
+                    <div className="flex items-center justify-between gap-1.5 flex-wrap">
+                      {selectedRecord.ip_address ? (
+                        <>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-mono font-semibold text-foreground text-xs select-all">
+                              {selectedRecord.ip_address}
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleCopy(selectedRecord.ip_address!, selectedRecord.id, 'ip')}
+                              className="text-muted-foreground hover:text-foreground p-0.5 rounded transition-colors inline-flex items-center"
+                              title="Copy IP Address"
+                            >
+                              {copiedIpId === selectedRecord.id ? (
+                                <Check className="w-3 h-3 text-emerald-400" />
+                              ) : (
+                                <Copy className="w-3 h-3" />
+                              )}
+                            </button>
+                          </div>
+                          <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9.5px] font-mono font-medium bg-zinc-500/10 text-zinc-400 border border-zinc-500/20">
+                            {getIpVersion(selectedRecord.ip_address)}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="font-mono text-muted-foreground/70 text-xs">Unavailable</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
+                    <span className="text-[10px] text-muted-foreground block mb-0.5">Network Classification</span>
+                    <div className="mt-0.5">
+                      {getIpBadge(selectedRecord.ip_classification, selectedRecord.ip_address)}
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30 col-span-2">
+                    <span className="text-[10px] text-muted-foreground block mb-0.5">Approximate Location</span>
+                    <div className="flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-muted-foreground/70 shrink-0" />
+                      <span className={cn(
+                        "font-semibold text-foreground text-xs",
+                        (!selectedRecord.ip_address || selectedRecord.ip_classification === 'Localhost') && "text-muted-foreground/90 font-medium"
+                      )}>
+                        {selectedRecord.ip_classification === 'Localhost'
+                          ? 'Localhost (Development Environment)'
+                          : (selectedRecord.location || (selectedRecord.ip_address ? 'Location Unavailable' : 'Not captured'))}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
+                    <span className="text-[10px] text-muted-foreground block mb-0.5">Internet Service Provider (ISP)</span>
+                    <span className="text-foreground text-xs font-medium">
+                      {selectedRecord.ip_classification === 'Localhost'
+                        ? 'Unavailable in local development'
+                        : (selectedRecord.isp || (selectedRecord.ip_address ? 'Unavailable' : 'Not captured'))}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
+                    <span className="text-[10px] text-muted-foreground block mb-0.5">Timezone / Coordinates</span>
+                    <span className="text-foreground text-xs font-mono">
+                      {selectedRecord.latitude && selectedRecord.longitude
+                        ? `${selectedRecord.latitude.toFixed(4)}, ${selectedRecord.longitude.toFixed(4)} (Approximate)`
+                        : (selectedRecord.ip_classification === 'Localhost'
+                            ? 'Asia/Kolkata (System Timezone)'
+                            : (selectedRecord.timezone || 'Not captured'))}
                     </span>
                   </div>
                 </div>
+              </div>
 
-                <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
-                  <span className="text-[10.5px] text-muted-foreground block mb-0.5">Browser & Engine</span>
-                  <span className="font-semibold text-foreground text-xs">
-                    {selectedRecord.browser || 'Unknown'}
-                  </span>
+              {/* SECTION 4: DEVICE & APPLICATION DETAILS */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground uppercase tracking-wider text-[10.5px]">
+                  <Laptop className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Device & Application Details</span>
                 </div>
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
+                    <span className="text-[10px] text-muted-foreground block mb-0.5">Client Type</span>
+                    <span className="font-semibold text-foreground text-xs">
+                      {selectedRecord.client_type === 'desktop_app' || selectedRecord.app_name === 'TripleS Time Tracker'
+                        ? 'Native Desktop Application'
+                        : 'Web Browser'}
+                    </span>
+                  </div>
 
-                <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
-                  <span className="text-[10.5px] text-muted-foreground block mb-0.5">Operating System</span>
-                  <span className="font-semibold text-foreground text-xs">
-                    {selectedRecord.os || 'Unknown OS'}
-                  </span>
+                  <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
+                    <span className="text-[10px] text-muted-foreground block mb-0.5">
+                      {selectedRecord.client_type === 'desktop_app' || selectedRecord.app_name === 'TripleS Time Tracker'
+                        ? 'Desktop Application'
+                        : 'Browser & Engine'}
+                    </span>
+                    <span className="font-semibold text-foreground text-xs">
+                      {selectedRecord.client_type === 'desktop_app' || selectedRecord.app_name === 'TripleS Time Tracker'
+                        ? `${selectedRecord.app_name || 'TripleS Time Tracker'} v${selectedRecord.app_version || '1.0.0'}`
+                        : `${selectedRecord.browser || 'Web Browser'}${selectedRecord.browser_engine ? ` (${selectedRecord.browser_engine})` : ''}`}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
+                    <span className="text-[10px] text-muted-foreground block mb-0.5">Operating System</span>
+                    <span className="font-semibold text-foreground text-xs">
+                      {selectedRecord.os || 'Windows 11 / 10'}
+                      {selectedRecord.os_version && !selectedRecord.os?.includes(selectedRecord.os_version) ? ` (${selectedRecord.os_version})` : ''}
+                    </span>
+                  </div>
+
+                  <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
+                    <span className="text-[10px] text-muted-foreground block mb-0.5">Device Category</span>
+                    <span className="font-semibold text-foreground text-xs">
+                      {selectedRecord.device || 'Desktop'}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Session ID */}
-              {selectedRecord.session_id && (
+              {/* SECTION 5: ADDITIONAL METADATA */}
+              <div className="space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-semibold text-foreground uppercase tracking-wider text-[10.5px]">
+                  <Info className="w-3.5 h-3.5 text-zinc-400" />
+                  <span>Additional Metadata</span>
+                </div>
+
+                {/* Raw User Agent */}
                 <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
-                  <span className="text-[10.5px] text-muted-foreground block mb-0.5">Session Identifier</span>
-                  <span className="font-mono text-xs text-foreground select-all">
-                    {selectedRecord.session_id}
+                  <span className="text-[10px] text-muted-foreground block mb-1">User-Agent Header</span>
+                  <p className="font-mono text-[10px] text-muted-foreground break-all leading-relaxed">
+                    {selectedRecord.user_agent || 'Not captured'}
+                  </p>
+                </div>
+
+                {/* Safe Event Metadata */}
+                {sanitizedModalMetadata && (
+                  <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
+                    <span className="text-[10px] text-muted-foreground block mb-1">Safe Event Metadata</span>
+                    <pre className="font-mono text-[10px] text-muted-foreground bg-muted/20 p-2 rounded-lg overflow-x-auto">
+                      {JSON.stringify(sanitizedModalMetadata, null, 2)}
+                    </pre>
+                  </div>
+                )}
+
+                {/* Verification Notice */}
+                <div className="flex items-start gap-2 p-2.5 rounded-xl border border-border/40 bg-muted/15 dark:bg-zinc-900/30 text-[10px] text-muted-foreground">
+                  <Info className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                  <span>
+                    Source IP is captured on the trusted server side. In production, requests routed through reverse proxies (Vercel, Cloudflare) provide real public client IPs. VPNs, cellular dynamic IPs, and corporate networks can affect the recorded address.
                   </span>
                 </div>
-              )}
 
-              {/* Full Raw User Agent */}
-              <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
-                <span className="text-[10.5px] text-muted-foreground block mb-1">User-Agent Header</span>
-                <p className="font-mono text-[10px] text-muted-foreground break-all leading-relaxed">
-                  {selectedRecord.user_agent}
-                </p>
-              </div>
-
-              {/* Event Metadata */}
-              {selectedRecord.metadata && Object.keys(selectedRecord.metadata).length > 0 && (
-                <div className="p-2.5 rounded-xl border border-border/40 bg-card/40 dark:bg-zinc-900/30">
-                  <span className="text-[10.5px] text-muted-foreground block mb-1">Safe Event Metadata</span>
-                  <pre className="font-mono text-[10.5px] text-muted-foreground bg-muted/20 p-2 rounded-lg overflow-x-auto">
-                    {JSON.stringify(selectedRecord.metadata, null, 2)}
-                  </pre>
+                {/* Event UUID with Copy */}
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground/60 pt-1 border-t border-border/30">
+                  <div className="flex items-center gap-1">
+                    <span>Event ID:</span>
+                    <span className="font-mono">{selectedRecord.id}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleCopy(selectedRecord.id, selectedRecord.id, 'event')}
+                    className="text-muted-foreground hover:text-foreground p-0.5 rounded transition-colors inline-flex items-center gap-1 text-[10px]"
+                    title="Copy Event ID"
+                  >
+                    {copiedEventId === selectedRecord.id ? (
+                      <>
+                        <Check className="w-3 h-3 text-emerald-400" />
+                        <span className="text-emerald-400">Copied</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3 h-3" />
+                        <span>Copy</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-              )}
-
-              {/* VPN & Dynamic IP Informational Callout */}
-              <div className="flex items-start gap-2 p-2.5 rounded-xl border border-border/40 bg-muted/15 dark:bg-zinc-900/30 text-[10.5px] text-muted-foreground">
-                <Info className="w-3.5 h-3.5 text-muted-foreground shrink-0 mt-0.5" />
-                <span>
-                  Source IP is captured on the trusted server side. VPNs, cellular networks, corporate proxies, and dynamic ISP allocations can alter the recorded address or approximate geographic location.
-                </span>
-              </div>
-
-              {/* Event UUID */}
-              <div className="flex items-center justify-between text-[10px] text-muted-foreground/60 pt-1 border-t border-border/30">
-                <span>Event ID:</span>
-                <span className="font-mono">{selectedRecord.id}</span>
               </div>
             </div>
           )}
 
-          <DialogFooter className="flex items-center justify-between gap-2 border-t border-border/40 pt-3">
+          <DialogFooter className="p-4 bg-card dark:bg-zinc-950 border-t border-border/80 dark:border-zinc-800 flex items-center justify-between gap-2 shrink-0 z-10 shadow-lg">
             {selectedRecord?.session_status === 'Active' && selectedRecord.session_id && (
               <Button
                 variant="destructive"

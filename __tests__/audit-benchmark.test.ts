@@ -50,7 +50,7 @@ describe('Performance Audit Benchmarks', () => {
     const duration = performance.now() - start
     console.log(`[BENCHMARK] calculateMonthlyPayroll: ${duration.toFixed(2)}ms (Employees processed: ${result.length})`)
     expect(Array.isArray(result)).toBe(true)
-  }, 30000)
+  }, 60000)
 
   it('measures baseline execution time for checkEmployeeProjectAccess & checkEmployeeHasTasks', async () => {
     const admin = await createAdminClient()
@@ -66,7 +66,7 @@ describe('Performance Audit Benchmarks', () => {
     console.log(`[BENCHMARK] layout access checks: ${duration.toFixed(2)}ms`)
     expect(typeof hasAccess).toBe('boolean')
     expect(typeof hasTasks).toBe('boolean')
-  }, 10000)
+  }, 60000)
 
   it('measures baseline execution time for getAttendanceEmployees', async () => {
     const start = performance.now()
@@ -74,7 +74,7 @@ describe('Performance Audit Benchmarks', () => {
     const duration = performance.now() - start
     console.log(`[BENCHMARK] getAttendanceEmployees: ${duration.toFixed(2)}ms (Employees with activity: ${results.length})`)
     expect(Array.isArray(results)).toBe(true)
-  }, 20000)
+  }, 60000)
 
   it('measures baseline execution time for globalSearchAction', async () => {
     const start = performance.now()

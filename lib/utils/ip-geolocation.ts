@@ -1,7 +1,7 @@
 /**
  * Server-Side IP Geolocation Service
  *
- * Resolves approximate city, region, and country for client IP addresses using:
+ * Resolves approximate city, region, country, latitude, longitude, timezone, and ISP for client IP addresses using:
  * 1. Fast-path: Trusted edge platform headers (e.g. Vercel, Cloudflare) with zero network latency.
  * 2. Reliable external IP Geolocation API (ipinfo.io with IPINFO_TOKEN or fallback to ip-api.com).
  *
@@ -9,7 +9,7 @@
  * - Runs strictly on the server side. Secrets (e.g. IPINFO_TOKEN) are never exposed to the client bundle.
  * - In-memory LRU cache prevents rate-limiting and redundant network requests.
  * - Strict 2-second timeout via AbortSignal ensures authentication and server actions never hang.
- * - Honestly returns "Unknown" upon failure or unverified location; never guesses or fabricates locations.
+ * - Honestly returns "Lookup failed" or "Not captured" upon failure or unverified location; never guesses or fabricates locations.
  * - Detects VPN / Proxy / Datacenter hosting indicators.
  */
 
@@ -23,6 +23,11 @@ export interface IpGeolocationResult {
   region?: string | null
   country?: string | null
   countryCode?: string | null
+  latitude?: number | null
+  longitude?: number | null
+  timezone?: string | null
+  isp?: string | null
+  status: 'success' | 'unavailable' | 'failed' | 'private'
 }
 
 interface CacheEntry {
@@ -75,6 +80,9 @@ export function extractEdgeHeaderLocation(
   const vercelCity = getHeader('x-vercel-ip-city')
   const vercelRegion = getHeader('x-vercel-ip-country-region')
   const vercelCountry = getHeader('x-vercel-ip-country')
+  const vercelLat = getHeader('x-vercel-ip-latitude')
+  const vercelLon = getHeader('x-vercel-ip-longitude')
+  const vercelTz = getHeader('x-vercel-ip-timezone')
 
   if (vercelCity || vercelCountry) {
     let city: string | null = null
@@ -98,6 +106,11 @@ export function extractEdgeHeaderLocation(
         region,
         country,
         countryCode: country,
+        latitude: vercelLat ? parseFloat(vercelLat) : null,
+        longitude: vercelLon ? parseFloat(vercelLon) : null,
+        timezone: vercelTz ? decodeURIComponent(vercelTz) : null,
+        isp: null,
+        status: 'success'
       }
     }
   }
@@ -106,6 +119,9 @@ export function extractEdgeHeaderLocation(
   const cfCity = getHeader('cf-ipcity')
   const cfRegion = getHeader('cf-region-code') || getHeader('cf-region')
   const cfCountry = getHeader('cf-ipcountry')
+  const cfLat = getHeader('cf-iplatitude')
+  const cfLon = getHeader('cf-iplongitude')
+  const cfTz = getHeader('cf-timezone')
 
   if (cfCity || cfCountry) {
     const parts = [cfCity, cfRegion, cfCountry].filter(Boolean)
@@ -118,6 +134,11 @@ export function extractEdgeHeaderLocation(
         region: cfRegion || null,
         country: cfCountry || null,
         countryCode: cfCountry || null,
+        latitude: cfLat ? parseFloat(cfLat) : null,
+        longitude: cfLon ? parseFloat(cfLon) : null,
+        timezone: cfTz || null,
+        isp: null,
+        status: 'success'
       }
     }
   }
@@ -131,7 +152,7 @@ export function extractEdgeHeaderLocation(
  * 2. In-memory cache
  * 3. Configurable IP Geolocation provider (ipinfo.io or ip-api.com) with timeout
  *
- * Never throws. On failure or unverified location, honestly returns "Unknown".
+ * Never throws. On failure or unverified location, honestly returns "Lookup failed" or "Unavailable".
  */
 export async function resolveIpGeolocation(
   rawIp: string | null | undefined,
@@ -144,6 +165,7 @@ export async function resolveIpGeolocation(
       location: 'Unknown',
       isProxy: false,
       isHosting: false,
+      status: 'unavailable'
     }
   }
 
@@ -154,6 +176,15 @@ export async function resolveIpGeolocation(
       location: 'Localhost (Development Environment)',
       isProxy: false,
       isHosting: false,
+      city: null,
+      region: null,
+      country: null,
+      countryCode: null,
+      latitude: null,
+      longitude: null,
+      timezone: 'Asia/Kolkata',
+      isp: null,
+      status: 'private'
     }
   }
 
@@ -162,14 +193,32 @@ export async function resolveIpGeolocation(
       location: 'Private / Corporate Network',
       isProxy: false,
       isHosting: false,
+      city: null,
+      region: null,
+      country: null,
+      countryCode: null,
+      latitude: null,
+      longitude: null,
+      timezone: null,
+      isp: null,
+      status: 'private'
     }
   }
 
   if (classification === 'Unavailable') {
     return {
-      location: 'Unknown',
+      location: 'Unavailable',
       isProxy: false,
       isHosting: false,
+      city: null,
+      region: null,
+      country: null,
+      countryCode: null,
+      latitude: null,
+      longitude: null,
+      timezone: null,
+      isp: null,
+      status: 'unavailable'
     }
   }
 
@@ -205,9 +254,17 @@ export async function resolveIpGeolocation(
         const country = data.country || null
         const isProxy = Boolean(data.privacy?.proxy || data.privacy?.vpn || data.privacy?.tor)
         const isHosting = Boolean(data.privacy?.hosting)
+        const isp = data.org || data.company?.name || null
+        let latitude: number | null = null
+        let longitude: number | null = null
+        if (data.loc && typeof data.loc === 'string') {
+          const [lat, lon] = data.loc.split(',')
+          latitude = parseFloat(lat) || null
+          longitude = parseFloat(lon) || null
+        }
 
         const parts = [city, region, country].filter(Boolean)
-        const locationStr = parts.length > 0 ? `${parts.join(', ')} (Approximate)` : 'Unknown'
+        const locationStr = parts.length > 0 ? `${parts.join(', ')} (Approximate)` : 'Lookup failed'
 
         const result: IpGeolocationResult = {
           location: locationStr,
@@ -217,6 +274,11 @@ export async function resolveIpGeolocation(
           region,
           country,
           countryCode: data.country || null,
+          latitude,
+          longitude,
+          timezone: data.timezone || null,
+          isp,
+          status: parts.length > 0 ? 'success' : 'failed'
         }
 
         setToCache(ip, result)
@@ -225,9 +287,9 @@ export async function resolveIpGeolocation(
     }
 
     // 2. Fallback: ip-api.com (public, reliable, no secret needed)
-    // Query fields: status,message,country,countryCode,region,regionName,city,proxy,hosting,query
+    // Query fields: status,message,country,countryCode,region,regionName,city,lat,lon,timezone,isp,org,proxy,hosting,query
     const res = await fetch(
-      `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,message,country,countryCode,region,regionName,city,proxy,hosting,query`,
+      `http://ip-api.com/json/${encodeURIComponent(ip)}?fields=status,message,country,countryCode,region,regionName,city,lat,lon,timezone,isp,org,proxy,hosting,query`,
       {
         signal: AbortSignal.timeout(2000),
         headers: { Accept: 'application/json' },
@@ -242,9 +304,10 @@ export async function resolveIpGeolocation(
         const country = data.country || data.countryCode || null
         const isProxy = Boolean(data.proxy)
         const isHosting = Boolean(data.hosting)
+        const isp = data.isp || data.org || null
 
         const parts = [city, region, country].filter(Boolean)
-        const locationStr = parts.length > 0 ? `${parts.join(', ')} (Approximate)` : 'Unknown'
+        const locationStr = parts.length > 0 ? `${parts.join(', ')} (Approximate)` : 'Lookup failed'
 
         const result: IpGeolocationResult = {
           location: locationStr,
@@ -254,6 +317,11 @@ export async function resolveIpGeolocation(
           region,
           country,
           countryCode: data.countryCode || null,
+          latitude: typeof data.lat === 'number' ? data.lat : null,
+          longitude: typeof data.lon === 'number' ? data.lon : null,
+          timezone: data.timezone || null,
+          isp,
+          status: 'success'
         }
 
         setToCache(ip, result)
@@ -262,13 +330,14 @@ export async function resolveIpGeolocation(
     }
   } catch (err) {
     // Network failure, timeout, or lookup unavailable
-    // Do not throw; gracefully fall back to honest "Unknown"
+    // Do not throw; gracefully fall back to honest "Lookup failed"
   }
 
   const fallbackResult: IpGeolocationResult = {
-    location: 'Unknown',
+    location: 'Lookup failed',
     isProxy: false,
     isHosting: false,
+    status: 'failed'
   }
 
   setToCache(ip, fallbackResult)

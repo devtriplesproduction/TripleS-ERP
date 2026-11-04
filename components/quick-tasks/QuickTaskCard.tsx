@@ -79,13 +79,12 @@ export function QuickTaskCard({
 
   return (
     <div
-      className={`group relative rounded-xl border transition-all duration-200 select-none ${
-        isCompleted
+      className={`group relative rounded-xl border transition-all duration-200 select-none ${isCompleted
           ? 'bg-muted/20 border-border/40 opacity-80'
           : isCancelled
-          ? 'bg-muted/10 border-border/30 opacity-60'
-          : 'bg-card border-border/70 hover:border-foreground/30 hover:shadow-xs'
-      } ${isCompact ? 'p-3' : 'p-3.5'}`}
+            ? 'bg-muted/10 border-border/30 opacity-60'
+            : 'bg-card border-border/70 hover:border-foreground/30 hover:shadow-xs'
+        } ${isCompact ? 'p-3' : 'p-3.5'}`}
     >
       <div className="flex items-start gap-3">
         {/* Checkbox / Toggle Complete button */}
@@ -97,18 +96,16 @@ export function QuickTaskCard({
             !canComplete
               ? 'Only assigned user or owner can mark this completed'
               : isCompleted
-              ? 'Mark as pending'
-              : 'Mark as completed'
+                ? 'Mark as pending'
+                : 'Mark as completed'
           }
-          className={`shrink-0 mt-0.5 rounded-lg flex items-center justify-center transition-all ${
-            isCompact ? 'w-5 h-5' : 'w-5.5 h-5.5'
-          } ${
-            isCompleted
+          className={`shrink-0 mt-0.5 rounded-lg flex items-center justify-center transition-all ${isCompact ? 'w-5 h-5' : 'w-5.5 h-5.5'
+            } ${isCompleted
               ? 'bg-foreground text-background cursor-pointer'
               : canComplete
-              ? 'border-2 border-muted-foreground/50 hover:border-foreground hover:bg-muted/50 cursor-pointer text-transparent hover:text-muted-foreground'
-              : 'border-2 border-muted/60 opacity-40 cursor-not-allowed text-transparent'
-          }`}
+                ? 'border-2 border-muted-foreground/50 hover:border-foreground hover:bg-muted/50 cursor-pointer text-transparent hover:text-muted-foreground'
+                : 'border-2 border-muted/60 opacity-40 cursor-not-allowed text-transparent'
+            }`}
         >
           <Check className={`${isCompact ? 'w-3.5 h-3.5' : 'w-3.5 h-3.5'} ${isCompleted ? 'stroke-[3]' : ''}`} />
         </button>
@@ -118,13 +115,12 @@ export function QuickTaskCard({
           {/* Header Row: Content & Badges & Actions */}
           <div className="flex items-start justify-between gap-2">
             <p
-              className={`text-xs sm:text-sm font-medium tracking-tight break-words leading-snug whitespace-pre-wrap ${
-                isCompleted
+              className={`text-xs sm:text-sm font-medium tracking-tight break-words leading-snug whitespace-pre-wrap ${isCompleted
                   ? 'line-through text-muted-foreground'
                   : isCancelled
-                  ? 'line-through text-muted-foreground italic'
-                  : 'text-foreground'
-              }`}
+                    ? 'line-through text-muted-foreground italic'
+                    : 'text-foreground'
+                }`}
             >
               {displayText}
             </p>

@@ -4,6 +4,9 @@ import { createAdminClient } from '@/lib/supabase/server'
 import { getCurrentUser } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
 import { attachProfilePhotos } from '@/lib/utils/profile-photos'
+import { checkRateLimit } from '@/lib/utils/rate-limiter'
+
+let isBucketVerified = false
 
 export interface ProjectFileMetadata {
   id: string
@@ -48,6 +51,11 @@ export async function uploadProjectFileAction(projectId: string, formData: FormD
     const user = await getCurrentUser()
     if (!user) return { success: false, error: 'Authentication required' }
 
+    const rl = checkRateLimit(`upload:${user.id}`, 20, 60 * 1000)
+    if (!rl.success) {
+      return { success: false, error: `Too many upload requests. Please wait ${rl.retryAfterSeconds || 10} seconds.` }
+    }
+
     const file = formData.get('file') as File
     if (!file) return { success: false, error: 'No file provided' }
 
@@ -74,10 +82,13 @@ export async function uploadProjectFileAction(projectId: string, formData: FormD
       return { success: false, error: 'Unauthorized to upload files to this project' }
     }
 
-    // Create bucket if it doesn't exist
-    const { data: buckets } = await admin.storage.listBuckets()
-    if (!buckets?.find(b => b.name === 'project-files')) {
-      await admin.storage.createBucket('project-files', { public: false })
+    // Verify bucket existence once
+    if (!isBucketVerified) {
+      const { data: buckets } = await admin.storage.listBuckets()
+      if (!buckets?.find(b => b.name === 'project-files')) {
+        await admin.storage.createBucket('project-files', { public: false })
+      }
+      isBucketVerified = true
     }
 
     const uniqueId = crypto.randomUUID()
@@ -92,6 +103,9 @@ export async function uploadProjectFileAction(projectId: string, formData: FormD
       })
 
     if (uploadError) {
+      if (uploadError.message?.toLowerCase().includes('bucket') || uploadError.message?.toLowerCase().includes('not found')) {
+        isBucketVerified = false // Invalidate cache on bucket configuration changes
+      }
       return { success: false, error: uploadError.message }
     }
 

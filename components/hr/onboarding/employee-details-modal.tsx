@@ -1495,12 +1495,12 @@ export function EmployeeDetailsClient({
                             <SelectItem value="Full Time">Full Time</SelectItem>
                             <SelectItem value="Intern">Intern</SelectItem>
                             {professionalForm.employment_type &&
-                             professionalForm.employment_type !== 'Full Time' &&
-                             professionalForm.employment_type !== 'Intern' && (
-                              <SelectItem value={professionalForm.employment_type}>
-                                {professionalForm.employment_type}
-                              </SelectItem>
-                            )}
+                              professionalForm.employment_type !== 'Full Time' &&
+                              professionalForm.employment_type !== 'Intern' && (
+                                <SelectItem value={professionalForm.employment_type}>
+                                  {professionalForm.employment_type}
+                                </SelectItem>
+                              )}
                           </SelectContent>
                         </Select>
                       ) : (

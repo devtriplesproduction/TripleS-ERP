@@ -110,12 +110,12 @@ export function NotificationBell() {
     }
     window.addEventListener('erp-notification-update', handleCustomUpdate)
 
-    // 4. Fallback interval polling (every 30 seconds when tab is active)
+    // 4. Low-overhead fallback polling (every 60 seconds when tab is active; realtime handles live updates)
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         loadNotifications()
       }
-    }, 30000)
+    }, 60000)
 
     return () => {
       isMountedRef.current = false

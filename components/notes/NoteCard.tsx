@@ -171,9 +171,8 @@ export function NoteCard({
       <div
         ref={cardRef}
         onClick={(e) => e.stopPropagation()}
-        className={`relative p-3 rounded-xl border border-foreground/40 bg-card shadow-md transition-all ${
-          viewMode === 'list' ? 'w-full' : ''
-        }`}
+        className={`relative p-3 rounded-xl border border-foreground/40 bg-card shadow-md transition-all ${viewMode === 'list' ? 'w-full' : ''
+          }`}
       >
         {/* Header: Title input & Pin toggle */}
         <div className="flex items-center justify-between gap-2">
@@ -190,11 +189,10 @@ export function NoteCard({
             type="button"
             onClick={onTogglePin}
             title={note.is_pinned ? 'Unpin note' : 'Pin note'}
-            className={`p-1.5 rounded-md transition-colors cursor-pointer ${
-              note.is_pinned
+            className={`p-1.5 rounded-md transition-colors cursor-pointer ${note.is_pinned
                 ? 'text-foreground bg-muted'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-            }`}
+              }`}
           >
             <Pin className={`w-3.5 h-3.5 ${note.is_pinned ? 'fill-current' : ''}`} />
           </button>
@@ -258,9 +256,8 @@ export function NoteCard({
   return (
     <div
       onClick={onStartEdit}
-      className={`group relative p-3 rounded-xl border border-border/70 hover:border-foreground/30 bg-card hover:bg-muted/30 transition-all cursor-pointer shadow-xs hover:shadow-sm flex flex-col justify-between ${
-        viewMode === 'list' ? 'w-full' : 'min-h-[100px]'
-      }`}
+      className={`group relative p-3 rounded-xl border border-border/70 hover:border-foreground/30 bg-card hover:bg-muted/30 transition-all cursor-pointer shadow-xs hover:shadow-sm flex flex-col justify-between ${viewMode === 'list' ? 'w-full' : 'min-h-[100px]'
+        }`}
     >
       <div>
         {/* Header: Title & Pin action */}
@@ -272,11 +269,10 @@ export function NoteCard({
             type="button"
             onClick={onTogglePin}
             title={note.is_pinned ? 'Unpin note' : 'Pin note'}
-            className={`p-1 rounded-md transition-opacity cursor-pointer ${
-              note.is_pinned
+            className={`p-1 rounded-md transition-opacity cursor-pointer ${note.is_pinned
                 ? 'text-foreground opacity-100'
                 : 'text-muted-foreground opacity-60 group-hover:opacity-100 hover:text-foreground'
-            }`}
+              }`}
           >
             <Pin className={`w-3.5 h-3.5 ${note.is_pinned ? 'fill-current' : ''}`} />
           </button>

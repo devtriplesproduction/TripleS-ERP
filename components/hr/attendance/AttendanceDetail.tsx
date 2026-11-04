@@ -359,10 +359,10 @@ export function AttendanceDetail({ employeeId, basePath = '/hr/attendance' }: { 
                         (selectedAtt.leave.leave_type || '').toLowerCase().includes('comp')
                           ? 'text-purple-400 font-semibold'
                           : selectedAtt.leave.leave_type === 'Sick Leave'
-                          ? 'text-rose-400 font-semibold'
-                          : selectedAtt.leave.leave_type === 'Casual Leave'
-                          ? 'text-sky-400 font-semibold'
-                          : 'text-orange-500'
+                            ? 'text-rose-400 font-semibold'
+                            : selectedAtt.leave.leave_type === 'Casual Leave'
+                              ? 'text-sky-400 font-semibold'
+                              : 'text-orange-500'
                       }>
                         {(selectedAtt.leave.leave_type || '').toLowerCase().includes('comp')
                           ? 'Comp-Off'

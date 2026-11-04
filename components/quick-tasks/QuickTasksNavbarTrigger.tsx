@@ -73,12 +73,12 @@ export function QuickTasksNavbarTrigger({ user }: QuickTasksNavbarTriggerProps) 
       }
     } catch {}
 
-    // 4. Active fallback polling (every 4 seconds when tab is active)
+    // 4. Low-overhead fallback polling (every 60 seconds when tab is active; realtime handles instant updates)
     const interval = setInterval(() => {
       if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
         loadBadgeState()
       }
-    }, 4000)
+    }, 60000)
 
     // 5. Re-check immediately on window focus or visibility change
     const handleFocus = () => {

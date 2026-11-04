@@ -209,13 +209,13 @@ export function PremiumDatePicker({ value, onChange, className, align = 'left', 
             </div>
 
             <div className="flex gap-1 shrink-0">
-              <Button variant="custom"                 type="button"
+              <Button variant="custom" type="button"
                 onClick={(e) => { e.stopPropagation(); prevMonth(); }}
                 className="p-1.5 rounded-lg hover:bg-slate-100  transition-colors text-slate-500 "
               >
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <Button variant="custom"                 type="button"
+              <Button variant="custom" type="button"
                 onClick={(e) => { e.stopPropagation(); nextMonth(); }}
                 className="p-1.5 rounded-lg hover:bg-slate-100  transition-colors text-slate-500 "
               >
@@ -237,26 +237,26 @@ export function PremiumDatePicker({ value, onChange, className, align = 'left', 
               const isSelected = selectedDate && isSameDay(day, selectedDate);
               const isCurrentMonth = isSameMonth(day, currentMonth);
               const isToday = isSameDay(day, new Date());
-              
+
               const minDateObj = minDate ? new Date(minDate) : null;
               if (minDateObj) minDateObj.setHours(0, 0, 0, 0);
               const isBeforeMinDate = minDateObj ? day.getTime() < minDateObj.getTime() : false;
 
               return (
-                <Button variant="custom"                   key={idx}
+                <Button variant="custom" key={idx}
                   type="button"
                   disabled={isBeforeMinDate}
-                  onClick={(e) => { 
+                  onClick={(e) => {
                     if (isBeforeMinDate) return;
-                    e.stopPropagation(); 
-                    handleDateSelect(day); 
+                    e.stopPropagation();
+                    handleDateSelect(day);
                   }}
                   className={cn(
                     "h-8 w-8 rounded-lg text-sm transition-all flex items-center justify-center relative",
                     !isCurrentMonth && "opacity-20",
                     isBeforeMinDate && "opacity-30 cursor-not-allowed",
-                    !isBeforeMinDate && isSelected 
-                      ? "bg-orange-600 text-white font-bold shadow-lg shadow-orange-600/20" 
+                    !isBeforeMinDate && isSelected
+                      ? "bg-orange-600 text-white font-bold shadow-lg shadow-orange-600/20"
                       : !isBeforeMinDate && "hover:bg-orange-500/10 text-slate-600  hover:text-orange-600",
                     isToday && !isSelected && !isBeforeMinDate && "after:content-[''] after:absolute after:bottom-1 after:w-1 after:h-1 after:bg-orange-500 after:rounded-full"
                   )}
@@ -266,15 +266,15 @@ export function PremiumDatePicker({ value, onChange, className, align = 'left', 
               );
             })}
           </div>
-          
+
           <div className="mt-4 pt-4 border-t border-slate-100 ">
-              <Button variant="custom" 
-                  type="button"
-                  onClick={() => handleDateSelect(new Date())}
-                  className="w-full py-2 text-xs font-bold text-orange-600 hover:bg-orange-500/5 rounded-lg transition-colors"
-              >
-                  Today
-              </Button>
+            <Button variant="custom"
+              type="button"
+              onClick={() => handleDateSelect(new Date())}
+              className="w-full py-2 text-xs font-bold text-orange-600 hover:bg-orange-500/5 rounded-lg transition-colors"
+            >
+              Today
+            </Button>
           </div>
         </motion.div>
       )}

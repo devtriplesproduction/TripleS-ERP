@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
-import { withRetry } from './job-queue.service';
+import { withRetry, enqueueJob } from './job-queue.service';
 
 export interface AuditLogEntry {
   action: string;
@@ -112,7 +112,7 @@ class AuditQueue {
 export const auditQueue = new AuditQueue();
 
 /**
- * Queue non-critical EOD activity log asynchronously
+ * Queue non-critical EOD activity log asynchronously into both memory buffer and durable outbox
  */
 export function queueEodActivity(
   action: string,
@@ -121,13 +121,45 @@ export function queueEodActivity(
   target_user_id: string | null,
   details: any
 ) {
-  auditQueue.enqueue({
+  const entry: AuditLogEntry = {
     action,
     actor_email,
     user_id,
     target_user_id,
     details,
-  });
+    timestamp: new Date().toISOString(),
+  };
+
+  auditQueue.enqueue(entry);
+
+  // Durable outbox persistence (never blocks caller)
+  const idempotencyKey = `eod_act_${user_id}_${action}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  enqueueJob('EOD_ACTIVITY_LOG', entry, { idempotencyKey, maxRetries: 3 }).catch(() => {});
+}
+
+/**
+ * Durably enqueue EOD activity event into database-backed background_jobs outbox
+ * Awaited when guaranteed persistence before response is required.
+ */
+export async function queueEodActivityDurable(
+  action: string,
+  actor_email: string,
+  user_id: string,
+  target_user_id: string | null,
+  details: any
+): Promise<{ success: boolean; jobId?: string; isDuplicate?: boolean }> {
+  const entry: AuditLogEntry = {
+    action,
+    actor_email,
+    user_id,
+    target_user_id,
+    details,
+    timestamp: new Date().toISOString(),
+  };
+
+  const idempotencyKey = `eod_act_${user_id}_${action}_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const res = await enqueueJob('EOD_ACTIVITY_LOG', entry, { idempotencyKey, maxRetries: 3 });
+  return { success: res.success, jobId: res.job?.id, isDuplicate: res.isDuplicate };
 }
 
 /**

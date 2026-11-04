@@ -214,11 +214,10 @@ export function NoteEditModal({
               type="button"
               onClick={handleTogglePin}
               title={isPinned ? 'Unpin note' : 'Pin note'}
-              className={`p-2 rounded-lg transition-colors cursor-pointer ${
-                isPinned
+              className={`p-2 rounded-lg transition-colors cursor-pointer ${isPinned
                   ? 'text-foreground bg-muted'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
+                }`}
             >
               <Pin className={`w-4 h-4 ${isPinned ? 'fill-current' : ''}`} />
             </button>

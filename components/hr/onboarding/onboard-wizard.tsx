@@ -135,14 +135,14 @@ const STEPS = [
   { id: 4, title: 'Review', subtitle: 'Review & create' }
 ]
 
-function EditableFileItem({ 
-  f, 
-  onDelete, 
-  onRename 
-}: { 
-  f: UploadedFile, 
-  onDelete: () => void, 
-  onRename: (newName: string) => void 
+function EditableFileItem({
+  f,
+  onDelete,
+  onRename
+}: {
+  f: UploadedFile,
+  onDelete: () => void,
+  onRename: (newName: string) => void
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState("")
@@ -185,10 +185,10 @@ function EditableFileItem({
         <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
         <div className="min-w-0 flex-1">
           {isEditing ? (
-            <input 
+            <input
               autoFocus
-              type="text" 
-              value={editValue} 
+              type="text"
+              value={editValue}
               onChange={e => setEditValue(e.target.value)}
               onKeyDown={handleKeyDown}
               className="h-7 text-sm px-2 w-full font-medium rounded-md border border-border bg-background text-foreground outline-none focus:outline-none focus:border-border transition-colors"
@@ -1189,9 +1189,9 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-4">
                       {uploadedFiles.map(f => (
-                        <EditableFileItem 
-                          key={f.id} 
-                          f={f} 
+                        <EditableFileItem
+                          key={f.id}
+                          f={f}
                           onDelete={() => setUploadedFiles(prev => prev.filter(x => x.id !== f.id))}
                           onRename={(newName) => {
                             setUploadedFiles(prev => prev.map(x => x.id === f.id ? { ...x, name: newName } : x));
@@ -1333,7 +1333,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Division</label><div className="text-sm font-medium break-words">{getValues("division") || "-"}</div></div>
                         <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Designation</label><div className="text-sm font-medium break-words">{getValues("designation") || "-"}</div></div>
                         <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Employment Type</label><div className="text-sm font-medium break-words">{getValues("employment_type") || "-"}</div></div>
-                        
+
 
                         <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Joining Date</label><div className="text-sm font-medium break-words">{formatDateReadable(getValues("joining_date"), "-")}</div></div>
                         {getValues("employment_type") !== 'Intern' && (

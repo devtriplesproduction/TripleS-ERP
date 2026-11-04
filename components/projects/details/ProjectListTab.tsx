@@ -116,7 +116,7 @@ export function ProjectListTab({ tasks, onTaskClick }: ProjectListTabProps) {
                 </tr>
               ) : (
                 filteredTasks.map((t) => {
-                  const progressVal = t.estimated_hours && t.estimated_hours > 0 
+                  const progressVal = t.estimated_hours && t.estimated_hours > 0
                     ? Math.min(100, Math.round(((t.worked_hours || 0) / t.estimated_hours) * 100))
                     : 0;
 

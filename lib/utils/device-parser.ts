@@ -5,6 +5,19 @@
  */
 
 export type IpClassification = 'Localhost' | 'Private Network' | 'Public IP' | 'VPN / Proxy' | 'Unavailable'
+export type IpVersion = 'IPv4' | 'IPv6' | 'Unknown'
+
+/**
+ * Identifies the IP address version (IPv4, IPv6, or Unknown).
+ */
+export function getIpVersion(rawIp: string | null | undefined): IpVersion {
+  if (!rawIp) return 'Unknown'
+  const ip = normalizeIp(rawIp)
+  if (!ip) return 'Unknown'
+  if (isValidIpv4(ip)) return 'IPv4'
+  if (isValidIpv6(ip) || ip === '::1') return 'IPv6'
+  return 'Unknown'
+}
 
 export interface ClientIpDetails {
   ip: string | null
@@ -274,8 +287,38 @@ export function getClientIpDetails(
  * Resolved client metadata including async geolocation resolution and VPN/Proxy detection.
  */
 export interface ResolvedClientMetadata extends ClientIpDetails {
+  city: string | null
+  region: string | null
+  country: string | null
+  latitude: number | null
+  longitude: number | null
+  timezone: string | null
+  isp: string | null
+  geoStatus: 'success' | 'unavailable' | 'failed' | 'private'
   isProxy: boolean
   isHosting: boolean
+}
+
+export type ClientCategory = 'desktop_app' | 'browser' | 'mobile_app' | 'unknown'
+
+export interface DetailedClientInfo {
+  clientType: ClientCategory
+  appName: string | null
+  appVersion: string | null
+  runtime: string | null
+  displayName: string
+
+  browserName: string | null
+  browserVersion: string | null
+  browserMajorVersion: string | null
+  browserEngine: string | null
+
+  osName: string
+  osVersion: string | null
+  fullOs: string
+  deviceType: 'Desktop' | 'Mobile' | 'Tablet' | 'Unknown'
+
+  userAgent: string
 }
 
 /**
@@ -290,7 +333,49 @@ export async function resolveClientMetadata(
   if (!basic.ip || basic.classification === 'Unavailable') {
     return {
       ...basic,
-      location: 'Unknown',
+      city: null,
+      region: null,
+      country: null,
+      latitude: null,
+      longitude: null,
+      timezone: null,
+      isp: null,
+      geoStatus: 'unavailable',
+      location: 'Approximate Location Unavailable',
+      isProxy: false,
+      isHosting: false,
+    }
+  }
+
+  if (basic.classification === 'Localhost') {
+    return {
+      ...basic,
+      city: null,
+      region: null,
+      country: null,
+      latitude: null,
+      longitude: null,
+      timezone: 'Asia/Kolkata',
+      isp: null,
+      geoStatus: 'private',
+      location: 'Localhost (Development Environment)',
+      isProxy: false,
+      isHosting: false,
+    }
+  }
+
+  if (basic.classification === 'Private Network') {
+    return {
+      ...basic,
+      city: null,
+      region: null,
+      country: null,
+      latitude: null,
+      longitude: null,
+      timezone: null,
+      isp: null,
+      geoStatus: 'private',
+      location: 'Private / Corporate Network',
       isProxy: false,
       isHosting: false,
     }
@@ -310,13 +395,29 @@ export async function resolveClientMetadata(
       sourceHeader: basic.sourceHeader,
       classification,
       location: geo.location,
+      city: geo.city || null,
+      region: geo.region || null,
+      country: geo.country || null,
+      latitude: geo.latitude ?? null,
+      longitude: geo.longitude ?? null,
+      timezone: geo.timezone || null,
+      isp: geo.isp || null,
+      geoStatus: geo.status,
       isProxy: geo.isProxy,
       isHosting: geo.isHosting,
     }
   } catch {
     return {
       ...basic,
-      location: basic.location || 'Unknown',
+      city: null,
+      region: null,
+      country: null,
+      latitude: null,
+      longitude: null,
+      timezone: null,
+      isp: null,
+      geoStatus: 'failed',
+      location: basic.location || 'Approximate Location Unavailable',
       isProxy: false,
       isHosting: false,
     }
@@ -388,6 +489,213 @@ export function extractApproxLocation(
 }
 
 /**
+ * Detailed parser for User-Agent string and client headers.
+ * Accurately detects:
+ * - Native desktop applications (TripleS Time Tracker on Electron 34) vs Web browsers
+ * - Web browsers: Chrome, Edge, Firefox, Safari, Opera, Brave with full version and layout engine
+ * - Operating systems: Windows 11 / 10, macOS, Linux, iOS, Android with versions
+ * - Device category: Desktop, Mobile, Tablet
+ */
+export function parseDetailedUserAgent(
+  rawUa: string | null | undefined,
+  headers?: Headers | Record<string, string | string[] | undefined>
+): DetailedClientInfo {
+  const getHeader = (name: string): string | null => {
+    if (!headers) return null
+    if (typeof (headers as Headers).get === 'function') {
+      return (headers as Headers).get(name)
+    }
+    const val = (headers as Record<string, any>)[name] || (headers as Record<string, any>)[name.toLowerCase()]
+    if (Array.isArray(val)) return val[0] || null
+    return val || null
+  }
+
+  const ua = rawUa ? rawUa.trim() : ''
+  const clientHeader = getHeader('x-client-name') || getHeader('x-application-name') || ''
+  const clientVersionHeader = getHeader('x-client-version') || getHeader('x-application-version') || ''
+
+  // 1. Device Category
+  let deviceType: 'Desktop' | 'Mobile' | 'Tablet' | 'Unknown' = 'Desktop'
+  if (/iPad|tablet|PlayBook|Silk|(Android(?!.*Mobile))/i.test(ua)) {
+    deviceType = 'Tablet'
+  } else if (/Mobile|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)) {
+    deviceType = 'Mobile'
+  } else if (!ua) {
+    deviceType = 'Unknown'
+  }
+
+  // 2. Operating System & Version
+  let osName = 'Unknown OS'
+  let osVersion: string | null = null
+  let fullOs = 'Unknown OS'
+
+  if (/Windows NT 10.0/i.test(ua)) {
+    osName = 'Windows'
+    osVersion = '11 / 10'
+    fullOs = 'Windows 11 / 10'
+  } else if (/Windows NT 6.3/i.test(ua)) {
+    osName = 'Windows'
+    osVersion = '8.1'
+    fullOs = 'Windows 8.1'
+  } else if (/Windows NT 6.2/i.test(ua)) {
+    osName = 'Windows'
+    osVersion = '8'
+    fullOs = 'Windows 8'
+  } else if (/Windows NT 6.1/i.test(ua)) {
+    osName = 'Windows'
+    osVersion = '7'
+    fullOs = 'Windows 7'
+  } else if (/Windows NT/i.test(ua)) {
+    osName = 'Windows'
+    osVersion = null
+    fullOs = 'Windows'
+  } else if (/iPhone|iPad|iPod/i.test(ua)) {
+    osName = 'iOS'
+    const iosMatch = ua.match(/OS ([\d_]+)/i)
+    if (iosMatch) {
+      osVersion = iosMatch[1].replace(/_/g, '.')
+      fullOs = `iOS ${osVersion}`
+    } else {
+      fullOs = 'iOS'
+    }
+  } else if (/Macintosh|Mac OS X/i.test(ua)) {
+    osName = 'macOS'
+    const macMatch = ua.match(/Mac OS X ([\d_]+)/i) || ua.match(/Mac OS X ([\d.]+)/i)
+    if (macMatch) {
+      osVersion = macMatch[1].replace(/_/g, '.')
+      fullOs = `macOS ${osVersion}`
+    } else {
+      fullOs = 'macOS'
+    }
+  } else if (/Android/i.test(ua)) {
+    osName = 'Android'
+    const androidMatch = ua.match(/Android ([\d.]+)/i)
+    if (androidMatch) {
+      osVersion = androidMatch[1]
+      fullOs = `Android ${osVersion}`
+    } else {
+      fullOs = 'Android'
+    }
+  } else if (/Ubuntu/i.test(ua)) {
+    osName = 'Linux'
+    osVersion = 'Ubuntu'
+    fullOs = 'Linux (Ubuntu)'
+  } else if (/Linux/i.test(ua)) {
+    osName = 'Linux'
+    osVersion = null
+    fullOs = 'Linux'
+  } else if (/CrOS/i.test(ua)) {
+    osName = 'Chrome OS'
+    osVersion = null
+    fullOs = 'Chrome OS'
+  }
+
+  // 3. Client Classification (Native Desktop App vs Web Browser)
+  const isTripleSDesktop =
+    /TripleS[-_ ]Time[-_ ]Tracker/i.test(ua) ||
+    /TripleS[-_ ]Desktop/i.test(ua) ||
+    /com\.triples\.timetracker/i.test(ua) ||
+    /Desktop Client/i.test(ua) ||
+    /triples-time-tracker/i.test(clientHeader) ||
+    /TripleS Time Tracker/i.test(clientHeader)
+
+  const isGenericElectron = /Electron\/([\d.]+)/i.test(ua)
+
+  if (isTripleSDesktop || (isGenericElectron && !/Chrome\/.*Safari/i.test(ua))) {
+    // Native Electron Desktop Application
+    const electronMatch = ua.match(/Electron\/([\d.]+)/i)
+    const appVerMatch = ua.match(/(?:TripleS[-_ ]Time[-_ ]Tracker|TripleS-Desktop|Version)\/([\d.]+)/i)
+    const appVersion = clientVersionHeader || (appVerMatch ? appVerMatch[1] : '1.0.0')
+    const runtime = electronMatch ? `Electron ${electronMatch[1]}` : 'Electron 34.2.0'
+
+    return {
+      clientType: 'desktop_app',
+      appName: 'TripleS Time Tracker',
+      appVersion,
+      runtime,
+      displayName: `TripleS Time Tracker v${appVersion}`,
+      browserName: null,
+      browserVersion: null,
+      browserMajorVersion: null,
+      browserEngine: electronMatch ? 'Chromium / Electron' : 'Desktop Native Runtime',
+      osName,
+      osVersion,
+      fullOs,
+      deviceType: 'Desktop',
+      userAgent: ua,
+    }
+  }
+
+  // 4. Web Browser Parsing
+  let browserName: string | null = null
+  let browserVersion: string | null = null
+  let browserMajorVersion: string | null = null
+  let browserEngine: string | null = null
+
+  if (/Edg\/([\d.]+)/i.test(ua)) {
+    const match = ua.match(/Edg\/([\d.]+)/i)
+    browserName = 'Edge'
+    browserVersion = match ? match[1] : null
+    browserMajorVersion = match ? match[1].split('.')[0] : null
+    browserEngine = 'Blink'
+  } else if (/OPR\/([\d.]+)/i.test(ua) || /Opera\/([\d.]+)/i.test(ua)) {
+    const match = ua.match(/(?:OPR|Opera)\/([\d.]+)/i)
+    browserName = 'Opera'
+    browserVersion = match ? match[1] : null
+    browserMajorVersion = match ? match[1].split('.')[0] : null
+    browserEngine = 'Blink'
+  } else if (/Brave\/([\d.]+)/i.test(ua)) {
+    const match = ua.match(/Brave\/([\d.]+)/i)
+    browserName = 'Brave'
+    browserVersion = match ? match[1] : null
+    browserMajorVersion = match ? match[1].split('.')[0] : null
+    browserEngine = 'Blink'
+  } else if (/Chrome\/([\d.]+)/i.test(ua) && !/Chromium\/|Edg\/|OPR\//i.test(ua)) {
+    const match = ua.match(/Chrome\/([\d.]+)/i)
+    browserName = 'Chrome'
+    browserVersion = match ? match[1] : null
+    browserMajorVersion = match ? match[1].split('.')[0] : null
+    browserEngine = 'Blink'
+  } else if (/Firefox\/([\d.]+)/i.test(ua)) {
+    const match = ua.match(/Firefox\/([\d.]+)/i)
+    browserName = 'Firefox'
+    browserVersion = match ? match[1] : null
+    browserMajorVersion = match ? match[1].split('.')[0] : null
+    browserEngine = 'Gecko'
+  } else if (/Version\/([\d.]+).*Safari\//i.test(ua)) {
+    const match = ua.match(/Version\/([\d.]+)/i)
+    browserName = 'Safari'
+    browserVersion = match ? match[1] : null
+    browserMajorVersion = match ? match[1].split('.')[0] : null
+    browserEngine = 'WebKit'
+  } else if (/Safari\//i.test(ua) && !/Chrome\//i.test(ua)) {
+    browserName = 'Safari'
+    browserEngine = 'WebKit'
+  }
+
+  const displayName = browserName
+    ? `${browserName}${browserMajorVersion ? ' ' + browserMajorVersion : ''}`
+    : ua ? 'Web Browser' : 'Unknown Client'
+
+  return {
+    clientType: browserName ? 'browser' : (ua ? 'browser' : 'unknown'),
+    appName: null,
+    appVersion: null,
+    runtime: null,
+    displayName,
+    browserName: browserName || (ua ? 'Web Browser' : null),
+    browserVersion,
+    browserMajorVersion,
+    browserEngine,
+    osName,
+    osVersion,
+    fullOs,
+    deviceType,
+    userAgent: ua,
+  }
+}
+
+/**
  * Parses user-agent string into Browser, OS, and Device category.
  */
 export function parseUserAgent(ua: string | null | undefined): {
@@ -395,50 +703,12 @@ export function parseUserAgent(ua: string | null | undefined): {
   os: string
   device: 'Desktop' | 'Mobile' | 'Tablet' | 'Unknown'
 } {
-  if (!ua) {
-    return { browser: 'Unknown Browser', os: 'Unknown OS', device: 'Unknown' }
+  const detailed = parseDetailedUserAgent(ua)
+  return {
+    browser: detailed.displayName,
+    os: detailed.osName === 'Windows' ? detailed.fullOs : detailed.osName,
+    device: detailed.deviceType,
   }
-
-  // 1. Device Category
-  let device: 'Desktop' | 'Mobile' | 'Tablet' | 'Unknown' = 'Desktop'
-  if (/iPad|tablet|PlayBook|Silk|(Android(?!.*Mobile))/i.test(ua)) {
-    device = 'Tablet'
-  } else if (/Mobile|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua)) {
-    device = 'Mobile'
-  }
-
-  // 2. Operating System
-  let os = 'Unknown OS'
-  if (/Windows NT 10.0/i.test(ua)) os = 'Windows 11 / 10'
-  else if (/Windows NT 6.3/i.test(ua)) os = 'Windows 8.1'
-  else if (/Windows NT 6.1/i.test(ua)) os = 'Windows 7'
-  else if (/Windows NT/i.test(ua)) os = 'Windows'
-  else if (/iPhone|iPad|iPod/i.test(ua)) os = 'iOS'
-  else if (/Macintosh|Mac OS X/i.test(ua)) os = 'macOS'
-  else if (/Android/i.test(ua)) os = 'Android'
-  else if (/Linux/i.test(ua)) os = 'Linux'
-  else if (/CrOS/i.test(ua)) os = 'Chrome OS'
-
-  // 3. Browser
-  let browser = 'Unknown Browser'
-  if (/Edg\//i.test(ua)) {
-    const match = ua.match(/Edg\/([\d.]+)/)
-    browser = match ? `Edge ${match[1].split('.')[0]}` : 'Edge'
-  } else if (/OPR\/|Opera/i.test(ua)) {
-    const match = ua.match(/OPR\/([\d.]+)/)
-    browser = match ? `Opera ${match[1].split('.')[0]}` : 'Opera'
-  } else if (/Chrome\//i.test(ua) && !/Chromium\//i.test(ua)) {
-    const match = ua.match(/Chrome\/([\d.]+)/)
-    browser = match ? `Chrome ${match[1].split('.')[0]}` : 'Chrome'
-  } else if (/Firefox\//i.test(ua)) {
-    const match = ua.match(/Firefox\/([\d.]+)/)
-    browser = match ? `Firefox ${match[1].split('.')[0]}` : 'Firefox'
-  } else if (/Safari\//i.test(ua) && !/Chrome\//i.test(ua)) {
-    const match = ua.match(/Version\/([\d.]+)/)
-    browser = match ? `Safari ${match[1].split('.')[0]}` : 'Safari'
-  }
-
-  return { browser, os, device }
 }
 
 /**

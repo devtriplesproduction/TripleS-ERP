@@ -16,11 +16,11 @@ import { cn } from '@/lib/utils'
 export function SalaryAndHikeTab({ employee }: { employee: any }) {
   const { toast } = useToast()
   const router = useRouter()
-  
+
   const [salaryHistory, setSalaryHistory] = useState<any[]>([])
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [showInlineHikeForm, setShowInlineHikeForm] = useState(false)
-  
+
   const [incrementInput, setIncrementInput] = useState('')
   const [incrementEffectiveDate, setIncrementEffectiveDate] = useState('')
   const [isApplyingHike, setIsApplyingHike] = useState(false)
@@ -56,14 +56,14 @@ export function SalaryAndHikeTab({ employee }: { employee: any }) {
       toast({ title: 'Error', description: 'New salary cannot be lower than current salary.', variant: 'destructive' })
       return
     }
-    
+
     setIsApplyingHike(true)
     const incrementPercentage = calculateIncrementPercentage(currentSalary, newSalaryInput)
     const newPackage = newSalaryInput * 12
-    
+
     const res = await addSalaryIncrementAction(employee.id, currentSalary, newSalaryInput, incrementPercentage, incrementEffectiveDate, newPackage)
     setIsApplyingHike(false)
-    
+
     if (res.success) {
       toast({ title: 'Success', description: `Salary increment applied. New Package: ₹${newPackage.toLocaleString('en-IN')}` })
       setShowInlineHikeForm(false)

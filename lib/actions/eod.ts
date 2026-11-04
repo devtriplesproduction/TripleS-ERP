@@ -1,15 +1,11 @@
 // @ts-nocheck
 
 import { createClient, createAdminClient } from "@/lib/supabase/server";
-
-
-
+import { getCurrentUser } from "@/lib/auth";
 import { format } from "date-fns";
 import { processEODCompOff, batchProcessEODCompOff } from "./compoff";
 import { queueEodActivity } from "@/lib/services/audit-queue.service";
 import { createConcurrencyLimiter, withRetry } from "@/lib/services/job-queue.service";
-
-
 
 export type EODReport = any;
 
@@ -21,17 +17,36 @@ export function isSuperAdminOrHR(roles: string[] = []) {
   return canManageEOD(roles);
 }
 
-async function resolveCurrentEODUser(client: any) {
-  const { data: { user }, error } = await client.auth.getUser();
-  if (error || !user) return null;
+// In-flight concurrency lock to prevent duplicate submissions and race conditions
+const inFlightEODSubmissions = new Map<string, Promise<any>>();
 
-  const adminSupa = await createAdminClient();
-  const { data: profile } = await adminSupa.from('profiles').select('role').eq('id', user.id).single();
-  return {
-    id: user.id,
-    email: user.email || 'unknown',
-    roles: profile?.role ? [profile.role.toUpperCase()] : ['EMPLOYEE']
-  };
+async function resolveCurrentEODUser(client?: any) {
+  try {
+    const cachedUser = await getCurrentUser();
+    if (cachedUser) {
+      return {
+        id: cachedUser.id,
+        email: cachedUser.email || 'unknown',
+        roles: cachedUser.role ? [cachedUser.role.toUpperCase()] : ['EMPLOYEE']
+      };
+    }
+  } catch {
+    // Fallback if called outside React server component request lifecycle
+  }
+
+  if (client) {
+    const { data: { user }, error } = await client.auth.getUser();
+    if (error || !user) return null;
+
+    const adminSupa = await createAdminClient();
+    const { data: profile } = await adminSupa.from('profiles').select('role').eq('id', user.id).single();
+    return {
+      id: user.id,
+      email: user.email || 'unknown',
+      roles: profile?.role ? [profile.role.toUpperCase()] : ['EMPLOYEE']
+    };
+  }
+  return null;
 }
 
 /**
@@ -39,76 +54,89 @@ async function resolveCurrentEODUser(client: any) {
  * Handles self-submission (Pending) and proxy submission (Approved)
  */
 export async function submitEOD(payload: Omit<EODReport, 'id' | 'status' | 'submitted_at' | 'reviewed_by' | 'reviewed_at' | 'review_remarks'> & { role_context?: 'Employee' | 'HR' }) {
-  try {
-    const _authSupabase = await createClient();
-    const currentUser = await resolveCurrentEODUser(_authSupabase);
-    if (!currentUser) return { success: false, error: "Unauthorized: Authentication required" };
-    const supabase = _authSupabase;
+  const flightKey = `eod_submit_${payload.employee_id}_${payload.report_date}_${payload.role_context || 'Employee'}`;
+  if (inFlightEODSubmissions.has(flightKey)) {
+    return inFlightEODSubmissions.get(flightKey)!;
+  }
 
-    const canManage = canManageEOD(currentUser.roles);
+  const execution = (async () => {
+    try {
+      const _authSupabase = await createClient();
+      const currentUser = await resolveCurrentEODUser(_authSupabase);
+      if (!currentUser) return { success: false, error: "Unauthorized: Authentication required" };
+      const supabase = _authSupabase;
 
-    let status = 'Pending';
-    if (payload.employee_id !== currentUser.id) {
-      if (!canManage) {
-        return { success: false, error: "Unauthorized to submit proxy EOD" };
-      }
-      status = 'Approved';
-    } else {
-      if (!canManage) {
-        const getISTDateString = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
-        const todayLocal = getISTDateString();
-        if (payload.report_date !== todayLocal) {
-          return { success: false, error: "You can only submit EOD for today's date." };
+      const canManage = canManageEOD(currentUser.roles);
+
+      let status = 'Pending';
+      if (payload.employee_id !== currentUser.id) {
+        if (!canManage) {
+          return { success: false, error: "Unauthorized to submit proxy EOD" };
+        }
+        status = 'Approved';
+      } else {
+        if (!canManage) {
+          const getISTDateString = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+          const todayLocal = getISTDateString();
+          if (payload.report_date !== todayLocal) {
+            return { success: false, error: "You can only submit EOD for today's date." };
+          }
         }
       }
-    }
 
+      const { data: insertedData, error: insertError } = await supabase.from('eod_reports').insert({
+        employee_id: payload.employee_id,
+        report_date: payload.report_date,
+        tasks_accomplished: payload.tasks_accomplished,
+        office_hours: payload.office_hours,
+        location: payload.location,
+        blockers: payload.blockers || '',
+        photo_url: payload.photo_url || null,
+        status: status,
+        submitted_by: payload.employee_id,
+        job_card_numbers: payload.job_card_numbers || '',
+        tomorrows_plan: payload.tomorrows_plan || '',
+        role_context: payload.role_context || 'Employee'
+      }).select('id').single();
 
-    const { data: insertedData, error: insertError } = await supabase.from('eod_reports').insert({
-      employee_id: payload.employee_id,
-      report_date: payload.report_date,
-      tasks_accomplished: payload.tasks_accomplished,
-      office_hours: payload.office_hours,
-      location: payload.location,
-      blockers: payload.blockers || '',
-      photo_url: payload.photo_url || null,
-      status: status,
-      submitted_by: payload.employee_id,
-      job_card_numbers: payload.job_card_numbers || '',
-      tomorrows_plan: payload.tomorrows_plan || '',
-      role_context: payload.role_context || 'Employee'
-    }).select('id').single();
-
-    if (insertError) {
-      if (insertError.message.includes('unique constraint') || insertError.code === '23505') {
-        return { success: false, error: "An EOD report already exists for this date." };
+      if (insertError) {
+        if (insertError.message.includes('unique constraint') || insertError.code === '23505') {
+          return { success: false, error: "An EOD report already exists for this date." };
+        }
+        console.error("EOD submit insert error:", insertError);
+        return { success: false, error: insertError.message || "Failed to submit EOD" };
       }
-      console.error("EOD submit insert error:", insertError);
-      return { success: false, error: insertError.message || "Failed to submit EOD" };
-    }
-    const eodId = insertedData.id;
+      const eodId = insertedData.id;
 
-    // Log Activity
-    await logEodActivity(
-      status === 'Approved' ? 'PROXY_EOD_SUBMITTED' : 'EOD_SUBMITTED',
-      currentUser.email || 'unknown',
-      currentUser.id,
-      payload.employee_id,
-      { report_date: payload.report_date, location: payload.location } as Json
-    );
+      // Queue non-critical audit log in background queue without blocking response!
+      queueEodActivity(
+        status === 'Approved' ? 'PROXY_EOD_SUBMITTED' : 'EOD_SUBMITTED',
+        currentUser.email || 'unknown',
+        currentUser.id,
+        payload.employee_id,
+        { report_date: payload.report_date, location: payload.location } as any
+      );
 
-    // Fix: If it was automatically approved (proxy submission), calculate Comp-Off
-    if (status === 'Approved') {
-      await processEODCompOff(eodId, payload.employee_id, payload.office_hours, 'Approved', {
-        reportDate: payload.report_date,
-        supabaseClient: supabase
-      });
+      // If it was automatically approved (proxy submission), calculate Comp-Off
+      if (status === 'Approved') {
+        await processEODCompOff(eodId, payload.employee_id, payload.office_hours, 'Approved', {
+          reportDate: payload.report_date,
+          supabaseClient: supabase
+        });
+      }
+      
+      return { success: true, data: eodId };
+    } catch (error: any) {
+      console.error("Failed to submit EOD exception:", error);
+      return { success: false, error: error?.message || "Failed to submit EOD (unknown JS exception)" };
     }
-    
-    return { success: true, data: eodId };
-  } catch (error: any) {
-    console.error("Failed to submit EOD exception:", error);
-    return { success: false, error: error?.message || "Failed to submit EOD (unknown JS exception)" };
+  })();
+
+  inFlightEODSubmissions.set(flightKey, execution);
+  try {
+    return await execution;
+  } finally {
+    inFlightEODSubmissions.delete(flightKey);
   }
 }
 
@@ -439,26 +467,40 @@ export async function getPendingEODs() {
 /**
  * Calculate consecutive EOD streak for an employee
  */
-export async function getEODStreak(employeeId: string, roleContext: 'Employee' | 'HR' = 'Employee') {
+export async function getEODStreak(
+  employeeId: string,
+  roleContext: 'Employee' | 'HR' = 'Employee',
+  preloadedDates?: string[]
+) {
   try {
-    const _authSupabase = await createClient();
-    const currentUser = await resolveCurrentEODUser(_authSupabase);
-    if (!currentUser) return { success: false, streak: 0 };
+    let rawDates: string[] = [];
 
-    const isAuthorized = currentUser.id === employeeId || isSuperAdminOrHR(currentUser.roles);
-    if (!isAuthorized) return { success: false, streak: 0 };
-    const supabase = _authSupabase;
+    if (Array.isArray(preloadedDates) && preloadedDates.length > 0) {
+      rawDates = preloadedDates;
+    } else {
+      const _authSupabase = await createClient();
+      const currentUser = await resolveCurrentEODUser(_authSupabase);
+      if (!currentUser) return { success: false, streak: 0 };
 
-    // Get all approved/pending EODs, order by date descending
-    const { data, error } = await supabase
-      .from('eod_reports')
-      .select('report_date')
-      .eq('employee_id', employeeId)
-      .in('status', ['Approved', 'Pending'])
-      .eq('role_context', roleContext)
-      .order('report_date', { ascending: false });
+      const isAuthorized = currentUser.id === employeeId || isSuperAdminOrHR(currentUser.roles);
+      if (!isAuthorized) return { success: false, streak: 0 };
+      const supabase = _authSupabase;
 
-    if (error || !data || data.length === 0) return { success: true, streak: 0 };
+      // Get approved/pending EODs for the last 90 days, ordered by date descending
+      const { data, error } = await supabase
+        .from('eod_reports')
+        .select('report_date')
+        .eq('employee_id', employeeId)
+        .in('status', ['Approved', 'Pending'])
+        .eq('role_context', roleContext)
+        .order('report_date', { ascending: false })
+        .limit(90);
+
+      if (error || !data || data.length === 0) return { success: true, streak: 0 };
+      rawDates = data.map((d: any) => d.report_date);
+    }
+
+    if (rawDates.length === 0) return { success: true, streak: 0 };
 
     let streak = 0;
     const getISTDateString = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
@@ -466,13 +508,13 @@ export async function getEODStreak(employeeId: string, roleContext: 'Employee' |
     const today = new Date(todayStr + "T00:00:00");
 
     // Strip time from report dates
-    const dates = data.map(d => {
-      const date = new Date(d.report_date + "T00:00:00");
+    const dates = rawDates.filter(Boolean).map(d => {
+      const date = new Date(d + "T00:00:00");
       date.setHours(0, 0, 0, 0);
       return date.getTime();
     });
 
-    // Remove duplicates just in case (though unique constraint prevents it)
+    // Remove duplicates and sort descending
     const uniqueDates = Array.from(new Set(dates)).sort((a, b) => b - a);
 
     // If latest report is not today or yesterday, streak is broken
@@ -516,12 +558,14 @@ export async function getAllEODs(filters?: { employeeId?: string; startDate?: st
 
     
     
+    const hasPagination = filters?.page !== undefined && filters?.limit !== undefined;
+
     let query = supabase
       .from('eod_reports')
       .select(`
         id, employee_id, report_date, tasks_accomplished, office_hours, location, blockers, photo_url, status, submitted_by, approved_by, approved_at, rejection_reason, submitted_at, tomorrows_plan, role_context,
         profiles!eod_reports_employee_id_fkey(first_name, last_name, employee_id, branch_id, department)
-      `, { count: 'exact' });
+      `, hasPagination ? { count: 'exact' } : undefined);
 
     // Filter by role_context: HR review page only sees Employee EODs, Admin sees all
     if (filters?.roleContextFilter) {
@@ -532,8 +576,17 @@ export async function getAllEODs(filters?: { employeeId?: string; startDate?: st
       query = query.eq('employee_id', filters.employeeId);
     }
     if (filters?.startDate) {
-      query = query.gte('report_date', filters.startDate);
+      if (filters.startDate !== 'all') {
+        query = query.gte('report_date', filters.startDate);
+      }
+    } else if (!hasPagination && !filters?.endDate && (!filters?.employeeId || filters.employeeId === 'all')) {
+      // Protect against full-table scan on unpaginated initial dashboard by defaulting to the last 60 days
+      const d = new Date();
+      d.setDate(d.getDate() - 60);
+      const defaultStart = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
+      query = query.gte('report_date', defaultStart);
     }
+
     if (filters?.endDate) {
       query = query.lte('report_date', filters.endDate);
     }
@@ -546,10 +599,13 @@ export async function getAllEODs(filters?: { employeeId?: string; startDate?: st
     }
 
     // Pagination
-    if (filters?.page !== undefined && filters?.limit !== undefined) {
-      const from = (filters.page - 1) * filters.limit;
-      const to = from + filters.limit - 1;
+    if (hasPagination) {
+      const from = (filters!.page! - 1) * filters!.limit!;
+      const to = from + filters!.limit! - 1;
       query = query.range(from, to);
+    } else if (!filters?.employeeId || filters.employeeId === 'all') {
+      // Safety limit on unbounded review fetches
+      query = query.limit(200);
     }
 
     // Order by date descending
@@ -676,17 +732,18 @@ export async function updateEOD(payload: {
       return { success: false, error: "Failed to update EOD" };
     }
 
-    await logEodActivity(
+    if (payload.role_context) {
+      await supabase.from('eod_reports').update({ role_context: payload.role_context }).eq('id', eodId);
+    }
+
+    queueEodActivity(
       'EOD_UPDATED',
       currentUser.email || 'unknown',
       currentUser.id,
       payload.employee_id,
-      { report_date: payload.report_date, location: payload.location } as Json
+      { report_date: payload.report_date, location: payload.location } as any
     );
 
-    if (payload.role_context) {
-      await supabase.from('eod_reports').update({ role_context: payload.role_context }).eq('id', eodId);
-    }
     return { success: true, data: eodId };
   } catch (error) {
     console.error("Failed to update EOD:", error);
@@ -694,24 +751,8 @@ export async function updateEOD(payload: {
   }
 }
 
-
-
-
-async function logEodActivity(action: string, actor_email: string, user_id: string, target_user_id: string, details: Json) {
-  const supabase = await createClient();
-  try {
-    
-    const { error } = await supabase.from('activity_logs').insert({
-      action,
-      actor_email,
-      user_id,
-      target_user_id,
-      details
-    });
-    if (error) console.error("Activity log failed:", error.message);
-  } catch (e) {
-    console.error("Activity log exception:", e);
-  }
+async function logEodActivity(action: string, actor_email: string, user_id: string, target_user_id: string, details: any) {
+  queueEodActivity(action, actor_email, user_id, target_user_id, details);
 }
 
 

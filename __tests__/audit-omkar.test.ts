@@ -25,8 +25,9 @@ describe('Audit Omkar Sawant October 2026', () => {
     // 3. Raw actual worked hours from approved EODs
     expect(omkar.actualWorkedHours).toBe(142.18)
 
-    // 4. Paid leave hours (4 days * 8h = 32 hours)
-    expect(omkar.creditedLeaveHours).toBe(32)
+    // 4. Paid leave hours (Oct 16 Comp-Off leave = 8h; Sick leaves unpaid per intern policy = 24h)
+    expect(omkar.creditedLeaveHours).toBe(8)
+    expect(omkar.unpaidLeaveHours).toBe(24)
 
     // 5. Paid holiday hours (1 holiday * 8h = 8 hours: Dusshera Oct 20)
     expect(omkar.paidHolidayHours).toBe(8)
@@ -40,18 +41,19 @@ describe('Audit Omkar Sawant October 2026', () => {
     expect(omkar.daysUnpaidLeaveEod).toBe(1)
     expect(omkar.daysAbsent).toBe(6)
 
-    // 8. Regular payable hours
+    // 8. Regular payable hours (116 worked + 8 paid leave + 8 holiday = 132h)
     expect(omkar.payableWorkedHours).toBe(116)
-    expect(omkar.payableHours).toBe(156)
+    expect(omkar.payableHours).toBe(132)
 
-    // 9. Total deducted days = 1 (unpaid short-day) + (1 * 0.5) (half-day shortfall) + 6 (unexcused absences) = 7.5 days
-    // Daily rate = 8000 / 27 = 296.30
-    // Attendance deduction = 7.5 * 296.30 = 2222.25
-    expect(omkar.attendanceDeduction).toBe(2222.25)
-    expect(omkar.totalDeductions).toBe(2222.25)
+    // 9. Total deducted days = 10.5 days
+    // (0.5 half-day shortfall + 1.0 unpaid short-day + 6.0 unexcused absences + 3.0 unpaid sick leaves)
+    // Daily rate = 8000 / 27 = 296.296...
+    // Attendance deduction = 10.5 * (8000 / 27) = 3111.11
+    expect(omkar.attendanceDeduction).toBe(3111.11)
+    expect(omkar.totalDeductions).toBe(3111.11)
 
-    // 10. Net payable = 8000 - 2222.25 = 5777.75
-    expect(omkar.netPayable).toBe(5777.75)
+    // 10. Net payable = 8000 - 3111.11 = 4888.89 (exactly 16.5 * 8000/27)
+    expect(omkar.netPayable).toBe(4888.89)
 
     // 11. Comp-off earned:
     // Sundays: Oct 4 (480 mins) + Oct 18 (495 mins) = 975 mins
@@ -99,21 +101,29 @@ describe('Audit Omkar Sawant October 2026', () => {
     expect(oct20?.status).toBe('HOLIDAY')
     expect(oct20?.payableFraction).toBe(1)
 
+    const oct21 = omkar.dailyBreakdown?.find(d => d.date === '2026-10-21')
+    expect(oct21?.status).toBe('UNPAID')
+    expect(oct21?.deductionDays).toBe(1)
+
     const oct22 = omkar.dailyBreakdown?.find(d => d.date === '2026-10-22')
     expect(oct22?.status).toBe('UNPAID')
     expect(oct22?.deductionDays).toBe(1)
     expect(oct22?.compOffMinutesEarned).toBe(135)
 
+    const oct23 = omkar.dailyBreakdown?.find(d => d.date === '2026-10-23')
+    expect(oct23?.status).toBe('UNPAID')
+    expect(oct23?.deductionDays).toBe(1)
+
     // 13. Automated reconciliation checks
     expect(omkar.reconciliation).toBeDefined()
     expect(omkar.reconciliation?.isScheduledDaysReconciled).toBe(true)
     expect(omkar.reconciliation?.scheduledWorkingDays).toBe(27)
-    expect(omkar.reconciliation?.payableDays).toBe(19.5)
-    expect(omkar.reconciliation?.deductedDays).toBe(7.5)
+    expect(omkar.reconciliation?.payableDays).toBe(16.5)
+    expect(omkar.reconciliation?.deductedDays).toBe(10.5)
     expect(omkar.reconciliation?.isFinancialReconciled).toBe(true)
     expect(omkar.reconciliation?.baseSalary).toBe(8000)
-    expect(omkar.reconciliation?.netPayable).toBe(5777.75)
-    expect(omkar.reconciliation?.totalDeductions).toBe(2222.25)
+    expect(omkar.reconciliation?.netPayable).toBe(4888.89)
+    expect(omkar.reconciliation?.totalDeductions).toBe(3111.11)
     expect(omkar.reconciliation?.divisorMode).toBe('actual_mon_sat')
     expect(omkar.reconciliation?.dailyRate).toBe(296.30)
     expect(omkar.reconciliation?.status).toBe('RECONCILED')
@@ -125,14 +135,15 @@ describe('Audit Omkar Sawant October 2026', () => {
     const omkar = results[0]
 
     expect(omkar.standardHours).toBe(208)
-    expect(omkar.attendanceDeduction).toBe(2307.68)
-    expect(omkar.totalDeductions).toBe(2307.68)
-    expect(omkar.netPayable).toBe(5692.32)
+    expect(omkar.attendanceDeduction).toBe(3230.77)
+    expect(omkar.totalDeductions).toBe(3230.77)
+    expect(omkar.netPayable).toBe(5076.92)
 
     expect(omkar.reconciliation?.isFinancialReconciled).toBe(true)
     expect(omkar.reconciliation?.baseSalary).toBe(8000)
-    expect(omkar.reconciliation?.netPayable).toBe(5692.32)
-    expect(omkar.reconciliation?.totalDeductions).toBe(2307.68)
+    expect(omkar.reconciliation?.netPayable).toBe(5076.92)
+    expect(omkar.reconciliation?.totalDeductions).toBe(3230.77)
+    expect(omkar.reconciliation?.grossScheduledPay).toBe(8307.69)
     expect(omkar.reconciliation?.divisorMode).toBe('fixed_26')
     expect(omkar.reconciliation?.dailyRate).toBe(307.69)
   }, 90000)

@@ -38,10 +38,10 @@ export function ProjectOverviewTab({
   return (
     <div className="space-y-3">
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
-        
+
         {/* LEFT / MAIN COLUMN */}
         <div className="lg:col-span-2 space-y-3">
-          
+
           {/* Description & Scope */}
           <Card className="border-border bg-card shadow-xs">
             <CardHeader className="pb-3 border-b border-border/50">
@@ -161,7 +161,7 @@ export function ProjectOverviewTab({
                   <div className="h-full bg-primary transition-all" style={{ width: `${project.progress || 0}%` }} />
                 </div>
               </div>
-              
+
               <div className="space-y-1.5">
                 <span className="text-muted-foreground font-medium block">Deadline</span>
                 <div className="flex items-center gap-2 font-medium">

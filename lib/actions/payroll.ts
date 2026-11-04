@@ -3,8 +3,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { calculateMonthlyPayroll } from '@/lib/services/payroll.service'
+import { PayrollDivisorPolicy } from '@/lib/services/payroll-config.service'
 import { getCurrentUser } from '@/lib/auth'
 import { calculateMonthlyBasicSalary, calculateIncrementPercentage, resolveCurrentSalary } from '@/lib/utils/salary'
+import { checkRateLimit } from '@/lib/utils/rate-limiter'
+import { measureAsync } from '@/lib/utils/perf-monitor'
 import type { PayrollDeduction, PayrollDeductionActionResponse } from '@/types/payroll'
 
 function safeRevalidatePath(pathUrl: string) {
@@ -27,6 +30,11 @@ export async function addSalaryIncrementAction(
     const user = await getCurrentUser()
     if (!user || (user.role !== 'HR' && user.role !== 'Admin')) {
       return { success: false, error: 'Unauthorized: Financial data access is restricted to HR and Admin.' }
+    }
+
+    const rl = checkRateLimit(`salary-inc:${user.id}`, 10, 60 * 1000)
+    if (!rl.success) {
+      return { success: false, error: `Too many salary modifications. Please wait ${rl.retryAfterSeconds || 10}s.` }
     }
 
     const supabase = await createClient()
@@ -100,6 +108,11 @@ export async function getSalaryHistoryAction(employeeId: string) {
       return { success: false, error: 'Unauthorized: Financial data access is restricted to HR and Admin.' }
     }
 
+    const rl = checkRateLimit(`salary-inc:${user.id}`, 10, 60 * 1000)
+    if (!rl.success) {
+      return { success: false, error: `Too many salary modifications. Please wait ${rl.retryAfterSeconds || 10}s.` }
+    }
+
     const supabase = await createClient()
     const historyRes = await supabase
       .from('salary_history')
@@ -133,39 +146,93 @@ export async function getSalaryHistoryAction(employeeId: string) {
   }
 }
 
-export async function getMonthlyPayrollAction(year: number, month: number, employeeIds?: string[]) {
+export async function getPayrollConfigAction() {
   try {
-    const user = await getCurrentUser()
-    if (!user || (user.role !== 'HR' && user.role !== 'Admin')) {
-      return { success: false, error: 'Unauthorized: Financial data access is restricted to HR and Admin.' }
-    }
-
-    const { getFinalizedPayroll, isPayrollFinalized } = await import('@/lib/services/payroll-records.service')
-    const finalized = await isPayrollFinalized(year, month)
-
-    if (finalized) {
-      const finalizedData = await getFinalizedPayroll(year, month, employeeIds)
-      if (finalizedData && finalizedData.length > 0) {
-        return {
-          success: true,
-          data: finalizedData,
-          isFinalized: true
-        }
-      }
-    }
-
-    const results = await calculateMonthlyPayroll(year, month, employeeIds)
-    return { success: true, data: results, isFinalized: false }
+    const { getAuthoritativeDivisorPolicy } = await import('@/lib/services/payroll-config.service');
+    const policy = await getAuthoritativeDivisorPolicy();
+    return { success: true, policy };
   } catch (error: any) {
-    return { success: false, error: error.message }
+    return { success: false, error: error.message };
   }
 }
 
-export async function finalizeMonthlyPayrollAction(year: number, month: number) {
+export async function updatePayrollConfigAction(policy: PayrollDivisorPolicy) {
+  try {
+    const user = await getCurrentUser();
+    if (!user || (user.role !== 'HR' && user.role !== 'Admin')) {
+      return { success: false, error: 'Unauthorized: Only HR and Admin can update company payroll configuration.' };
+    }
+
+    const { setAuthoritativeDivisorPolicy } = await import('@/lib/services/payroll-config.service');
+    const res = await setAuthoritativeDivisorPolicy(policy, user.id);
+    if (!res.success) {
+      return { success: false, error: res.error || 'Failed to update divisor policy' };
+    }
+
+    safeRevalidatePath('/payroll');
+    safeRevalidatePath('/hr/payroll');
+    safeRevalidatePath('/admin-payroll');
+
+    return { success: true, policy: res.config.divisorPolicy };
+  } catch (error: any) {
+    return { success: false, error: error.message };
+  }
+}
+
+export async function getMonthlyPayrollAction(
+  year: number,
+  month: number,
+  employeeIds?: string[],
+  divisorMode?: PayrollDivisorPolicy
+) {
+  return measureAsync('getMonthlyPayrollAction', async () => {
+    try {
+      const user = await getCurrentUser()
+      if (!user || (user.role !== 'HR' && user.role !== 'Admin')) {
+        return { success: false, error: 'Unauthorized: Financial data access is restricted to HR and Admin.' }
+      }
+
+      const { getFinalizedPayroll, isPayrollFinalized } = await import('@/lib/services/payroll-records.service')
+      const finalized = await isPayrollFinalized(year, month)
+
+      if (finalized) {
+        const finalizedData = await getFinalizedPayroll(year, month, employeeIds)
+        if (finalizedData && finalizedData.length > 0) {
+          return {
+            success: true,
+            data: finalizedData,
+            isFinalized: true
+          }
+        }
+      }
+
+      const results = await calculateMonthlyPayroll(
+        year,
+        month,
+        employeeIds,
+        divisorMode ? { divisorMode } : undefined
+      )
+      return { success: true, data: results, isFinalized: false }
+    } catch (error: any) {
+      return { success: false, error: error.message }
+    }
+  })
+}
+
+export async function finalizeMonthlyPayrollAction(
+  year: number,
+  month: number,
+  divisorMode?: PayrollDivisorPolicy
+) {
   try {
     const user = await getCurrentUser()
     if (!user || (user.role !== 'HR' && user.role !== 'Admin')) {
       return { success: false, error: 'Unauthorized: Finalizing payroll is restricted to HR and Admin.' }
+    }
+
+    const rl = checkRateLimit(`payroll-finalize:${user.id}`, 5, 60 * 1000)
+    if (!rl.success) {
+      return { success: false, error: `Too many finalization requests. Please wait ${rl.retryAfterSeconds || 10}s.` }
     }
 
     const { isPayrollFinalized, finalizePayrollRun } = await import('@/lib/services/payroll-records.service')
@@ -174,8 +241,13 @@ export async function finalizeMonthlyPayrollAction(year: number, month: number) 
       return { success: false, error: `Payroll for ${year}-${String(month).padStart(2, '0')} has already been finalized and locked.` }
     }
 
-    // Compute fresh draft results to freeze
-    const results = await calculateMonthlyPayroll(year, month)
+    // Compute fresh draft results to freeze with the selected or authoritative divisor policy
+    const results = await calculateMonthlyPayroll(
+      year,
+      month,
+      undefined,
+      divisorMode ? { divisorMode } : undefined
+    )
     const hasUnresolvedErrors = results.some(r => r.hasMissingSalary || r.calculationError);
     if (hasUnresolvedErrors) {
       const errorCount = results.filter(r => r.hasMissingSalary || r.calculationError).length;
@@ -252,6 +324,11 @@ export async function addPayrollDeductionAction(input: {
       return { success: false, error: 'Unauthorized: Deductions can only be managed by HR or Admin.' }
     }
 
+    const rl = checkRateLimit(`payroll-deduction:${user.id}`, 20, 60 * 1000)
+    if (!rl.success) {
+      return { success: false, error: `Too many deduction requests. Please wait ${rl.retryAfterSeconds || 10}s.` }
+    }
+
     const { createPayrollDeduction } = await import('@/lib/services/payroll-deductions.service')
     const result = await createPayrollDeduction(input, user.id)
 
@@ -272,6 +349,11 @@ export async function cancelPayrollDeductionAction(deductionId: string): Promise
     const user = await getCurrentUser()
     if (!user || (user.role !== 'HR' && user.role !== 'Admin')) {
       return { success: false, error: 'Unauthorized: Deductions can only be managed by HR or Admin.' }
+    }
+
+    const rl = checkRateLimit(`payroll-deduction:${user.id}`, 20, 60 * 1000)
+    if (!rl.success) {
+      return { success: false, error: `Too many deduction requests. Please wait ${rl.retryAfterSeconds || 10}s.` }
     }
 
     const { cancelPayrollDeduction } = await import('@/lib/services/payroll-deductions.service')

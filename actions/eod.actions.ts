@@ -4,8 +4,9 @@
 import { z } from 'zod';
 import { submitEOD, reviewEOD, batchReviewEODs, updateEOD, getEODByEmployeeAndDate } from '@/lib/actions/eod';
 import { revalidatePath } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
 import { parseHHMM, minutesToCanonicalDecimalHours } from '@/lib/utils/time';
+import { checkRateLimit, checkRateLimitDistributed } from '@/lib/utils/rate-limiter';
+import { measureAsync } from '@/lib/utils/perf-monitor';
 
 
 
@@ -30,57 +31,56 @@ const eodSubmitSchema = z.object({
 });
 
 export async function submitEODAction(formData: FormData) {
-  try {
-    
-
-    let officeHours = Number(formData.get('office_hours'));
-    const workedHours = formData.get('worked_hours');
-    if (typeof workedHours === 'string' && workedHours.trim()) {
-      const parsedMins = parseHHMM(workedHours);
-      if (parsedMins !== null) {
-        officeHours = minutesToCanonicalDecimalHours(parsedMins);
+  return measureAsync('submitEODAction', async () => {
+    try {
+      let officeHours = Number(formData.get('office_hours'));
+      const workedHours = formData.get('worked_hours');
+      if (typeof workedHours === 'string' && workedHours.trim()) {
+        const parsedMins = parseHHMM(workedHours);
+        if (parsedMins !== null) {
+          officeHours = minutesToCanonicalDecimalHours(parsedMins);
+        }
       }
+
+      const rawData = {
+        employee_id: formData.get('employee_id') as string,
+        report_date: formData.get('report_date') as string,
+        tasks_accomplished: formData.get('tasks_accomplished') as string,
+        office_hours: officeHours,
+        location: formData.get('location') as "Office" | "Field" | "Work From Home",
+        blockers: (formData.get('blockers') as string | null) ?? undefined,
+        photo_url: (formData.get('photo_url') as string | null) ?? undefined,
+        job_card_numbers: (formData.get('job_card_numbers') as string | null) ?? undefined,
+        tomorrows_plan: (formData.get('tomorrows_plan') as string | null) ?? undefined,
+        admin_note: (formData.get('admin_note') as string | null) ?? undefined,
+        role_context: (formData.get('role_context') as 'Employee' | 'HR') || 'Employee',
+      };
+
+      // Server-side rate limit: 10 submits per minute per employee
+      const rl = await checkRateLimitDistributed(`eod-submit:${rawData.employee_id}`, 10, 60 * 1000);
+      if (!rl.success) {
+        return { success: false, error: `Too many submissions. Please wait ${rl.retryAfterSeconds || 5}s.` };
+      }
+
+      const validatedData = eodSubmitSchema.parse(rawData);
+      const result = await submitEOD(validatedData);
+
+      if (result.success) {
+        revalidatePath('/eod');
+        return { success: true };
+      }
+
+      return { success: false, error: result.error };
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        console.error("Zod Validation Error in submitEODAction:", error.errors || error.issues);
+        const errs = error.errors || error.issues || [];
+        return { success: false, error: errs[0]?.message || "Validation failed" };
+      }
+      console.error("Unexpected error in submitEODAction:", error);
+      return { success: false, error: "An unexpected error occurred" };
     }
-
-    const rawData = {
-      employee_id: formData.get('employee_id') as string,
-      report_date: formData.get('report_date') as string,
-      tasks_accomplished: formData.get('tasks_accomplished') as string,
-      office_hours: officeHours,
-      location: formData.get('location') as "Office" | "Field" | "Work From Home",
-      blockers: (formData.get('blockers') as string | null) ?? undefined,
-      photo_url: (formData.get('photo_url') as string | null) ?? undefined,
-      job_card_numbers: (formData.get('job_card_numbers') as string | null) ?? undefined,
-      tomorrows_plan: (formData.get('tomorrows_plan') as string | null) ?? undefined,
-      admin_note: (formData.get('admin_note') as string | null) ?? undefined,
-      role_context: (formData.get('role_context') as 'Employee' | 'HR') || 'Employee',
-    };
-    console.log("SubmitEODAction rawData:", rawData);
-
-    const validatedData = eodSubmitSchema.parse(rawData);
-
-    
-
-    const result = await submitEOD(validatedData);
-
-
-    if (result.success) {
-      revalidatePath('/eod');
-      revalidatePath('/admin-eod');
-      revalidatePath('/employee-eod');
-      return { success: true };
-    }
-
-    return { success: false, error: result.error };
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      console.error("Zod Validation Error in submitEODAction:", error.errors || error.issues);
-      const errs = error.errors || error.issues || [];
-      return { success: false, error: errs[0]?.message || "Validation failed" };
-    }
-    console.error("Unexpected error in submitEODAction:", error);
-    return { success: false, error: "An unexpected error occurred" };
-  }
+  });
 }
 
 const eodReviewSchema = z.object({
@@ -148,8 +148,6 @@ export async function batchReviewEODAction(payload: {
 
     if (result.succeeded.length > 0) {
       revalidatePath('/eod');
-      revalidatePath('/admin-eod');
-      revalidatePath('/employee-eod');
     }
 
     return result;
@@ -209,14 +207,17 @@ export async function updateEODAction(formData: FormData) {
       role_context: (formData.get('role_context') as 'Employee' | 'HR') || 'Employee',
     };
 
+    const rl = await checkRateLimitDistributed(`eod-update:${rawData.employee_id}`, 20, 60 * 1000);
+    if (!rl.success) {
+      return { success: false, error: `Too many update attempts. Please wait ${rl.retryAfterSeconds || 5}s.` };
+    }
+
     const validatedData = eodSubmitSchema.parse(rawData);
 
     const result = await updateEOD({ ...validatedData, admin_note: rawData.admin_note });
 
     if (result.success) {
       revalidatePath('/eod');
-      revalidatePath('/admin-eod');
-      revalidatePath('/employee-eod');
       return { success: true };
     } else {
       return { success: false, error: result.error };

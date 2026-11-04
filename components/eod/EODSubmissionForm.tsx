@@ -18,9 +18,19 @@ import { toast } from 'sonner';
 type EmployeeOption = { id: string; first_name: string; last_name: string; employee_id: string };
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const trackerSummaryCache = new Map<string, { data: any; ts: number }>();
+
+export function invalidateTrackerSummaryCache(employeeId?: string, date?: string) {
+  if (employeeId && date) {
+    trackerSummaryCache.delete(`${employeeId}_${date}`);
+  } else {
+    trackerSummaryCache.clear();
+  }
+}
 
 export function EODSubmissionForm({ employeeId, canEditDate = false, employees, canManage = false, employeeName = 'Omkar Sawant', employeeStringId = 'EMP-001' }: { employeeId: string, canEditDate?: boolean, employees?: EmployeeOption[], canManage?: boolean, employeeName?: string, employeeStringId?: string }) {
   const [loading, setLoading] = useState(false);
+  const submittingRef = useRef(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -62,6 +72,24 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
 
     let isMounted = true;
     async function loadTimeTrackerHours() {
+      const cacheKey = `${selectedEmployeeId}_${reportDate}`;
+      const cached = trackerSummaryCache.get(cacheKey);
+      if (cached && Date.now() - cached.ts < 30000) {
+        const data = cached.data;
+        if (data.isEmpty || data.totalActiveMinutes === 0) {
+          if (!isManuallyEditedRef.current) setWorkedHoursInput('0.00');
+        } else {
+          const activeMins = typeof data.totalActiveMinutes === 'number' ? data.totalActiveMinutes : null;
+          const hhmm = activeMins !== null && activeMins > 0
+            ? normalizeTrackerToHHMM(activeMins)
+            : normalizeTrackerToHHMM(data.formattedHHMM || data.formattedActive || data.formattedDisplay);
+          if (hhmm && parseHHMM(hhmm) !== null && !isManuallyEditedRef.current) {
+            setWorkedHoursInput(hhmm);
+          }
+        }
+        return;
+      }
+
       setTrackerLoading(true);
       setTrackerError(null);
       try {
@@ -71,6 +99,7 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
         if (res.ok) {
           const data = await res.json();
           if (data.success) {
+            trackerSummaryCache.set(cacheKey, { data, ts: Date.now() });
             if (data.isEmpty || data.totalActiveMinutes === 0) {
               // No sessions exist: show 0.00 if user hasn't manually edited
               if (!isManuallyEditedRef.current) {
@@ -214,6 +243,8 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setLoading(true);
     setError('');
     setSuccess('');
@@ -286,6 +317,7 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
       }
 
       toast.success(isUpdate ? 'EOD Updated successfully!' : 'EOD Submitted successfully!');
+      invalidateTrackerSummaryCache(selectedEmployeeId, reportDate);
       if (!isUpdate) {
         (e.target as HTMLFormElement).reset();
         setFile(null);
@@ -308,6 +340,7 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
         setError('An unexpected error occurred.');
       }
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   }

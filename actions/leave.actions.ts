@@ -2,7 +2,8 @@
 
 import { createClient } from "@/lib/supabase/server"
 import { processLeaveCompOff, getCompOffBalance } from "@/lib/actions/compoff"
-import { guardServerAction, getCurrentUser, type AuthUser } from "@/lib/auth"
+import { guardServerAction, getCurrentUser } from "@/lib/auth"
+import { checkRateLimit } from "@/lib/utils/rate-limiter"
 
 /**
  * Resolves the canonical employee_onboarding ID for an authenticated user.
@@ -115,6 +116,11 @@ export async function submitLeaveAction(leaveData: any) {
   const user = await getCurrentUser()
   if (!user) {
     return { success: false, error: "Unauthorized: Authentication required" }
+  }
+
+  const rl = checkRateLimit(`leave-submit:${user.id}`, 10, 60 * 1000)
+  if (!rl.success) {
+    return { success: false, error: `Too many leave requests. Please wait ${rl.retryAfterSeconds || 10}s.` }
   }
 
   const supabase = await createClient()

@@ -2,7 +2,6 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { type AppRole } from '@/config/rbac'
 
@@ -66,14 +65,17 @@ export async function generateEmployeeId(): Promise<string> {
 }
 
 import { headers } from 'next/headers'
-import { getClientIpDetails, resolveClientMetadata, parseUserAgent } from '@/lib/utils/device-parser'
+import { resolveClientMetadata, parseUserAgent, parseDetailedUserAgent } from '@/lib/utils/device-parser'
 import { logSecurityEvent } from '@/lib/utils/audit-logger'
+import { checkRateLimit, checkRateLimitDistributed } from '@/lib/utils/rate-limiter'
+import { measureAsync } from '@/lib/utils/perf-monitor'
 
 /**
  * Login with email and password.
  */
 export async function loginAction(email: string, password: string): Promise<{ success: boolean; error?: string }> {
-  // Ensure Supabase environment configuration exists before attempting sign-in
+  return measureAsync('loginAction', async () => {
+    // Ensure Supabase environment configuration exists before attempting sign-in
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
   if (!supabaseUrl || supabaseUrl.includes('placeholder')) {
     return {
@@ -84,42 +86,106 @@ export async function loginAction(email: string, password: string): Promise<{ su
 
   const supabase = await createClient()
   const headerStore = await headers()
-  const { ip, sourceHeader, classification, location, isProxy } = await resolveClientMetadata(headerStore)
+  const geoMeta = await resolveClientMetadata(headerStore)
   const userAgent = headerStore.get('user-agent') || ''
-  const { browser, os, device } = parseUserAgent(userAgent)
+  const clientInfo = parseDetailedUserAgent(userAgent, headerStore)
 
   // Safe development diagnostics (strictly non-sensitive)
   if (process.env.NODE_ENV !== 'production') {
     console.log('[Auth Login Diagnostic]', {
       email,
-      sourceHeader,
-      ipFound: Boolean(ip),
-      ipAddress: ip,
-      classification,
+      sourceHeader: geoMeta.sourceHeader,
+      ipFound: Boolean(geoMeta.ip),
+      ipAddress: geoMeta.ip,
+      classification: geoMeta.classification,
     })
   }
   
+  // Rate limit: max 5 attempts per min per email, 10 per min per IP
+  const emailKey = `login:email:${email.toLowerCase().trim()}`
+  const ipKey = `login:ip:${geoMeta.ip || 'unknown'}`
+  const emailLimit = await checkRateLimitDistributed(emailKey, 5, 60 * 1000)
+  const ipLimit = await checkRateLimitDistributed(ipKey, 10, 60 * 1000)
+
+  if (!emailLimit.success || !ipLimit.success) {
+    const retryAfter = Math.max(emailLimit.retryAfterSeconds || 30, ipLimit.retryAfterSeconds || 30)
+    return {
+      success: false,
+      error: `Too many login attempts. Please wait ${retryAfter} seconds before trying again.`
+    }
+  }
+
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
 
   if (error) {
+    let empId: string | null = null
+    let empNum: string | null = null
+    let empName: string | null = null
+    let targetUserId: string | null = null
+
+    try {
+      const admin = await createAdminClient()
+      const { data: ob } = await admin
+        .from('employee_onboarding')
+        .select('id, employee_id_number, first_name, last_name')
+        .or(`email.ilike.${email},personal_email.ilike.${email}`)
+        .limit(1)
+
+      if (ob && ob.length > 0) {
+        empId = ob[0].id
+        empNum = ob[0].employee_id_number
+        empName = `${ob[0].first_name || ''} ${ob[0].last_name || ''}`.trim()
+      }
+
+      if (empNum) {
+        const { data: profs } = await admin
+          .from('profiles')
+          .select('id')
+          .eq('employee_id', empNum)
+          .limit(1)
+        if (profs && profs.length > 0) {
+          targetUserId = profs[0].id
+        }
+      }
+    } catch {
+      // Non-blocking lookup
+    }
+
     await logSecurityEvent({
       eventType: 'login_failed',
       status: 'Failed',
+      userId: targetUserId,
+      employeeId: empId,
+      employeeIdNumber: empNum,
+      employeeName: empName,
       authMethod: 'Password',
-      ipAddress: ip,
-      ipClassification: classification,
-      location,
+      ipAddress: geoMeta.ip,
+      ipClassification: geoMeta.classification,
+      location: geoMeta.location,
       userAgent,
-      browser,
-      os,
-      device,
-      metadataSource: sourceHeader,
+      browser: clientInfo.displayName,
+      os: clientInfo.fullOs,
+      device: clientInfo.deviceType,
+      clientType: clientInfo.clientType,
+      appName: clientInfo.appName,
+      appVersion: clientInfo.appVersion,
+      runtime: clientInfo.runtime,
+      browserVersion: clientInfo.browserVersion,
+      browserEngine: clientInfo.browserEngine,
+      osVersion: clientInfo.osVersion,
+      city: geoMeta.city,
+      region: geoMeta.region,
+      country: geoMeta.country,
+      latitude: geoMeta.latitude,
+      longitude: geoMeta.longitude,
+      timezone: geoMeta.timezone,
+      isp: geoMeta.isp,
+      metadataSource: geoMeta.sourceHeader,
       metadata: {
-        attempted_email: email,
-        failure_reason: error.message
+        failure_reason: error.message || 'Invalid credentials'
       }
     })
     const friendlyError =
@@ -168,19 +234,32 @@ export async function loginAction(email: string, password: string): Promise<{ su
         employeeIdNumber: profile?.employee_id || null,
         employeeName: empName || null,
         authMethod: 'Password',
-        ipAddress: ip,
-        ipClassification: classification,
-        location,
+        ipAddress: geoMeta.ip,
+        ipClassification: geoMeta.classification,
+        location: geoMeta.location,
         userAgent,
-        browser,
-        os,
-        device,
+        browser: clientInfo.displayName,
+        os: clientInfo.fullOs,
+        device: clientInfo.deviceType,
+        clientType: clientInfo.clientType,
+        appName: clientInfo.appName,
+        appVersion: clientInfo.appVersion,
+        runtime: clientInfo.runtime,
+        browserVersion: clientInfo.browserVersion,
+        browserEngine: clientInfo.browserEngine,
+        osVersion: clientInfo.osVersion,
+        city: geoMeta.city,
+        region: geoMeta.region,
+        country: geoMeta.country,
+        latitude: geoMeta.latitude,
+        longitude: geoMeta.longitude,
+        timezone: geoMeta.timezone,
+        isp: geoMeta.isp,
         sessionStatus: 'Revoked',
         isSuspicious: true,
         flagReason: 'Attempted login to deactivated account',
-        metadataSource: sourceHeader,
+        metadataSource: geoMeta.sourceHeader,
         metadata: {
-          email: data.user.email,
           failure_reason: 'Account deactivated'
         }
       })
@@ -195,23 +274,39 @@ export async function loginAction(email: string, password: string): Promise<{ su
       employeeIdNumber: profile?.employee_id || null,
       employeeName: empName || null,
       authMethod: 'Password',
-      ipAddress: ip,
-      ipClassification: classification,
-      location,
+      ipAddress: geoMeta.ip,
+      ipClassification: geoMeta.classification,
+      location: geoMeta.location,
       userAgent,
-      browser,
-      os,
-      device,
+      browser: clientInfo.displayName,
+      os: clientInfo.fullOs,
+      device: clientInfo.deviceType,
+      clientType: clientInfo.clientType,
+      appName: clientInfo.appName,
+      appVersion: clientInfo.appVersion,
+      runtime: clientInfo.runtime,
+      browserVersion: clientInfo.browserVersion,
+      browserEngine: clientInfo.browserEngine,
+      osVersion: clientInfo.osVersion,
+      city: geoMeta.city,
+      region: geoMeta.region,
+      country: geoMeta.country,
+      latitude: geoMeta.latitude,
+      longitude: geoMeta.longitude,
+      timezone: geoMeta.timezone,
+      isp: geoMeta.isp,
       sessionId: data.session ? `sess_${crypto.randomUUID().slice(0, 8)}` : null,
       sessionStatus: 'Active',
-      metadataSource: sourceHeader,
+      metadataSource: geoMeta.sourceHeader,
       metadata: {
-        email: data.user.email
+        session_type: 'web_session',
+        auth_provider: 'password'
       }
     })
   }
 
-  return { success: true }
+    return { success: true }
+  })
 }
 
 /**
@@ -221,8 +316,9 @@ export async function logoutAction() {
   const supabase = await createClient()
   try {
     const headerStore = await headers()
-    const { ip, sourceHeader, classification, location } = await resolveClientMetadata(headerStore)
+    const geoMeta = await resolveClientMetadata(headerStore)
     const userAgent = headerStore.get('user-agent') || ''
+    const clientInfo = parseDetailedUserAgent(userAgent, headerStore)
 
     const { data: { user } } = await supabase.auth.getUser()
     if (user) {
@@ -230,13 +326,32 @@ export async function logoutAction() {
         eventType: 'logout',
         status: 'Success',
         userId: user.id,
-        ipAddress: ip,
-        ipClassification: classification,
-        location,
+        ipAddress: geoMeta.ip,
+        ipClassification: geoMeta.classification,
+        location: geoMeta.location,
         userAgent,
+        browser: clientInfo.displayName,
+        os: clientInfo.fullOs,
+        device: clientInfo.deviceType,
+        clientType: clientInfo.clientType,
+        appName: clientInfo.appName,
+        appVersion: clientInfo.appVersion,
+        runtime: clientInfo.runtime,
+        browserVersion: clientInfo.browserVersion,
+        browserEngine: clientInfo.browserEngine,
+        osVersion: clientInfo.osVersion,
+        city: geoMeta.city,
+        region: geoMeta.region,
+        country: geoMeta.country,
+        latitude: geoMeta.latitude,
+        longitude: geoMeta.longitude,
+        timezone: geoMeta.timezone,
+        isp: geoMeta.isp,
         sessionStatus: 'Logged Out',
-        metadataSource: sourceHeader,
-        metadata: { email: user.email }
+        metadataSource: geoMeta.sourceHeader,
+        metadata: {
+          session_action: 'user_signout'
+        }
       })
     }
   } catch (e) {

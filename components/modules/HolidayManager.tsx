@@ -125,7 +125,7 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
 
   return (
     <div className="space-y-6">
-      <PageHeader 
+      <PageHeader
         title={<>Holiday <span className="text-primary">Calendar</span></>}
         subtitle={`${totalHolidays} public ${totalHolidays === 1 ? "holiday" : "holidays"} in ${currentYear}`}
         icon={CalendarIcon}
@@ -306,9 +306,9 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
             </div>
             <div className="space-y-2">
               <Label className="text-xs sm:text-sm font-semibold ml-1">Date</Label>
-              <DatePicker 
-                value={date} 
-                onChange={(d) => setDate(d ? parseLocalDate(d) : undefined)} 
+              <DatePicker
+                value={date}
+                onChange={(d) => setDate(d ? parseLocalDate(d) : undefined)}
                 className="bg-muted/30 border-transparent focus-visible:bg-background focus-visible:border-primary focus-visible:ring-primary/20 min-h-[44px] sm:h-[52px] px-3 sm:px-4 rounded-xl text-sm"
                 iconLeft={true}
                 showChevron={true}

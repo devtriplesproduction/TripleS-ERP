@@ -26,10 +26,10 @@ export interface DatePickerProps {
   disabled?: boolean
 }
 
-export function DatePicker({ 
-  value, 
-  onChange, 
-  placeholder = "dd/mm/yyyy", 
+export function DatePicker({
+  value,
+  onChange,
+  placeholder = "dd/mm/yyyy",
   displayFormat = "DD/MM/YYYY",
   className,
   contentClassName,
@@ -59,7 +59,7 @@ export function DatePicker({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger 
+      <PopoverTrigger
         disabled={disabled}
         className={cn(
           "flex h-9 w-full items-center justify-between rounded-md border border-input bg-input-bg hover:border-input-hover dark:hover:border-input-hover px-3 py-1 text-xs transition-colors outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50",
@@ -100,9 +100,9 @@ export function DatePicker({
           startMonth={startMonth}
           endMonth={endMonth}
           selected={dateValue}
-          onSelect={(date) => { 
-            onChange?.(date ? toISODateString(date) : ""); 
-            setOpen(false); 
+          onSelect={(date) => {
+            onChange?.(date ? toISODateString(date) : "");
+            setOpen(false);
           }}
         />
         {isClearable && (
@@ -123,6 +123,7 @@ export function DatePicker({
               onClick={(e) => {
                 e.stopPropagation()
                 onChange?.(getTodayIST())
+
                 setOpen(false)
               }}
               className="text-xs text-foreground font-medium hover:underline cursor-pointer"

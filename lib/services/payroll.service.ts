@@ -8,8 +8,9 @@ import {
   canonicalOfficeHoursToMinutes,
   getStandardWorkingDaysInMonth,
 } from '@/lib/utils/time';
-import { calculateMonthlyBasicSalary, resolveSalaryForPeriod, PeriodSalaryResolution } from '@/lib/utils/salary';
+import { resolveSalaryForPeriod } from '@/lib/utils/salary';
 import { SalaryProrationDetail, DayPayrollBreakdown, PayrollReconciliation } from '@/types/payroll';
+import { getAuthoritativeDivisorPolicy, getDivisorForMonth, PayrollDivisorPolicy } from '@/lib/services/payroll-config.service';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -80,11 +81,42 @@ export interface PayrollResult {
   reconciliation?: PayrollReconciliation;
 }
 
+// ─── Leave Policy Helper ───────────────────────────────────────────
+
+/**
+ * Determines whether an approved leave request is eligible for salary payment.
+ *
+ * Rules:
+ * - WFH is remote work (handled as working day, not absence leave).
+ * - Approved Comp-Off leave is ALWAYS fully paid (debited from comp-off ledger exactly once).
+ * - Explicit unpaid leaves ('Unpaid', 'Unpaid Leave') are unpaid.
+ * - If request has explicit `is_paid === true`, it is paid; if `is_paid === false`, it is unpaid.
+ * - Intern Leave Policy: Interns on stipend do not receive paid sick/casual leave allocations.
+ *   Only Comp-Off and Company Holidays are paid for interns unless explicitly authorized (`is_paid === true`).
+ * - Full-time / regular employees: standard approved leaves (Casual, Sick, Paid) are paid.
+ */
+export function isLeavePaid(leave: any, employee?: any): boolean {
+  if (!leave) return false;
+  if (leave.request_type === 'WFH') return false;
+  const lType = (leave.leave_type || '').toLowerCase();
+  if (lType.includes('comp')) return true;
+  if (lType.includes('unpaid')) return false;
+  if (leave.is_paid === false) return false;
+  if (leave.is_paid === true) return true;
+
+  const isIntern = employee?.employment_type?.toLowerCase() === 'intern' ||
+    Boolean(employee?.stipend && (!employee?.basic_salary || Number(employee?.basic_salary) === 0));
+  if (isIntern) {
+    return false;
+  }
+  return true;
+}
+
 // ─── Day context for classification ─────────────────────────────────
 
 type DayContext = 'normal' | 'sunday' | 'paid_holiday' | 'approved_leave';
 
-function getDayContext(
+function _getDayContext(
   dateStr: string,
   paidHolidayDates: Set<string>,
   approvedLeaveDates?: Set<string>
@@ -193,7 +225,7 @@ export async function calculateMonthlyPayroll(
   if (!rawEmployees || rawEmployees.length === 0) return [];
 
   // Filter out employees who were not eligible for any part of this month (Rule 6)
-  const employees = rawEmployees.filter(emp => {
+  const employees = rawEmployees.filter((emp: any) => {
     // Joined after this month
     if (emp.joining_date && emp.joining_date > endDate) return false;
     // Offboarded before this month (if deactivation timestamp exists)
@@ -209,7 +241,7 @@ export async function calculateMonthlyPayroll(
   if (employees.length === 0) return [];
 
   // 3. Fetch profiles to map employee_onboarding -> profiles (by employee_id_number)
-  const empNumbers = employees.map(e => e.employee_id_number).filter(Boolean);
+  const empNumbers = employees.map((e: any) => e.employee_id_number).filter(Boolean);
   const { data: profiles, error: profErr } = empNumbers.length > 0
     ? await supabase.from('profiles').select('id, employee_id').in('employee_id', empNumbers)
     : { data: [], error: null };
@@ -253,7 +285,7 @@ export async function calculateMonthlyPayroll(
     queryIds.length > 0
       ? supabase
         .from('leave_requests')
-        .select('id, employee_id, start_date, end_date, is_half_day, request_type, leave_type, status')
+        .select('id, employee_id, start_date, end_date, is_half_day, request_type, leave_type, status, is_paid')
         .in('status', ['Approved', 'Approved HR', 'Approved (Auto)'])
         .lte('start_date', endDate)
         .gte('end_date', startDate)
@@ -308,11 +340,11 @@ export async function calculateMonthlyPayroll(
     }
   });
 
-  // 8. Dynamic standard working days calculation: total calendar days minus Sundays (Asia/Kolkata Mon–Sat baseline)
-  // Supports dynamic actual Mon–Sat working days policy (default) or configurable fixed 26 days.
-  const divisorMode = options?.divisorMode || (process.env.PAYROLL_DIVISOR_MODE === 'fixed_26' ? 'fixed_26' : 'actual_mon_sat');
+  // 8. Authoritative divisor policy: configurable fixed 26 days or dynamic actual Mon–Sat working days.
+  const divisorMode: PayrollDivisorPolicy = options?.divisorMode || (await getAuthoritativeDivisorPolicy());
   const dynamicWorkingDays = getStandardWorkingDaysInMonth(year, month);
-  const STANDARD_WORKING_DAYS = divisorMode === 'fixed_26' ? 26 : dynamicWorkingDays;
+  const applicableDivisor = getDivisorForMonth(year, month, divisorMode);
+  const STANDARD_WORKING_DAYS = applicableDivisor;
   const standardHours = STANDARD_WORKING_DAYS * 8;
 
   // 9. Fetch active employee-specific deductions for this month
@@ -395,8 +427,8 @@ export async function calculateMonthlyPayroll(
 
       const eod = empEods.find(e => e.report_date === dStr);
       const leavesOnDay = empLeaves.filter(l => l.start_date <= dStr && l.end_date >= dStr);
-      const paidLeave = leavesOnDay.find(l => l.request_type !== 'WFH' && l.leave_type !== 'Unpaid' && l.leave_type !== 'Unpaid Leave');
-      const unpaidLeave = leavesOnDay.find(l => l.leave_type === 'Unpaid' || l.leave_type === 'Unpaid Leave');
+      const paidLeave = leavesOnDay.find(l => l.request_type !== 'WFH' && isLeavePaid(l, emp));
+      const unpaidLeave = leavesOnDay.find(l => l.request_type !== 'WFH' && !isLeavePaid(l, emp));
       const wfhLeave = leavesOnDay.find(l => l.request_type === 'WFH');
 
       let officeHoursLogged = 0;
@@ -535,10 +567,18 @@ export async function calculateMonthlyPayroll(
         } else {
           const unpMins = STANDARD_WORK_MINUTES;
           unpaidLeaveMinutes += unpMins;
-          activity = 'Approved Unpaid Leave';
+          activity = `Approved ${unpaidLeave.leave_type || 'Unpaid Leave'} (Unpaid)`;
           deductionDays = 1.0;
           status = 'UNPAID';
-          notes = `Approved unpaid leave (1.0 day salary deduction).`;
+          notes = `Approved ${unpaidLeave.leave_type || 'unpaid'} leave (1.0 day salary deduction).`;
+          if (eod) {
+            officeHoursLogged = Number(eod.office_hours);
+            const wMins = canonicalOfficeHoursToMinutes(officeHoursLogged);
+            totalWorkedMinutes += wMins;
+            compOff = wMins;
+            compOffMinutesEarned += compOff;
+            notes += ` Worked ${officeHoursLogged}h on leave -> 100% to Comp-Off.`;
+          }
         }
       } else if (eod) {
         officeHoursLogged = Number(eod.office_hours);
@@ -620,8 +660,9 @@ export async function calculateMonthlyPayroll(
     // ─── Financial calculation ──────────────────────────────────
     const unpaidLeaveDaysFromLeaves = unpaidLeaveMinutes / STANDARD_WORK_MINUTES;
 
-    // Total deducted days derived strictly from dailyBreakdown to ensure 100% mathematical consistency
+    // Total deducted days and payable days derived strictly from dailyBreakdown to ensure 100% mathematical consistency
     const totalDeductedDays = Math.round(dailyBreakdown.reduce((sum, d) => sum + d.deductionDays, 0) * 10) / 10;
+    const totalPayableDays = Math.round(dailyBreakdown.reduce((sum, d) => sum + d.payableFraction, 0) * 10) / 10;
 
     // Employee-specific fixed manual deductions
     const empDeductions = activeDeductions.filter((d: any) => candIds.has(d.employee_id));
@@ -643,11 +684,27 @@ export async function calculateMonthlyPayroll(
     // All evaluated employees for this period have hasPayrollData = true
     const hasPayrollData = true;
 
-    // Attendance Deduction = total deducted days * standard daily rate (capped at monthly base)
-    const attendanceDeduction = Math.min(monthlyPayBase, Math.round(totalDeductedDays * fullDayRate * 100) / 100);
+    // Applicable company divisor for this month
+    const monthDivisor = STANDARD_WORKING_DAYS;
+    const exactDailyRate = (monthDivisor > 0 && (salaryResolution.fullMonthSalary || monthlyPayBase) > 0)
+      ? ((salaryResolution.fullMonthSalary || monthlyPayBase) / monthDivisor)
+      : fullDayRate;
 
-    // Earned pay = monthly base - attendanceDeduction
-    const earnedPay = Math.max(0, Math.round((monthlyPayBase - attendanceDeduction) * 100) / 100);
+    // Gross scheduled pay for the employee's active scheduled working days in this month
+    const grossScheduledPay = Math.round(scheduledWorkingDays * exactDailyRate * 100) / 100;
+
+    // Attendance Deduction = total deducted days * exact daily rate
+    const attendanceDeduction = Math.round(totalDeductedDays * exactDailyRate * 100) / 100;
+
+    // Earned pay:
+    // Under actual_mon_sat: totalPayableDays * exactDailyRate reconciles to monthlyPayBase - attendanceDeduction
+    // Under fixed_26: totalPayableDays * exactDailyRate compensates for every payable day worked (e.g. 16.5 * 307.6923... = ₹5,076.92)
+    const earnedPay = (totalPayableDays === scheduledWorkingDays && totalDeductedDays === 0)
+      ? (divisorMode === 'fixed_26' ? grossScheduledPay : monthlyPayBase)
+      : Math.round(totalPayableDays * exactDailyRate * 100) / 100;
+
+    // Gross Pay for reporting
+    const grossPay = divisorMode === 'fixed_26' ? grossScheduledPay : monthlyPayBase;
 
     // Total deductions = attendance deduction + manual deductions
     const totalDeductions = Math.round((attendanceDeduction + manualDeductions) * 100) / 100;
@@ -676,27 +733,29 @@ export async function calculateMonthlyPayroll(
       : 0;
 
     // ─── Reconciliation checks ──────────────────────────────────
-    const totalPayableDays = Math.round(dailyBreakdown.reduce((sum, d) => sum + d.payableFraction, 0) * 10) / 10;
-    const sumDeductedDays = Math.round(dailyBreakdown.reduce((sum, d) => sum + d.deductionDays, 0) * 10) / 10;
-    const isScheduledDaysReconciled = Math.abs((totalPayableDays + sumDeductedDays) - scheduledWorkingDays) < 0.01;
-    const isFinancialReconciled = Math.abs((netPayable + totalDeductions) - monthlyPayBase) < 0.05;
+    const isScheduledDaysReconciled = Math.abs((totalPayableDays + totalDeductedDays) - scheduledWorkingDays) < 0.01;
+    const targetGross = divisorMode === 'fixed_26' ? grossScheduledPay : monthlyPayBase;
+    const isFinancialReconciled = Math.abs((earnedPay + attendanceDeduction) - targetGross) < 0.05;
 
     const reconciliation: PayrollReconciliation = {
       isScheduledDaysReconciled,
       scheduledWorkingDays,
       payableDays: totalPayableDays,
-      deductedDays: sumDeductedDays,
+      deductedDays: totalDeductedDays,
       isFinancialReconciled,
       baseSalary: monthlyPayBase,
+      grossScheduledPay,
       netPayable,
+      attendanceDeduction,
       totalDeductions,
       earnedPay,
       compOffMinutesEarned,
       divisorMode,
-      dailyRate: fullDayRate,
-      status: (isScheduledDaysReconciled && isFinancialReconciled) ? 'RECONCILED' : 'DISCREPANCY',
+      divisorDays: monthDivisor,
+      dailyRate: Math.round(exactDailyRate * 100) / 100,
+      status: (isScheduledDaysReconciled && isFinancialReconciled) ? 'RECONCILED' : 'DISCREPANCY_DETECTED',
       notes: isScheduledDaysReconciled && isFinancialReconciled
-        ? `Reconciled (${divisorMode} divisor: ${STANDARD_WORKING_DAYS} days): ${totalPayableDays} payable days + ${sumDeductedDays} deducted days = ${scheduledWorkingDays} scheduled days. Net pay (₹${netPayable.toFixed(2)}) + deductions (₹${totalDeductions.toFixed(2)}) = ₹${monthlyPayBase.toFixed(2)}.`
+        ? `Reconciled (${divisorMode} divisor: ${monthDivisor} days): ${totalPayableDays} payable days + ${totalDeductedDays} deducted days = ${scheduledWorkingDays} scheduled days. Net pay (₹${netPayable.toFixed(2)}) + deductions (₹${attendanceDeduction.toFixed(2)}) = ₹${(earnedPay + attendanceDeduction).toFixed(2)}.`
         : `Discrepancy detected in reconciliation.`
     };
 

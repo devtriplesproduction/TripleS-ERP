@@ -99,11 +99,11 @@ describe('Comprehensive Payroll Calculations', () => {
     expect(results).toHaveLength(2)
     // Suraj: monthly base should be 22,000, NOT 264,000!
     expect(results[0].salary).toBe(22000)
-    expect(results[0].standardHours).toBe(208)
+    expect(results[0].standardHours).toBe(216)
 
     // Prachi: intern stipend should be 8,000
     expect(results[1].salary).toBe(8000)
-    expect(results[1].standardHours).toBe(208)
+    expect(results[1].standardHours).toBe(216)
   })
 
   it('calculates standard daily rate based on 26 days (208 hours basis)', async () => {
@@ -127,7 +127,7 @@ describe('Comprehensive Payroll Calculations', () => {
       { id: 'eod-3', employee_id: 'auth-3', office_hours: 3.5, report_date: '2026-10-01', status: 'Approved' }
     ]
 
-    const results = await calculateMonthlyPayroll(2026, 10, ['emp-1'])
+    const results = await calculateMonthlyPayroll(2026, 10, ['emp-1'], { divisorMode: 'fixed_26' })
     expect(results[0].daysUnpaidLeaveEod).toBe(1)
     expect(results[0].standardHours).toBe(208)
     // Extra comp off is earned for <4h work
@@ -170,7 +170,7 @@ describe('Comprehensive Payroll Calculations', () => {
       }
     ]
 
-    const results = await calculateMonthlyPayroll(2026, 10, ['emp-1'])
+    const results = await calculateMonthlyPayroll(2026, 10, ['emp-1'], { divisorMode: 'fixed_26' })
     expect(results[0].unpaidLeaveHours).toBe(16) // 2 days * 8h = 16h
     // Unpaid leave deduction is applied
     expect(results[0].unpaidLeaveDeduction).toBeGreaterThan(0)

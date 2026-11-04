@@ -347,8 +347,12 @@ export function PayrollDetailModal({
                   Scheduled Working Days Baseline
                 </span>
                 <div className="flex justify-between text-muted-foreground">
+                  <span>Scheduled Days:</span>
+                  <span className="font-medium text-foreground">{payroll.reconciliation.scheduledWorkingDays} days</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
                   <span>Payable Days:</span>
-                  <span className="font-medium text-foreground">{payroll.reconciliation.payableDays} days</span>
+                  <span className="font-medium text-emerald-500">{payroll.reconciliation.payableDays} days</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Deducted Days:</span>
@@ -361,7 +365,7 @@ export function PayrollDetailModal({
                 <div className="pt-1 text-[10px] text-muted-foreground flex justify-between">
                   <span>Divisor Policy:</span>
                   <span className="font-mono text-foreground">
-                    {payroll.reconciliation.divisorMode === 'fixed_26' ? 'Fixed (26 Days)' : `Mon–Sat (${payroll.reconciliation.scheduledWorkingDays} Days)`}
+                    {payroll.reconciliation.divisorMode === 'fixed_26' ? 'Fixed (26 Days)' : `Mon–Sat (${payroll.reconciliation.divisorDays || payroll.reconciliation.scheduledWorkingDays} Days)`}
                   </span>
                 </div>
               </div>
@@ -372,21 +376,37 @@ export function PayrollDetailModal({
                   Financial Baseline Reconciliation
                 </span>
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Net Payable:</span>
-                  <span className="font-medium text-emerald-500">₹{payroll.reconciliation.netPayable.toFixed(2)}</span>
+                  <span>Daily Rate:</span>
+                  <span className="font-mono text-foreground">
+                    ₹{(payroll.reconciliation.dailyRate || (payroll.salary / (payroll.reconciliation.divisorDays || payroll.reconciliation.scheduledWorkingDays || 1))).toFixed(2)}/day
+                  </span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Total Deductions:</span>
-                  <span className="font-medium text-rose-500">₹{payroll.reconciliation.totalDeductions.toFixed(2)}</span>
+                  <span>Gross Payable:</span>
+                  <span className="font-medium text-foreground">
+                    ₹{(payroll.reconciliation.grossScheduledPay || payroll.grossPay || (payroll.reconciliation.scheduledWorkingDays * (payroll.reconciliation.dailyRate || 0))).toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Attendance Deductions:</span>
+                  <span className="font-medium text-rose-500">
+                    ₹{(payroll.reconciliation.attendanceDeduction ?? (payroll.attendanceDeduction || payroll.reconciliation.totalDeductions)).toFixed(2)}
+                  </span>
+                </div>
+                {payroll.manualDeductions > 0 && (
+                  <div className="flex justify-between text-muted-foreground">
+                    <span>Other Deductions:</span>
+                    <span className="font-medium text-amber-500">₹{payroll.manualDeductions.toFixed(2)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Final Net Salary:</span>
+                  <span className="font-medium text-emerald-500">₹{payroll.reconciliation.netPayable.toFixed(2)}</span>
                 </div>
                 <div className="pt-1 border-t border-border/50 flex justify-between font-semibold">
                   <span>Reconciled Sum:</span>
-                  <span className="text-foreground">₹{(payroll.reconciliation.netPayable + payroll.reconciliation.totalDeductions).toFixed(2)} / ₹{payroll.reconciliation.baseSalary.toFixed(2)}</span>
-                </div>
-                <div className="pt-1 text-[10px] text-muted-foreground flex justify-between">
-                  <span>Daily Rate:</span>
-                  <span className="font-mono text-foreground">
-                    ₹{(payroll.reconciliation.dailyRate || (payroll.salary / (payroll.reconciliation.scheduledWorkingDays || 26))).toFixed(2)}/day
+                  <span className="text-foreground">
+                    ₹{(payroll.reconciliation.earnedPay + (payroll.reconciliation.attendanceDeduction ?? (payroll.attendanceDeduction || payroll.reconciliation.totalDeductions))).toFixed(2)} / ₹{(payroll.reconciliation.grossScheduledPay || payroll.grossPay || payroll.reconciliation.baseSalary).toFixed(2)}
                   </span>
                 </div>
               </div>

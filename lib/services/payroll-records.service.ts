@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
-import { PayrollRun, PayrollItem, PayrollRunStatus, PayrollResult } from '@/types/payroll';
+import { PayrollRun, PayrollItem, PayrollResult } from '@/types/payroll';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
@@ -219,12 +219,26 @@ export async function finalizePayrollRun(
   year: number,
   month: number,
   results: PayrollResult[],
-  finalizedBy: string
+  finalizedBy: string,
+  options?: {
+    allowMissingSalaryOverride?: boolean;
+    auditOverrideReason?: string;
+  }
 ): Promise<{ success: boolean; run?: PayrollRun; error?: string }> {
   // 1. Prevent duplicate finalization
   const alreadyFinalized = await isPayrollFinalized(year, month);
   if (alreadyFinalized) {
     return { success: false, error: `Payroll for ${year}-${String(month).padStart(2, '0')} is already finalized and locked.` };
+  }
+
+  // 2. Block unsafe finalization if any employee has missing/invalid salary configuration
+  const missingSalaryEmployees = results.filter(r => r.hasMissingSalary);
+  if (missingSalaryEmployees.length > 0 && !options?.allowMissingSalaryOverride) {
+    const names = missingSalaryEmployees.map(e => `${e.name || (e as any).employeeName || 'Unknown'} (${e.employeeIdNumber})`).join(', ');
+    return {
+      success: false,
+      error: `Cannot finalize payroll: Unsafe finalization blocked. Missing or invalid salary structure detected for: ${names}. Resolve salary structures or provide a formal audit override.`
+    };
   }
 
   const now = new Date().toISOString();
@@ -282,7 +296,8 @@ export async function finalizePayrollRun(
       proration: r.prorationDetail,
       deductionsList: r.deductionsList,
       dailyBreakdown: r.dailyBreakdown,
-      reconciliation: r.reconciliation
+      reconciliation: r.reconciliation,
+      overrideReason: options?.auditOverrideReason || null
     },
     created_at: now,
     updated_at: now

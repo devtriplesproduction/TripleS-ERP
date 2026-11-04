@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
+import { checkRateLimit } from '@/lib/utils/rate-limiter'
 import { createClient as createSupabaseAdmin } from '@supabase/supabase-js'
+import { resolveClientMetadata, parseDetailedUserAgent } from '@/lib/utils/device-parser'
+import { logSecurityEvent, updateSessionStatus } from '@/lib/utils/audit-logger'
 
 export async function POST(req: NextRequest) {
   try {
@@ -9,6 +12,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         { success: false, error: 'Unauthorized: Authentication required' },
         { status: 401 }
+      )
+    }
+
+    const rl = checkRateLimit(`tt-session:${user.id}`, 60, 60 * 1000)
+    if (!rl.success) {
+      return NextResponse.json(
+        { success: false, error: 'Too many session telemetry requests. Rate limit exceeded.' },
+        { status: 429 }
       )
     }
 
@@ -30,27 +41,103 @@ export async function POST(req: NextRequest) {
       day: '2-digit'
     }).format(new Date())
 
+    const geoMeta = await resolveClientMetadata(req.headers)
+    const userAgent = req.headers.get('user-agent') || ''
+    const clientInfo = parseDetailedUserAgent(userAgent, req.headers)
+
     if (action === 'start') {
       const newSessionId = sessionId || crypto.randomUUID()
-      const { data, error } = await adminSupa
+      const nowIso = clockInTime || new Date().toISOString()
+
+      const fullPayload: Record<string, any> = {
+        id: newSessionId,
+        employee_id: targetEmployeeId,
+        session_date: today,
+        clock_in: nowIso,
+        status: 'working',
+        worked_minutes: workedMinutes || 0,
+        active_minutes: activeMinutes || 0,
+        suspended_seconds: suspendedSeconds || 0,
+        updated_at: new Date().toISOString(),
+        ip_address: geoMeta.ip,
+        ip_classification: geoMeta.classification,
+        location: geoMeta.location,
+        isp: geoMeta.isp,
+        user_agent: userAgent,
+        browser: clientInfo.displayName,
+        os: clientInfo.fullOs,
+        device: clientInfo.deviceType,
+        client_type: clientInfo.clientType,
+        app_version: clientInfo.appVersion,
+      }
+
+      let { data, error } = await adminSupa
         .from('time_sessions')
-        .upsert({
+        .upsert(fullPayload)
+        .select()
+        .single()
+
+      if (error && error.code === 'PGRST204') {
+        // Fallback for core columns before database migration
+        const corePayload = {
           id: newSessionId,
           employee_id: targetEmployeeId,
           session_date: today,
-          clock_in: clockInTime || new Date().toISOString(),
+          clock_in: nowIso,
           status: 'working',
           worked_minutes: workedMinutes || 0,
           active_minutes: activeMinutes || 0,
           suspended_seconds: suspendedSeconds || 0,
           updated_at: new Date().toISOString()
-        })
-        .select()
-        .single()
+        }
+        const fallback = await adminSupa
+          .from('time_sessions')
+          .upsert(corePayload)
+          .select()
+          .single()
+        data = fallback.data
+        error = fallback.error
+      }
 
       if (error) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 })
       }
+
+      // Record immutable security audit log event
+      await logSecurityEvent({
+        eventType: 'login_success',
+        status: 'Success',
+        userId: targetEmployeeId,
+        authMethod: clientInfo.clientType === 'desktop_app' ? 'TripleS Time Tracker (Desktop)' : 'Time Tracking Client',
+        ipAddress: geoMeta.ip,
+        ipClassification: geoMeta.classification,
+        location: geoMeta.location,
+        userAgent,
+        browser: clientInfo.displayName,
+        os: clientInfo.fullOs,
+        device: clientInfo.deviceType,
+        clientType: clientInfo.clientType,
+        appName: clientInfo.appName,
+        appVersion: clientInfo.appVersion,
+        runtime: clientInfo.runtime,
+        browserVersion: clientInfo.browserVersion,
+        browserEngine: clientInfo.browserEngine,
+        osVersion: clientInfo.osVersion,
+        city: geoMeta.city,
+        region: geoMeta.region,
+        country: geoMeta.country,
+        latitude: geoMeta.latitude,
+        longitude: geoMeta.longitude,
+        timezone: geoMeta.timezone,
+        isp: geoMeta.isp,
+        sessionId: newSessionId,
+        sessionStatus: 'Active',
+        clockIn: nowIso,
+        workedMinutes: workedMinutes || 0,
+        activeMinutes: activeMinutes || 0,
+        metadataSource: geoMeta.sourceHeader,
+      })
+
       return NextResponse.json({ success: true, session: data })
     }
 
@@ -125,6 +212,31 @@ export async function POST(req: NextRequest) {
         })
         .eq('id', sessionId)
         .eq('employee_id', targetEmployeeId)
+
+      await updateSessionStatus(sessionId, 'Expired')
+      await logSecurityEvent({
+        eventType: 'logout',
+        status: 'Success',
+        userId: targetEmployeeId,
+        authMethod: 'Session Termination',
+        ipAddress: geoMeta.ip,
+        ipClassification: geoMeta.classification,
+        location: geoMeta.location,
+        userAgent,
+        browser: clientInfo.displayName,
+        os: clientInfo.fullOs,
+        device: clientInfo.deviceType,
+        clientType: clientInfo.clientType,
+        appName: clientInfo.appName,
+        appVersion: clientInfo.appVersion,
+        runtime: clientInfo.runtime,
+        sessionId,
+        sessionStatus: 'Expired',
+        clockOut: now,
+        workedMinutes: workedMinutes || 0,
+        activeMinutes: activeMinutes || 0,
+        metadataSource: geoMeta.sourceHeader,
+      })
 
       return NextResponse.json({ success: true })
     }

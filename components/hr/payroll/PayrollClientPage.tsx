@@ -18,13 +18,22 @@ import {
   Lock,
   CheckCircle2,
   ShieldCheck,
-  AlertTriangle
+  AlertTriangle,
+  Calculator
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { getMonthlyPayrollAction, finalizeMonthlyPayrollAction } from '@/lib/actions/payroll'
+import {
+  getMonthlyPayrollAction,
+  finalizeMonthlyPayrollAction
+} from '@/lib/actions/payroll'
 import { PayrollDetailModal } from './PayrollDetailModal'
 import { AddDeductionModal } from './AddDeductionModal'
 import { PayrollResult } from '@/lib/services/payroll.service'
+import {
+  getCalendarDaysInMonth,
+  getSundaysCountInMonth,
+  getStandardWorkingDaysInMonth
+} from '@/lib/utils/time'
 import { PageHeader } from '@/components/PageHeader'
 import {
   Dialog,
@@ -61,6 +70,12 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
   ]
+
+  // Dynamic calendar working days standard in Asia/Kolkata (Monday–Saturday standard)
+  // Divisor = Total calendar days in selected month - Number of Sundays
+  const calendarDays = getCalendarDaysInMonth(year, month);
+  const sundaysCount = getSundaysCountInMonth(year, month);
+  const dynamicDivisor = getStandardWorkingDaysInMonth(year, month);
 
   const loadPayroll = useCallback(async (showToast: boolean = false) => {
     setCalculating(true)
@@ -150,16 +165,27 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
   const handleExportCSV = () => {
     if (payrollResults.length === 0) return;
     const headers = [
-      'Employee Name', 'Department', 'Monthly Base (₹)', 'Standard Hrs',
+      'Employee Name', 'Department', 'Monthly Base (₹)', 'Divisor Policy', 'Divisor Days', 'Daily Rate (₹)',
+      'Scheduled Days', 'Payable Days', 'Deducted Days', 'Standard Hrs',
       'Worked Hrs', 'Credited Leave Hrs', 'Paid Holiday Hrs', 'Full Days (8h+)', 'Half Days',
       'Unpaid Days (<4h)', 'Absent Days', 'Comp-Off Earned (mins)', 'Attendance Deduction (₹)',
       'Custom Deductions (₹)', 'Total Deductions (₹)', 'Gross Pay (₹)', 'Net Payable (₹)', 'Status'
     ];
 
+    const currentDivisor = isFinalized && payrollResults[0]?.reconciliation?.divisorDays
+      ? payrollResults[0].reconciliation.divisorDays
+      : dynamicDivisor;
+
     const rows = payrollResults.map(r => [
       `"${r.name || ''}"`,
       `"${r.department || ''}"`,
       r.salary || 0,
+      r.reconciliation?.divisorMode === 'fixed_26' ? 'Fixed (26 Days)' : 'Dynamic Mon–Sat',
+      r.reconciliation?.divisorDays || currentDivisor,
+      r.reconciliation?.dailyRate || (r.salary ? Number((r.salary / currentDivisor).toFixed(2)) : 0),
+      r.reconciliation?.scheduledWorkingDays || 0,
+      r.reconciliation?.payableDays || 0,
+      r.reconciliation?.deductedDays || 0,
       r.standardHours || 0,
       r.actualWorkedHours || 0,
       r.creditedLeaveHours || 0,
@@ -251,7 +277,26 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
         subtitle="Calculate, review, and finalize employee monthly payroll."
         icon={CreditCard}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            {/* Dynamic Divisor Badge */}
+            <Badge
+              variant="outline"
+              className="px-2.5 py-1 text-xs border border-border bg-muted/40 flex items-center gap-1.5 font-medium"
+              title={`Dynamic Divisor: ${isFinalized && payrollResults[0]?.reconciliation?.divisorDays ? payrollResults[0].reconciliation.divisorDays : dynamicDivisor} Days (${calendarDays} calendar days − ${sundaysCount} Sundays in Asia/Kolkata)`}
+            >
+              <Calculator className="h-3.5 w-3.5 text-primary" />
+              <span className="text-muted-foreground">Divisor:</span>
+              <span className="font-semibold text-foreground">
+                {isFinalized && payrollResults[0]?.reconciliation?.divisorDays
+                  ? payrollResults[0].reconciliation.divisorDays
+                  : dynamicDivisor}{' '}
+                Days
+              </span>
+              <span className="text-[10px] text-muted-foreground hidden sm:inline">
+                ({calendarDays}d − {sundaysCount} Sun)
+              </span>
+            </Badge>
+
             <Badge
               variant={isFinalized ? "default" : "secondary"}
               className={`px-3 py-1 font-semibold text-xs flex items-center gap-1.5 ${
@@ -369,32 +414,55 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
           </CardContent>
         </Card>
 
-        <div className="sm:col-span-2 lg:col-span-2 flex items-center gap-2">
+        <Card className="bg-card">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Monthly Divisor</CardTitle>
+            <Calculator className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-xl sm:text-2xl font-bold flex items-baseline gap-1.5">
+              <span>
+                {isFinalized && payrollResults[0]?.reconciliation?.divisorDays
+                  ? payrollResults[0].reconciliation.divisorDays
+                  : dynamicDivisor}{' '}
+                Days
+              </span>
+              <span className="text-xs font-normal text-muted-foreground">
+                ({calendarDays} − {sundaysCount} Sundays)
+              </span>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+              Daily Rate = Base Salary / {isFinalized && payrollResults[0]?.reconciliation?.divisorDays ? payrollResults[0].reconciliation.divisorDays : dynamicDivisor} days
+            </p>
+          </CardContent>
+        </Card>
+
+        <div className="flex flex-col justify-center gap-2">
           {!isFinalized ? (
-            <>
+            <div className="flex items-center gap-2 h-full">
               <Button
                 size="lg"
                 variant="outline"
-                className="flex-1 h-11 text-sm font-semibold"
+                className="flex-1 h-11 text-xs sm:text-sm font-semibold"
                 onClick={() => loadPayroll(true)}
                 disabled={loading || calculating}
                 aria-label="Calculate Monthly Payroll"
                 title="Calculate Monthly Payroll"
               >
-                {calculating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
-                {calculating ? 'Recalculating...' : 'Recalculate Draft'}
+                {calculating ? <Loader2 className="mr-1.5 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-1.5 h-4 w-4" />}
+                {calculating ? 'Calculating...' : 'Recalculate'}
               </Button>
               <Button
                 size="lg"
-                className="flex-1 h-11 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 h-11 text-xs sm:text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => setIsFinalizeModalOpen(true)}
                 disabled={loading || calculating || payrollResults.length === 0 || hasUnresolvedErrors}
                 title={hasUnresolvedErrors ? 'Resolve all employee calculation warnings before finalizing' : undefined}
               >
-                <Lock className="mr-2 h-4 w-4" />
-                Finalize Payroll
+                <Lock className="mr-1.5 h-4 w-4" />
+                Finalize
               </Button>
-            </>
+            </div>
           ) : (
             <div className="w-full h-11 rounded-md bg-muted/50 border border-border flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground font-medium">
               <Lock className="h-4 w-4 text-emerald-500" />
@@ -668,6 +736,12 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
             <div className="flex justify-between">
               <span className="text-muted-foreground">Cycle:</span>
               <span className="font-semibold text-foreground">{months[month - 1]} {year}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Monthly Divisor:</span>
+              <span className="font-semibold text-foreground">
+                {dynamicDivisor} Days ({calendarDays} days − {sundaysCount} Sundays)
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Total Payout:</span>

@@ -86,8 +86,8 @@ export function TaskCard({ task, onClick, onDragStart }: TaskCardProps) {
                   task.is_overdue && task.status !== 'DONE'
                     ? "text-red-500 font-bold"
                     : isTomorrow && task.status !== 'DONE'
-                    ? "text-orange-500 font-semibold"
-                    : "text-muted-foreground"
+                      ? "text-orange-500 font-semibold"
+                      : "text-muted-foreground"
                 )}
               >
                 {task.is_overdue && task.status !== 'DONE' ? (
