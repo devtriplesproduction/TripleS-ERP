@@ -26,6 +26,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import { Dropdown } from "@/components/ui/Dropdown"
+import { EmployeePagination } from "@/components/ui/pagination"
 import { cn } from "@/lib/utils"
 import { formatHoursMinutes, formatKolkataDateTime, formatCanonicalDuration } from "@/lib/utils/time"
 import { format } from "date-fns"
@@ -51,12 +52,14 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
   const [eligibilityFilter, setEligibilityFilter] = useState("ALL")
   const [sortBy, setSortBy] = useState<"avail_desc" | "avail_asc" | "name_asc" | "earned_desc">("avail_desc")
   const [currentPage, setCurrentPage] = useState(1)
-  const pageSize = 10
+  const [pageSize, setPageSize] = useState(10)
 
   // Detailed Modal state
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null)
   const [detailData, setDetailData] = useState<any | null>(null)
   const [isDetailLoading, setIsDetailLoading] = useState(false)
+  const [ledgerPage, setLedgerPage] = useState(1)
+  const ledgerPageSize = 10
 
   // Fetch or refresh overview
   const loadOverview = async (showToast = false) => {
@@ -84,6 +87,7 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
     setSelectedEmployeeId(empId)
     setIsDetailLoading(true)
     setDetailData(null)
+    setLedgerPage(1)
     try {
       const details = await getEmployeeCompOffDetails(empId)
       setDetailData(details)
@@ -145,7 +149,15 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
   const paginatedEmployees = useMemo(() => {
     const start = (currentPage - 1) * pageSize
     return filteredEmployees.slice(start, start + pageSize)
-  }, [filteredEmployees, currentPage])
+  }, [filteredEmployees, currentPage, pageSize])
+
+  // Ledger Pagination
+  const totalLedgerPages = Math.max(1, Math.ceil((detailData?.entries?.length || 0) / ledgerPageSize))
+  const paginatedLedgerEntries = useMemo(() => {
+    if (!detailData?.entries) return []
+    const start = (ledgerPage - 1) * ledgerPageSize
+    return detailData.entries.slice(start, start + ledgerPageSize)
+  }, [detailData?.entries, ledgerPage, ledgerPageSize])
 
   // Reset page when filters change
   useEffect(() => {
@@ -446,39 +458,21 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
         </div>
 
         {/* Pagination Bar */}
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-border bg-muted/20 text-xs">
-            <span className="text-muted-foreground">
-              Showing {(currentPage - 1) * pageSize + 1}–
-              {Math.min(currentPage * pageSize, filteredEmployees.length)} of{" "}
-              {filteredEmployees.length} employees
-            </span>
-            <div className="flex items-center gap-1.5">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                className="h-8 px-2.5 rounded-lg border-border"
-              >
-                <ChevronLeft className="w-3.5 h-3.5 mr-1" />
-                Previous
-              </Button>
-              <span className="px-2 font-medium text-foreground">
-                {currentPage} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                className="h-8 px-2.5 rounded-lg border-border"
-              >
-                Next
-                <ChevronRight className="w-3.5 h-3.5 ml-1" />
-              </Button>
-            </div>
-          </div>
+        {filteredEmployees.length > 0 && (
+          <EmployeePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredEmployees.length}
+            itemsPerPage={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(sz) => {
+              setPageSize(sz)
+              setCurrentPage(1)
+            }}
+            showPageSizeSelector
+            itemLabel="employees"
+            className="px-4 sm:px-6 py-4 border-t border-border bg-card"
+          />
         )}
       </div>
 
@@ -574,8 +568,9 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
                     <p className="text-xs">No ledger activity recorded for this employee yet.</p>
                   </div>
                 ) : (
-                  <div className="flex-1 min-h-0 overflow-y-auto pr-1.5 space-y-2">
-                    {detailData.entries.map((entry: any) => {
+                  <div className="flex-1 min-h-0 flex flex-col">
+                    <div className="flex-1 min-h-0 overflow-y-auto pr-1.5 space-y-2">
+                      {paginatedLedgerEntries.map((entry: any) => {
                       const isCredit = entry.transaction_type === "CREDIT"
                       const isDebit = entry.transaction_type === "DEBIT"
                       const isReversal = entry.transaction_type === "REVERSAL"
@@ -676,6 +671,20 @@ export function CompHoursView({ initialData }: CompHoursViewProps) {
                         </div>
                       )
                     })}
+                    </div>
+
+                    {/* Ledger Pagination Bar */}
+                    {detailData.entries.length > ledgerPageSize && (
+                      <EmployeePagination
+                        currentPage={ledgerPage}
+                        totalPages={totalLedgerPages}
+                        totalItems={detailData.entries.length}
+                        itemsPerPage={ledgerPageSize}
+                        onPageChange={setLedgerPage}
+                        itemLabel="entries"
+                        className="px-2 py-3 border-t border-border/60 bg-transparent"
+                      />
+                    )}
                   </div>
                 )}
               </div>

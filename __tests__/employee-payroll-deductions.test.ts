@@ -20,6 +20,15 @@ vi.mock('@/lib/auth', () => ({
   getCurrentUser: async () => mockCurrentUser,
 }))
 
+vi.mock('@/lib/supabase/server', () => ({
+  createAdminClient: async () => {
+    throw new Error('Mocked Supabase error for local test store isolation')
+  },
+  createClient: async () => {
+    throw new Error('Mocked Supabase error for local test store isolation')
+  }
+}))
+
 // Use a dedicated isolated test store for deductions
 const TEST_STORE_PATH = path.join(process.cwd(), 'scratch', 'test_payroll_deductions_store.json')
 

@@ -58,16 +58,16 @@ export function TaskGanttView({ tasks, onTaskClick }: TaskGanttViewProps) {
   const getStatusColor = (status: TaskStatus) => {
     switch (status) {
       case 'DONE':
-        return 'bg-zinc-700/80 text-zinc-200 border-zinc-600'
+        return 'bg-emerald-500/15 border-emerald-500/30 text-emerald-900 dark:text-emerald-200 dark:bg-emerald-950/40 dark:border-emerald-500/30'
       case 'IN_PROGRESS':
-        return 'bg-zinc-800 text-white border-zinc-700'
+        return 'bg-blue-500/15 border-blue-500/30 text-blue-900 dark:text-blue-200 dark:bg-blue-950/40 dark:border-blue-500/30'
       case 'IN_REVIEW':
-        return 'bg-zinc-800/90 text-zinc-300 border-zinc-700'
+        return 'bg-amber-500/15 border-amber-500/30 text-amber-900 dark:text-amber-200 dark:bg-amber-950/40 dark:border-amber-500/30'
       case 'ON_HOLD':
-        return 'bg-zinc-900/90 text-zinc-400 border-zinc-800'
+        return 'bg-purple-500/15 border-purple-500/30 text-purple-900 dark:text-purple-200 dark:bg-purple-950/40 dark:border-purple-500/30'
       case 'TODO':
       default:
-        return 'bg-zinc-900 text-zinc-300 border-zinc-800'
+        return 'bg-card border-border/80 text-foreground dark:bg-zinc-800/90 dark:border-zinc-700 dark:text-zinc-100'
     }
   }
 
@@ -237,11 +237,11 @@ export function TaskGanttView({ tasks, onTaskClick }: TaskGanttViewProps) {
                           )} ${getStatusColor(task.status)}`}
                           title={`${task.title} (${task.start_date || 'No start'} - ${task.due_date || 'No due'})`}
                         >
-                          <span className="truncate pr-1 text-[11px] font-medium text-foreground">
+                          <span className="truncate pr-1 text-[11px] font-semibold text-current">
                             {task.title}
                           </span>
                           {task.due_date && (
-                            <span className="text-[9px] text-muted-foreground shrink-0 opacity-80 font-mono">
+                            <span className="text-[9px] opacity-75 shrink-0 font-mono text-current">
                               {dayjs(task.due_date).format('DD MMM')}
                             </span>
                           )}

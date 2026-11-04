@@ -1,0 +1,26 @@
+[
+  {
+    "id": "3bb09fa5-2683-419d-b9cf-1a43f5b8e22d",
+    "year": 2026,
+    "month": 11,
+    "status": "FINALIZED",
+    "total_employees": 1,
+    "total_payout": 25000,
+    "created_at": "2026-11-04T07:54:40.139Z",
+    "updated_at": "2026-11-04T07:54:40.139Z",
+    "finalized_at": "2026-11-04T07:54:40.139Z",
+    "finalized_by": "admin-123"
+  },
+  {
+    "id": "5fe9c29e-db15-4c1a-9e2f-c9688f10fd6f",
+    "year": 2026,
+    "month": 12,
+    "status": "FINALIZED",
+    "total_employees": 1,
+    "total_payout": 50000,
+    "created_at": "2026-11-04T07:54:48.704Z",
+    "updated_at": "2026-11-04T07:54:48.704Z",
+    "finalized_at": "2026-11-04T07:54:48.704Z",
+    "finalized_by": "admin-auditor"
+  }
+]

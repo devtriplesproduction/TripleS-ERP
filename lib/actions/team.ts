@@ -11,6 +11,7 @@ export interface AssignableEmployee {
   department: string | null
   designation: string | null
   profile_photo: string | null
+  employment_status?: string | null
 }
 
 /**
@@ -81,6 +82,7 @@ export async function getAssignableEmployees(): Promise<{ success: boolean; data
         department: emp?.department || null,
         designation: emp?.designation || null,
         profile_photo: getProfilePhotoUrl(emp?.profile_photo),
+        employment_status: emp?.employment_status || 'Active',
       }
     })
 

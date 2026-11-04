@@ -97,7 +97,7 @@ export function TaskCard({ task, onClick, onDragStart }: TaskCardProps) {
                 ) : (
                   <Calendar className="h-3.5 w-3.5 shrink-0 opacity-70" />
                 )}
-                <span>{dayjs(task.due_date).format('MMM DD')}</span>
+                <span>{dayjs(task.due_date).format('DD MMM')}</span>
               </span>
             )}
 

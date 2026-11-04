@@ -14,6 +14,7 @@ vi.mock('@/components/ui/dialog', () => ({
   DialogContent: ({ children, className }: any) => <div className={className}>{children}</div>,
   DialogHeader: ({ children, className }: any) => <div className={className}>{children}</div>,
   DialogTitle: ({ children, className }: any) => <h2 className={className}>{children}</h2>,
+  DialogDescription: ({ children, className }: any) => <p className={className}>{children}</p>,
   DialogFooter: ({ children, className }: any) => <div className={className}>{children}</div>,
 }))
 
@@ -102,9 +103,9 @@ describe('Payroll Deductions UI Components', () => {
     expect(html).toContain('Development')
 
     // Check financial breakdown items
-    expect(html).toContain('Monthly Gross (Base)')
+    expect(html).toContain('Applicable Base Pay')
     expect(html).toContain('₹8000.00')
-    expect(html).toContain('Unpaid Leave / Absence (-)')
+    expect(html).toContain('Attendance Deduction (-)')
     expect(html).toContain('₹3571.43')
     expect(html).toContain('Employee Deductions (-)')
     expect(html).toContain('₹500.00')
@@ -158,7 +159,7 @@ describe('Payroll Deductions UI Components', () => {
     )
 
     expect(html).toContain('Payroll Management')
-    expect(html).toContain('Calculate Monthly Payroll')
+    expect(html).toContain('Recalculate Draft')
     expect(html).toContain('Payroll Overview')
     expect(html).toContain('Add Deduction')
   })

@@ -129,7 +129,7 @@ export async function requireAuth(): Promise<AuthUser> {
  */
 export async function requireRole(pathname: string): Promise<AuthUser> {
   const user = await requireAuth()
-  if (!hasRouteAccess(user.role, pathname, user.is_hod)) {
+  if (!hasRouteAccess(user.role, pathname, user.is_hod, user.department)) {
     redirect('/unauthorized')
   }
   return user

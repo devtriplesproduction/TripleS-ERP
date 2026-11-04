@@ -1,15 +1,39 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Loader2, IndianRupee, Clock, FileSpreadsheet, ChevronLeft, ChevronRight, Calendar, Download, CreditCard, Plus } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import {
+  Loader2,
+  IndianRupee,
+  Clock,
+  FileSpreadsheet,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
+  Download,
+  CreditCard,
+  Plus,
+  Lock,
+  CheckCircle2,
+  ShieldCheck,
+  AlertTriangle
+} from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import { getMonthlyPayrollAction } from '@/lib/actions/payroll'
+import { getMonthlyPayrollAction, finalizeMonthlyPayrollAction } from '@/lib/actions/payroll'
 import { PayrollDetailModal } from './PayrollDetailModal'
 import { AddDeductionModal } from './AddDeductionModal'
 import { PayrollResult } from '@/lib/services/payroll.service'
 import { PageHeader } from '@/components/PageHeader'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 
 interface PayrollData extends PayrollResult {
   isLocked?: boolean
@@ -17,10 +41,14 @@ interface PayrollData extends PayrollResult {
 
 export function PayrollClientPage({ title, initialEmployees = [] }: { title: string, initialEmployees?: any[] }) {
   const [employees] = useState<any[]>(initialEmployees)
-  const [loading] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [calculating, setCalculating] = useState(false)
+  const [finalizing, setFinalizing] = useState(false)
+  const [calculationError, setCalculationError] = useState<string | null>(null)
   const [calculationTime, setCalculationTime] = useState<number | null>(null)
   const [payrollResults, setPayrollResults] = useState<PayrollData[]>([])
+  const [isFinalized, setIsFinalized] = useState(false)
+  const [isFinalizeModalOpen, setIsFinalizeModalOpen] = useState(false)
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [year, setYear] = useState(new Date().getFullYear())
   const [selectedPayroll, setSelectedPayroll] = useState<any | null>(null)
@@ -34,7 +62,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
     "July", "August", "September", "October", "November", "December"
   ]
 
-  const calculatePayroll = async (showToast: boolean = true) => {
+  const loadPayroll = useCallback(async (showToast: boolean = false) => {
     setCalculating(true)
     const start = performance.now()
     try {
@@ -42,34 +70,90 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
       const duration = Math.round(performance.now() - start);
       setCalculationTime(duration);
       if (result.success && result.data) {
-        setPayrollResults(result.data.map((d: any) => ({ ...d, isLocked: false })));
+        setCalculationError(null);
+        setIsFinalized(Boolean(result.isFinalized));
+        setPayrollResults(result.data.map((d: any) => ({
+          ...d,
+          isLocked: Boolean(result.isFinalized || d.isLocked)
+        })));
+
         if (selectedPayroll) {
           const updated = result.data.find((d: any) => d.employeeId === selectedPayroll.employeeId);
           if (updated) setSelectedPayroll(updated);
         }
+
         if (showToast) {
-          toast({
-            title: 'Calculation Completed',
-            description: `Processed ${result.data.length} employees in ${duration}ms for ${months[month - 1]} ${year}`
-          });
+          if (result.data.length === 0) {
+            toast({
+              title: 'No Eligible Employees',
+              description: `No eligible employees found for ${months[month - 1]} ${year}.`,
+              variant: 'destructive'
+            });
+          } else {
+            const warningCount = result.data.filter((r: any) => r.hasMissingSalary || r.calculationError).length;
+            toast({
+              title: result.isFinalized
+                ? 'Snapshot Loaded'
+                : warningCount > 0
+                  ? 'Draft Calculated with Warnings'
+                  : 'Calculation Completed',
+              description: result.isFinalized
+                ? `Loaded locked payroll snapshot for ${months[month - 1]} ${year}`
+                : `Processed ${result.data.length} employees${warningCount > 0 ? ` (${warningCount} require attention)` : ''} in ${duration}ms for ${months[month - 1]} ${year}`
+            });
+          }
         }
       } else {
-        throw new Error(result.error || 'Unknown error');
+        throw new Error(result.error || 'Payroll calculation failed.');
       }
     } catch (error: any) {
-      toast({ title: 'Calculation Error', description: error.message, variant: 'destructive' })
+      setCalculationError(error.message);
+      toast({ title: 'Payroll Calculation Error', description: error.message, variant: 'destructive' })
     } finally {
       setCalculating(false)
     }
-  }
+  }, [year, month, selectedPayroll, toast, months]);
+
+  useEffect(() => {
+    loadPayroll(false);
+  }, [year, month]);
+
+  const handleFinalizePayroll = async () => {
+    setFinalizing(true);
+    try {
+      const res = await finalizeMonthlyPayrollAction(year, month);
+      if (res.success) {
+        toast({
+          title: 'Payroll Finalized',
+          description: `Successfully locked historical snapshot for ${months[month - 1]} ${year}.`
+        });
+        setIsFinalizeModalOpen(false);
+        await loadPayroll(false);
+      } else {
+        toast({
+          title: 'Finalization Failed',
+          description: res.error || 'Could not finalize payroll.',
+          variant: 'destructive'
+        });
+      }
+    } catch (err: any) {
+      toast({
+        title: 'Error',
+        description: err.message || 'An unexpected error occurred.',
+        variant: 'destructive'
+      });
+    } finally {
+      setFinalizing(false);
+    }
+  };
 
   const handleExportCSV = () => {
     if (payrollResults.length === 0) return;
     const headers = [
       'Employee Name', 'Department', 'Monthly Base (₹)', 'Standard Hrs',
-      'Worked Hrs', 'Half Days', 'Unpaid Days (<4h)', 'Comp-Off Earned (mins)',
-      'Overtime (₹)', 'Unpaid Attendance Deduction (₹)', 'Custom Employee Deductions (₹)',
-      'Total Deductions (₹)', 'Gross Pay (₹)', 'Net Payable (₹)'
+      'Worked Hrs', 'Credited Leave Hrs', 'Paid Holiday Hrs', 'Full Days (8h+)', 'Half Days',
+      'Unpaid Days (<4h)', 'Absent Days', 'Comp-Off Earned (mins)', 'Attendance Deduction (₹)',
+      'Custom Deductions (₹)', 'Total Deductions (₹)', 'Gross Pay (₹)', 'Net Payable (₹)', 'Status'
     ];
 
     const rows = payrollResults.map(r => [
@@ -78,15 +162,19 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
       r.salary || 0,
       r.standardHours || 0,
       r.actualWorkedHours || 0,
+      r.creditedLeaveHours || 0,
+      r.paidHolidayHours || 0,
+      r.daysFullDay || 0,
       r.daysHalfDay || 0,
       r.daysUnpaidLeaveEod || 0,
+      r.daysAbsent || 0,
       r.compOffMinutesEarned || 0,
-      r.overtimePay || 0,
-      r.unpaidLeaveDeduction || 0,
+      r.unpaidLeaveDeduction || r.attendanceDeduction || 0,
       r.manualDeductions || 0,
       r.totalDeductions || 0,
       r.grossPay || 0,
-      r.netPayable || 0
+      r.netPayable || 0,
+      isFinalized ? 'FINALIZED' : 'DRAFT'
     ]);
 
     const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
@@ -94,7 +182,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `payroll-report-${months[month - 1]}-${year}.csv`);
+    link.setAttribute('download', `payroll-report-${months[month - 1]}-${year}-${isFinalized ? 'finalized' : 'draft'}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -150,54 +238,169 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
     return Array.from(map.values())
   }, [employees, payrollResults])
 
+  const unresolvedWarnings = React.useMemo(() => {
+    return payrollResults.filter(r => r.hasMissingSalary || r.calculationError);
+  }, [payrollResults]);
+
+  const hasUnresolvedErrors = unresolvedWarnings.length > 0;
+
   return (
     <div className="space-y-6 w-full min-w-0">
       <PageHeader
         title={title}
-        subtitle="Calculate and review employee monthly payroll."
+        subtitle="Calculate, review, and finalize employee monthly payroll."
         icon={CreditCard}
         actions={
-          <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-full border border-border shadow-sm shrink-0 self-start sm:self-auto">
-            <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 hover:bg-background hover:shadow-sm transition-all" onClick={handlePrevMonth} aria-label="Previous month">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <div className="font-semibold text-xs sm:text-sm px-2 text-center flex items-center justify-center gap-2 text-foreground tracking-tight whitespace-nowrap">
-              <Calendar className="h-4 w-4 text-muted-foreground/70" />
-              {months[month - 1]} {year}
+          <div className="flex items-center gap-2">
+            <Badge
+              variant={isFinalized ? "default" : "secondary"}
+              className={`px-3 py-1 font-semibold text-xs rounded-md flex items-center gap-1.5 ${
+                isFinalized
+                  ? 'bg-foreground text-background font-semibold border-transparent'
+                  : 'bg-muted text-foreground border border-border font-medium'
+              }`}
+            >
+              {isFinalized ? (
+                <>
+                  <Lock className="h-3 w-3" />
+                  FINALIZED
+                </>
+              ) : (
+                <>
+                  <Clock className="h-3 w-3" />
+                  DRAFT PREVIEW
+                </>
+              )}
+            </Badge>
+
+            <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border shadow-xs shrink-0 self-start sm:self-auto">
+              <Button variant="ghost" size="icon" className="rounded-md h-8 w-8 hover:bg-background hover:shadow-xs transition-all" onClick={handlePrevMonth} aria-label="Previous month">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <div className="font-semibold text-xs sm:text-sm px-2 text-center flex items-center justify-center gap-2 text-foreground tracking-tight whitespace-nowrap">
+                <Calendar className="h-4 w-4 text-muted-foreground/70" />
+                {months[month - 1]} {year}
+              </div>
+              <Button variant="ghost" size="icon" className="rounded-md h-8 w-8 hover:bg-background hover:shadow-xs transition-all" onClick={handleNextMonth} aria-label="Next month">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </div>
-            <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 hover:bg-background hover:shadow-sm transition-all" onClick={handleNextMonth} aria-label="Next month">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
           </div>
         }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {calculationError && (
+        <div className="rounded-lg border border-border bg-card p-4 text-foreground flex items-center justify-between text-xs sm:text-sm shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="h-5 w-5 text-muted-foreground shrink-0" />
+            <div>
+              <p className="font-semibold">Payroll Calculation Error</p>
+              <p className="text-xs text-muted-foreground">{calculationError}</p>
+            </div>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-border text-foreground hover:bg-muted"
+            onClick={() => loadPayroll(true)}
+          >
+            Retry Calculation
+          </Button>
+        </div>
+      )}
+
+      {unresolvedWarnings.length > 0 && !isFinalized && (
+        <div className="rounded-lg border border-border bg-card p-4 text-foreground space-y-2 text-xs sm:text-sm shadow-xs">
+          <div className="flex items-center gap-2 font-semibold text-foreground">
+            <AlertTriangle className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span>{unresolvedWarnings.length} Employee Calculation Warning{unresolvedWarnings.length > 1 ? 's' : ''} Require Attention</span>
+          </div>
+          <ul className="list-disc list-inside space-y-1 pl-1 text-xs text-muted-foreground">
+            {unresolvedWarnings.map((w, idx) => (
+              <li key={idx}>
+                <span className="font-semibold text-foreground">{w.name} ({w.employeeIdNumber || 'No ID'})</span>: {w.validationWarning || w.calculationError || 'Missing salary structure'}
+              </li>
+            ))}
+          </ul>
+          <p className="text-[11px] text-muted-foreground pt-1">
+            Finalize Payroll is disabled until compensation structures are configured.
+          </p>
+        </div>
+      )}
+
+      {isFinalized && (
+        <div className="rounded-lg border border-border bg-card p-4 text-foreground flex items-center justify-between text-xs sm:text-sm shadow-xs">
+          <div className="flex items-center gap-2.5">
+            <ShieldCheck className="h-5 w-5 text-muted-foreground shrink-0" />
+            <div>
+              <p className="font-semibold">This payroll cycle is finalized and locked.</p>
+              <p className="text-xs text-muted-foreground">Historical snapshot is immutable. All figures and payslips are locked to preserved records.</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total Employees</CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Eligible Employees</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl sm:text-2xl font-bold">{employees.length}</div>
+            <div className="text-xl sm:text-2xl font-bold flex items-baseline gap-2">
+              <span>{payrollResults.length > 0 ? payrollResults.filter(r => r.hasPayrollData).length : employees.length}</span>
+              {unresolvedWarnings.length > 0 && (
+                <span className="text-xs font-normal text-muted-foreground">
+                  ({unresolvedWarnings.length} warning{unresolvedWarnings.length > 1 ? 's' : ''})
+                </span>
+              )}
+            </div>
           </CardContent>
         </Card>
         <Card className="bg-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total Estimated Payout</CardTitle>
+            <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Total Payout</CardTitle>
             <IndianRupee className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-xl sm:text-2xl font-bold">
-              ₹{payrollResults.filter((r: any) => r.hasPayrollData).reduce((sum, res) => sum + res.netPayable, 0).toFixed(2)}
+              ₹{payrollResults.filter((r: any) => r.hasPayrollData).reduce((sum, res) => sum + (res.netPayable || 0), 0).toFixed(2)}
             </div>
           </CardContent>
         </Card>
-        <div className="sm:col-span-2 lg:col-span-1 flex items-center">
-          <Button size="lg" className="w-full h-11 sm:h-full min-h-[44px] text-sm sm:text-base font-semibold" onClick={() => calculatePayroll(true)} disabled={loading || calculating}>
-            {calculating ? <Loader2 className="mr-2 h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />}
-            {calculating ? 'Calculating...' : 'Calculate Monthly Payroll'}
-          </Button>
+
+        <div className="sm:col-span-2 lg:col-span-2 flex items-center gap-2">
+          {!isFinalized ? (
+            <>
+              <Button
+                size="lg"
+                variant="outline"
+                className="flex-1 h-11 text-sm font-semibold"
+                onClick={() => loadPayroll(true)}
+                disabled={loading || calculating}
+                aria-label="Calculate Monthly Payroll"
+                title="Calculate Monthly Payroll"
+              >
+                {calculating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FileSpreadsheet className="mr-2 h-4 w-4" />}
+                {calculating ? 'Recalculating...' : 'Recalculate Draft'}
+              </Button>
+              <Button
+                size="lg"
+                className="flex-1 h-11 text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 shadow-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                onClick={() => setIsFinalizeModalOpen(true)}
+                disabled={loading || calculating || payrollResults.length === 0 || hasUnresolvedErrors}
+                title={hasUnresolvedErrors ? 'Resolve all employee calculation warnings before finalizing' : undefined}
+              >
+                <Lock className="mr-2 h-4 w-4" />
+                Finalize Payroll
+              </Button>
+            </>
+          ) : (
+            <div className="w-full h-11 rounded-md bg-muted/50 border border-border flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground font-medium">
+              <Lock className="h-4 w-4 text-muted-foreground" />
+              Locked Historical Payroll
+            </div>
+          )}
         </div>
       </div>
 
@@ -207,22 +410,24 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
             <CardTitle className="text-lg">Payroll Overview</CardTitle>
             {calculationTime !== null && (
               <p className="text-xs text-muted-foreground mt-0.5">
-                Batch calculated in {calculationTime}ms
+                {isFinalized ? 'Snapshot loaded in' : 'Batch calculated in'} {calculationTime}ms
               </p>
             )}
           </div>
           <div className="flex items-center gap-2 self-start sm:self-auto">
-            <Button
-              size="sm"
-              onClick={() => {
-                setPreselectedEmpId(undefined)
-                setIsAddDeductionOpen(true)
-              }}
-              className="h-8 gap-1.5 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-sm"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              Add Deduction
-            </Button>
+            {!isFinalized && (
+              <Button
+                size="sm"
+                onClick={() => {
+                  setPreselectedEmpId(undefined)
+                  setIsAddDeductionOpen(true)
+                }}
+                className="h-8 gap-1.5 text-xs font-semibold bg-foreground text-background hover:bg-foreground/90 shadow-xs"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Deduction
+              </Button>
+            )}
             {payrollResults.length > 0 && (
               <Button
                 variant="outline"
@@ -237,13 +442,13 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
           </div>
         </CardHeader>
         <CardContent className="p-0 sm:p-6">
-          {loading ? (
+          {loading || calculating ? (
             <div className="flex justify-center p-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>
           ) : payrollResults.length === 0 ? (
             <div className="text-center p-8 text-sm text-muted-foreground">
-              Click &quot;Calculate Monthly Payroll&quot; to generate data for {months[month - 1]} {year}.
+              Click &quot;Recalculate Draft&quot; to generate data for {months[month - 1]} {year}.
             </div>
           ) : (
             <>
@@ -252,31 +457,58 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
                 <table className="w-full text-sm text-left">
                   <thead className="text-xs uppercase bg-muted text-muted-foreground">
                     <tr>
-                      <th className="px-6 py-3">Employee Name</th>
-                      <th className="px-6 py-3 text-right">Standard Hrs</th>
-                      <th className="px-6 py-3 text-right">Worked Hrs</th>
-                      <th className="px-6 py-3 text-right">Half Days</th>
-                      <th className="px-6 py-3 text-right">Unpaid (&lt;4h)</th>
-                      <th className="px-6 py-3 text-right">Base Salary (₹)</th>
-                      <th className="px-6 py-3 text-right">Deduction (₹)</th>
-                      <th className="px-6 py-3 text-right">Net Payable (₹)</th>
+                      <th className="px-5 py-3">Employee Name</th>
+                      <th className="px-4 py-3 text-right">Standard</th>
+                      <th className="px-4 py-3 text-right">Worked</th>
+                      <th className="px-4 py-3 text-right">Leaves</th>
+                      <th className="px-4 py-3 text-right">Half Days</th>
+                      <th className="px-4 py-3 text-right">Base Salary (₹)</th>
+                      <th className="px-4 py-3 text-right">Deduction (₹)</th>
+                      <th className="px-5 py-3 text-right">Net Payable (₹)</th>
                     </tr>
                   </thead>
                   <tbody>
                     {payrollResults.map((res: any) => (
-                      <tr key={res.employeeId} className="border-b border-border hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => setSelectedPayroll(res)}>
-                        <td className="px-6 py-4 font-medium">
-                          <div className="font-semibold text-foreground">{res.name}</div>
-                          <div className="text-xs text-muted-foreground">{res.department}</div>
+                      <tr
+                        key={res.employeeId}
+                        className="border-b border-border hover:bg-muted/50 transition-colors cursor-pointer"
+                        onClick={() => setSelectedPayroll(res)}
+                      >
+                        <td className="px-5 py-4 font-medium">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-semibold text-foreground">{res.name}</span>
+                            {res.isLocked && (
+                              <Lock className="h-3 w-3 text-muted-foreground shrink-0" />
+                            )}
+                            {res.hasMissingSalary && (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 rounded-sm text-foreground border-border bg-muted/60">
+                                Missing Salary
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground flex items-center gap-2">
+                            <span>{res.department}</span>
+                            {res.prorationDetail?.isProrated && (
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 rounded-sm text-muted-foreground border-border">
+                                Prorated
+                              </Badge>
+                            )}
+                          </div>
                         </td>
-                        <td className="px-6 py-4 text-right">{res.standardHours}</td>
-                        <td className="px-6 py-4 text-right">{res.hasPayrollData ? res.actualWorkedHours : '—'}</td>
-                        <td className="px-6 py-4 text-right font-medium">{res.hasPayrollData ? res.daysHalfDay : '—'}</td>
-                        <td className="px-6 py-4 text-right text-rose-500 font-medium">{res.hasPayrollData ? res.daysUnpaidLeaveEod : '—'}</td>
-                        <td className="px-6 py-4 text-right font-medium text-foreground whitespace-nowrap">
-                          ₹{Number(res.salary || 0).toFixed(2)}
+                        <td className="px-4 py-4 text-right text-muted-foreground">{res.standardHours}h</td>
+                        <td className="px-4 py-4 text-right">{res.hasPayrollData ? `${res.actualWorkedHours}h` : '—'}</td>
+                        <td className="px-4 py-4 text-right text-muted-foreground">
+                          {res.hasPayrollData ? `${res.creditedLeaveHours}h` : '—'}
                         </td>
-                        <td className="px-6 py-4 text-right text-rose-500 font-medium whitespace-nowrap">
+                        <td className="px-4 py-4 text-right font-medium">{res.hasPayrollData ? res.daysHalfDay : '—'}</td>
+                        <td className="px-4 py-4 text-right font-medium text-foreground whitespace-nowrap">
+                          {res.hasMissingSalary ? (
+                            <span className="text-xs text-muted-foreground font-normal">Not Set</span>
+                          ) : (
+                            `₹${Number(res.salary || 0).toFixed(2)}`
+                          )}
+                        </td>
+                        <td className="px-4 py-4 text-right text-foreground font-medium whitespace-nowrap">
                           {res.totalDeductions > 0 ? (
                             <div className="flex flex-col items-end">
                               <span>-₹{Number(res.totalDeductions).toFixed(2)}</span>
@@ -292,8 +524,14 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
                             '—'
                           )}
                         </td>
-                        <td className="px-6 py-4 text-right font-bold text-foreground whitespace-nowrap">
-                          {res.hasPayrollData ? `₹${Number(res.netPayable).toFixed(2)}` : '—'}
+                        <td className="px-5 py-4 text-right font-bold text-foreground whitespace-nowrap">
+                          {res.hasMissingSalary ? (
+                            <span className="text-xs text-muted-foreground font-semibold">Setup Required</span>
+                          ) : res.hasPayrollData ? (
+                            `₹${Number(res.netPayable).toFixed(2)}`
+                          ) : (
+                            '—'
+                          )}
                         </td>
                       </tr>
                     ))}
@@ -311,21 +549,35 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div>
-                        <h4 className="font-bold text-foreground text-base leading-tight">{res.name}</h4>
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <h4 className="font-bold text-foreground text-base leading-tight">{res.name}</h4>
+                          {res.isLocked && <Lock className="h-3 w-3 text-muted-foreground" />}
+                          {res.hasMissingSalary && (
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 rounded-sm text-foreground border-border bg-muted/60">
+                              Missing Salary
+                            </Badge>
+                          )}
+                        </div>
                         <p className="text-xs text-muted-foreground mt-0.5">{res.department || 'Employee'}</p>
                       </div>
                       <span className="text-xs font-bold text-foreground bg-muted px-2.5 py-1 rounded-md shrink-0">
-                        {res.hasPayrollData ? `₹${Number(res.netPayable).toFixed(2)}` : 'No Data'}
+                        {res.hasMissingSalary ? (
+                          <span className="text-muted-foreground">Setup Required</span>
+                        ) : res.hasPayrollData ? (
+                          `₹${Number(res.netPayable).toFixed(2)}`
+                        ) : (
+                          'No Data'
+                        )}
                       </span>
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 text-xs bg-muted/30 p-3 rounded-lg border border-border/50">
                       <div>
-                        <span className="text-muted-foreground">Standard Hours: </span>
+                        <span className="text-muted-foreground">Standard: </span>
                         <span className="font-medium text-foreground">{res.standardHours}h</span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Worked Hours: </span>
+                        <span className="text-muted-foreground">Worked: </span>
                         <span className="font-medium text-foreground">{res.hasPayrollData ? `${res.actualWorkedHours}h` : '—'}</span>
                       </div>
                       <div>
@@ -333,18 +585,20 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
                         <span className="font-medium text-foreground">{res.hasPayrollData ? res.daysHalfDay : '—'}</span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Unpaid: </span>
-                        <span className="font-medium text-rose-500">{res.hasPayrollData ? res.daysUnpaidLeaveEod : '—'}</span>
+                        <span className="text-muted-foreground">Unpaid (&lt;4h): </span>
+                        <span className="font-medium text-muted-foreground">{res.hasPayrollData ? res.daysUnpaidLeaveEod : '—'}</span>
                       </div>
                       <div>
                         <span className="text-muted-foreground">Base Salary: </span>
-                        <span className="font-medium text-foreground">₹{Number(res.salary || 0).toFixed(2)}</span>
+                        <span className="font-medium text-foreground">
+                          {res.hasMissingSalary ? 'Not Set' : `₹${Number(res.salary || 0).toFixed(2)}`}
+                        </span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Deduction: </span>
-                        <span className="font-medium text-rose-500">
+                        <span className="text-muted-foreground">Deductions: </span>
+                        <span className="font-medium text-foreground">
                           {res.totalDeductions > 0
-                            ? `-₹${Number(res.totalDeductions).toFixed(2)}${res.manualDeductions > 0 ? ` (₹${Number(res.manualDeductions).toFixed(2)} custom)` : ''}`
+                            ? `-₹${Number(res.totalDeductions).toFixed(2)}`
                             : res.hasPayrollData
                             ? '₹0.00'
                             : '—'}
@@ -355,7 +609,13 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
                     <div className="flex items-center justify-between pt-1">
                       <span className="text-xs font-semibold text-foreground">Net Payable:</span>
                       <span className="text-sm font-bold text-foreground">
-                        {res.hasPayrollData ? `₹${Number(res.netPayable).toFixed(2)}` : '—'}
+                        {res.hasMissingSalary ? (
+                          <span className="text-xs text-muted-foreground font-semibold">Setup Required</span>
+                        ) : res.hasPayrollData ? (
+                          `₹${Number(res.netPayable).toFixed(2)}`
+                        ) : (
+                          '—'
+                        )}
                       </span>
                     </div>
                   </div>
@@ -370,11 +630,12 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
         isOpen={!!selectedPayroll}
         onClose={() => setSelectedPayroll(null)}
         payroll={selectedPayroll}
+        isFinalizedCycle={isFinalized}
         onAddDeductionClick={(empId) => {
           setPreselectedEmpId(empId)
           setIsAddDeductionOpen(true)
         }}
-        onDeductionsUpdated={() => calculatePayroll(false)}
+        onDeductionsUpdated={() => loadPayroll(false)}
       />
 
       <AddDeductionModal
@@ -387,9 +648,49 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
         currentMonth={month}
         currentYear={year}
         preselectedEmployeeId={preselectedEmpId}
-        onDeductionAdded={() => calculatePayroll(false)}
+        onDeductionAdded={() => loadPayroll(false)}
       />
+
+      {/* Confirmation modal for Finalizing Payroll */}
+      <Dialog open={isFinalizeModalOpen} onOpenChange={setIsFinalizeModalOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-foreground">
+              <AlertTriangle className="h-5 w-5 text-muted-foreground" />
+              Finalize Payroll for {months[month - 1]} {year}?
+            </DialogTitle>
+            <DialogDescription className="pt-2 text-sm text-muted-foreground">
+              Finalizing will save an immutable snapshot for all {payrollResults.filter(r => r.hasPayrollData).length} employees.
+              Subsequent views and payslips will read this snapshot. Recalculation will be disabled for this cycle.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="bg-muted/40 p-3 rounded-lg border border-border text-xs space-y-1.5 my-2">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Cycle:</span>
+              <span className="font-semibold text-foreground">{months[month - 1]} {year}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Total Payout:</span>
+              <span className="font-bold text-foreground">
+                ₹{payrollResults.filter(r => r.hasPayrollData).reduce((sum, r) => sum + r.netPayable, 0).toFixed(2)}
+              </span>
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setIsFinalizeModalOpen(false)} disabled={finalizing}>
+              Cancel
+            </Button>
+            <Button
+              className="bg-foreground text-background hover:bg-foreground/90 font-semibold shadow-xs"
+              onClick={handleFinalizePayroll}
+              disabled={finalizing}
+            >
+              {finalizing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Lock className="mr-2 h-4 w-4" />}
+              {finalizing ? 'Finalizing...' : 'Confirm & Finalize'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
-

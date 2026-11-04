@@ -17,6 +17,7 @@ import {
   ArrowRight,
   Sparkles,
   Layers,
+  Trash2,
   X
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
@@ -31,6 +32,7 @@ interface ViewContentModalProps {
   isOpen: boolean
   onClose: () => void
   onEdit?: (item: ContentItem) => void
+  onDelete?: (item: ContentItem) => void
   onStatusChange?: (itemId: string, status: ContentStatus) => Promise<void> | void
   user?: AuthUser
 }
@@ -40,12 +42,19 @@ export function ViewContentModal({
   isOpen,
   onClose,
   onEdit,
+  onDelete,
   onStatusChange,
   user,
 }: ViewContentModalProps) {
   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null)
 
   if (!isOpen || !item) return null
+
+  const isHod = Boolean(user?.is_hod || /\b(hod|head of department|head of content)\b/i.test(user?.designation || ''))
+  const isAdmin = user?.role === 'Admin' || (user?.role as string)?.toLowerCase() === 'admin'
+  const isManager = user?.role === 'Manager' || (user?.role as string)?.toLowerCase() === 'manager'
+  const isOwner = Boolean(user && (item.owner_id === user.id || (item as any).created_by_id === user.id))
+  const canDelete = isAdmin || isHod || isManager || isOwner || !user
 
   const deadlineState = computeDeadlineState(item.due_date, item.status)
   const isOverdue = deadlineState === 'Overdue' && item.status !== 'Completed' && item.status !== 'Published' && item.status !== 'Approved'
@@ -152,6 +161,20 @@ export function ViewContentModal({
                 <span>Edit</span>
               </Button>
             )}
+            {onDelete && canDelete && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  onDelete(item)
+                }}
+                className="h-8 text-xs bg-destructive/15 text-destructive hover:bg-destructive/25 border border-destructive/30 rounded-md shadow-xs gap-1"
+                title="Delete Task"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete</span>
+              </Button>
+            )}
             <button
               onClick={onClose}
               className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors cursor-pointer"
@@ -195,9 +218,16 @@ export function ViewContentModal({
                 <User className="w-3.5 h-3.5 text-primary" />
                 <span>Assigned Employee</span>
               </div>
-              <p className="text-sm font-semibold text-foreground">
-                {item.assigned_to_name || 'Unassigned'}
-              </p>
+              <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                <p className="text-sm font-semibold text-foreground">
+                  {item.assigned_to_name || 'Unassigned'}
+                </p>
+                {(item as any).assigned_to_employee_id && (
+                  <Badge variant="outline" className="text-[10px] font-mono px-1.5 py-0 border-border bg-muted/40">
+                    {(item as any).assigned_to_employee_id}
+                  </Badge>
+                )}
+              </div>
               {item.assigned_role && (
                 <span className="text-[11px] text-muted-foreground block">{item.assigned_role}</span>
               )}
@@ -317,9 +347,24 @@ export function ViewContentModal({
             Created by <span className="font-medium text-foreground">{item.owner_name}</span> on{' '}
             {dayjs(item.created_at).format('DD MMM YYYY')}
           </div>
-          <Button variant="outline" size="sm" onClick={onClose} className="border-border/80 bg-card hover:bg-secondary/50 text-foreground rounded-md shadow-xs">
-            Close
-          </Button>
+          <div className="flex items-center gap-2">
+            {onDelete && canDelete && (
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  onDelete(item)
+                }}
+                className="h-8 text-xs bg-destructive/15 text-destructive hover:bg-destructive/25 border border-destructive/30 rounded-md shadow-xs gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Delete Task</span>
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={onClose} className="border-border/80 bg-card hover:bg-secondary/50 text-foreground rounded-md shadow-xs">
+              Close
+            </Button>
+          </div>
         </div>
       </div>
     </div>

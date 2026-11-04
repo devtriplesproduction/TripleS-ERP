@@ -317,7 +317,7 @@ export function ChangePasswordModal({
                 }}
                 placeholder="Enter new password"
                 disabled={!hasAccount || !canChangePassword || isSubmitting}
-                className="pr-10 bg-background text-sm font-sans"
+                className="pr-10 bg-background text-sm font-sans [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
                 autoComplete="new-password"
               />
               <button
@@ -383,7 +383,7 @@ export function ChangePasswordModal({
                 }}
                 placeholder="Re-enter new password"
                 disabled={!hasAccount || !canChangePassword || isSubmitting}
-                className="pr-10 bg-background text-sm font-sans"
+                className="pr-10 bg-background text-sm font-sans [&::-ms-reveal]:hidden [&::-ms-clear]:hidden"
                 autoComplete="new-password"
               />
               <button

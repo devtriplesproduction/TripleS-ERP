@@ -275,12 +275,12 @@ export function ReviewDashboard({
               </div>
 
               {/* Approved */}
-              <div className="w-[110px] sm:w-[118px] xl:w-[126px] h-[46px] sm:h-[48px] rounded-xl border border-emerald-500/25 bg-emerald-950/20 px-2.5 sm:px-3 py-1 sm:py-1.5 flex items-center shrink-0 shadow-xs">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center shrink-0 mr-2 sm:mr-2.5">
-                  <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />
+              <div className="w-[110px] sm:w-[118px] xl:w-[126px] h-[46px] sm:h-[48px] rounded-xl border border-border/80 bg-card/60 px-2.5 sm:px-3 py-1 sm:py-1.5 flex items-center shrink-0 shadow-xs">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 mr-2 sm:mr-2.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 dark:text-emerald-400" />
                 </div>
                 <div className="min-w-0 flex flex-col justify-center">
-                  <span className="text-[10px] sm:text-[11px] font-medium text-neutral-300 leading-none truncate">
+                  <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground leading-none truncate">
                     Approved
                   </span>
                   <span className="text-base sm:text-lg font-bold text-foreground leading-tight mt-0.5 sm:mt-1">
@@ -290,12 +290,12 @@ export function ReviewDashboard({
               </div>
 
               {/* Pending */}
-              <div className="w-[110px] sm:w-[118px] xl:w-[126px] h-[46px] sm:h-[48px] rounded-xl border border-amber-500/25 bg-amber-950/20 px-2.5 sm:px-3 py-1 sm:py-1.5 flex items-center shrink-0 shadow-xs">
-                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-500/10 border border-amber-500/30 flex items-center justify-center shrink-0 mr-2 sm:mr-2.5">
-                  <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-400" />
+              <div className="w-[110px] sm:w-[118px] xl:w-[126px] h-[46px] sm:h-[48px] rounded-xl border border-border/80 bg-card/60 px-2.5 sm:px-3 py-1 sm:py-1.5 flex items-center shrink-0 shadow-xs">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mr-2 sm:mr-2.5">
+                  <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-amber-600 dark:text-amber-400" />
                 </div>
                 <div className="min-w-0 flex flex-col justify-center">
-                  <span className="text-[10px] sm:text-[11px] font-medium text-neutral-300 leading-none truncate">
+                  <span className="text-[10px] sm:text-[11px] font-medium text-muted-foreground leading-none truncate">
                     Pending
                   </span>
                   <span className="text-base sm:text-lg font-bold text-foreground leading-tight mt-0.5 sm:mt-1">
@@ -335,7 +335,7 @@ export function ReviewDashboard({
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search by employee name, department, or ID..."
-            className="!h-11 w-full !bg-muted/40 dark:!bg-[#141416] hover:!bg-muted/60 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border dark:hover:!border-border focus-visible:!border-neutral-500 !rounded-xl !pl-10 !pr-4 !text-sm !text-foreground placeholder:!text-muted-foreground !shadow-none transition-colors"
+            className="!h-11 w-full !bg-card dark:!bg-[#141416] hover:!bg-card/90 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border dark:hover:!border-border focus-visible:!border-neutral-500 !rounded-xl !pl-10 !pr-4 !text-sm !text-foreground placeholder:!text-muted-foreground !shadow-none transition-colors"
           />
         </div>
 
@@ -343,7 +343,7 @@ export function ReviewDashboard({
         <div className="w-full sm:w-[190px] lg:w-[210px] shrink-0">
           <Dropdown
             className="!space-y-0 !w-full"
-            buttonClassName="!h-11 !w-full !rounded-xl !bg-muted/40 dark:!bg-[#141416] hover:!bg-muted/60 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border focus:!border-neutral-500 !text-sm !text-foreground !px-3.5 !shadow-none !justify-between transition-colors"
+            buttonClassName="!h-11 !w-full !rounded-xl !bg-card dark:!bg-[#141416] hover:!bg-card/90 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border focus:!border-neutral-500 !text-sm !text-foreground !px-3.5 !shadow-none !justify-between transition-colors"
             value={selectedEmployee}
             onChange={(val) => setSelectedEmployee(val as string)}
             placeholder="All Employees"
@@ -365,7 +365,7 @@ export function ReviewDashboard({
             placeholder="Start Date"
             value={fromDate}
             onChange={(date) => setFromDate(date)}
-            className="!h-11 !w-full !rounded-xl !bg-muted/40 dark:!bg-[#141416] hover:!bg-muted/60 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border focus-visible:!border-neutral-500 !text-sm !text-foreground !px-3.5 !justify-between !flex !items-center !shadow-none transition-colors"
+            className="!h-11 !w-full !rounded-xl !bg-card dark:!bg-[#141416] hover:!bg-card/90 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border focus-visible:!border-neutral-500 !text-sm !text-foreground !px-3.5 !justify-between !flex !items-center !shadow-none transition-colors"
           />
         </div>
 
@@ -375,21 +375,24 @@ export function ReviewDashboard({
             placeholder="End Date"
             value={toDate}
             onChange={(date) => setToDate(date)}
-            className="!h-11 !w-full !rounded-xl !bg-muted/40 dark:!bg-[#141416] hover:!bg-muted/60 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border focus-visible:!border-neutral-500 !text-sm !text-foreground !px-3.5 !justify-between !flex !items-center !shadow-none transition-colors"
+            className="!h-11 !w-full !rounded-xl !bg-card dark:!bg-[#141416] hover:!bg-card/90 dark:hover:!bg-[#1a1a1d] !border !border-border/80 hover:!border-border focus-visible:!border-neutral-500 !text-sm !text-foreground !px-3.5 !justify-between !flex !items-center !shadow-none transition-colors"
           />
         </div>
       </div>
 
       {/* Batch approve action if pending > 0 */}
       {pending > 0 && (
-        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs">
-          <div className="text-amber-200">
-            There are <span className="font-semibold text-foreground">{pending}</span> pending reports in the current filter.
+        <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 rounded-xl bg-card border border-border shadow-xs text-xs">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Clock className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+            <span>
+              There are <strong className="text-foreground font-semibold">{pending}</strong> pending reports in the current filter.
+            </span>
           </div>
           <Button
             size="sm"
             variant="default"
-            className="bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm rounded-xl h-8 px-3 text-xs"
+            className="bg-foreground text-background hover:bg-foreground/90 font-medium shadow-xs rounded-lg h-8 px-3 text-xs cursor-pointer"
             disabled={batchProcessing}
             onClick={handleBatchApprovePending}
           >
@@ -405,7 +408,7 @@ export function ReviewDashboard({
         {filteredEods.length === 0 ? (
           <div className="bg-card text-card-foreground border-border rounded-2xl border border-border shadow-sm flex-1 flex flex-col items-center justify-center p-8 sm:p-12 text-center">
             <div className="w-24 h-24 sm:w-32 sm:h-32 bg-muted rounded-full flex items-center justify-center mb-6 relative border-4 border-background shadow-sm">
-              <FileSearch className="w-12 h-12 sm:w-16 sm:h-16 text-orange-400 absolute" />
+              <FileSearch className="w-12 h-12 sm:w-16 sm:h-16 text-muted-foreground/40 absolute" />
               <div className="absolute -top-2 -right-2 w-7 h-7 sm:w-8 sm:h-8 bg-card text-card-foreground border-border rounded-full shadow flex items-center justify-center">
                 <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
               </div>

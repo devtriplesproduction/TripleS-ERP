@@ -9,6 +9,7 @@ import {
   Eye,
   Download,
   Trash2,
+  Edit2,
   File as FileIcon,
   FileImage,
   FileSpreadsheet,
@@ -46,6 +47,8 @@ export interface DocumentUploadSectionProps {
   documents: DocumentItem[]
   onUpload: (files: File[]) => Promise<void> | void
   onDelete?: (document: DocumentItem, index: number) => Promise<void> | void
+  onEdit?: (document: DocumentItem, index: number) => Promise<void> | void
+  canEdit?: boolean
   onView?: (document: DocumentItem, index: number) => Promise<void> | void
   onDownload?: (document: DocumentItem, index: number) => Promise<void> | void
   isUploading?: boolean
@@ -113,6 +116,8 @@ export function DocumentUploadSection({
   onDelete,
   onView,
   onDownload,
+  onEdit,
+  canEdit = true,
   isUploading = false,
   isLoading = false,
   accept = '.pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.zip',
@@ -454,6 +459,23 @@ export function DocumentUploadSection({
                           title="View / Preview Document"
                         >
                           <Eye className="w-4 h-4" />
+                        </Button>
+                      )}
+
+                      {canEdit && onEdit && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                          onClick={(e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
+                            onEdit(doc, idx)
+                          }}
+                          title="Edit Document"
+                        >
+                          <Edit2 className="w-4 h-4" />
                         </Button>
                       )}
 

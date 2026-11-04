@@ -33,6 +33,7 @@ export type AssignedRole =
   | 'SEO Specialist'
   | 'Video Editor'
   | 'Graphic Designer'
+  | (string & {})
 export type DeadlineCategory =
   | 'Overdue'
   | 'Due Today'
@@ -209,6 +210,7 @@ export interface ContentItem {
   // Assignment & Reassignment
   assigned_to_id?: string | null
   assigned_to_name?: string | null
+  assigned_to_employee_id?: string | null
   assigned_role?: AssignedRole
   priority?: ContentPriority
   completion_date?: string | null
@@ -298,6 +300,7 @@ export interface CreateContentInput {
   reference_attachment?: string | null
   assigned_to_id?: string | null
   assigned_to_name?: string | null
+  assigned_to_employee_id?: string | null
   assigned_role?: AssignedRole
   priority?: ContentPriority
   attachments?: ContentAttachment[]
@@ -347,6 +350,7 @@ export interface UpdateContentInput {
   reference_attachment?: string | null
   assigned_to_id?: string | null
   assigned_to_name?: string | null
+  assigned_to_employee_id?: string | null
   assigned_role?: AssignedRole
   priority?: ContentPriority
   attachments?: ContentAttachment[]

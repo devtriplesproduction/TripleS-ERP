@@ -7,6 +7,7 @@ import {
   getContentActivities,
   getContentNotifications,
   getContentAttachments,
+  getContentEmployees,
 } from '@/lib/actions/content-management'
 import { getProjects } from '@/lib/actions/projects'
 import { getAssignableEmployees } from '@/lib/actions/team'
@@ -39,7 +40,7 @@ export default async function ContentManagementPage() {
     getContentNotifications(user.id),
     getContentAttachments(),
     getProjects(),
-    getAssignableEmployees(),
+    getContentEmployees(),
   ])
 
   return (

@@ -8,11 +8,14 @@ import {
   Loader2,
   Clock,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Dropdown } from "@/components/ui/Dropdown"
+import { EmployeePagination } from "@/components/ui/pagination"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { getWorklogDataAction, WorklogData } from "@/lib/actions/worklog"
@@ -89,8 +92,13 @@ export function WorklogView() {
     }
   }
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState<number>(1)
+  const [pageSize, setPageSize] = useState<number>(10)
+
   // Load when month or year changes
   useEffect(() => {
+    setCurrentPage(1)
     loadData()
   }, [selectedMonth, selectedYear])
 
@@ -103,6 +111,8 @@ export function WorklogView() {
   }
 
   const contributions = data?.contributions || []
+  const totalPages = Math.max(1, Math.ceil(contributions.length / pageSize))
+  const paginatedContributions = contributions.slice((currentPage - 1) * pageSize, currentPage * pageSize)
 
   return (
     <div className="space-y-6 w-full min-w-0">
@@ -267,8 +277,9 @@ export function WorklogView() {
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-border/50">
-            {contributions.map((emp) => {
+          <>
+            <div className="divide-y divide-border/50">
+              {paginatedContributions.map((emp) => {
               // Extract initials for fallback
               const initials = emp.name
                 .split(" ")
@@ -323,7 +334,26 @@ export function WorklogView() {
                 </div>
               )
             })}
-          </div>
+            </div>
+
+            {/* Worklog Pagination Footer */}
+            {contributions.length > 0 && (
+              <EmployeePagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                totalItems={contributions.length}
+                itemsPerPage={pageSize}
+                onPageChange={setCurrentPage}
+                onPageSizeChange={(sz) => {
+                  setPageSize(sz)
+                  setCurrentPage(1)
+                }}
+                showPageSizeSelector
+                itemLabel="employees"
+                className="mt-3 rounded-2xl border border-border/60 bg-card px-4 py-3"
+              />
+            )}
+          </>
         )}
       </div>
     </div>

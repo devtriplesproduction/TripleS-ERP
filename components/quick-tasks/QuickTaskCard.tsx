@@ -232,7 +232,7 @@ export function QuickTaskCard({
               <div className="flex items-center gap-1 border-l border-border/40 pl-2.5 text-foreground/80 font-medium ml-auto">
                 <Clock className="w-3 h-3" />
                 <span>
-                  Done {dayjs(task.completed_at).format('MMM D, h:mm A')}
+                  Done {dayjs(task.completed_at).format('DD MMM YYYY, h:mm A')}
                 </span>
               </div>
             )}

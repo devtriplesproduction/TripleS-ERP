@@ -36,6 +36,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
+import { DatePicker } from '@/components/ui/date-picker'
+import { ContentEmployeeSelect } from '@/components/content-management/ContentEmployeeSelect'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { getProfilePhotoUrl } from '@/lib/utils/profile-photos'
@@ -105,49 +107,6 @@ const STANDARD_CONTENT_TYPES = [
   'Other',
 ]
 
-export const DEFAULT_CONTENT_STAFF: AssignableEmployee[] = [
-  {
-    id: 'af354098-e268-4294-889f-130387cf916b',
-    name: 'Kavita Verma',
-    employee_id: 'EMP-CNT-01',
-    department: 'Content Management',
-    designation: 'Head of Content',
-    profile_photo: null,
-  },
-  {
-    id: 'cnt-emp-02',
-    name: 'Rohan Joshi',
-    employee_id: 'EMP-CNT-02',
-    department: 'Content Management',
-    designation: 'Senior Content Writer',
-    profile_photo: null,
-  },
-  {
-    id: 'cnt-emp-03',
-    name: 'Sneha Patil',
-    employee_id: 'EMP-CNT-03',
-    department: 'Content Management',
-    designation: 'SEO & Technical Writer',
-    profile_photo: null,
-  },
-  {
-    id: 'cnt-emp-04',
-    name: 'Ananya Sharma',
-    employee_id: 'EMP-CNT-04',
-    department: 'Content Management',
-    designation: 'Content Editor & Copywriter',
-    profile_photo: null,
-  },
-  {
-    id: 'cnt-emp-05',
-    name: 'Vikram Desai',
-    employee_id: 'EMP-CNT-05',
-    department: 'Content Management',
-    designation: 'Media & Video Content Creator',
-    profile_photo: null,
-  },
-]
-
 export function ContentManagementView({
   initialItems,
   initialTypes = [],
@@ -208,9 +167,10 @@ export function ContentManagementView({
 
   const { toast } = useToast()
 
-  const isHod = user.is_hod || /\b(hod|head of department|head of content)\b/i.test(user.designation || '')
-  const isAdmin = user.role === 'Admin'
-  const isAuthorizedManager = isAdmin || isHod
+  const isHod = Boolean(user.is_hod || /\b(hod|head of department|head of content)\b/i.test(user.designation || ''))
+  const isAdmin = user.role === 'Admin' || (user.role as string)?.toLowerCase() === 'admin'
+  const isManager = user.role === 'Manager' || (user.role as string)?.toLowerCase() === 'manager'
+  const isAuthorizedManager = isAdmin || isHod || isManager
 
   // Map any ContentStatus into one of the 4 Kanban columns
   const getTaskColumn = (status: ContentStatus): BoardColumnKey => {
@@ -252,90 +212,61 @@ export function ContentManagementView({
 
   // Department & Employee Restrictions: Strictly Content Management department
   const contentEmployees = useMemo(() => {
-    const matched = employees.filter((emp) => {
+    return employees.filter((emp) => {
       const dept = (emp.department || '').toLowerCase().trim()
-      const desig = (emp.designation || '').toLowerCase().trim()
+      const status = (emp.employment_status || 'active').toLowerCase().trim()
+      if (status !== 'active') return false
 
-      // Explicitly reject non-content departments
-      if (['development', 'hr', 'management', 'accounting', 'payroll', 'sales'].includes(dept)) {
-        return false
-      }
-      // Reject explicit non-content designations
-      if (
-        desig.includes('developer') ||
-        desig.includes('full-stack') ||
-        desig.includes('ui/ux') ||
-        desig.includes('hr') ||
-        desig.includes('accounting') ||
-        desig.includes('finance')
-      ) {
-        return false
-      }
-
-      // Match content department or designations
       return (
         dept === 'content' ||
         dept.includes('content') ||
-        desig.includes('content') ||
-        desig.includes('marketing') ||
-        desig.includes('video') ||
-        desig.includes('editor') ||
-        desig.includes('seo') ||
-        desig.includes('copy') ||
-        desig.includes('writer')
+        dept.includes('marketing') ||
+        (emp.designation && (
+          emp.designation.toLowerCase().includes('content') ||
+          emp.designation.toLowerCase().includes('marketing') ||
+          emp.designation.toLowerCase().includes('video') ||
+          emp.designation.toLowerCase().includes('editor') ||
+          emp.designation.toLowerCase().includes('seo') ||
+          emp.designation.toLowerCase().includes('copywriter')
+        ))
       )
     })
-
-    // Merge default Content team members with any matching active staff from database
-    const map = new Map<string, AssignableEmployee>()
-    for (const emp of DEFAULT_CONTENT_STAFF) {
-      map.set(emp.id, emp)
-      map.set(emp.name.toLowerCase(), emp)
-    }
-    for (const emp of matched) {
-      map.set(emp.id, emp)
-      if (emp.name) {
-        map.set(emp.name.toLowerCase(), emp)
-      }
-    }
-
-    return Array.from(new Set(map.values()))
   }, [employees])
 
-  // Filter tasks strictly to Content Management department
+  // All Content items
   const contentTasks = useMemo(() => {
-    const contentEmpIdSet = new Set(contentEmployees.map((e) => e.id))
-    return items.filter((item) => {
-      if (item.assigned_to_id) {
-        if (contentEmpIdSet.has(item.assigned_to_id)) return true
-        if (item.assigned_to_name) {
-          const match = contentEmployees.some(
-            (e) => (e.name || '').toLowerCase() === item.assigned_to_name?.toLowerCase()
-          )
-          if (match) return true
-        }
-      }
-      if (item.assigned_to_name) {
-        const lower = item.assigned_to_name.toLowerCase()
-        if (
-          lower.includes('suraj') ||
-          lower.includes('shital') ||
-          lower.includes('prachi') ||
-          lower.includes('omkar')
-        ) {
-          return false
-        }
-      }
-      return true
+    return items
+  }, [items])
+
+  // Employee Task Visibility: Managers/HOD/Admin view all tasks; regular employees strictly access only their own assigned tasks
+  const userVisibleTasks = useMemo(() => {
+    if (isAuthorizedManager) return contentTasks
+
+    const userEmpId = user.employee_id?.toLowerCase()
+    const userId = user.id.toLowerCase()
+    const userName = (user.employee_name || '').toLowerCase()
+
+    return contentTasks.filter((task) => {
+      const taskAssigneeId = (task.assigned_to_id || '').toLowerCase()
+      const taskAssigneeEmpId = ((task as any).assigned_to_employee_id || '').toLowerCase()
+      const taskAssigneeName = (task.assigned_to_name || '').toLowerCase()
+      const taskOwnerId = (task.owner_id || '').toLowerCase()
+
+      return (
+        taskAssigneeId === userId ||
+        (userEmpId && (taskAssigneeId === userEmpId || taskAssigneeEmpId === userEmpId)) ||
+        (userName && taskAssigneeName === userName) ||
+        taskOwnerId === userId
+      )
     })
-  }, [items, contentEmployees])
+  }, [contentTasks, isAuthorizedManager, user])
 
   // Filtered items for Task Board (Only search filter preserved; unwanted filters removed)
   const filteredTasks = useMemo(() => {
     if (!searchQuery.trim()) return contentTasks
 
     const q = searchQuery.toLowerCase()
-    return contentTasks.filter((item) => {
+    return userVisibleTasks.filter((item) => {
       const matchesTitle = item.title.toLowerCase().includes(q)
       const matchesSummary = (item.summary || '').toLowerCase().includes(q)
       const matchesBody = (item.body || '').toLowerCase().includes(q)
@@ -343,7 +274,7 @@ export function ContentManagementView({
       const matchesType = (item.content_type || '').toLowerCase().includes(q)
       return matchesTitle || matchesSummary || matchesBody || matchesAssignee || matchesType
     })
-  }, [contentTasks, searchQuery])
+  }, [userVisibleTasks, searchQuery])
 
   // Filtered tasks specifically for Assignments & Deadlines sections
   const filteredAssignmentsDeadlines = useMemo(() => {
@@ -592,8 +523,9 @@ export function ContentManagementView({
   // In-place Reassign Employee Handler with Validation & Rollback
   const handleReassignTask = async (itemId: string, newEmployeeId: string) => {
     let empName: string | null = null
+    let empEmpId: string | null = null
     if (newEmployeeId) {
-      const emp = contentEmployees.find((e) => e.id === newEmployeeId)
+      const emp = contentEmployees.find((e) => e.id === newEmployeeId || e.employee_id === newEmployeeId)
       if (!emp) {
         toast({
           title: 'Invalid Employee',
@@ -603,6 +535,8 @@ export function ContentManagementView({
         return
       }
       empName = emp.name || (emp as any).employee_name || null
+      empEmpId = emp.employee_id || null
+      newEmployeeId = emp.id
     }
 
     const previousItem = items.find((i) => i.id === itemId)
@@ -615,6 +549,7 @@ export function ContentManagementView({
               ...i,
               assigned_to_id: newEmployeeId || null,
               assigned_to_name: empName,
+              assigned_to_employee_id: empEmpId,
               updated_at: new Date().toISOString(),
             }
           : i
@@ -622,13 +557,14 @@ export function ContentManagementView({
     )
 
     if (viewItem && viewItem.id === itemId) {
-      setViewItem((prev) => (prev ? { ...prev, assigned_to_id: newEmployeeId || null, assigned_to_name: empName } : null))
+      setViewItem((prev) => (prev ? { ...prev, assigned_to_id: newEmployeeId || null, assigned_to_name: empName, assigned_to_employee_id: empEmpId } : null))
     }
 
     try {
       const res = await updateContentItem(itemId, {
         assigned_to_id: newEmployeeId || null,
         assigned_to_name: empName || null,
+        assigned_to_employee_id: empEmpId,
       })
 
       if (res.success && res.data) {
@@ -787,22 +723,35 @@ export function ContentManagementView({
   // Delete Task Handler
   const handleDeleteTask = async () => {
     if (!itemToDelete) return
-    const res = await deleteContentItem(itemToDelete.id)
-    if (res.success) {
-      setItems((prev) => prev.filter((i) => i.id !== itemToDelete.id))
-      if (viewItem && viewItem.id === itemToDelete.id) {
-        setIsViewModalOpen(false)
-        setViewItem(null)
+    const idToDelete = itemToDelete.id
+    try {
+      const res = await deleteContentItem(idToDelete)
+      if (res.success) {
+        setItems((prev) => prev.filter((i) => String(i.id).trim().toLowerCase() !== String(idToDelete).trim().toLowerCase()))
+        if (viewItem && String(viewItem.id).trim().toLowerCase() === String(idToDelete).trim().toLowerCase()) {
+          setIsViewModalOpen(false)
+          setViewItem(null)
+        }
+        if (editingItem && String(editingItem.id).trim().toLowerCase() === String(idToDelete).trim().toLowerCase()) {
+          setEditingItem(null)
+        }
+        toast({ title: 'Task Deleted', description: 'Task has been permanently removed.' })
+      } else {
+        toast({
+          title: 'Delete Failed',
+          description: res.error || 'Unauthorized or delete failed',
+          variant: 'destructive',
+        })
       }
-      toast({ title: 'Task Deleted', description: 'Task has been permanently removed.' })
-    } else {
+    } catch (err: any) {
       toast({
-        title: 'Delete Failed',
-        description: res.error || 'Unauthorized or delete failed',
+        title: 'Delete Error',
+        description: err.message || 'An unexpected error occurred while deleting the task',
         variant: 'destructive',
       })
+    } finally {
+      setItemToDelete(null)
     }
-    setItemToDelete(null)
   }
 
   // Submit New Task Form (Synchronized across all views)
@@ -846,10 +795,12 @@ export function ContentManagementView({
 
     try {
       let selectedEmpName = ''
+      let selectedEmpEmployeeId: string | null = null
       if (formData.assigned_to_id) {
-        const emp = contentEmployees.find((e) => e.id === formData.assigned_to_id)
+        const emp = contentEmployees.find((e) => e.id === formData.assigned_to_id || e.employee_id === formData.assigned_to_id)
         if (emp) {
           selectedEmpName = emp.name || (emp as any).employee_name || ''
+          selectedEmpEmployeeId = emp.employee_id || null
         }
       }
 
@@ -887,6 +838,7 @@ export function ContentManagementView({
         instructions: formData.instructions.trim() || null,
         assigned_to_id: formData.assigned_to_id || null,
         assigned_to_name: selectedEmpName || null,
+        assigned_to_employee_id: selectedEmpEmployeeId,
         reference_attachment: referenceAttachmentName || null,
         attachments: uploadedAttachments,
         progress: initialProgress,
@@ -1039,14 +991,16 @@ export function ContentManagementView({
         actions={
           <div className="flex items-center gap-2 flex-wrap">
             {/* 1. Create Task */}
-            <Button
-              onClick={() => setIsCreateModalOpen(true)}
-              size="sm"
-              className="h-9 px-3.5 text-xs font-semibold gap-1.5 shadow-xs bg-foreground text-background hover:bg-foreground/90 rounded-lg transition-all"
-            >
-              <PlusCircle className="w-4 h-4 shrink-0" />
-              <span>Create Task</span>
-            </Button>
+            {isAuthorizedManager && (
+              <Button
+                onClick={() => setIsCreateModalOpen(true)}
+                size="sm"
+                className="h-9 px-3.5 text-xs font-semibold gap-1.5 shadow-xs bg-foreground text-background hover:bg-foreground/90 rounded-lg transition-all"
+              >
+                <PlusCircle className="w-4 h-4 shrink-0" />
+                <span>Create Task</span>
+              </Button>
+            )}
 
             {/* 2. Assignments */}
             <Button
@@ -1276,7 +1230,7 @@ export function ContentManagementView({
                           </Badge>
                         </div>
 
-                        {col.key === 'To Do' && (
+                        {col.key === 'To Do' && isAuthorizedManager && (
                           <button
                             type="button"
                             onClick={() => {
@@ -1301,7 +1255,7 @@ export function ContentManagementView({
                             </div>
                             <div className="space-y-0.5">
                               <p className="text-[13px] font-medium text-muted-foreground">No tasks here</p>
-                              {col.key === 'To Do' && (
+                              {col.key === 'To Do' && isAuthorizedManager && (
                                 <button
                                   onClick={() => {
                                     setFormData((prev) => ({ ...prev, status: 'To Do' }))
@@ -1362,14 +1316,29 @@ export function ContentManagementView({
                                   </h4>
 
                                   {/* Priority Badge with square-corner style matching Project Management TaskCard */}
-                                  <span
-                                    className={cn(
-                                      "text-[10px] sm:text-[11px] px-2 py-0.5 rounded-[3.5px] border shrink-0 uppercase tracking-wider font-bold leading-none inline-flex items-center justify-center",
-                                      getPriorityVariant(task.priority)
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    <span
+                                      className={cn(
+                                        "text-[10px] sm:text-[11px] px-2 py-0.5 rounded-[3.5px] border uppercase tracking-wider font-bold leading-none inline-flex items-center justify-center",
+                                        getPriorityVariant(task.priority)
+                                      )}
+                                    >
+                                      {task.priority || 'MEDIUM'}
+                                    </span>
+                                    {isAuthorizedManager && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          setItemToDelete(task)
+                                        }}
+                                        className="opacity-0 group-hover:opacity-100 p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-all cursor-pointer"
+                                        title="Delete Task"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
                                     )}
-                                  >
-                                    {task.priority || 'MEDIUM'}
-                                  </span>
+                                  </div>
                                 </div>
 
                                 {/* Task Description Snippet */}
@@ -1674,37 +1643,15 @@ export function ContentManagementView({
                             </td>
 
                             {/* Assigned Content Employee with In-place Reassign Dropdown */}
-                            <td className="p-3.5">
-                              {(() => {
-                                const matchingEmp = contentEmployees.find(
-                                  (e) =>
-                                    e.id === task.assigned_to_id ||
-                                    (e.name &&
-                                      task.assigned_to_name &&
-                                      e.name.toLowerCase() === task.assigned_to_name.toLowerCase())
-                                )
-                                const currentEmpId = matchingEmp ? matchingEmp.id : task.assigned_to_id || ''
-
-                                return (
-                                  <select
-                                    value={currentEmpId}
-                                    onChange={(e) => handleReassignTask(task.id, e.target.value)}
-                                    className="h-8 px-2.5 rounded-md text-xs bg-card border border-border/80 text-foreground font-medium outline-none cursor-pointer max-w-[160px] truncate hover:border-foreground/30 transition-colors shadow-xs"
-                                    title="Change assigned content staff"
-                                  >
-                                    <option value="">
-                                      {task.assigned_to_name && !contentEmployees.some((e) => e.id === task.assigned_to_id)
-                                        ? task.assigned_to_name
-                                        : 'Unassigned'}
-                                    </option>
-                                    {contentEmployees.map((e) => (
-                                      <option key={e.id} value={e.id}>
-                                        {e.name || (e as any).employee_name}
-                                      </option>
-                                    ))}
-                                  </select>
-                                )
-                              })()}
+                            <td className="p-3.5 min-w-[210px]">
+                              <ContentEmployeeSelect
+                                employees={contentEmployees}
+                                value={task.assigned_to_id}
+                                onChange={(emp) => handleReassignTask(task.id, emp ? emp.id : '')}
+                                disabled={!isAuthorizedManager}
+                                placeholder="Unassigned"
+                                className="h-8 max-w-[200px]"
+                              />
                             </td>
 
                             {/* Assignment / Creation Date */}
@@ -1740,15 +1687,28 @@ export function ContentManagementView({
 
                             {/* Actions */}
                             <td className="p-3.5 text-right">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => setEditingItem(task)}
-                                className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary/50 rounded-md transition-colors"
-                                title="Edit Task Details"
-                              >
-                                <Edit className="w-3.5 h-3.5" />
-                              </Button>
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setEditingItem(task)}
+                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground hover:bg-secondary/50 rounded-md transition-colors"
+                                  title="Edit Task Details"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </Button>
+                                {isAuthorizedManager && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setItemToDelete(task)}
+                                    className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                                    title="Delete Task"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </Button>
+                                )}
+                              </div>
                             </td>
                           </tr>
                         )
@@ -2063,24 +2023,15 @@ export function ContentManagementView({
                           </td>
 
                           {/* Assigned Employee with In-place Reassignment */}
-                          <td className="p-3.5">
-                            <select
-                              value={currentEmpId}
-                              onChange={(e) => handleReassignTask(task.id, e.target.value)}
-                              className="h-8 px-2.5 rounded-md text-xs bg-card border border-border/80 text-foreground font-medium outline-none cursor-pointer max-w-[160px] truncate hover:border-foreground/30 transition-colors shadow-xs"
-                              title="Change assigned content staff"
-                            >
-                              <option value="">
-                                {task.assigned_to_name && !contentEmployees.some((e) => e.id === task.assigned_to_id)
-                                  ? task.assigned_to_name
-                                  : 'Unassigned'}
-                              </option>
-                              {contentEmployees.map((e) => (
-                                <option key={e.id} value={e.id}>
-                                  {e.name || (e as any).employee_name}
-                                </option>
-                              ))}
-                            </select>
+                          <td className="p-3.5 min-w-[210px]">
+                            <ContentEmployeeSelect
+                              employees={contentEmployees}
+                              value={task.assigned_to_id}
+                              onChange={(emp) => handleReassignTask(task.id, emp ? emp.id : '')}
+                              disabled={!isAuthorizedManager}
+                              placeholder="Unassigned"
+                              className="h-8 max-w-[200px]"
+                            />
                           </td>
 
                           {/* Start Date */}
@@ -2180,6 +2131,17 @@ export function ContentManagementView({
                               >
                                 <Edit className="w-3.5 h-3.5" />
                               </Button>
+                              {isAuthorizedManager && (
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => setItemToDelete(task)}
+                                  className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                                  title="Delete Task"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -2252,18 +2214,13 @@ export function ContentManagementView({
                     <User className="w-3.5 h-3.5 text-primary" />
                     <span>Assign Employee</span>
                   </label>
-                  <select
+                  <ContentEmployeeSelect
+                    employees={contentEmployees}
                     value={formData.assigned_to_id}
-                    onChange={(e) => setFormData({ ...formData, assigned_to_id: e.target.value })}
-                    className="w-full h-10 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground font-medium outline-none cursor-pointer"
-                  >
-                    <option value="">Unassigned</option>
-                    {contentEmployees.map((emp) => (
-                      <option key={emp.id} value={emp.id}>
-                        {emp.name || (emp as any).employee_name}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={(emp) => setFormData({ ...formData, assigned_to_id: emp ? emp.id : '' })}
+                    placeholder="Select Content Employee..."
+                    className="h-10 bg-muted/30 border-border"
+                  />
                 </div>
 
                 <div className="space-y-1.5">
@@ -2314,21 +2271,23 @@ export function ContentManagementView({
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-foreground">Start Date</label>
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={formData.start_date}
-                    onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                    className="bg-muted/30 border-border text-xs h-10 font-mono"
+                    onChange={(val) => setFormData({ ...formData, start_date: val })}
+                    placeholder="Start date"
+                    isClearable
+                    className="h-10 bg-muted/30 border-border text-xs rounded-xl"
                   />
                 </div>
 
                 <div className="space-y-1.5">
                   <label className="text-xs font-semibold text-foreground">Due Date / Deadline</label>
-                  <Input
-                    type="date"
+                  <DatePicker
                     value={formData.due_date}
-                    onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}
-                    className="bg-muted/30 border-border text-xs h-10 font-mono"
+                    onChange={(val) => setFormData({ ...formData, due_date: val })}
+                    placeholder="Deadline date"
+                    isClearable
+                    className="h-10 bg-muted/30 border-border text-xs rounded-xl"
                   />
                 </div>
               </div>
@@ -2470,18 +2429,20 @@ export function ContentManagementView({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-foreground">Assign Employee</label>
-                  <select
-                    value={editingItem.assigned_to_id || ''}
-                    onChange={(e) => setEditingItem({ ...editingItem, assigned_to_id: e.target.value })}
-                    className="w-full h-9 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground outline-none"
-                  >
-                    <option value="">Unassigned</option>
-                    {contentEmployees.map((emp) => (
-                      <option key={emp.id} value={emp.id}>
-                        {emp.name || (emp as any).employee_name}
-                      </option>
-                    ))}
-                  </select>
+                  <ContentEmployeeSelect
+                    employees={contentEmployees}
+                    value={editingItem.assigned_to_id}
+                    onChange={(emp) =>
+                      setEditingItem({
+                        ...editingItem,
+                        assigned_to_id: emp ? emp.id : null,
+                        assigned_to_name: emp ? (emp.name || (emp as any).employee_name || null) : null,
+                        assigned_to_employee_id: emp?.employee_id || null,
+                      })
+                    }
+                    placeholder="Select Content Employee..."
+                    className="h-9 bg-muted/30 border-border"
+                  />
                 </div>
 
                 <div className="space-y-1">
@@ -2502,20 +2463,22 @@ export function ContentManagementView({
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-foreground">Start Date</label>
-                  <Input
-                    type="date"
-                    value={editingItem.start_date || ''}
-                    onChange={(e) => setEditingItem({ ...editingItem, start_date: e.target.value })}
-                    className="bg-muted/30 border-border text-xs font-mono"
+                  <DatePicker
+                    value={editingItem.start_date}
+                    onChange={(val) => setEditingItem({ ...editingItem, start_date: val })}
+                    placeholder="Start date"
+                    isClearable
+                    className="h-9 bg-muted/30 border-border text-xs rounded-xl"
                   />
                 </div>
                 <div className="space-y-1">
                   <label className="text-xs font-semibold text-foreground">Due Date / Deadline</label>
-                  <Input
-                    type="date"
-                    value={editingItem.due_date || ''}
-                    onChange={(e) => setEditingItem({ ...editingItem, due_date: e.target.value })}
-                    className="bg-muted/30 border-border text-xs font-mono"
+                  <DatePicker
+                    value={editingItem.due_date}
+                    onChange={(val) => setEditingItem({ ...editingItem, due_date: val })}
+                    placeholder="Deadline date"
+                    isClearable
+                    className="h-9 bg-muted/30 border-border text-xs rounded-xl"
                   />
                 </div>
               </div>
@@ -2581,6 +2544,10 @@ export function ContentManagementView({
           setViewItem(null)
         }}
         onEdit={(item) => setEditingItem(item)}
+        onDelete={(item) => {
+          setIsViewModalOpen(false)
+          setItemToDelete(item)
+        }}
         onStatusChange={(itemId, status) => handleDropTask(itemId, getTaskColumn(status))}
         user={user}
       />

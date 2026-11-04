@@ -14,6 +14,7 @@ export interface DatePickerProps {
   value?: string | Date | null
   onChange?: (date: string) => void
   placeholder?: string
+  formatStr?: string
   className?: string
   contentClassName?: string
   startMonth?: Date
@@ -27,7 +28,8 @@ export interface DatePickerProps {
 export function DatePicker({ 
   value, 
   onChange, 
-  placeholder = "mm/dd/yyyy", 
+  placeholder = "mm/dd/yyyy",
+  formatStr = "MM/dd/yyyy", 
   className,
   contentClassName,
   startMonth = new Date(1950, 0),
@@ -66,7 +68,7 @@ export function DatePicker({
       )}>
         {iconLeft && <CalendarIcon className="h-4 w-4 mr-2 text-muted-foreground opacity-70 shrink-0" />}
         <span className={cn("flex-1 text-left truncate", dateValue ? "text-foreground font-medium" : "text-muted-foreground")}>
-          {dateValue ? format(dateValue, "MM/dd/yyyy") : placeholder}
+          {dateValue ? format(dateValue, formatStr) : placeholder}
         </span>
         {isClearable && dateValue ? (
           <span

@@ -422,8 +422,8 @@ export function getISTDateString(date?: Date): string {
 }
 
 /**
- * Format timestamp in Asia/Kolkata timezone standard: "MMM d, yyyy h:mm a"
- * e.g. "Oct 14, 2026 10:58 PM"
+ * Format timestamp in Asia/Kolkata timezone standard: "DD MMM YYYY, h:mm a"
+ * e.g. "14 Oct 2026, 10:58 PM"
  * Returns "Unavailable" if dateInput is null, undefined, or invalid.
  */
 export function formatKolkataDateTime(dateInput: string | Date | null | undefined): string {
@@ -431,26 +431,17 @@ export function formatKolkataDateTime(dateInput: string | Date | null | undefine
   const d = typeof dateInput === "string" ? new Date(dateInput) : dateInput;
   if (isNaN(d.getTime())) return "Unavailable";
 
-  const formatter = new Intl.DateTimeFormat("en-US", {
+  const formatter = new Intl.DateTimeFormat("en-IN", {
     timeZone: "Asia/Kolkata",
+    day: "2-digit",
     month: "short",
-    day: "numeric",
     year: "numeric",
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
   });
 
-  const parts = formatter.formatToParts(d);
-  const getPart = (type: string) => parts.find((p) => p.type === type)?.value || "";
-  const month = getPart("month");
-  const day = getPart("day");
-  const year = getPart("year");
-  const hour = getPart("hour");
-  const minute = getPart("minute");
-  const dayPeriod = getPart("dayPeriod");
-
-  return `${month} ${day}, ${year} ${hour}:${minute} ${dayPeriod}`;
+  return formatter.format(d);
 }
 
 /** Get day of week for a date string (YYYY-MM-DD). 0=Sunday, 6=Saturday. */
@@ -467,6 +458,39 @@ export function isSunday(dateStr: string): boolean {
 /** Check if a date string is a working day (Mon–Sat). */
 export function isWorkingDay(dateStr: string): boolean {
   return getDayOfWeek(dateStr) !== 0; // Sunday is the only weekly off
+}
+
+/**
+ * Get total calendar days in a month.
+ */
+export function getCalendarDaysInMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate();
+}
+
+/**
+ * Get the count of Sundays (weekly offs) in a month using Asia/Kolkata calendar.
+ */
+export function getSundaysCountInMonth(year: number, month: number): number {
+  const lastDay = getCalendarDaysInMonth(year, month);
+  let sundays = 0;
+  for (let d = 1; d <= lastDay; d++) {
+    const dStr = `${year}-${String(month).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    if (isSunday(dStr)) {
+      sundays++;
+    }
+  }
+  return sundays;
+}
+
+/**
+ * Calculate each month's standard working days dynamically:
+ * total calendar days minus Sundays, using the Asia/Kolkata calendar (Monday–Saturday standard).
+ * Does not hardcode 26 days.
+ */
+export function getStandardWorkingDaysInMonth(year: number, month: number): number {
+  const totalDays = getCalendarDaysInMonth(year, month);
+  const sundays = getSundaysCountInMonth(year, month);
+  return totalDays - sundays;
 }
 
 // ─── Constants ──────────────────────────────────────────────────────
@@ -587,13 +611,13 @@ export function classifyWorkDay(workedMinutes: number, context: WorkDayContext):
 
   // Normal working day (Mon-Sat)
   if (wm < HALF_DAY_THRESHOLD) {
-    // Case A: Less than 4 hours → Unpaid Leave
+    // Case A: Less than 4 hours → Unpaid Leave with 0 Comp-Off credit
     return {
       context,
       workedMinutes: wm,
       payrollStatus: 'UNPAID_LEAVE',
       isPayableDay: false, // Excluded from payroll
-      compOffMinutes: 0, // No Comp Off under 8h threshold on normal days
+      compOffMinutes: 0,
       attendanceStatus: 'Unpaid Leave',
     };
   }

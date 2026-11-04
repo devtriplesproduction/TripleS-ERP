@@ -9,6 +9,7 @@ import { IndianRupee, TrendingUp, Calendar, X, Loader2 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { addSalaryIncrementAction, getSalaryHistoryAction } from '@/lib/actions/payroll'
 import { calculateMonthlyBasicSalary, calculateIncrementPercentage, resolveCurrentSalary } from '@/lib/utils/salary'
+import { formatDateReadable } from '@/lib/utils/date'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 
@@ -183,7 +184,7 @@ export function SalaryAndHikeTab({ employee }: { employee: any }) {
             {nextHikeDate ? (
               <>
                 <h3 className={`text-lg font-bold relative z-10 ${isOverdue ? 'text-destructive' : 'text-foreground'}`}>
-                  {nextHikeDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {formatDateReadable(nextHikeDate)}
                 </h3>
                 <p className={`text-[11px] font-semibold mt-1 relative z-10 ${isOverdue ? 'text-destructive/80' : 'text-muted-foreground'}`}>
                   {isOverdue ? `${Math.abs(daysLeft!)} days overdue` : `in ${daysLeft} days`}
@@ -223,15 +224,15 @@ export function SalaryAndHikeTab({ employee }: { employee: any }) {
         ) : salaryHistory.length > 0 ? (
           <div className="space-y-3">
             {salaryHistory.map((hist: any) => (
-              <div key={hist.id} className="p-5 bg-card border border-border rounded-2xl flex items-center justify-between shadow-sm">
+              <div key={hist.id} className="p-5 bg-card border border-border rounded-lg flex items-center justify-between shadow-xs">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-foreground shrink-0">
+                  <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-foreground shrink-0">
                     <TrendingUp className="w-5 h-5" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-base font-bold text-foreground">₹{parseFloat(hist.new_salary).toLocaleString('en-IN')}</span>
-                      <Badge variant="outline" className="text-[10px] font-bold text-foreground border-border bg-secondary">
+                      <Badge variant="outline" className="text-[10px] font-bold text-foreground border-border bg-secondary rounded-sm">
                         +{parseFloat(hist.increment_percentage).toFixed(1)}%
                       </Badge>
                     </div>
@@ -242,7 +243,7 @@ export function SalaryAndHikeTab({ employee }: { employee: any }) {
                 </div>
                 <div className="text-right">
                   <div className="text-sm font-bold text-foreground">
-                    {new Date(hist.effective_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    {formatDateReadable(hist.effective_date)}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">Effective Date</div>
                 </div>

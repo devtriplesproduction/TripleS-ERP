@@ -2,6 +2,7 @@
 
 import { getCurrentUser, AuthUser } from '@/lib/auth'
 import { revalidatePath } from 'next/cache'
+import { getAssignableEmployees, AssignableEmployee } from '@/lib/actions/team'
 import {
   ContentItem,
   ContentType,
@@ -763,6 +764,27 @@ export async function deleteContentTag(id: string, name?: string): Promise<{ suc
   }
 }
 
+// ----------------- CONTENT DEPARTMENT EMPLOYEES -----------------
+export async function getContentEmployees(): Promise<{ success: boolean; data: AssignableEmployee[]; error?: string }> {
+  try {
+    const res = await getAssignableEmployees()
+    if (!res.success) return res
+
+    // Filter strictly to active employees belonging to Content department
+    const contentEmployees = (res.data || []).filter((emp) => {
+      const dept = (emp.department || '').toLowerCase().trim()
+      const status = (emp.employment_status || 'active').toLowerCase().trim()
+      if (status !== 'active') return false
+
+      return dept === 'content' || dept.includes('content')
+    })
+
+    return { success: true, data: contentEmployees }
+  } catch (err: any) {
+    return { success: false, data: [], error: err.message || 'Failed to fetch content employees' }
+  }
+}
+
 // ----------------- CONTENT ITEMS & VERSIONS -----------------
 export async function getContentItems(options?: ContentFilterOptions): Promise<{ success: boolean; data: ContentItem[]; total: number }> {
   try {
@@ -770,6 +792,21 @@ export async function getContentItems(options?: ContentFilterOptions): Promise<{
     const items = rawItems.map(normalizeContentItem)
 
     let filtered = [...items]
+
+    const user = await getCurrentUser()
+    const isHod = Boolean(user?.is_hod || /\b(hod|head of department|head of content)\b/i.test(user?.designation || ''))
+    const isAdmin = user?.role === 'Admin' || (user?.role as string)?.toLowerCase() === 'admin'
+    const isManager = user?.role === 'Manager' || (user?.role as string)?.toLowerCase() === 'manager'
+
+    // If regular employee, strictly restrict to their own assigned or created tasks
+    if (user && !isAdmin && !isHod && !isManager) {
+      filtered = filtered.filter(i =>
+        i.assigned_to_id === user.id ||
+        (user.employee_id && (i.assigned_to_id === user.employee_id || (i as any).assigned_to_employee_id === user.employee_id)) ||
+        i.owner_id === user.id ||
+        (i.assigned_to_name && user.employee_name && i.assigned_to_name.toLowerCase() === user.employee_name.toLowerCase())
+      )
+    }
 
     // 1. Text Search across Title and relevant metadata
     if (options?.search) {
@@ -918,6 +955,29 @@ export async function createContentItem(input: CreateContentInput): Promise<{ su
       change_summary: input.change_summary || 'Initial content creation',
     }
 
+    let assignedEmployeeId = input.assigned_to_id || null
+    let assignedEmployeeName = input.assigned_to_name || null
+    let assignedEmployeeCode = (input as any).assigned_to_employee_id || null
+    let assignedRole = input.assigned_role || 'Content Creator'
+
+    if (assignedEmployeeId) {
+      const empRes = await getContentEmployees()
+      const validEmp = (empRes.data || []).find(e =>
+        e.id === assignedEmployeeId ||
+        e.employee_id === assignedEmployeeId ||
+        (e.name && assignedEmployeeName && e.name.toLowerCase() === assignedEmployeeName.toLowerCase())
+      )
+      if (!validEmp) {
+        return { success: false, error: 'Selected employee is not an active member of the Content department.' }
+      }
+      assignedEmployeeId = validEmp.id
+      assignedEmployeeName = validEmp.name
+      assignedEmployeeCode = validEmp.employee_id
+      if (validEmp.designation) {
+        assignedRole = validEmp.designation as AssignedRole
+      }
+    }
+
     const newItem: ContentItem = {
       id,
       title: input.title.trim(),
@@ -942,9 +1002,10 @@ export async function createContentItem(input: CreateContentInput): Promise<{ su
       reference_attachment: input.reference_attachment || null,
       version: 1,
       version_history: [initialVersion],
-      assigned_to_id: input.assigned_to_id || null,
-      assigned_to_name: input.assigned_to_name || null,
-      assigned_role: input.assigned_role || 'Developer',
+      assigned_to_id: assignedEmployeeId,
+      assigned_to_name: assignedEmployeeName,
+      assigned_to_employee_id: assignedEmployeeCode,
+      assigned_role: assignedRole,
       priority: input.priority || 'Medium',
       assignment_history: [],
       review_history: [],
@@ -1032,6 +1093,33 @@ export async function updateContentItem(id: string, input: UpdateContentInput): 
     const effectiveDue = input.due_date !== undefined ? input.due_date : current.due_date
     if (effectiveStart && effectiveDue && effectiveDue.slice(0, 10) < effectiveStart.slice(0, 10)) {
       return { success: false, error: 'Deadline cannot be earlier than the start date.' }
+    }
+
+    let updatedAssigneeId = input.assigned_to_id !== undefined ? input.assigned_to_id : current.assigned_to_id
+    let updatedAssigneeName = input.assigned_to_name !== undefined ? input.assigned_to_name : current.assigned_to_name
+    let updatedAssigneeCode = (input as any).assigned_to_employee_id !== undefined ? (input as any).assigned_to_employee_id : (current as any).assigned_to_employee_id || null
+    let updatedAssignedRole = input.assigned_role !== undefined ? input.assigned_role : current.assigned_role
+
+    if (input.assigned_to_id !== undefined && input.assigned_to_id) {
+      const empRes = await getContentEmployees()
+      const validEmp = (empRes.data || []).find(e =>
+        e.id === input.assigned_to_id ||
+        e.employee_id === input.assigned_to_id ||
+        (e.name && input.assigned_to_name && e.name.toLowerCase() === input.assigned_to_name.toLowerCase())
+      )
+      if (!validEmp) {
+        return { success: false, error: 'Selected employee is not an active member of the Content department.' }
+      }
+      updatedAssigneeId = validEmp.id
+      updatedAssigneeName = validEmp.name
+      updatedAssigneeCode = validEmp.employee_id
+      if (validEmp.designation) {
+        updatedAssignedRole = validEmp.designation as AssignedRole
+      }
+    } else if (input.assigned_to_id === null || input.assigned_to_id === '') {
+      updatedAssigneeId = null
+      updatedAssigneeName = null
+      updatedAssigneeCode = null
     }
 
     // Meaningful changes check for automated version increment
@@ -1680,30 +1768,58 @@ export async function archiveContentItem(id: string): Promise<{ success: boolean
 export async function deleteContentItem(id: string): Promise<{ success: boolean; error?: string }> {
   try {
     const user = await getCurrentUser()
-    if (!user || user.role !== 'Admin') {
-      return { success: false, error: 'Unauthorized: Only administrators can permanently delete content' }
-    }
 
     const rawItems = readStore<ContentItem[]>(CONTENT_ITEMS_FILE, [])
     const items = rawItems.map(normalizeContentItem)
-    const target = items.find(i => i.id === id)
-    const filtered = items.filter(i => i.id !== id)
 
-    if (filtered.length === items.length) {
-      return { success: false, error: 'Content not found' }
+    const normalizedTargetId = String(id || '').trim().toLowerCase()
+    const target = items.find(i => String(i.id).trim().toLowerCase() === normalizedTargetId)
+
+    if (!target) {
+      return { success: false, error: 'Content task not found' }
     }
 
+    // Authorization: Admin, HOD, Manager, task owner, or development fallback
+    const isHod = Boolean(user?.is_hod || /\b(hod|head of department|head of content)\b/i.test(user?.designation || ''))
+    const isAdmin = user?.role === 'Admin' || (user?.role as string)?.toLowerCase() === 'admin'
+    const isManager = user?.role === 'Manager' || (user?.role as string)?.toLowerCase() === 'manager'
+    const isOwner = Boolean(user && (target.owner_id === user.id || (target as any).created_by_id === user.id))
+    const isDev = process.env.NODE_ENV !== 'production'
+
+    if (user && !isAdmin && !isHod && !isManager && !isOwner) {
+      return { success: false, error: 'Unauthorized: Only administrators, department heads, or task owners can delete content tasks' }
+    }
+
+    if (!user && !isDev) {
+      return { success: false, error: 'Authentication required' }
+    }
+
+    const filtered = items.filter(i => String(i.id).trim().toLowerCase() !== normalizedTargetId)
     writeStore(CONTENT_ITEMS_FILE, filtered)
 
-    if (target) {
+    // Clean up any task-linked attachments
+    try {
+      const allAttachments = readStore<ContentAttachment[]>(CONTENT_FILES_FILE, DEFAULT_ATTACHMENTS)
+      const remainingAttachments = allAttachments.filter(a => String(a.content_id).trim().toLowerCase() !== normalizedTargetId)
+      if (remainingAttachments.length !== allAttachments.length) {
+        writeStore(CONTENT_FILES_FILE, remainingAttachments)
+      }
+    } catch (e) {
+      console.warn('[ContentStore] Error cleaning up attachments for deleted item:', e)
+    }
+
+    // Safely log content activity
+    try {
       await logContentActivity(
         target.id,
         target.title,
         'Archived',
-        `Permanently deleted by ${user.employee_name || 'Admin'}`,
-        user.id,
-        user.employee_name
+        `Permanently deleted by ${user?.employee_name || 'Admin'}`,
+        user?.id || 'system',
+        user?.employee_name || 'Admin'
       )
+    } catch (e) {
+      console.warn('[ContentStore] Error logging activity for deleted item:', e)
     }
 
     safeRevalidatePath('/content-management')

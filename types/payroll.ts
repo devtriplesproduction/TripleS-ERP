@@ -39,3 +39,121 @@ export interface PayrollDeductionActionResponse<T = any> {
   data?: T;
   error?: string;
 }
+
+export type PayrollRunStatus = 'DRAFT' | 'CALCULATED' | 'REVIEWED' | 'APPROVED' | 'FINALIZED';
+
+export interface PayrollRun {
+  id: string;
+  year: number;
+  month: number;
+  status: PayrollRunStatus;
+  total_employees: number;
+  total_payout: number;
+  created_at: string;
+  updated_at: string;
+  finalized_at?: string | null;
+  finalized_by?: string | null;
+}
+
+export interface SalaryProrationDetail {
+  isProrated: boolean;
+  eligibleWorkingDays: number;
+  scheduledWorkingDays: number;
+  effectiveStartDate: string;
+  effectiveEndDate: string;
+  hikeSplits?: Array<{
+    startDate: string;
+    endDate: string;
+    rate: number;
+    workingDays: number;
+    subtotal: number;
+  }>;
+  reason?: string;
+}
+
+export interface DayPayrollBreakdown {
+  date: string;
+  dayOfWeek: string;
+  dayType: 'WORKING_DAY' | 'WEEKLY_OFF' | 'COMPANY_HOLIDAY';
+  activity: string;
+  officeHoursLogged: number;
+  payableWorkedHours: number;
+  payableFraction: number;
+  salaryCredit: number;
+  deductionDays: number;
+  deductionAmount: number;
+  compOffMinutesEarned: number;
+  status: 'FULL_DAY' | 'HALF_DAY' | 'UNPAID' | 'LEAVE' | 'HOLIDAY' | 'SUNDAY' | 'ABSENT' | 'OFF';
+  notes?: string;
+}
+
+export interface PayrollReconciliation {
+  isScheduledDaysReconciled: boolean;
+  scheduledWorkingDays: number;
+  payableDays: number;
+  deductedDays: number;
+  isFinancialReconciled: boolean;
+  baseSalary: number;
+  netPayable: number;
+  totalDeductions: number;
+  earnedPay: number;
+  compOffMinutesEarned: number;
+  status: 'RECONCILED' | 'DISCREPANCY';
+  notes?: string;
+  divisorMode?: 'actual_mon_sat' | 'fixed_26';
+  dailyRate?: number;
+}
+
+export interface PayrollItem {
+  id: string;
+  payroll_run_id: string;
+  employee_id: string;
+  name?: string;
+  department?: string;
+  designation?: string;
+  employee_id_number?: string;
+  salary: number;
+  standard_hours: number;
+  actual_worked_hours: number;
+  credited_leave_hours: number;
+  unpaid_leave_hours: number;
+  paid_holiday_hours: number;
+  wfh_hours: number;
+  extra_hours: number;
+  short_hours: number;
+  total_paid_hours: number;
+  days_full_day?: number;
+  days_half_day: number;
+  days_unpaid_leave_eod: number;
+  days_absent?: number;
+  payable_worked_hours?: number;
+  payable_hours?: number;
+  comp_off_minutes_earned: number;
+  overtime_pay: number;
+  attendance_deduction: number;
+  unpaid_leave_deduction: number;
+  manual_deductions: number;
+  short_hours_deduction: number;
+  gross_pay: number;
+  total_deductions: number;
+  net_payable: number;
+  is_locked: boolean;
+  has_payroll_data: boolean;
+  metadata?: {
+    proration?: SalaryProrationDetail;
+    deductionsList?: any[];
+    dailyBreakdown?: DayPayrollBreakdown[];
+    reconciliation?: PayrollReconciliation;
+    adjustments?: Array<{
+      amount: number;
+      reason: string;
+      adjustedBy: string;
+      adjustedAt: string;
+    }>;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+export type { PayrollResult } from '@/lib/services/payroll.service';
+
