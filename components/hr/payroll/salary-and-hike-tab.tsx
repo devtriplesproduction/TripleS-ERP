@@ -224,15 +224,15 @@ export function SalaryAndHikeTab({ employee }: { employee: any }) {
         ) : salaryHistory.length > 0 ? (
           <div className="space-y-3">
             {salaryHistory.map((hist: any) => (
-              <div key={hist.id} className="p-5 bg-card border border-border rounded-2xl flex items-center justify-between shadow-sm">
+              <div key={hist.id} className="p-5 bg-card border border-border rounded-lg flex items-center justify-between shadow-xs">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-secondary flex items-center justify-center text-foreground shrink-0">
+                  <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center text-foreground shrink-0">
                     <TrendingUp className="w-5 h-5" />
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
                       <span className="text-base font-bold text-foreground">₹{parseFloat(hist.new_salary).toLocaleString('en-IN')}</span>
-                      <Badge variant="outline" className="text-[10px] font-bold text-foreground border-border bg-secondary">
+                      <Badge variant="outline" className="text-[10px] font-bold text-foreground border-border bg-secondary rounded-sm">
                         +{parseFloat(hist.increment_percentage).toFixed(1)}%
                       </Badge>
                     </div>

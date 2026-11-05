@@ -134,13 +134,15 @@ export const PUBLIC_ROUTES = ['/login', '/unauthorized', '/access-disabled']
 export function hasRouteAccess(
   role: AppRole | string | null | undefined, 
   pathname: string, 
-  isHod?: boolean
+  isHod?: boolean,
+  department?: string | null
 ): boolean {
   if (!role || !ALL_ROLES.includes(role as AppRole)) return false
 
-  // Special Content Management access for HODs and Admin
+  // Special Content Management access for Admin, Manager, HODs, and Content department members
   if (pathname.startsWith('/content-management')) {
-    if (role === 'Admin' || isHod) return true
+    if (role === 'Admin' || role === 'Manager' || isHod) return true
+    if (department && department.toLowerCase().trim() === 'content') return true
   }
 
   // Special Project Management bypass for HODs

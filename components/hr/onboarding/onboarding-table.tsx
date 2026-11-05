@@ -18,6 +18,7 @@ import Link from 'next/link'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { DatePicker } from '@/components/ui/date-picker'
 import { formatDateReadable } from '@/lib/utils/date'
+import { EmployeePagination } from '@/components/ui/pagination'
 import { ChevronLeft, ChevronRight, Trash2, Search, Filter, Loader2, Eye, Calendar, Building2, Briefcase, Star, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 

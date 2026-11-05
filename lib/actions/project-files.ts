@@ -271,3 +271,135 @@ export async function getProjectFileDownloadUrlAction(storagePath: string, proje
     return { success: false, error: err.message || 'Failed to get download URL' }
   }
 }
+
+export async function updateProjectFileAction(
+  projectId: string,
+  fileId: string,
+  formData: FormData
+): Promise<{ success: boolean; data?: ProjectFileMetadata; error?: string }> {
+  try {
+    const user = await getCurrentUser()
+    if (!user) return { success: false, error: 'Authentication required' }
+
+    const admin = await createAdminClient()
+
+    // Authorization: only Admin, HOD, or Project Manager can edit, or the uploader.
+    let canEdit = user.role === 'Admin' || user.is_hod
+    if (!canEdit) {
+      const { data: pCheck } = await admin.from('projects').select('project_manager_id').eq('id', projectId).single()
+      if (pCheck?.project_manager_id === user.id) {
+        canEdit = true
+      } else {
+        const { data: fCheck } = await admin.from('project_files').select('uploaded_by').eq('id', fileId).single()
+        if (fCheck?.uploaded_by === user.id) {
+          canEdit = true
+        }
+      }
+    }
+
+    if (!canEdit) {
+      return { success: false, error: 'Unauthorized to edit this file' }
+    }
+
+    const newName = (formData.get('name') as string)?.trim()
+    const file = formData.get('file') as File | null
+
+    if (!newName && !file) {
+      return { success: false, error: 'No update data provided' }
+    }
+
+    // Get current file record
+    const { data: currentFile, error: fetchErr } = await admin
+      .from('project_files')
+      .select('*')
+      .eq('id', fileId)
+      .eq('project_id', projectId)
+      .single()
+
+    if (fetchErr || !currentFile) {
+      return { success: false, error: fetchErr?.message || 'File not found' }
+    }
+
+    const updatePayload: Record<string, any> = {
+      updated_at: new Date().toISOString()
+    }
+
+    if (newName) {
+      updatePayload.file_name = newName
+    }
+
+    if (file && file.size > 0) {
+      const MAX_SIZE = 50 * 1024 * 1024
+      if (file.size > MAX_SIZE) {
+        return { success: false, error: 'File size exceeds 50MB limit' }
+      }
+
+      const dangerousExtensions = ['.exe', '.bat', '.cmd', '.sh', '.ps1']
+      const fileExt = file.name.substring(file.name.lastIndexOf('.')).toLowerCase()
+      if (dangerousExtensions.includes(fileExt)) {
+        return { success: false, error: 'Executable files are not allowed' }
+      }
+
+      // Create bucket if it doesn't exist
+      const { data: buckets } = await admin.storage.listBuckets()
+      if (!buckets?.find((b: any) => b.name === 'project-files')) {
+        await admin.storage.createBucket('project-files', { public: false })
+      }
+
+      const uniqueId = crypto.randomUUID()
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-_]/g, '_')
+      const storagePath = `${projectId}/${uniqueId}-${sanitizedName}`
+
+      const { error: uploadError } = await admin.storage
+        .from('project-files')
+        .upload(storagePath, file, {
+          contentType: file.type,
+          upsert: false
+        })
+
+      if (uploadError) {
+        return { success: false, error: uploadError.message }
+      }
+
+      // Delete old file from storage if existing
+      if (currentFile.storage_path) {
+        await admin.storage.from('project-files').remove([currentFile.storage_path])
+      }
+
+      updatePayload.storage_path = storagePath
+      updatePayload.file_size = file.size
+      updatePayload.mime_type = file.type
+      if (!newName) {
+        updatePayload.file_name = file.name
+      }
+    }
+
+    const { data: updated, error: updateError } = await admin
+      .from('project_files')
+      .update(updatePayload)
+      .eq('id', fileId)
+      .select(`
+        *,
+        profile:profiles!project_files_uploaded_by_fkey(first_name, last_name, employee_id)
+      `)
+      .single()
+
+    if (updateError) {
+      return { success: false, error: updateError.message }
+    }
+
+    let prof = updated?.profile
+    if (Array.isArray(prof)) prof = prof[0] || null
+    if (updated) {
+      updated.profile = prof
+      if (prof) {
+        await attachProfilePhotos(admin, [prof])
+      }
+    }
+
+    revalidatePath(`/projects/${projectId}`)
+    return { success: true, data: updated }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to update file' }
+  }
+}

@@ -6,9 +6,11 @@ import {
   uploadProjectFileAction,
   deleteProjectFileAction,
   getProjectFileDownloadUrlAction,
+  updateProjectFileAction,
   ProjectFileMetadata,
 } from '@/lib/actions/project-files'
 import { DocumentUploadSection, DocumentItem } from '@/components/documents/DocumentUploadSection'
+import { EditDocumentModal } from '@/components/documents/EditDocumentModal'
 import { Folder } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -16,16 +18,22 @@ interface ProjectFilesTabProps {
   projectId: string
   canUpload?: boolean
   canDelete?: boolean
+  canEdit?: boolean
 }
 
 export function ProjectFilesTab({
   projectId,
   canUpload = true,
   canDelete = true,
+  canEdit = true,
 }: ProjectFilesTabProps) {
   const [files, setFiles] = useState<ProjectFileMetadata[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const [editingDoc, setEditingDoc] = useState<DocumentItem | null>(null)
+  const [editingDocIndex, setEditingDocIndex] = useState<number | null>(null)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isSavingEdit, setIsSavingEdit] = useState(false)
 
   const fetchFiles = useCallback(async () => {
     if (!projectId) return
@@ -143,6 +151,48 @@ export function ProjectFilesTab({
     }
   }
 
+  const handleEditClick = (doc: DocumentItem, index: number) => {
+    setEditingDoc(doc)
+    setEditingDocIndex(index)
+    setIsEditModalOpen(true)
+  }
+
+  const handleSaveEditFile = async (
+    index: number,
+    data: { name: string; file?: File }
+  ) => {
+    if (!editingDoc || !editingDoc.id) {
+      toast.error('File ID missing')
+      return
+    }
+
+    setIsSavingEdit(true)
+    try {
+      const formData = new FormData()
+      formData.append('name', data.name)
+      if (data.file) {
+        formData.append('file', data.file)
+      }
+
+      const res = await updateProjectFileAction(projectId, editingDoc.id, formData)
+      if (res.success && res.data) {
+        setFiles((prev) =>
+          prev.map((f) => (f.id === editingDoc.id ? res.data! : f))
+        )
+        toast.success('File updated successfully')
+        setIsEditModalOpen(false)
+        setEditingDoc(null)
+        setEditingDocIndex(null)
+      } else {
+        toast.error(res.error || 'Failed to update file')
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update file')
+    } finally {
+      setIsSavingEdit(false)
+    }
+  }
+
   const documentItems: DocumentItem[] = files.map((f) => {
     const uploaderName = f.profile
       ? `${f.profile.first_name} ${f.profile.last_name || ''}`.trim()
@@ -166,25 +216,45 @@ export function ProjectFilesTab({
   })
 
   return (
-    <DocumentUploadSection
-      title="Project Files"
-      description="Documents, assets, and deliverables associated with this project."
-      icon={<Folder className="w-5 h-5 text-foreground" />}
-      documents={documentItems}
-      onUpload={handleUploadFiles}
-      onView={handleViewFile}
-      onDownload={handleDownloadFile}
-      onDelete={handleDeleteFile}
-      isUploading={uploading}
-      isLoading={loading}
-      accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg,.webp,.zip"
-      maxSizeBytes={50 * 1024 * 1024}
-      maxSizeLabel="50MB"
-      canUpload={canUpload}
-      canDelete={canDelete}
-      uploadButtonText="Upload File"
-      emptyStateTitle="No files uploaded yet"
-      emptyStateDescription="Upload project requirements, design assets, or final deliverables here. Files will be accessible to all team members."
-    />
+    <>
+      <DocumentUploadSection
+        title="Project Files"
+        description="Documents, assets, and deliverables associated with this project."
+        icon={<Folder className="w-5 h-5 text-foreground" />}
+        documents={documentItems}
+        onUpload={handleUploadFiles}
+        onView={handleViewFile}
+        onDownload={handleDownloadFile}
+        onDelete={handleDeleteFile}
+        onEdit={handleEditClick}
+        canEdit={canEdit}
+        isUploading={uploading}
+        isLoading={loading}
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg,.webp,.zip"
+        maxSizeBytes={50 * 1024 * 1024}
+        maxSizeLabel="50MB"
+        canUpload={canUpload}
+        canDelete={canDelete}
+        uploadButtonText="Upload File"
+        emptyStateTitle="No files uploaded yet"
+        emptyStateDescription="Upload project requirements, design assets, or final deliverables here. Files will be accessible to all team members."
+      />
+
+      <EditDocumentModal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false)
+          setEditingDoc(null)
+          setEditingDocIndex(null)
+        }}
+        document={editingDoc}
+        index={editingDocIndex}
+        onSave={handleSaveEditFile}
+        isSaving={isSavingEdit}
+        maxSizeBytes={50 * 1024 * 1024}
+        maxSizeLabel="50MB"
+        accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.png,.jpg,.jpeg,.webp,.zip"
+      />
+    </>
   )
 }

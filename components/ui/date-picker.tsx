@@ -1,5 +1,6 @@
 import * as React from "react"
 import { Calendar as CalendarIcon, ChevronDown, X as XIcon } from "lucide-react"
+import { format } from "date-fns"
 
 import { cn } from "@/lib/utils"
 import { Calendar } from "@/components/ui/calendar"
@@ -15,6 +16,7 @@ export interface DatePickerProps {
   onChange?: (date: string) => void
   placeholder?: string
   displayFormat?: "DD/MM/YYYY" | "DD MMM YYYY"
+  formatStr?: string
   className?: string
   contentClassName?: string
   startMonth?: Date
@@ -31,6 +33,7 @@ export function DatePicker({
   onChange,
   placeholder = "dd/mm/yyyy",
   displayFormat = "DD/MM/YYYY",
+  formatStr,
   className,
   contentClassName,
   startMonth = new Date(1950, 0),
@@ -51,11 +54,18 @@ export function DatePicker({
 
   const displayText = React.useMemo(() => {
     if (!dateValue) return placeholder
+    if (formatStr) {
+      try {
+        return format(dateValue, formatStr)
+      } catch {
+        return formatDate(dateValue)
+      }
+    }
     if (displayFormat === "DD MMM YYYY") {
       return formatDateReadable(dateValue)
     }
     return formatDate(dateValue)
-  }, [dateValue, displayFormat, placeholder])
+  }, [dateValue, formatStr, displayFormat, placeholder])
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

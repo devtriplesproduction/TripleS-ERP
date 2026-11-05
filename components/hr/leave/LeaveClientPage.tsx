@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Calendar,
@@ -20,6 +20,8 @@ import {
   Briefcase,
   Search,
   TrendingUp,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react"
 import { format } from "date-fns"
 import { formatDateReadable } from "@/lib/utils/date"
@@ -55,6 +57,7 @@ import { Dropdown } from "@/components/ui/Dropdown"
 import { Input } from "@/components/ui/input"
 import { CompHoursView } from "./CompHoursView"
 import { WorklogView } from "./WorklogView"
+import { EmployeePagination } from "@/components/ui/pagination"
 
 function SickLeaveIcon({ className = "w-5 h-5 text-foreground" }: { className?: string }) {
   return (
@@ -162,6 +165,14 @@ export function LeaveClientPage({
   const [approvalLeaves, setApprovalLeaves] = useState<any[]>(leavesToApprove || [])
   const [myLeavesList, setMyLeavesList] = useState<any[]>(myLeaves || [])
   const [submittingId, setSubmittingId] = useState<string | null>(null)
+
+  // Pagination state for Approvals
+  const [approvalsPage, setApprovalsPage] = useState<number>(1)
+  const [approvalsPageSize, setApprovalsPageSize] = useState<number>(10)
+
+  // Pagination state for My Leaves
+  const [myLeavesPage, setMyLeavesPage] = useState<number>(1)
+  const [myLeavesPageSize, setMyLeavesPageSize] = useState<number>(10)
 
   // Dynamic header based on selected tab
   const headerInfo = useMemo(() => {
@@ -289,6 +300,24 @@ export function LeaveClientPage({
 
   const filteredMyLeaves = myLeavesList.filter(matchesFilter)
   const filteredLeavesToApprove = approvalLeaves.filter(matchesFilter)
+
+  // Reset pagination on filter/search changes
+  useEffect(() => {
+    setApprovalsPage(1)
+    setMyLeavesPage(1)
+  }, [statusFilter, typeFilter, search])
+
+  const totalApprovalPages = Math.max(1, Math.ceil(filteredLeavesToApprove.length / approvalsPageSize))
+  const paginatedLeavesToApprove = useMemo(() => {
+    const start = (approvalsPage - 1) * approvalsPageSize
+    return filteredLeavesToApprove.slice(start, start + approvalsPageSize)
+  }, [filteredLeavesToApprove, approvalsPage, approvalsPageSize])
+
+  const totalMyLeavesPages = Math.max(1, Math.ceil(filteredMyLeaves.length / myLeavesPageSize))
+  const paginatedMyLeaves = useMemo(() => {
+    const start = (myLeavesPage - 1) * myLeavesPageSize
+    return filteredMyLeaves.slice(start, start + myLeavesPageSize)
+  }, [filteredMyLeaves, myLeavesPage, myLeavesPageSize])
 
   const pendingCount = approvalLeaves.filter((l: any) => l.status?.includes("Pending")).length
 
@@ -474,7 +503,7 @@ export function LeaveClientPage({
                   {pendingCount > 0 && (
                     <span
                       className={cn(
-                        "text-[10px] px-1.5 py-0.2 rounded-full font-bold",
+                        "text-[10px] px-1.5 py-0.2 rounded-md font-bold",
                         activeTab === 'approve'
                           ? "bg-background text-foreground"
                           : "bg-foreground text-background"
@@ -611,137 +640,157 @@ export function LeaveClientPage({
               </p>
             </div>
           ) : (
-            filteredMyLeaves.map((leave: any) => {
-              const isApproved = leave.status === 'Approved'
-              const isPending = leave.status?.includes('Pending')
-              const isPast = leave.end_date ? new Date(leave.end_date + 'T23:59:59') < new Date() : false
-              const canCancel = isPending || (isApproved && !isPast)
+<>
+              {paginatedMyLeaves.map((leave: any) => {
+                const isApproved = leave.status === 'Approved'
+                const isPending = leave.status?.includes('Pending')
+                const isPast = leave.end_date ? new Date(leave.end_date + 'T23:59:59') < new Date() : false
+                const canCancel = isPending || (isApproved && !isPast)
 
-              return (
-                <div
-                  key={leave.id}
-                  className="rounded-2xl border border-border/60 bg-card hover:border-border transition-all px-3.5 sm:px-4 py-2.5 sm:py-3 shadow-xs"
-                >
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-4">
-                    {/* Left - Request Type & Dates (Clickable to view details popup) */}
-                    <div
-                      onClick={() => setSelectedLeave(leave)}
-                      title="Click to view details"
-                      className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group"
-                    >
-                      {/* Icon Box */}
-                      <div className="w-10 h-10 rounded-xl bg-secondary/50 dark:bg-zinc-900/80 border border-border/70 flex items-center justify-center shrink-0 group-hover:border-border transition-colors">
-                        {getRequestTypeIcon(leave, "w-4 h-4 text-foreground")}
-                      </div>
-                      {/* Details */}
-                      <div className="min-w-0 flex-1 space-y-0.5">
-                        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                          <h3 className="text-xs sm:text-sm font-semibold text-foreground tracking-tight group-hover:text-primary transition-colors truncate">
-                            {leave.request_type === "WFH" ? "Work From Home" : leave.leave_type}
-                          </h3>
-                          {leave.is_half_day && (
-                            <span className="px-1.5 py-0.2 rounded-md bg-secondary text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0 border border-border">
-                              Half Day
-                            </span>
-                          )}
-                          {leave.medical_certificate_url && (
-                            <a
-                              href={leave.medical_certificate_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/60 hover:bg-secondary border border-border text-[11px] font-medium text-foreground transition-colors shrink-0"
-                              title="View Medical Certificate"
-                            >
-                              <Paperclip className="w-3 h-3 text-muted-foreground" />
-                              <span>Doc</span>
-                            </a>
-                          )}
+                return (
+                  <div
+                    key={leave.id}
+                    className="rounded-2xl border border-border/60 bg-card hover:border-border transition-all px-3.5 sm:px-4 py-2.5 sm:py-3 shadow-xs"
+                  >
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-4">
+                      {/* Left - Request Type & Dates (Clickable to view details popup) */}
+                      <div
+                        onClick={() => setSelectedLeave(leave)}
+                        title="Click to view details"
+                        className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group"
+                      >
+                        {/* Icon Box */}
+                        <div className="w-10 h-10 rounded-xl bg-secondary/50 dark:bg-zinc-900/80 border border-border/70 flex items-center justify-center shrink-0 group-hover:border-border transition-colors">
+                          {getRequestTypeIcon(leave, "w-4 h-4 text-foreground")}
                         </div>
-                        <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-muted-foreground flex-wrap sm:flex-nowrap">
-                          <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                          <span className="truncate">{formatDateRange(leave.start_date, leave.end_date)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* ZONE 3: Right - Duration, Status Badge, Cancel & 3-dots */}
-                    <div className="flex items-center justify-between lg:justify-end gap-2.5 sm:gap-3 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-border/40">
-                      {/* Duration Column (always visible matching reference image) */}
-                      <div className="flex items-center gap-2 shrink-0 min-w-[80px]">
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-border/70 flex items-center justify-center text-muted-foreground shrink-0">
-                          <Clock className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="leading-tight">
-                          <div className="text-[10px] sm:text-[11px] text-muted-foreground font-medium">Duration</div>
-                          <div className="text-xs sm:text-sm font-bold text-foreground">
-                            {calculateDuration(leave.start_date, leave.end_date, leave.is_half_day)}
+                        {/* Details */}
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                            <h3 className="text-xs sm:text-sm font-semibold text-foreground tracking-tight group-hover:text-primary transition-colors truncate">
+                              {leave.request_type === "WFH" ? "Work From Home" : leave.leave_type}
+                            </h3>
+                            {leave.is_half_day && (
+                              <span className="px-1.5 py-0.2 rounded-md bg-secondary text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0 border border-border">
+                                Half Day
+                              </span>
+                            )}
+                            {leave.medical_certificate_url && (
+                              <a
+                                href={leave.medical_certificate_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/60 hover:bg-secondary border border-border text-[11px] font-medium text-foreground transition-colors shrink-0"
+                                title="View Medical Certificate"
+                              >
+                                <Paperclip className="w-3 h-3 text-muted-foreground" />
+                                <span>Doc</span>
+                              </a>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-muted-foreground flex-wrap sm:flex-nowrap">
+                            <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <span className="truncate">{formatDateRange(leave.start_date, leave.end_date)}</span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Status Badge */}
-                      {getStatusBadge(leave.status)}
+                      {/* ZONE 3: Right - Duration, Status Badge, Cancel & 3-dots */}
+                      <div className="flex items-center justify-between lg:justify-end gap-2.5 sm:gap-3 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-border/40">
+                        {/* Duration Column */}
+                        <div className="flex items-center gap-2 shrink-0 min-w-[80px]">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border border-border/70 flex items-center justify-center text-muted-foreground shrink-0">
+                            <Clock className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="leading-tight">
+                            <div className="text-[10px] sm:text-[11px] text-muted-foreground font-medium">Duration</div>
+                            <div className="text-xs sm:text-sm font-bold text-foreground">
+                              {calculateDuration(leave.start_date, leave.end_date, leave.is_half_day)}
+                            </div>
+                          </div>
+                        </div>
 
-                      {/* Cancel Button (when pending) */}
-                      {isPending && (
-                        <button
-                          onClick={() => handleCancelMyLeave(leave.id)}
-                          disabled={submittingId === leave.id}
-                          className="h-9 px-3.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0 disabled:opacity-50"
-                        >
-                          {submittingId === leave.id ? (
-                            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                          ) : (
-                            <Trash2 className="w-3.5 h-3.5 shrink-0" />
-                          )}
-                          <span>Cancel</span>
-                        </button>
-                      )}
+                        {/* Status Badge */}
+                        {getStatusBadge(leave.status)}
 
-                      {/* 3-dots Menu */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/60 rounded-xl transition-colors shrink-0"
-                          aria-label="More options"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44 bg-popover border border-border text-popover-foreground rounded-xl shadow-lg p-1.5">
-                          <DropdownMenuItem
-                            onClick={() => setSelectedLeave(leave)}
-                            className="flex items-center gap-2 cursor-pointer rounded-lg text-xs sm:text-sm py-2"
+                        {/* Cancel Button (when pending) */}
+                        {isPending && (
+                          <button
+                            onClick={() => handleCancelMyLeave(leave.id)}
+                            disabled={submittingId === leave.id}
+                            className="h-9 px-3.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors shrink-0 disabled:opacity-50"
                           >
-                            <FileText className="w-4 h-4 text-muted-foreground" />
-                            <span>View Details</span>
-                          </DropdownMenuItem>
-                          {leave.medical_certificate_url && (
+                            {submittingId === leave.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                            ) : (
+                              <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                            )}
+                            <span>Cancel</span>
+                          </button>
+                        )}
+
+                        {/* 3-dots Menu */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/60 rounded-xl transition-colors shrink-0"
+                            aria-label="More options"
+                          >
+                            <MoreVertical className="w-4 h-4" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44 bg-popover border border-border text-popover-foreground rounded-xl shadow-lg p-1.5">
                             <DropdownMenuItem
-                              onClick={() => window.open(leave.medical_certificate_url, '_blank')}
+                              onClick={() => setSelectedLeave(leave)}
                               className="flex items-center gap-2 cursor-pointer rounded-lg text-xs sm:text-sm py-2"
                             >
-                              <Paperclip className="w-4 h-4 text-muted-foreground" />
-                              <span>Medical Doc</span>
+                              <FileText className="w-4 h-4 text-muted-foreground" />
+                              <span>View Details</span>
                             </DropdownMenuItem>
-                          )}
-                          {canCancel && !isPending && (
-                            <DropdownMenuItem
-                              onClick={() => handleCancelMyLeave(leave.id)}
-                              disabled={submittingId === leave.id}
-                              variant="destructive"
-                              className="flex items-center gap-2 cursor-pointer rounded-lg text-xs sm:text-sm py-2 text-rose-500 focus:text-rose-400"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              <span>Cancel Request</span>
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            {leave.medical_certificate_url && (
+                              <DropdownMenuItem
+                                onClick={() => window.open(leave.medical_certificate_url, '_blank')}
+                                className="flex items-center gap-2 cursor-pointer rounded-lg text-xs sm:text-sm py-2"
+                              >
+                                <Paperclip className="w-4 h-4 text-muted-foreground" />
+                                <span>Medical Doc</span>
+                              </DropdownMenuItem>
+                            )}
+                            {canCancel && !isPending && (
+                              <DropdownMenuItem
+                                onClick={() => handleCancelMyLeave(leave.id)}
+                                disabled={submittingId === leave.id}
+                                variant="destructive"
+                                className="flex items-center gap-2 cursor-pointer rounded-lg text-xs sm:text-sm py-2 text-rose-500 focus:text-rose-400"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                <span>Cancel Request</span>
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )
-            })
+                )
+              })}
+
+              {/* My Leaves Pagination Footer */}
+              {filteredMyLeaves.length > 0 && (
+                <EmployeePagination
+                  currentPage={myLeavesPage}
+                  totalPages={totalMyLeavesPages}
+                  totalItems={filteredMyLeaves.length}
+                  itemsPerPage={myLeavesPageSize}
+                  onPageChange={setMyLeavesPage}
+                  onPageSizeChange={(sz) => {
+                    setMyLeavesPageSize(sz)
+                    setMyLeavesPage(1)
+                  }}
+                  showPageSizeSelector
+                  itemLabel="requests"
+                  className="rounded-2xl border border-border/60 bg-card px-4 py-3 mt-2"
+                />
+              )}
+            </>
           )}
         </div>
       ) : (
@@ -756,144 +805,164 @@ export function LeaveClientPage({
               </p>
             </div>
           ) : (
-            filteredLeavesToApprove.map((leave: any) => {
-              const firstName = leave.employee?.first_name || "Employee"
-              const lastName = leave.employee?.last_name || ""
-              const department = leave.employee?.department || ""
-              const isPending = leave.status?.includes('Pending')
+            <>
+              {paginatedLeavesToApprove.map((leave: any) => {
+                const firstName = leave.employee?.first_name || "Employee"
+                const lastName = leave.employee?.last_name || ""
+                const department = leave.employee?.department || ""
+                const isPending = leave.status?.includes('Pending')
 
-              return (
-                <div
-                  key={leave.id}
-                  className="rounded-2xl border border-border/60 bg-card hover:border-border transition-all px-3.5 sm:px-4 py-2.5 sm:py-3 shadow-xs"
-                >
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-4">
-                    {/* Left - Employee & Request Info (Clickable to view details popup) */}
-                    <div
-                      onClick={() => setSelectedLeave(leave)}
-                      title="Click to view details"
-                      className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group"
-                    >
-                      {/* Icon Box */}
-                      <div className="w-10 h-10 rounded-xl bg-secondary/50 dark:bg-zinc-900/80 border border-border/70 flex items-center justify-center shrink-0 group-hover:border-border transition-colors">
-                        {getRequestTypeIcon(leave, "w-4 h-4 text-foreground")}
-                      </div>
-                      {/* Details */}
-                      <div className="min-w-0 flex-1 space-y-0.5">
-                        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                          <h3 className="text-xs sm:text-sm font-semibold text-foreground tracking-tight group-hover:text-primary transition-colors truncate">
-                            {firstName} {lastName}
-                          </h3>
-                          <span className="text-[11px] text-muted-foreground truncate">
-                            • {leave.request_type === 'WFH' ? 'Work From Home' : leave.leave_type}
-                            {department ? ` (${department})` : ''}
-                          </span>
-                          {leave.is_half_day && (
-                            <span className="px-1.5 py-0.2 rounded-md bg-secondary text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0 border border-border">
-                              Half Day
+                return (
+                  <div
+                    key={leave.id}
+                    className="rounded-2xl border border-border/60 bg-card hover:border-border transition-all px-3.5 sm:px-4 py-2.5 sm:py-3 shadow-xs"
+                  >
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-4">
+                      {/* Left - Employee & Request Info (Clickable to view details popup) */}
+                      <div
+                        onClick={() => setSelectedLeave(leave)}
+                        title="Click to view details"
+                        className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer group"
+                      >
+                        {/* Icon Box */}
+                        <div className="w-10 h-10 rounded-xl bg-secondary/50 dark:bg-zinc-900/80 border border-border/70 flex items-center justify-center shrink-0 group-hover:border-border transition-colors">
+                          {getRequestTypeIcon(leave, "w-4 h-4 text-foreground")}
+                        </div>
+                        {/* Details */}
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                            <h3 className="text-xs sm:text-sm font-semibold text-foreground tracking-tight group-hover:text-primary transition-colors truncate">
+                              {firstName} {lastName}
+                            </h3>
+                            <span className="text-[11px] text-muted-foreground truncate">
+                              • {leave.request_type === 'WFH' ? 'Work From Home' : leave.leave_type}
+                              {department ? ` (${department})` : ''}
                             </span>
-                          )}
-                          {leave.medical_certificate_url && (
-                            <a
-                              href={leave.medical_certificate_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              onClick={(e) => e.stopPropagation()}
-                              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/60 hover:bg-secondary border border-border text-[11px] font-medium text-foreground transition-colors shrink-0"
-                              title="View Medical Certificate"
-                            >
-                              <Paperclip className="w-3 h-3 text-muted-foreground" />
-                              <span>Doc</span>
-                            </a>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-muted-foreground flex-wrap sm:flex-nowrap">
-                          <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                          <span className="truncate">{formatDateRange(leave.start_date, leave.end_date)}</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* ZONE 3: Right - Duration, Status Badge, Approve/Reject & 3-dots */}
-                    <div className="flex items-center justify-between lg:justify-end gap-2.5 sm:gap-3 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-border/40">
-                      {/* Duration Column (always visible matching reference image) */}
-                      <div className="flex items-center gap-2 shrink-0 min-w-[80px]">
-                        <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-border/70 flex items-center justify-center text-muted-foreground shrink-0">
-                          <Clock className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="leading-tight">
-                          <div className="text-[10px] sm:text-[11px] text-muted-foreground font-medium">Duration</div>
-                          <div className="text-xs sm:text-sm font-bold text-foreground">
-                            {calculateDuration(leave.start_date, leave.end_date, leave.is_half_day)}
+                            {leave.is_half_day && (
+                              <span className="px-1.5 py-0.2 rounded-md bg-secondary text-[10px] font-semibold uppercase tracking-wider text-muted-foreground shrink-0 border border-border">
+                                Half Day
+                              </span>
+                            )}
+                            {leave.medical_certificate_url && (
+                              <a
+                                href={leave.medical_certificate_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-secondary/60 hover:bg-secondary border border-border text-[11px] font-medium text-foreground transition-colors shrink-0"
+                                title="View Medical Certificate"
+                              >
+                                <Paperclip className="w-3 h-3 text-muted-foreground" />
+                                <span>Doc</span>
+                              </a>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 sm:gap-2 text-xs text-muted-foreground flex-wrap sm:flex-nowrap">
+                            <Calendar className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                            <span className="truncate">{formatDateRange(leave.start_date, leave.end_date)}</span>
                           </div>
                         </div>
                       </div>
 
-                      {/* Status Badge */}
-                      {getStatusBadge(leave.status)}
-
-                      {/* Approval Action Buttons (when pending) */}
-                      {isPending && (
-                        <div className="flex items-center gap-2 shrink-0">
-                          <button
-                            onClick={() => handleUpdateStatus(leave.id, 'Approved')}
-                            disabled={submittingId === leave.id}
-                            className="h-9 px-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                          >
-                            {submittingId === leave.id ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                            ) : (
-                              <Check className="w-3.5 h-3.5 shrink-0" />
-                            )}
-                            <span>Approve</span>
-                          </button>
-                          <button
-                            onClick={() => handleUpdateStatus(leave.id, 'Rejected')}
-                            disabled={submittingId === leave.id}
-                            className="h-9 px-3 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50"
-                          >
-                            {submittingId === leave.id ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
-                            ) : (
-                              <X className="w-3.5 h-3.5 shrink-0" />
-                            )}
-                            <span>Reject</span>
-                          </button>
+                      {/* ZONE 3: Right - Duration, Status Badge, Approve/Reject & 3-dots */}
+                      <div className="flex items-center justify-between lg:justify-end gap-2.5 sm:gap-3 shrink-0 pt-2 lg:pt-0 border-t lg:border-t-0 border-border/40">
+                        {/* Duration Column */}
+                        <div className="flex items-center gap-2 shrink-0 min-w-[80px]">
+                          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg border border-border/70 flex items-center justify-center text-muted-foreground shrink-0">
+                            <Clock className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="leading-tight">
+                            <div className="text-[10px] sm:text-[11px] text-muted-foreground font-medium">Duration</div>
+                            <div className="text-xs sm:text-sm font-bold text-foreground">
+                              {calculateDuration(leave.start_date, leave.end_date, leave.is_half_day)}
+                            </div>
+                          </div>
                         </div>
-                      )}
 
-                      {/* 3-dots Menu */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger
-                          className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/60 rounded-xl transition-colors shrink-0"
-                          aria-label="More options"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-44 bg-popover border border-border text-popover-foreground rounded-xl shadow-lg p-1.5">
-                          <DropdownMenuItem
-                            onClick={() => setSelectedLeave(leave)}
-                            className="flex items-center gap-2 cursor-pointer rounded-lg text-xs sm:text-sm py-2"
+                        {/* Status Badge */}
+                        {getStatusBadge(leave.status)}
+
+                        {/* Approval Action Buttons (when pending) */}
+                        {isPending && (
+                          <div className="flex items-center gap-2 shrink-0">
+                            <button
+                              onClick={() => handleUpdateStatus(leave.id, 'Approved')}
+                              disabled={submittingId === leave.id}
+                              className="h-9 px-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                            >
+                              {submittingId === leave.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                              ) : (
+                                <Check className="w-3.5 h-3.5 shrink-0" />
+                              )}
+                              <span>Approve</span>
+                            </button>
+                            <button
+                              onClick={() => handleUpdateStatus(leave.id, 'Rejected')}
+                              disabled={submittingId === leave.id}
+                              className="h-9 px-3 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 text-xs sm:text-sm font-medium flex items-center gap-1.5 transition-colors disabled:opacity-50"
+                            >
+                              {submittingId === leave.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                              ) : (
+                                <X className="w-3.5 h-3.5 shrink-0" />
+                              )}
+                              <span>Reject</span>
+                            </button>
+                          </div>
+                        )}
+
+                        {/* 3-dots Menu */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger
+                            className="w-9 h-9 flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-secondary/60 rounded-xl transition-colors shrink-0"
+                            aria-label="More options"
                           >
-                            <FileText className="w-4 h-4 text-muted-foreground" />
-                            <span>View Details</span>
-                          </DropdownMenuItem>
-                          {leave.medical_certificate_url && (
+                            <MoreVertical className="w-4 h-4" />
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-44 bg-popover border border-border text-popover-foreground rounded-xl shadow-lg p-1.5">
                             <DropdownMenuItem
-                              onClick={() => window.open(leave.medical_certificate_url, '_blank')}
+                              onClick={() => setSelectedLeave(leave)}
                               className="flex items-center gap-2 cursor-pointer rounded-lg text-xs sm:text-sm py-2"
                             >
-                              <Paperclip className="w-4 h-4 text-muted-foreground" />
-                              <span>Medical Doc</span>
+                              <FileText className="w-4 h-4 text-muted-foreground" />
+                              <span>View Details</span>
                             </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                            {leave.medical_certificate_url && (
+                              <DropdownMenuItem
+                                onClick={() => window.open(leave.medical_certificate_url, '_blank')}
+                                className="flex items-center gap-2 cursor-pointer rounded-lg text-xs sm:text-sm py-2"
+                              >
+                                <Paperclip className="w-4 h-4 text-muted-foreground" />
+                                <span>Medical Doc</span>
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )
-            })
+                )
+              })}
+
+              {/* Approvals Pagination Footer */}
+              {filteredLeavesToApprove.length > 0 && (
+                <EmployeePagination
+                  currentPage={approvalsPage}
+                  totalPages={totalApprovalPages}
+                  totalItems={filteredLeavesToApprove.length}
+                  itemsPerPage={approvalsPageSize}
+                  onPageChange={setApprovalsPage}
+                  onPageSizeChange={(sz) => {
+                    setApprovalsPageSize(sz)
+                    setApprovalsPage(1)
+                  }}
+                  showPageSizeSelector
+                  itemLabel="requests"
+                  className="rounded-2xl border border-border/60 bg-card px-4 py-3 mt-2"
+                />
+              )}
+            </>
           )}
         </div>
       )}

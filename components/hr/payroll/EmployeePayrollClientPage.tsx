@@ -388,16 +388,16 @@ export function EmployeePayrollClientPage({ user }: EmployeePayrollClientPagePro
         actions={
           <div className="flex items-center gap-2">
             {isFinalized && (
-              <Badge variant="outline" className="px-2.5 py-1 text-xs border-emerald-500 text-emerald-600 dark:text-emerald-400 gap-1 font-semibold">
+              <Badge variant="outline" className="px-2.5 py-1 text-xs rounded-md border-emerald-500 text-emerald-600 dark:text-emerald-400 gap-1 font-semibold">
                 <Lock className="h-3 w-3" />
                 Finalized Payslip
               </Badge>
             )}
-            <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-full border border-border shadow-xs shrink-0">
+            <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border shadow-xs shrink-0">
               <Button
                 variant="ghost"
                 size="icon"
-                className="rounded-full h-8 w-8 hover:bg-background hover:shadow-xs transition-all cursor-pointer"
+                className="rounded-md h-8 w-8 hover:bg-background hover:shadow-xs transition-all cursor-pointer"
                 onClick={handlePrevMonth}
                 aria-label="Previous month"
               >
@@ -410,7 +410,7 @@ export function EmployeePayrollClientPage({ user }: EmployeePayrollClientPagePro
               <Button
                 variant="ghost"
                 size="icon"
-                className="rounded-full h-8 w-8 hover:bg-background hover:shadow-xs transition-all cursor-pointer"
+                className="rounded-md h-8 w-8 hover:bg-background hover:shadow-xs transition-all cursor-pointer"
                 onClick={handleNextMonth}
                 aria-label="Next month"
               >

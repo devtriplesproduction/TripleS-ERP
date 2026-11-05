@@ -25,6 +25,7 @@ import { useToast } from '@/hooks/use-toast'
 import { Loader2 } from 'lucide-react'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { DocumentUploadSection } from '@/components/documents/DocumentUploadSection'
+import { EditDocumentModal } from '@/components/documents/EditDocumentModal'
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DEPARTMENTS, DIVISIONS, DESIGNATIONS } from '@/config/roles'
@@ -60,6 +61,10 @@ export function EmployeeDetailsClient({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
   const [isUploadingDoc, setIsUploadingDoc] = useState(false)
+  const [editingDocIndex, setEditingDocIndex] = useState<number | null>(null)
+  const [editingDoc, setEditingDoc] = useState<any | null>(null)
+  const [isEditingDocModalOpen, setIsEditingDocModalOpen] = useState(false)
+  const [isSavingEditDoc, setIsSavingEditDoc] = useState(false)
   const [documentsList, setDocumentsList] = useState<any[]>(
     Array.isArray(employee.documents) ? employee.documents : []
   )
@@ -134,6 +139,22 @@ export function EmployeeDetailsClient({
     emergency_phone: initialEc.phone || ''
   })
 
+  const [isEditingProfessional, setIsEditingProfessional] = useState(false)
+  const [isSavingProfessional, setIsSavingProfessional] = useState(false)
+  const [professionalForm, setProfessionalForm] = useState({
+    employee_id_number: employee.employee_id_number || '',
+    department: employee.department || '',
+    division: employee.division || '',
+    designation: employee.designation || employee.job_title || '',
+    job_title: employee.job_title || '',
+    employment_type: employee.employment_type || '',
+    joining_date: employee.joining_date || '',
+    email: employee.email || '',
+    salary: employee.salary ? employee.salary.toString() : '',
+    stipend: employee.stipend ? employee.stipend.toString() : '',
+    work_location: (employee as any).work_location || 'Satara (Office)',
+  })
+
   useEffect(() => {
     let ec = { name: '', relationship: '', phone: '', address: '' };
     if (employee.emergency_contact) {
@@ -155,6 +176,19 @@ export function EmployeeDetailsClient({
       emergency_name: ec.name || '',
       emergency_relationship: ec.relationship || '',
       emergency_phone: ec.phone || ''
+    })
+    setProfessionalForm({
+      employee_id_number: employee.employee_id_number || '',
+      department: employee.department || '',
+      division: employee.division || '',
+      designation: employee.designation || employee.job_title || '',
+      job_title: employee.job_title || '',
+      employment_type: employee.employment_type || '',
+      joining_date: employee.joining_date || '',
+      email: employee.email || '',
+      salary: employee.salary ? employee.salary.toString() : '',
+      stipend: employee.stipend ? employee.stipend.toString() : '',
+      work_location: (employee as any).work_location || 'Satara (Office)',
     })
   }, [employee])
 
@@ -230,96 +264,24 @@ export function EmployeeDetailsClient({
     }
   }
 
-  const handleSaveAll = async () => {
-    setIsSavingAll(true)
-    try {
-      const dataToSave = {
-        first_name: personalForm.first_name,
-        last_name: personalForm.last_name,
-        dob: personalForm.dob || null,
-        gender: personalForm.gender || null,
-        phone: personalForm.phone || null,
-        personal_email: personalForm.personal_email || null,
-        address: personalForm.address || null,
-        city: personalForm.city || null,
-        pincode: personalForm.pincode || null,
-        emergency_contact: JSON.stringify({
-          name: personalForm.emergency_name,
-          relationship: personalForm.emergency_relationship,
-          phone: personalForm.emergency_phone
-        })
-      }
-      await updateEmployeeData(employee.id, dataToSave)
-      setIsEditingPersonalAddress(false)
-      setIsEditingContactEmergency(false)
-      toast({ title: 'Success', description: 'Employee information updated!' })
-      router.refresh()
-    } catch (e: any) {
-      toast({ title: 'Error', description: e.message || 'Failed to update employee information', variant: 'destructive' })
-    } finally {
-      setIsSavingAll(false)
-    }
-  }
-
-  // Backwards compatibility alias for other components if needed
-  const isEditingPersonal = isEditingPersonalAddress || isEditingContactEmergency
-  const isSavingPersonal = isSavingPersonalAddress || isSavingContactEmergency || isSavingAll
-  const handleSavePersonal = handleSaveAll
-  const handleCancelPersonal = () => {
-    handleCancelPersonalAddress()
-    handleCancelContactEmergency()
-  }
-
-  const [isEditingProfessional, setIsEditingProfessional] = useState(false)
-  const [isSavingProfessional, setIsSavingProfessional] = useState(false)
-  const [professionalForm, setProfessionalForm] = useState({
-    employee_id_number: employee.employee_id_number || '',
-    department: employee.department || '',
-    division: employee.division || '',
-    designation: employee.designation || employee.job_title || '',
-    job_title: employee.job_title || employee.designation || '',
-    employment_type: employee.employment_type || '',
-    joining_date: employee.joining_date ? employee.joining_date.split('T')[0] : '',
-    email: employee.email || '',
-    salary: employee.salary ? employee.salary.toString() : '',
-    stipend: employee.stipend ? employee.stipend.toString() : '',
-    work_location: employee.work_location || extractWorkLocation(employee) || 'Satara (Office)'
-  })
-
-  useEffect(() => {
-    setProfessionalForm({
-      employee_id_number: employee.employee_id_number || '',
-      department: employee.department || '',
-      division: employee.division || '',
-      designation: employee.designation || employee.job_title || '',
-      job_title: employee.job_title || employee.designation || '',
-      employment_type: employee.employment_type || '',
-      joining_date: employee.joining_date ? employee.joining_date.split('T')[0] : '',
-      email: employee.email || '',
-      salary: employee.salary ? employee.salary.toString() : '',
-      stipend: employee.stipend ? employee.stipend.toString() : '',
-      work_location: employee.work_location || extractWorkLocation(employee) || 'Satara (Office)'
-    })
-  }, [employee])
-
   const handleCancelProfessional = () => {
     setProfessionalForm({
       employee_id_number: employee.employee_id_number || '',
       department: employee.department || '',
       division: employee.division || '',
       designation: employee.designation || employee.job_title || '',
-      job_title: employee.job_title || employee.designation || '',
+      job_title: employee.job_title || '',
       employment_type: employee.employment_type || '',
-      joining_date: employee.joining_date ? employee.joining_date.split('T')[0] : '',
+      joining_date: employee.joining_date || '',
       email: employee.email || '',
       salary: employee.salary ? employee.salary.toString() : '',
       stipend: employee.stipend ? employee.stipend.toString() : '',
-      work_location: employee.work_location || extractWorkLocation(employee) || 'Satara (Office)'
+      work_location: (employee as any).work_location || 'Satara (Office)',
     })
     setIsEditingProfessional(false)
   }
 
-  const handleSaveProfessional = async () => {
+    const handleSaveProfessional = async () => {
     if (!isAdminOrHr) {
       toast({
         title: 'Unauthorized',
@@ -335,7 +297,7 @@ export function EmployeeDetailsClient({
       department: professionalForm.department?.trim() || '',
       division: professionalForm.division?.trim() || '',
       designation: professionalForm.designation?.trim() || '',
-      job_title: professionalForm.designation?.trim() || '',
+      job_title: professionalForm.designation?.trim() || professionalForm.job_title?.trim() || '',
       employment_type: professionalForm.employment_type?.trim() || '',
       joining_date: professionalForm.joining_date ? professionalForm.joining_date.split('T')[0] : '',
       email: professionalForm.email?.trim() || '',
@@ -359,11 +321,11 @@ export function EmployeeDetailsClient({
     try {
       const dataToSave: Partial<Employee> = {
         employee_id_number: payloadToValidate.employee_id_number,
-        department: payloadToValidate.department,
-        division: payloadToValidate.division,
-        designation: payloadToValidate.designation,
-        job_title: payloadToValidate.designation,
-        employment_type: payloadToValidate.employment_type,
+        department: payloadToValidate.department || undefined,
+        division: payloadToValidate.division || undefined,
+        designation: payloadToValidate.designation || undefined,
+        job_title: payloadToValidate.designation || payloadToValidate.job_title || undefined,
+        employment_type: payloadToValidate.employment_type || undefined,
         joining_date: payloadToValidate.joining_date || undefined,
         email: payloadToValidate.email,
         work_location: payloadToValidate.work_location,
@@ -382,6 +344,71 @@ export function EmployeeDetailsClient({
     } finally {
       setIsSavingProfessional(false)
     }
+  }
+
+  const handleSaveAll = async () => {
+    setIsSavingAll(true)
+    try {
+      const dataToSave: any = {
+        first_name: personalForm.first_name,
+        last_name: personalForm.last_name,
+        dob: personalForm.dob || null,
+        gender: personalForm.gender || null,
+        phone: personalForm.phone || null,
+        personal_email: personalForm.personal_email || null,
+        address: personalForm.address || null,
+        city: personalForm.city || null,
+        pincode: personalForm.pincode || null,
+        emergency_contact: JSON.stringify({
+          name: personalForm.emergency_name,
+          relationship: personalForm.emergency_relationship,
+          phone: personalForm.emergency_phone
+        })
+      }
+      if (isEditingProfessional) {
+        dataToSave.employee_id_number = professionalForm.employee_id_number || null
+        dataToSave.department = professionalForm.department || null
+        dataToSave.division = professionalForm.division || null
+        dataToSave.designation = professionalForm.designation || null
+        dataToSave.job_title = professionalForm.designation || professionalForm.job_title || null
+        dataToSave.employment_type = professionalForm.employment_type || null
+        dataToSave.joining_date = professionalForm.joining_date || null
+        dataToSave.email = professionalForm.email || null
+        dataToSave.work_location = professionalForm.work_location || null
+        if (professionalForm.employment_type === 'Intern') {
+          const cleanStipend = String(professionalForm.stipend || '').replace(/[^0-9.]/g, '')
+          dataToSave.stipend = cleanStipend ? parseFloat(cleanStipend) : null
+          dataToSave.salary = null
+        } else {
+          const cleanSalary = String(professionalForm.salary || '').replace(/[^0-9.]/g, '')
+          dataToSave.salary = cleanSalary ? parseFloat(cleanSalary) : null
+          dataToSave.stipend = null
+        }
+      }
+      const res = await updateEmployeeData(employee.id, dataToSave)
+      if (res && (res as any).error) {
+        throw new Error((res as any).error)
+      }
+      setIsEditingPersonalAddress(false)
+      setIsEditingContactEmergency(false)
+      setIsEditingProfessional(false)
+      toast({ title: 'Success', description: 'Employee information updated!' })
+      router.refresh()
+    } catch (e: any) {
+      toast({ title: 'Error', description: e.message || 'Failed to update employee information', variant: 'destructive' })
+    } finally {
+      setIsSavingAll(false)
+    }
+  }
+
+  // Backwards compatibility alias for other components if needed
+  const isEditingPersonal = isEditingPersonalAddress || isEditingContactEmergency || isEditingProfessional
+  const isSavingPersonal = isSavingPersonalAddress || isSavingContactEmergency || isSavingProfessional || isSavingAll
+  const handleSavePersonal = handleSaveAll
+  const handleCancelPersonal = () => {
+    handleCancelPersonalAddress()
+    handleCancelContactEmergency()
+    handleCancelProfessional()
   }
 
   // --- Probation Period Management ---
@@ -623,6 +650,90 @@ export function EmployeeDetailsClient({
     }
   }
 
+  const handleOpenEditDocument = (doc: any, idx: number) => {
+    const currentDocs = Array.isArray(documentsList) ? documentsList : []
+    const target = currentDocs[idx] || doc?.raw || doc
+    setEditingDoc(target)
+    setEditingDocIndex(idx)
+    setIsEditingDocModalOpen(true)
+  }
+
+  const handleSaveEditDocument = async (
+    idx: number,
+    { name, file }: { name: string; file?: File }
+  ) => {
+    if (idx < 0 || !Array.isArray(documentsList) || !documentsList[idx]) return
+
+    setIsSavingEditDoc(true)
+    const currentDocs = [...documentsList]
+    const targetDoc = currentDocs[idx]
+
+    try {
+      let updatedDocItem = typeof targetDoc === 'string'
+        ? { id: crypto.randomUUID ? crypto.randomUUID() : String(idx), name: targetDoc, url: targetDoc }
+        : { ...targetDoc }
+
+      if (file) {
+        if (file.size > 10 * 1024 * 1024) {
+          throw new Error(`"${file.name}" exceeds the 10MB file size limit.`)
+        }
+        const formData = new FormData()
+        formData.append('file', file)
+        const res = await uploadEmployeeFileAction(formData)
+
+        if (res && res.success && res.path) {
+          const supabase = createClient()
+          const { data } = supabase.storage.from('employee-documents').getPublicUrl(res.path)
+
+          updatedDocItem = {
+            ...updatedDocItem,
+            name: name,
+            url: data.publicUrl,
+            path: res.path,
+            size: file.size,
+            type: file.type,
+            updated_at: new Date().toISOString()
+          }
+        } else {
+          throw new Error(res?.error || 'Failed to upload replacement file')
+        }
+      } else {
+        updatedDocItem = {
+          ...updatedDocItem,
+          name: name,
+          updated_at: new Date().toISOString()
+        }
+      }
+
+      currentDocs[idx] = updatedDocItem
+      setDocumentsList(currentDocs)
+
+      const updateRes = await updateEmployeeData(employee.id, { documents: currentDocs })
+      if (updateRes && !updateRes.success) {
+        setDocumentsList(documentsList)
+        throw new Error((updateRes as any)?.error || 'Failed to update employee document')
+      }
+
+      toast({
+        title: 'Document Updated',
+        description: 'Document details have been updated successfully.',
+      })
+      setIsEditingDocModalOpen(false)
+      setEditingDoc(null)
+      setEditingDocIndex(null)
+      router.refresh()
+    } catch (err: any) {
+      setDocumentsList(documentsList)
+      toast({
+        title: 'Update Failed',
+        description: err.message || 'Failed to update document',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsSavingEditDoc(false)
+    }
+  }
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -752,7 +863,7 @@ export function EmployeeDetailsClient({
   )
 
   // --- Profile sidebar card (left column) ---
-  const ProfileCard = () => (
+  const renderProfileCard = () => (
     <div className="w-full lg:w-[320px] shrink-0 space-y-4">
       {/* Profile Card */}
       <div className="bg-card border border-border/40 rounded-2xl p-5 shadow-sm">
@@ -862,18 +973,18 @@ export function EmployeeDetailsClient({
           <h4 className="font-bold text-sm text-foreground">Quick Actions</h4>
         </div>
         <div className="flex flex-col gap-2">
-          {(isEditingPersonalAddress || isEditingContactEmergency) ? (
+          {(isEditingPersonalAddress || isEditingContactEmergency || isEditingProfessional) ? (
             <button
               className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-sm bg-foreground text-background hover:bg-foreground/90 transition-colors cursor-pointer"
               onClick={handleSaveAll}
-              disabled={isSavingAll || isSavingPersonalAddress || isSavingContactEmergency}
+              disabled={isSavingAll || isSavingPersonalAddress || isSavingContactEmergency || isSavingProfessional}
             >
-              {(isSavingAll || isSavingPersonalAddress || isSavingContactEmergency) ? (
+              {(isSavingAll || isSavingPersonalAddress || isSavingContactEmergency || isSavingProfessional) ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : (
                 <CheckCircle2 className="w-3.5 h-3.5" />
               )}
-              {(isSavingAll || isSavingPersonalAddress || isSavingContactEmergency) ? 'Saving...' : 'Save Employee'}
+              {(isSavingAll || isSavingPersonalAddress || isSavingContactEmergency || isSavingProfessional) ? 'Saving...' : 'Save Employee'}
             </button>
           ) : (
             <button
@@ -881,6 +992,7 @@ export function EmployeeDetailsClient({
               onClick={() => {
                 setIsEditingPersonalAddress(true)
                 setIsEditingContactEmergency(true)
+                setIsEditingProfessional(true)
               }}
             >
               <Edit2 className="w-3.5 h-3.5" /> Edit Employee
@@ -955,7 +1067,7 @@ export function EmployeeDetailsClient({
         {/* ============ PERSONAL INFO TAB ============ */}
         <TabsContent value="personal-info" className="m-0">
           <div className="flex flex-col lg:flex-row gap-5">
-            <ProfileCard />
+            {renderProfileCard()}
 
             {/* Right content */}
             <div className="flex-1 space-y-5 min-w-0">
@@ -1064,8 +1176,10 @@ export function EmployeeDetailsClient({
                         <DatePicker
                           value={personalForm.dob}
                           onChange={val => setPersonalForm(prev => ({ ...prev, dob: val }))}
-                          placeholder="dd/mm/yyyy"
+placeholder="dd/mm/yyyy"
+                          formatStr="dd/MM/yyyy"
                           className="h-7 text-xs bg-background/50 border-border/60"
+                          endMonth={new Date()}
                         />
                       ) : (
                         <span className="text-sm font-semibold text-foreground whitespace-nowrap leading-tight">
@@ -1365,7 +1479,62 @@ export function EmployeeDetailsClient({
         </TabsContent>
 
         <TabsContent value="professional-info" className="m-0 space-y-5">
-          <div className="bg-card/30 border border-border/30 rounded-2xl p-5">
+          <div className="bg-card/40 dark:bg-zinc-950/40 border border-border/40 dark:border-zinc-800/80 rounded-2xl p-5 shadow-sm">
+            {/* Header with Title and Edit/Save buttons */}
+            <div className="flex items-center justify-between mb-5 pb-4 border-b border-border/40 gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 dark:bg-purple-950/40 border border-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+                  <Briefcase className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="font-bold text-base md:text-lg text-foreground leading-tight truncate">
+                    Professional Information
+                  </h3>
+                  <p className="text-xs text-muted-foreground truncate">
+                    Manage department, designation, employment details, and compensation.
+                  </p>
+                </div>
+              </div>
+
+              {isAdminOrHr && (
+                isEditingProfessional ? (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleCancelProfessional}
+                      disabled={isSavingProfessional}
+                      className="h-8 px-3 rounded-full text-xs hover:bg-muted/50 cursor-pointer"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleSaveProfessional}
+                      disabled={isSavingProfessional}
+                      className="h-8 px-3.5 rounded-full bg-foreground text-background hover:bg-foreground/90 text-xs font-medium cursor-pointer"
+                    >
+                      {isSavingProfessional ? (
+                        <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                      ) : (
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                      )}
+                      Save
+                    </Button>
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsEditingProfessional(true)}
+                    className="h-8 px-3 rounded-full text-xs hover:bg-muted/50 cursor-pointer flex items-center gap-1.5 border-border/60 shrink-0"
+                  >
+                    <Edit2 className="w-3.5 h-3.5" />
+                    Edit Professional
+                  </Button>
+                )
+              )}
+            </div>
             <div className="space-y-6">
               {/* Employment Details */}
               <div className="space-y-3">
@@ -1413,7 +1582,9 @@ export function EmployeeDetailsClient({
                   )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {renderEditableCard(<Hash className="w-4 h-4" />, 'Employee ID', professionalForm.employee_id_number, isEditingProfessional, 'employee_id_number', professionalForm, setProfessionalForm, 'text', 'purple')}
+{renderEditableCard(<Hash className="w-4 h-4 text-muted-foreground" />, 'Employee ID', professionalForm.employee_id_number, isEditingProfessional, 'employee_id_number', professionalForm, setProfessionalForm, 'text', 'purple')}
+
+                  {/* Department */}
                   <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border/40 bg-card/60 hover:bg-card transition-colors">
                     <div className="w-7 h-7 rounded-md bg-purple-500/10 text-purple-500 dark:text-purple-400 flex items-center justify-center shrink-0">
                       <Building2 className="w-4 h-4" />
@@ -1421,8 +1592,11 @@ export function EmployeeDetailsClient({
                     <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                       <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider leading-none mb-0.5">Department</span>
                       {isEditingProfessional ? (
-                        <Select value={professionalForm.department} onValueChange={v => setProfessionalForm(p => ({ ...p, department: v as string, division: '', designation: '' }))}>
-                          <SelectTrigger className="h-8 bg-transparent border-border"><SelectValue placeholder="Select Department" /></SelectTrigger>
+<Select
+                          value={professionalForm.department || undefined}
+                          onValueChange={v => setProfessionalForm(p => ({ ...p, department: v as string, division: '', designation: '' }))}
+                        >
+                          <SelectTrigger className="h-8 bg-transparent border-border text-xs"><SelectValue placeholder="Select Department" /></SelectTrigger>
                           <SelectContent>
                             {DEPARTMENTS.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                             {professionalForm.department && !DEPARTMENTS.some(d => d.id === professionalForm.department) && (
@@ -1433,6 +1607,8 @@ export function EmployeeDetailsClient({
                       ) : <span className="text-sm font-semibold text-foreground">{professionalForm.department || '-'}</span>}
                     </div>
                   </div>
+
+                  {/* Division */}
                   <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border/40 bg-card/60 hover:bg-card transition-colors">
                     <div className="w-7 h-7 rounded-md bg-purple-500/10 text-purple-500 dark:text-purple-400 flex items-center justify-center shrink-0">
                       <Building2 className="w-4 h-4" />
@@ -1440,8 +1616,12 @@ export function EmployeeDetailsClient({
                     <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                       <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider leading-none mb-0.5">Division</span>
                       {isEditingProfessional ? (
-                        <Select value={professionalForm.division} onValueChange={v => setProfessionalForm(p => ({ ...p, division: v as string, designation: '' }))} disabled={!professionalForm.department}>
-                          <SelectTrigger className="h-8 bg-transparent border-border"><SelectValue placeholder="Select Division" /></SelectTrigger>
+<Select
+                          value={professionalForm.division || undefined}
+                          onValueChange={v => setProfessionalForm(p => ({ ...p, division: v as string, designation: '' }))}
+                          disabled={!professionalForm.department}
+                        >
+                          <SelectTrigger className="h-8 bg-transparent border-border text-xs"><SelectValue placeholder="Select Division" /></SelectTrigger>
                           <SelectContent>
                             {professionalForm.department && DIVISIONS[professionalForm.department]?.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}
                             {professionalForm.division && (!professionalForm.department || !DIVISIONS[professionalForm.department]?.some(d => d.id === professionalForm.division)) && (
@@ -1452,6 +1632,8 @@ export function EmployeeDetailsClient({
                       ) : <span className="text-sm font-semibold text-foreground">{professionalForm.division || '-'}</span>}
                     </div>
                   </div>
+
+                  {/* Designation */}
                   <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border/40 bg-card/60 hover:bg-card transition-colors">
                     <div className="w-7 h-7 rounded-md bg-purple-500/10 text-purple-500 dark:text-purple-400 flex items-center justify-center shrink-0">
                       <Briefcase className="w-4 h-4" />
@@ -1459,8 +1641,12 @@ export function EmployeeDetailsClient({
                     <div className="flex flex-col gap-0.5 min-w-0 flex-1">
                       <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider leading-none mb-0.5">Designation</span>
                       {isEditingProfessional ? (
-                        <Select value={professionalForm.designation} onValueChange={v => setProfessionalForm(p => ({ ...p, designation: v as string }))} disabled={!professionalForm.division}>
-                          <SelectTrigger className="h-8 bg-transparent border-border"><SelectValue placeholder="Select Designation" /></SelectTrigger>
+<Select
+                          value={professionalForm.designation || undefined}
+                          onValueChange={v => setProfessionalForm(p => ({ ...p, designation: v as string, job_title: v as string }))}
+                          disabled={!professionalForm.division}
+                        >
+                          <SelectTrigger className="h-8 bg-transparent border-border text-xs"><SelectValue placeholder="Select Designation" /></SelectTrigger>
                           <SelectContent>
                             {professionalForm.division && DESIGNATIONS[professionalForm.division]?.map(d => <SelectItem key={d.id} value={d.name}>{d.name}</SelectItem>)}
                             {professionalForm.designation && (!professionalForm.division || !DESIGNATIONS[professionalForm.division]?.some(d => d.name === professionalForm.designation)) && (
@@ -1471,6 +1657,7 @@ export function EmployeeDetailsClient({
                       ) : <span className="text-sm font-semibold text-foreground">{professionalForm.designation || '-'}</span>}
                     </div>
                   </div>
+                  {/* Employment Type */}
                   <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border/40 bg-card/60 hover:bg-card transition-colors">
                     <div className="w-7 h-7 rounded-md bg-purple-500/10 text-purple-500 dark:text-purple-400 flex items-center justify-center shrink-0">
                       <Briefcase className="w-4 h-4" />
@@ -1479,28 +1666,26 @@ export function EmployeeDetailsClient({
                       <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider leading-none mb-0.5">Employment Type</span>
                       {isEditingProfessional ? (
                         <Select
-                          value={professionalForm.employment_type}
+                          value={professionalForm.employment_type || undefined}
                           onValueChange={v => {
                             setProfessionalForm(p => ({
                               ...p,
-                              employment_type: v || '',
+                              employment_type: (v || '') as string,
                               ...(v === 'Intern' ? { salary: '' } : { stipend: '' })
                             }))
                           }}
                         >
-                          <SelectTrigger className="h-8 bg-transparent border-border">
-                            <SelectValue placeholder="Select Employment Type" />
+                          <SelectTrigger className="h-8 bg-transparent border-border text-xs">
+                            <SelectValue placeholder="Select Type" />
                           </SelectTrigger>
                           <SelectContent>
                             <SelectItem value="Full Time">Full Time</SelectItem>
+                            <SelectItem value="Part Time">Part Time</SelectItem>
+                            <SelectItem value="Contract">Contract</SelectItem>
                             <SelectItem value="Intern">Intern</SelectItem>
-                            {professionalForm.employment_type &&
-                              professionalForm.employment_type !== 'Full Time' &&
-                              professionalForm.employment_type !== 'Intern' && (
-                                <SelectItem value={professionalForm.employment_type}>
-                                  {professionalForm.employment_type}
-                                </SelectItem>
-                              )}
+                            {professionalForm.employment_type && !['Full Time', 'Part Time', 'Contract', 'Intern'].includes(professionalForm.employment_type) && (
+                              <SelectItem value={professionalForm.employment_type}>{professionalForm.employment_type}</SelectItem>
+                            )}
                           </SelectContent>
                         </Select>
                       ) : (
@@ -1508,10 +1693,34 @@ export function EmployeeDetailsClient({
                       )}
                     </div>
                   </div>
-                  {renderEditableCard(<CalendarIcon className="w-4 h-4" />, 'Date of Joining', professionalForm.joining_date, isEditingProfessional, 'joining_date', professionalForm, setProfessionalForm, 'date', 'purple')}
+
+                  {/* Date of Joining with project DatePicker */}
+                  <div className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg border border-border/40 bg-card/60 hover:bg-card transition-colors">
+                    <div className="w-7 h-7 rounded-md bg-purple-500/10 text-purple-500 dark:text-purple-400 flex items-center justify-center shrink-0">
+                      <CalendarIcon className="w-4 h-4" />
+                    </div>
+                    <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+                      <span className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider leading-none mb-0.5">Date of Joining</span>
+                      {isEditingProfessional ? (
+                        <DatePicker
+                          value={professionalForm.joining_date}
+                          onChange={val => setProfessionalForm(prev => ({ ...prev, joining_date: val }))}
+                          placeholder="dd/mm/yyyy"
+                          formatStr="dd/MM/yyyy"
+                          className="h-8 text-xs bg-transparent border-border"
+                        />
+                      ) : (
+                        <span className="text-sm font-semibold text-foreground">
+                          {formatDateDisplay(professionalForm.joining_date)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Compensation: Stipend for Intern, Salary otherwise */}
                   {professionalForm.employment_type === 'Intern'
-                    ? renderEditableCard(<Banknote className="w-4 h-4" />, 'Stipend', professionalForm.stipend ? `₹${professionalForm.stipend}` : '-', isEditingProfessional, 'stipend', professionalForm, setProfessionalForm, 'text', 'emerald')
-                    : renderEditableCard(<Banknote className="w-4 h-4" />, 'Salary', professionalForm.salary ? `₹${professionalForm.salary}` : '-', isEditingProfessional, 'salary', professionalForm, setProfessionalForm, 'text', 'emerald')
+                    ? renderEditableCard(<Banknote className="w-4 h-4" />, 'Stipend', professionalForm.stipend ? ('₹' + professionalForm.stipend) : '-', isEditingProfessional, 'stipend', professionalForm, setProfessionalForm, 'text', 'emerald')
+                    : renderEditableCard(<Banknote className="w-4 h-4" />, 'Salary', professionalForm.salary ? ('₹' + professionalForm.salary) : '-', isEditingProfessional, 'salary', professionalForm, setProfessionalForm, 'text', 'emerald')
                   }
                 </div>
               </div>
@@ -1579,12 +1788,37 @@ export function EmployeeDetailsClient({
               const currentDocs = Array.isArray(documentsList) ? documentsList : []
               handleViewDocument(null, currentDocs[idx] || doc.raw || doc)
             }}
+            onEdit={(doc, idx) => handleOpenEditDocument(doc, idx)}
             onDelete={(_, idx) => handleDeleteDocument(idx)}
             isUploading={isUploadingDoc}
             accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.zip"
             maxSizeBytes={10 * 1024 * 1024}
             maxSizeLabel="10MB"
             uploadButtonText="Upload"
+          />
+
+          <EditDocumentModal
+            isOpen={isEditingDocModalOpen}
+            onClose={() => {
+              setIsEditingDocModalOpen(false)
+              setEditingDoc(null)
+              setEditingDocIndex(null)
+            }}
+            document={editingDoc ? {
+              id: editingDoc.id || (editingDocIndex !== null ? String(editingDocIndex) : undefined),
+              name: typeof editingDoc === 'string' ? editingDoc : editingDoc.name || 'Document',
+              url: typeof editingDoc === 'string' ? editingDoc : editingDoc.url,
+              size: typeof editingDoc === 'object' ? editingDoc.size : undefined,
+              type: typeof editingDoc === 'object' ? editingDoc.type : undefined,
+              path: typeof editingDoc === 'object' ? editingDoc.path : undefined,
+              created_at: typeof editingDoc === 'object' ? editingDoc.created_at : undefined,
+              raw: editingDoc,
+            } : null}
+            index={editingDocIndex}
+            onSave={handleSaveEditDocument}
+            isSaving={isSavingEditDoc}
+            maxSizeBytes={10 * 1024 * 1024}
+            maxSizeLabel="10MB"
           />
         </TabsContent>
 

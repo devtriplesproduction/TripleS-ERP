@@ -1,5 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
-import { PayrollRun, PayrollItem, PayrollResult } from '@/types/payroll';
+import { PayrollRun, PayrollItem, PayrollRunStatus, PayrollResult } from '@/types/payroll';
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';

@@ -376,13 +376,13 @@ export function ProjectGanttTab({
     }
     switch (status) {
       case 'DONE':
-        return 'bg-emerald-500/15 border-emerald-500/40 text-emerald-300 dark:text-emerald-200'
+        return 'bg-emerald-500/15 border-emerald-500/40 text-emerald-800 dark:text-emerald-200'
       case 'IN_PROGRESS':
         return 'bg-foreground text-background font-medium border-foreground/90'
       case 'IN_REVIEW':
-        return 'bg-blue-500/15 border-blue-500/40 text-blue-300 dark:text-blue-200'
+        return 'bg-blue-500/15 border-blue-500/40 text-blue-800 dark:text-blue-200'
       case 'ON_HOLD':
-        return 'bg-purple-500/15 border-purple-500/40 text-purple-300 dark:text-purple-200'
+        return 'bg-purple-500/15 border-purple-500/40 text-purple-800 dark:text-purple-200'
       case 'TODO':
       default:
         return 'bg-secondary/90 border-border/80 text-foreground'

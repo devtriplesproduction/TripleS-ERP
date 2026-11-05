@@ -166,7 +166,7 @@ export function PayrollDetailModal({
                 <LayoutList className="h-5 w-5 shrink-0 text-foreground" />
                 <span className="truncate">Payroll Detail: {payroll.name}</span>
                 {isLocked && (
-                  <Badge variant="outline" className="text-xs border-emerald-500 text-emerald-600 dark:text-emerald-400 gap-1 font-semibold">
+                  <Badge variant="outline" className="text-xs rounded-md border-emerald-500 text-emerald-600 dark:text-emerald-400 gap-1 font-semibold">
                     <Lock className="h-3 w-3" />
                     Locked Snapshot
                   </Badge>
@@ -185,7 +185,7 @@ export function PayrollDetailModal({
                     onClose()
                     onAddDeductionClick(payroll.employeeId)
                   }}
-                  className="self-start sm:self-auto gap-1.5 text-xs text-rose-500 border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-400"
+                  className="self-start sm:self-auto gap-1.5 text-xs rounded-md text-rose-500 border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-400"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Add Deduction
@@ -196,7 +196,7 @@ export function PayrollDetailModal({
                   size="sm"
                   variant="outline"
                   onClick={() => setIsAdjustOpen(true)}
-                  className="gap-1.5 text-xs"
+                  className="gap-1.5 text-xs rounded-md"
                 >
                   <SlidersHorizontal className="h-3.5 w-3.5" />
                   Audited Adjustment
@@ -212,7 +212,7 @@ export function PayrollDetailModal({
             <div className="flex items-center gap-2 font-semibold">
               <CalendarCheck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               <span>Prorated Payroll Period</span>
-              <Badge variant="outline" className="text-[10px] text-amber-600 border-amber-500">
+              <Badge variant="outline" className="text-[10px] rounded-sm text-amber-600 border-amber-500">
                 {proration.eligibleWorkingDays} / {proration.scheduledWorkingDays} Working Days
               </Badge>
             </div>
@@ -265,13 +265,13 @@ export function PayrollDetailModal({
               <StatItem
                 label="Employee Deductions (-)"
                 value={`₹${(payroll.manualDeductions || 0).toFixed(2)}`}
-                valueClass={`font-semibold ${(payroll.manualDeductions || 0) > 0 ? 'text-rose-500' : 'text-muted-foreground'}`}
+                valueClass={`font-semibold ${(payroll.manualDeductions || 0) > 0 ? 'text-foreground' : 'text-muted-foreground'}`}
               />
-              <StatItem label="Total Deductions (-)" value={`₹${payroll.totalDeductions.toFixed(2)}`} valueClass="font-bold text-rose-500" />
+              <StatItem label="Total Deductions (-)" value={`₹${payroll.totalDeductions.toFixed(2)}`} valueClass="font-bold text-foreground" />
 
               <div className="mt-4 pt-4 border-t border-border flex justify-between items-center">
                 <span className="font-bold text-sm sm:text-base text-foreground">Net Payable</span>
-                <span className="text-base sm:text-lg font-bold text-emerald-400">₹{payroll.netPayable.toFixed(2)}</span>
+                <span className="text-base sm:text-lg font-bold text-foreground">₹{payroll.netPayable.toFixed(2)}</span>
               </div>
             </CardContent>
           </Card>
@@ -321,7 +321,7 @@ export function PayrollDetailModal({
               </CardTitle>
               <Badge
                 variant="outline"
-                className={`text-xs gap-1 font-semibold ${
+                className={`text-xs rounded-md gap-1 font-semibold ${
                   payroll.reconciliation.status === 'RECONCILED'
                     ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10'
                     : 'border-rose-500 text-rose-600 dark:text-rose-400 bg-rose-500/10'
@@ -382,7 +382,7 @@ export function PayrollDetailModal({
                   </span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Gross Payable:</span>
+                  <span>Gross Scheduled Pay:</span>
                   <span className="font-medium text-foreground">
                     ₹{(payroll.reconciliation.grossScheduledPay || payroll.grossPay || (payroll.reconciliation.scheduledWorkingDays * (payroll.reconciliation.dailyRate || 0))).toFixed(2)}
                   </span>
@@ -390,23 +390,31 @@ export function PayrollDetailModal({
                 <div className="flex justify-between text-muted-foreground">
                   <span>Attendance Deductions:</span>
                   <span className="font-medium text-rose-500">
-                    ₹{(payroll.reconciliation.attendanceDeduction ?? (payroll.attendanceDeduction || payroll.reconciliation.totalDeductions)).toFixed(2)}
+                    -₹{(payroll.reconciliation.attendanceDeduction ?? (payroll.attendanceDeduction || payroll.reconciliation.totalDeductions)).toFixed(2)}
                   </span>
                 </div>
-                {payroll.manualDeductions > 0 && (
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Earned Pay:</span>
+                  <span className="font-medium text-emerald-500">
+                    ₹{payroll.reconciliation.earnedPay.toFixed(2)}
+                  </span>
+                </div>
+                {payroll.reconciliation.totalDeductions > (payroll.reconciliation.attendanceDeduction ?? 0) && (
                   <div className="flex justify-between text-muted-foreground">
-                    <span>Other Deductions:</span>
-                    <span className="font-medium text-amber-500">₹{payroll.manualDeductions.toFixed(2)}</span>
+                    <span>Manual Deductions:</span>
+                    <span className="font-medium text-rose-500">
+                      -₹{(payroll.reconciliation.totalDeductions - (payroll.reconciliation.attendanceDeduction ?? 0)).toFixed(2)}
+                    </span>
                   </div>
                 )}
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Final Net Salary:</span>
-                  <span className="font-medium text-emerald-500">₹{payroll.reconciliation.netPayable.toFixed(2)}</span>
+                <div className="pt-1 border-t border-border/50 flex justify-between font-bold">
+                  <span>Net Payable:</span>
+                  <span className="text-foreground">₹{payroll.reconciliation.netPayable.toFixed(2)}</span>
                 </div>
-                <div className="pt-1 border-t border-border/50 flex justify-between font-semibold">
-                  <span>Reconciled Sum:</span>
-                  <span className="text-foreground">
-                    ₹{(payroll.reconciliation.earnedPay + (payroll.reconciliation.attendanceDeduction ?? (payroll.attendanceDeduction || payroll.reconciliation.totalDeductions))).toFixed(2)} / ₹{(payroll.reconciliation.grossScheduledPay || payroll.grossPay || payroll.reconciliation.baseSalary).toFixed(2)}
+                <div className="pt-1 text-[10px] text-muted-foreground flex justify-between">
+                  <span>Reconciliation Status:</span>
+                  <span className={payroll.reconciliation.isFinancialReconciled ? 'text-emerald-500 font-semibold' : 'text-rose-500 font-semibold'}>
+                    {payroll.reconciliation.isFinancialReconciled ? '✓ Math Reconciled' : '⚠ Discrepancy'}
                   </span>
                 </div>
               </div>
@@ -422,7 +430,7 @@ export function PayrollDetailModal({
                 <CalendarCheck className="h-4 w-4 text-emerald-500" />
                 Date-wise Calculation Breakdown ({payroll.dailyBreakdown.length} Days)
               </CardTitle>
-              <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground">
+              <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground rounded-sm">
                 {payroll.dailyBreakdown.filter(d => d.payableFraction > 0).length} Payable Days · {payroll.dailyBreakdown.filter(d => d.deductionDays > 0).length} Deducted Days
               </Badge>
             </CardHeader>
@@ -475,7 +483,7 @@ export function PayrollDetailModal({
                         <td className="py-2 px-3 text-center">
                           <Badge
                             variant="outline"
-                            className={`text-[10px] px-1.5 py-0 font-medium ${
+                            className={`text-[10px] rounded-sm px-1.5 py-0 font-medium ${
                               d.status === 'FULL_DAY'
                                 ? 'border-emerald-500/50 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10'
                                 : d.status === 'HALF_DAY'
@@ -507,11 +515,11 @@ export function PayrollDetailModal({
         <Card className="mt-4 bg-card/50 border-border">
           <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <CardTitle className="text-xs sm:text-sm flex items-center gap-2 text-foreground">
-              <MinusCircle className="h-4 w-4 text-rose-500" />
+              <MinusCircle className="h-4 w-4 text-muted-foreground" />
               Employee-Specific Deductions ({activeDeductions.length})
             </CardTitle>
             {activeDeductions.length > 0 && (
-              <span className="text-xs font-semibold text-rose-500">
+              <span className="text-xs font-semibold text-foreground">
                 Total: -₹{(payroll.manualDeductions || 0).toFixed(2)}
               </span>
             )}
@@ -534,7 +542,7 @@ export function PayrollDetailModal({
                           <Tag className="h-3 w-3 text-muted-foreground" />
                           {d.deduction_type}
                         </span>
-                        <span className="font-bold text-rose-500 text-sm">
+                        <span className="font-bold text-foreground text-sm">
                           -₹{Number(d.amount).toFixed(2)}
                         </span>
                       </div>
@@ -553,7 +561,7 @@ export function PayrollDetailModal({
                         variant="ghost"
                         onClick={() => handleCancelDeduction(d.id, d.deduction_type, Number(d.amount))}
                         disabled={cancellingId === d.id}
-                        className="self-end sm:self-center h-8 text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 px-2 text-xs gap-1"
+                        className="self-end sm:self-center h-8 text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 px-2 text-xs gap-1 rounded-md"
                       >
                         {cancellingId === d.id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -607,7 +615,7 @@ export function PayrollDetailModal({
               <Button size="sm" variant="ghost" onClick={() => setIsAdjustOpen(false)} disabled={adjusting}>
                 Cancel
               </Button>
-              <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleApplyAdjustment} disabled={adjusting}>
+              <Button size="sm" className="bg-foreground text-background hover:bg-foreground/90 font-medium shadow-xs rounded-md" onClick={handleApplyAdjustment} disabled={adjusting}>
                 {adjusting ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
                 Save Audited Adjustment
               </Button>

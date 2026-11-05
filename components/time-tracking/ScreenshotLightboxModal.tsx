@@ -15,7 +15,9 @@ import {
   HardDrive,
   User,
   Calendar,
-  Trash2
+  Trash2,
+  Monitor,
+  Info
 } from 'lucide-react'
 import type { ScreenshotItem } from '@/lib/actions/time-tracking'
 import { DeleteScreenshotConfirmationModal } from './DeleteScreenshotConfirmationModal'
@@ -39,18 +41,23 @@ export function ScreenshotLightboxModal({
   const [zoomLevel, setZoomLevel] = useState<number>(1)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false)
   const [isDeleting, setIsDeleting] = useState<boolean>(false)
+  const [imageError, setImageError] = useState<boolean>(false)
 
   // Ensure index remains in bounds
   const validIndex = Math.min(Math.max(0, currentIndex), Math.max(0, screenshots.length - 1))
   const current = screenshots[validIndex]
 
-  const handlePrev = useCallback(() => {
+  // Reset zoom & error on index change
+  useEffect(() => {
     setZoomLevel(1)
+    setImageError(false)
+  }, [validIndex])
+
+  const handlePrev = useCallback(() => {
     setCurrentIndex(prev => (prev > 0 ? prev - 1 : screenshots.length - 1))
   }, [screenshots.length])
 
   const handleNext = useCallback(() => {
-    setZoomLevel(1)
     setCurrentIndex(prev => (prev < screenshots.length - 1 ? prev + 1 : 0))
   }, [screenshots.length])
 
@@ -118,21 +125,21 @@ export function ScreenshotLightboxModal({
       aria-modal="true"
     >
       {/* Top Header Bar */}
-      <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-border bg-card/80 shrink-0 gap-4 flex-wrap">
+      <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b border-border bg-card/90 shrink-0 gap-4 flex-wrap">
         {/* Left: Employee info & Timestamp */}
         <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 text-primary font-bold flex items-center justify-center shrink-0 text-xs">
+          <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 text-primary font-bold flex items-center justify-center shrink-0 text-xs shadow-xs">
             {displayName.split(' ').map(n => n[0]).join('').slice(0, 2) || 'E'}
           </div>
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-sm text-foreground truncate">{displayName}</span>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-muted border border-border text-muted-foreground font-mono shrink-0">
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-muted border border-border text-muted-foreground font-mono shrink-0">
                 {validIndex + 1} of {screenshots.length}
               </span>
             </div>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <Clock size={12} />
+              <Clock size={12} className="text-primary" />
               <span>{current.capturedAtFormatted || current.capturedAt}</span>
               {current.sessionDate && (
                 <>
@@ -146,7 +153,7 @@ export function ScreenshotLightboxModal({
         </div>
 
         {/* Center: App & Window info */}
-        <div className="hidden md:flex items-center gap-2 max-w-md lg:max-w-xl truncate px-3 py-1 rounded-xl bg-muted/40 border border-border">
+        <div className="hidden md:flex items-center gap-2 max-w-md lg:max-w-xl truncate px-3 py-1 rounded-xl bg-muted/40 border border-border shadow-xs">
           <Laptop size={14} className="text-muted-foreground shrink-0" />
           <span className="text-xs font-semibold text-foreground shrink-0">{current.appName}</span>
           {current.windowTitle && (
@@ -162,7 +169,7 @@ export function ScreenshotLightboxModal({
         {/* Right: Controls & Actions */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* Zoom controls */}
-          <div className="flex items-center rounded-xl border border-border bg-card p-0.5 shadow-sm">
+          <div className="flex items-center rounded-xl border border-border bg-card p-0.5 shadow-xs">
             <button
               onClick={handleZoomOut}
               disabled={zoomLevel <= 0.5}
@@ -189,25 +196,29 @@ export function ScreenshotLightboxModal({
           </div>
 
           {/* Open full size in new tab */}
-          <a
-            href={current.imageUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="p-2 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shadow-sm"
-            title="Open Original in New Tab"
-          >
-            <ExternalLink size={15} />
-          </a>
+          {current.imageUrl && (
+            <a
+              href={current.imageUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shadow-xs"
+              title="Open Original in New Tab"
+            >
+              <ExternalLink size={15} />
+            </a>
+          )}
 
           {/* Download image */}
-          <a
-            href={current.imageUrl}
-            download={`screenshot-${current.employeeId}-${current.sessionDate}-${current.id}.jpg`}
-            className="p-2 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shadow-sm"
-            title="Download Screenshot"
-          >
-            <Download size={15} />
-          </a>
+          {current.imageUrl && (
+            <a
+              href={current.imageUrl}
+              download={`screenshot-${current.employeeId}-${current.sessionDate}-${current.id}.jpg`}
+              className="p-2 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shadow-xs"
+              title="Download Screenshot"
+            >
+              <Download size={15} />
+            </a>
+          )}
 
           {/* Delete screenshot button */}
           {onDeleteScreenshot && (
@@ -223,7 +234,7 @@ export function ScreenshotLightboxModal({
           {/* Close button */}
           <button
             onClick={onClose}
-            className="p-2 rounded-xl border border-border bg-card text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shadow-sm ml-1"
+            className="p-2 rounded-xl border border-border bg-card text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shadow-xs ml-1"
             title="Close Lightbox (Esc)"
           >
             <X size={16} />
@@ -256,28 +267,60 @@ export function ScreenshotLightboxModal({
           </>
         )}
 
-        {/* Scaled Image */}
+        {/* Scaled Image or Fallback */}
         <div
           className="relative max-w-full max-h-full flex items-center justify-center transition-transform duration-150 ease-out"
           style={{ transform: `scale(${zoomLevel})` }}
         >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={current.imageUrl}
-            alt={current.windowTitle || `Screenshot taken at ${current.capturedAtFormatted}`}
-            className="max-h-[75vh] max-w-[90vw] object-contain rounded-xl border border-border shadow-2xl bg-black/40"
-          />
+          {!imageError && current.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={current.imageUrl}
+              alt={current.windowTitle || `Screenshot taken at ${current.capturedAtFormatted}`}
+              onError={() => setImageError(true)}
+              className="max-h-[75vh] max-w-[90vw] object-contain rounded-xl border border-border shadow-2xl bg-black/40"
+            />
+          ) : (
+            <div className="w-[85vw] max-w-2xl h-[55vh] flex flex-col items-center justify-center rounded-2xl border border-border bg-card/90 p-8 text-center space-y-4 shadow-2xl">
+              <div className="w-16 h-16 rounded-2xl bg-muted/60 border border-border flex items-center justify-center text-muted-foreground">
+                <Monitor size={36} className="opacity-60" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-base font-bold text-foreground">Screen Capture Frame</h3>
+                <p className="text-xs text-muted-foreground max-w-md">
+                  Desktop telemetry frame captured on {current.sessionDate} at {current.capturedAtFormatted}.
+                </p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-muted/30 border border-border text-xs text-left w-full max-w-md space-y-1.5 font-mono">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Application:</span>
+                  <span className="font-semibold text-foreground">{current.appName}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Window Title:</span>
+                  <span className="font-semibold text-foreground truncate max-w-[200px]" title={current.windowTitle}>
+                    {current.windowTitle || '-'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Capture Time:</span>
+                  <span className="text-foreground">{current.capturedAtFormatted}</span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Bottom Bar: Telemetry metadata & Filmstrip */}
       <div className="border-t border-border bg-card/90 px-4 sm:px-6 py-2.5 shrink-0 space-y-2">
-        {/* Window title on mobile / metadata line */}
+        {/* Window title & shortcuts hint */}
         <div className="flex items-center justify-between text-xs text-muted-foreground flex-wrap gap-2">
           <div className="flex items-center gap-3">
             <span className="font-medium text-foreground">{current.appName}</span>
             <span className="truncate max-w-md">{current.windowTitle}</span>
           </div>
+
           <div className="flex items-center gap-3 text-[11px] font-mono">
             {current.fileSizeFormatted && (
               <span className="flex items-center gap-1">
@@ -286,6 +329,7 @@ export function ScreenshotLightboxModal({
               </span>
             )}
             <span>Session: {current.sessionId.slice(0, 8)}...</span>
+            <span className="hidden lg:inline text-muted-foreground/70">• ESC to close • ← / → to navigate • +/- to zoom</span>
           </div>
         </div>
 
@@ -299,10 +343,11 @@ export function ScreenshotLightboxModal({
                   setZoomLevel(1)
                   setCurrentIndex(idx)
                 }}
-                className={`relative shrink-0 w-16 h-10 rounded-lg overflow-hidden border-2 transition-all ${idx === validIndex
-                  ? 'border-primary ring-2 ring-primary/30 scale-105'
-                  : 'border-border/60 opacity-60 hover:opacity-100 hover:border-foreground/30'
-                  }`}
+                className={`relative shrink-0 w-16 h-10 rounded-lg overflow-hidden border-2 transition-all ${
+                  idx === validIndex
+                    ? 'border-primary ring-2 ring-primary/30 scale-105'
+                    : 'border-border/60 opacity-60 hover:opacity-100 hover:border-foreground/30'
+                }`}
                 title={`${s.appName} - ${s.capturedAtFormatted}`}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -331,4 +376,3 @@ export function ScreenshotLightboxModal({
     </div>
   )
 }
-

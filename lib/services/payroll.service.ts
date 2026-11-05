@@ -8,7 +8,7 @@ import {
   canonicalOfficeHoursToMinutes,
   getStandardWorkingDaysInMonth,
 } from '@/lib/utils/time';
-import { resolveSalaryForPeriod } from '@/lib/utils/salary';
+import { calculateMonthlyBasicSalary, resolveSalaryForPeriod, PeriodSalaryResolution } from '@/lib/utils/salary';
 import { SalaryProrationDetail, DayPayrollBreakdown, PayrollReconciliation } from '@/types/payroll';
 import { getAuthoritativeDivisorPolicy, getDivisorForMonth, PayrollDivisorPolicy } from '@/lib/services/payroll-config.service';
 
@@ -680,7 +680,6 @@ export async function calculateMonthlyPayroll(
     const validationWarning = hasMissingSalary
       ? (isIntern ? 'Missing stipend configuration for intern' : 'Missing salary structure/basic salary configuration')
       : undefined;
-
     // All evaluated employees for this period have hasPayrollData = true
     const hasPayrollData = true;
 
@@ -705,7 +704,6 @@ export async function calculateMonthlyPayroll(
 
     // Gross Pay for reporting
     const grossPay = divisorMode === 'fixed_26' ? grossScheduledPay : monthlyPayBase;
-
     // Total deductions = attendance deduction + manual deductions
     const totalDeductions = Math.round((attendanceDeduction + manualDeductions) * 100) / 100;
 

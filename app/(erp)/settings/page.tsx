@@ -4,7 +4,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { Settings, User, Shield, Briefcase, Mail, Building, Key, CheckCircle2 } from 'lucide-react'
+import { Settings, User, Shield, Briefcase, Mail, Building, Key, CheckCircle2, Download, ExternalLink, Clock } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Settings & Profile | TripleS ERP',
@@ -104,6 +104,50 @@ export default async function SettingsPage() {
 
         {/* Preferences & Security Sidebar */}
         <div className="space-y-6">
+          {/* Time Tracker Software Download */}
+          <Card className="shadow-sm border border-border/60">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Clock className="h-4 w-4 text-primary" />
+                  Time Tracker
+                </CardTitle>
+                <Badge variant="outline" className="text-[10px] uppercase font-semibold">
+                  Desktop App
+                </Badge>
+              </div>
+              <CardDescription>
+                Download the TripleS desktop application for employee work and session tracking.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <a
+                href="https://triples-time-tracker.vercel.app/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between p-3 rounded-lg border border-primary/30 bg-primary/5 hover:bg-primary/10 transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                    <Download className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground group-hover:text-primary transition-colors">
+                      Download Time Tracker
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Windows & Desktop Releases
+                    </p>
+                  </div>
+                </div>
+                <ExternalLink className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0 ml-2" />
+              </a>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Employees and administrators can run the desktop tracker to record project hours and activity metrics automatically.
+              </p>
+            </CardContent>
+          </Card>
+
           <Card className="shadow-sm border border-border/60">
             <CardHeader className="pb-3">
               <CardTitle className="text-lg">Appearance</CardTitle>

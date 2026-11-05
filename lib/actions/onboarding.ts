@@ -266,6 +266,11 @@ export async function updateEmployeeData(id: string, data: Partial<Employee>): P
     }
   }
 
+  // Update job_title if designation changed
+  if (updatePayload.designation && !updatePayload.job_title) {
+    updatePayload.job_title = updatePayload.designation
+  }
+
   // Handle work_location gracefully with database fallback
   let workLocationValue: string | null = null
   if (updatePayload.work_location !== undefined) {
@@ -300,7 +305,7 @@ export async function updateEmployeeData(id: string, data: Partial<Employee>): P
     delete updatePayload.work_location
     let existingNotes = currentEmployee.notes || ''
     if (workLocationValue) {
-      existingNotes = existingNotes.replace(/\[WORK_LOCATION:\s*[^\]]+\]\n?/gi, '').trim()
+      existingNotes = existingNotes.replace(/\[WORK_LOCATION:\s*[^\r\n\]]+\]\n?/gi, '').trim()
       const locTag = `[WORK_LOCATION: ${workLocationValue}]`
       existingNotes = existingNotes ? `${existingNotes}\n${locTag}` : locTag
       updatePayload.notes = existingNotes
@@ -336,7 +341,7 @@ export async function updateEmployeeData(id: string, data: Partial<Employee>): P
   if (data.email && data.email !== currentEmployee.email) {
     try {
       const { data: usersData } = await adminClient.auth.admin.listUsers()
-      const authUser = usersData?.users?.find(u =>
+      const authUser = usersData?.users?.find((u: any) =>
         u.email === currentEmployee.email ||
         (currentEmployee.employee_id_number && u.user_metadata?.employee_id === currentEmployee.employee_id_number)
       )

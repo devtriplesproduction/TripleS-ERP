@@ -22,10 +22,7 @@ import {
   Calculator
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
-import {
-  getMonthlyPayrollAction,
-  finalizeMonthlyPayrollAction
-} from '@/lib/actions/payroll'
+import { getMonthlyPayrollAction, finalizeMonthlyPayrollAction } from '@/lib/actions/payroll'
 import { PayrollDetailModal } from './PayrollDetailModal'
 import { AddDeductionModal } from './AddDeductionModal'
 import { PayrollResult } from '@/lib/services/payroll.service'
@@ -281,7 +278,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
             {/* Dynamic Divisor Badge */}
             <Badge
               variant="outline"
-              className="px-2.5 py-1 text-xs border border-border bg-muted/40 flex items-center gap-1.5 font-medium"
+              className="px-2.5 py-1 text-xs border border-border bg-muted/40 flex items-center gap-1.5 font-medium rounded-md"
               title={`Dynamic Divisor: ${isFinalized && payrollResults[0]?.reconciliation?.divisorDays ? payrollResults[0].reconciliation.divisorDays : dynamicDivisor} Days (${calendarDays} calendar days − ${sundaysCount} Sundays in Asia/Kolkata)`}
             >
               <Calculator className="h-3.5 w-3.5 text-primary" />
@@ -299,10 +296,11 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
 
             <Badge
               variant={isFinalized ? "default" : "secondary"}
-              className={`px-3 py-1 font-semibold text-xs flex items-center gap-1.5 ${
+              className={`px-3 py-1 font-semibold text-xs rounded-md flex items-center gap-1.5 ${
                 isFinalized
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                  : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white font-semibold'
+                  : 'bg-muted text-foreground border border-border font-medium'
+
               }`}
             >
               {isFinalized ? (
@@ -318,15 +316,15 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
               )}
             </Badge>
 
-            <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-full border border-border shadow-sm shrink-0 self-start sm:self-auto">
-              <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 hover:bg-background hover:shadow-sm transition-all" onClick={handlePrevMonth} aria-label="Previous month">
+            <div className="flex items-center gap-1 bg-muted/40 p-1 rounded-lg border border-border shadow-xs shrink-0 self-start sm:self-auto">
+              <Button variant="ghost" size="icon" className="rounded-md h-8 w-8 hover:bg-background hover:shadow-xs transition-all" onClick={handlePrevMonth} aria-label="Previous month">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <div className="font-semibold text-xs sm:text-sm px-2 text-center flex items-center justify-center gap-2 text-foreground tracking-tight whitespace-nowrap">
                 <Calendar className="h-4 w-4 text-muted-foreground/70" />
                 {months[month - 1]} {year}
               </div>
-              <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 hover:bg-background hover:shadow-sm transition-all" onClick={handleNextMonth} aria-label="Next month">
+              <Button variant="ghost" size="icon" className="rounded-md h-8 w-8 hover:bg-background hover:shadow-xs transition-all" onClick={handleNextMonth} aria-label="Next month">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -335,7 +333,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
       />
 
       {calculationError && (
-        <div className="rounded-lg border border-rose-500/30 bg-rose-50/50 dark:bg-rose-950/20 p-4 text-rose-800 dark:text-rose-300 flex items-center justify-between text-xs sm:text-sm">
+        <div className="rounded-lg border border-rose-500/30 bg-rose-50/50 dark:bg-rose-950/20 p-4 text-rose-800 dark:text-rose-300 flex items-center justify-between text-xs sm:text-sm shadow-xs">
           <div className="flex items-center gap-2.5">
             <AlertTriangle className="h-5 w-5 text-rose-600 dark:text-rose-400 shrink-0" />
             <div>
@@ -346,7 +344,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
           <Button
             size="sm"
             variant="outline"
-            className="border-rose-400 text-rose-700 hover:bg-rose-100 dark:hover:bg-rose-900"
+            className="border-rose-400 text-rose-700 hover:bg-rose-100 dark:hover:bg-rose-900 rounded-md"
             onClick={() => loadPayroll(true)}
           >
             Retry Calculation
@@ -355,7 +353,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
       )}
 
       {unresolvedWarnings.length > 0 && !isFinalized && (
-        <div className="rounded-lg border border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20 p-4 text-amber-800 dark:text-amber-300 space-y-2 text-xs sm:text-sm">
+        <div className="rounded-lg border border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20 p-4 text-amber-800 dark:text-amber-300 space-y-2 text-xs sm:text-sm shadow-xs">
           <div className="flex items-center gap-2 font-semibold text-amber-700 dark:text-amber-400">
             <AlertTriangle className="h-4 w-4 shrink-0" />
             <span>{unresolvedWarnings.length} Employee Calculation Warning{unresolvedWarnings.length > 1 ? 's' : ''} Require Attention</span>
@@ -374,7 +372,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
       )}
 
       {isFinalized && (
-        <div className="rounded-lg border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 p-4 text-emerald-800 dark:text-emerald-300 flex items-center justify-between text-xs sm:text-sm">
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20 p-4 text-emerald-800 dark:text-emerald-300 flex items-center justify-between text-xs sm:text-sm shadow-xs">
           <div className="flex items-center gap-2.5">
             <ShieldCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400 shrink-0" />
             <div>
@@ -414,7 +412,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
           </CardContent>
         </Card>
 
-        <Card className="bg-card">
+<Card className="bg-card">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xs sm:text-sm font-medium text-muted-foreground">Monthly Divisor</CardTitle>
             <Calculator className="h-4 w-4 text-muted-foreground" />
@@ -443,7 +441,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
               <Button
                 size="lg"
                 variant="outline"
-                className="flex-1 h-11 text-xs sm:text-sm font-semibold"
+                className="flex-1 h-11 text-xs sm:text-sm font-semibold rounded-md shadow-xs"
                 onClick={() => loadPayroll(true)}
                 disabled={loading || calculating}
                 aria-label="Calculate Monthly Payroll"
@@ -454,7 +452,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
               </Button>
               <Button
                 size="lg"
-                className="flex-1 h-11 text-xs sm:text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 h-11 text-xs sm:text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 shadow-xs rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
                 onClick={() => setIsFinalizeModalOpen(true)}
                 disabled={loading || calculating || payrollResults.length === 0 || hasUnresolvedErrors}
                 title={hasUnresolvedErrors ? 'Resolve all employee calculation warnings before finalizing' : undefined}
@@ -464,7 +462,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
               </Button>
             </div>
           ) : (
-            <div className="w-full h-11 rounded-md bg-muted/50 border border-border flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground font-medium">
+            <div className="w-full h-11 rounded-md bg-muted/50 border border-border flex items-center justify-center gap-2 text-xs sm:text-sm text-muted-foreground font-medium shadow-xs">
               <Lock className="h-4 w-4 text-emerald-500" />
               Locked Historical Payroll
             </div>
@@ -490,7 +488,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
                   setPreselectedEmpId(undefined)
                   setIsAddDeductionOpen(true)
                 }}
-                className="h-8 gap-1.5 text-xs font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-sm"
+                className="h-8 gap-1.5 text-xs font-semibold bg-foreground text-background hover:bg-foreground/90 shadow-xs rounded-md"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Add Deduction
@@ -549,7 +547,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
                               <Lock className="h-3 w-3 text-muted-foreground shrink-0" />
                             )}
                             {res.hasMissingSalary && (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 text-rose-600 border-rose-400 bg-rose-50/50">
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 rounded-sm text-rose-600 border-rose-400 bg-rose-50/50">
                                 Missing Salary
                               </Badge>
                             )}
@@ -557,7 +555,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
                           <div className="text-xs text-muted-foreground flex items-center gap-2">
                             <span>{res.department}</span>
                             {res.prorationDetail?.isProrated && (
-                              <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 text-amber-600 border-amber-400">
+                              <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 rounded-sm text-amber-600 border-amber-400">
                                 Prorated
                               </Badge>
                             )}
@@ -621,7 +619,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
                           <h4 className="font-bold text-foreground text-base leading-tight">{res.name}</h4>
                           {res.isLocked && <Lock className="h-3 w-3 text-muted-foreground" />}
                           {res.hasMissingSalary && (
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 text-rose-600 border-rose-400 bg-rose-50/50">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4 rounded-sm text-rose-600 border-rose-400 bg-rose-50/50">
                               Missing Salary
                             </Badge>
                           )}
@@ -755,7 +753,7 @@ export function PayrollClientPage({ title, initialEmployees = [] }: { title: str
               Cancel
             </Button>
             <Button
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold"
+              className="bg-foreground text-background hover:bg-foreground/90 font-semibold shadow-xs rounded-md"
               onClick={handleFinalizePayroll}
               disabled={finalizing}
             >

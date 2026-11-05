@@ -20,6 +20,7 @@ import {
   FileText,
   Download,
   ExternalLink,
+  Landmark,
 } from 'lucide-react'
 import { useState } from 'react'
 import { usePathname } from 'next/navigation'
@@ -32,6 +33,7 @@ interface SidebarProps {
   isHod?: boolean
   hasProjectAccess?: boolean
   hasTasks?: boolean
+  department?: string | null
 }
 
 /**
@@ -57,9 +59,9 @@ interface NavItem {
  * 4. Attendance
  * 5. Holiday
  * 6. Payroll
- * Followed by other modules (Project Management, Rulebook, Announcements) per RBAC.
+ * Followed by other modules (Project Management, Accounting, Content Management, Rulebook, Announcements) per RBAC.
  */
-function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: boolean, hasTasks?: boolean): NavItem[] {
+function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: boolean, hasTasks?: boolean, department?: string | null): NavItem[] {
   const employeesHref = '/employees'
   const eodHref = '/eod'
   const leaveHref = '/leave'
@@ -81,6 +83,7 @@ function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: 
       allItems.push({ label: 'Clients', href: '/clients', icon: <Briefcase className="mr-3 h-5 w-5 shrink-0" /> })
       allItems.push({ label: 'Content Management', href: '/content-management', icon: <FileText className="mr-3 h-5 w-5 shrink-0" /> })
     }
+    allItems.push({ label: 'Accounting', href: '/accounting', icon: <Landmark className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'EOD Reports', href: eodHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Request Leave / WFH', href: leaveHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Attendance', href: attendanceHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
@@ -94,6 +97,8 @@ function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: 
       allItems.push({ label: 'Projects', href: '/projects', icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" /> })
     }
     allItems.push({ label: 'My Tasks', href: '/my-tasks', icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Content Management', href: '/content-management', icon: <FileText className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Accounting', href: '/accounting', icon: <Landmark className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Payroll', href: payrollHref, icon: <CreditCard className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Review EOD', href: eodHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Leave | WFH | Credits', href: leaveHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
@@ -107,6 +112,8 @@ function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: 
     allItems.push({ label: 'Projects', href: '/projects', icon: <FolderKanban className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Tasks Board', href: '/tasks', icon: <CheckSquare className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Clients', href: '/clients', icon: <Briefcase className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Content Management', href: '/content-management', icon: <FileText className="mr-3 h-5 w-5 shrink-0" /> })
+    allItems.push({ label: 'Accounting', href: '/accounting', icon: <Landmark className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Payroll', href: payrollHref, icon: <CreditCard className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Review EOD', href: eodHref, icon: <ClipboardList className="mr-3 h-5 w-5 shrink-0" /> })
     allItems.push({ label: 'Leave | WFH | Credits', href: leaveHref, icon: <Calendar className="mr-3 h-5 w-5 shrink-0" /> })
@@ -116,10 +123,10 @@ function getRoleNavItems(userRole: AppRole, isHod?: boolean, hasProjectAccess?: 
     allItems.push({ label: 'Rulebook', href: '/rulebook', icon: <Book className="mr-3 h-5 w-5 shrink-0" /> })
   }
 
-  return allItems.filter(item => hasRouteAccess(userRole, item.href, isHod))
+  return allItems.filter(item => hasRouteAccess(userRole, item.href, isHod, department))
 }
 
-export function Sidebar({ userRole, isHod, hasProjectAccess, hasTasks }: SidebarProps) {
+export function Sidebar({ userRole, isHod, hasProjectAccess, hasTasks, department }: SidebarProps) {
   const pathname = usePathname()
   const { isOpen, closeSidebar } = useSidebar()
   const [openModule, setOpenModule] = useState<string | null>(() => {
@@ -138,7 +145,7 @@ export function Sidebar({ userRole, isHod, hasProjectAccess, hasTasks }: Sidebar
     setOpenModule(openModule === moduleName ? null : moduleName)
   }
 
-  const visibleItems = getRoleNavItems(userRole, isHod, hasProjectAccess, hasTasks)
+  const visibleItems = getRoleNavItems(userRole, isHod, hasProjectAccess, hasTasks, department)
 
   const isItemActive = (href: string) => {
     if (!href) return false
@@ -168,8 +175,6 @@ export function Sidebar({ userRole, isHod, hasProjectAccess, hasTasks }: Sidebar
             <LayoutDashboard className="mr-3 h-5 w-5 shrink-0" />
             <span className="truncate">Dashboard</span>
           </Link>
-
-
 
           {visibleItems.map((item) => {
             // Group/expandable module (e.g., Project Management)

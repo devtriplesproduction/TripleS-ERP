@@ -36,6 +36,8 @@ vi.mock('@/lib/supabase/server', () => ({
 
 describe('Comprehensive RBAC & Route Audit Suite', () => {
   beforeEach(() => {
+    process.env.NEXT_PUBLIC_SUPABASE_URL = 'http://localhost:54321'
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY = 'mock-anon-key'
     mockUser = null
     mockProfile = null
   })

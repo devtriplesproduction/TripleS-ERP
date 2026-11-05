@@ -169,17 +169,25 @@ export const professionalEditSchema = z.object({
   work_location: z.string().trim().min(1, 'Work location is required.'),
   salary: z.union([z.number(), z.string(), z.null()]).optional(),
   stipend: z.union([z.number(), z.string(), z.null()]).optional(),
-}).refine((data) => {
+}).refine(data => {
   if (data.employment_type === 'Intern') {
-    if (data.stipend === null || data.stipend === undefined || data.stipend === '') {
-      return false
-    }
-    const num = Number(data.stipend)
-    return !isNaN(num) && num >= 0
+    if (data.stipend === null || data.stipend === undefined || data.stipend === '') return false;
+    const num = Number(data.stipend);
+    return !isNaN(num) && num >= 0;
   }
-  return true
+  return true;
 }, {
-  message: 'Stipend is required for Interns.',
-  path: ['stipend'],
-})
+  message: 'Stipend is required for Interns and must be a valid non-negative number.',
+  path: ['stipend']
+}).refine(data => {
+  if (data.employment_type !== 'Intern' && data.salary !== null && data.salary !== undefined && data.salary !== '') {
+    const num = Number(data.salary);
+    return !isNaN(num) && num >= 0;
+  }
+  return true;
+}, {
+  message: 'Salary must be a valid non-negative number.',
+  path: ['salary']
+});
 
+export type ProfessionalEditFormData = z.infer<typeof professionalEditSchema>;

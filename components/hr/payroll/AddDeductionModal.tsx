@@ -151,7 +151,7 @@ export function AddDeductionModal({
       <DialogContent className="w-[calc(100vw-1.5rem)] sm:max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto p-4 sm:p-6 bg-card border-border">
         <DialogHeader>
           <DialogTitle className="text-lg sm:text-xl flex items-center gap-2 text-foreground">
-            <MinusCircle className="h-5 w-5 text-rose-500 shrink-0" />
+            <MinusCircle className="h-5 w-5 text-muted-foreground shrink-0" />
             <span>Add Employee Deduction</span>
           </DialogTitle>
           <p className="text-xs sm:text-sm text-muted-foreground">
@@ -160,8 +160,8 @@ export function AddDeductionModal({
         </DialogHeader>
 
         {formError && (
-          <div className="flex items-center gap-2 p-3 text-xs sm:text-sm text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-lg">
-            <AlertCircle className="h-4 w-4 shrink-0" />
+          <div className="flex items-center gap-2 p-3 text-xs sm:text-sm text-foreground bg-muted/40 border border-border rounded-lg">
+            <AlertCircle className="h-4 w-4 shrink-0 text-muted-foreground" />
             <span>{formError}</span>
           </div>
         )}
@@ -355,7 +355,7 @@ export function AddDeductionModal({
             <Button
               type="submit"
               disabled={loading}
-              className="bg-rose-600 hover:bg-rose-700 text-white font-medium text-xs sm:text-sm h-9 px-5 rounded-lg cursor-pointer shadow-sm transition-all"
+              className="bg-foreground text-background hover:bg-foreground/90 font-medium text-xs sm:text-sm h-9 px-5 rounded-lg cursor-pointer shadow-xs transition-all"
             >
               {loading ? (
                 <>
