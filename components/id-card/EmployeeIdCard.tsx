@@ -45,7 +45,7 @@ interface EmployeeIdCardProps {
 }
 
 export const DEFAULT_COMPANY: CompanyCardSettings = {
-  companyName: 'TripleS OS',
+  companyName: 'Triple S Production',
   companyAddress: 'Industrial Area Phase II, Okhla, New Delhi 110020, India',
   contactEmail: 'hr@triplesproduction.com',
   contactPhone: '+91 8956183973',
@@ -233,7 +233,7 @@ export function EmployeeIdCard({
           <div className="h-12 bg-[#7c3aed] px-5 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
               <span className="text-lg font-black tracking-tight text-white leading-none">
-                {company.companyName || 'TripleS OS'}
+                {company.companyName || 'Triple S Production'}
               </span>
             </div>
             <span className="text-[10px] font-mono font-bold tracking-[0.22em] uppercase text-white/95">
@@ -328,7 +328,7 @@ export function EmployeeIdCard({
               {/* White Signature Card */}
               <div className="rounded-lg bg-white px-5 py-1.5 shadow-sm text-center">
                 <span className="font-serif italic text-base font-bold text-zinc-900 leading-tight block">
-                  TripleS Admin
+                  Triple S Admin
                 </span>
                 <span className="text-[7.5px] font-black uppercase tracking-wider text-zinc-600 block mt-0.5">
                   AUTHORIZED SIGNATURE
@@ -349,7 +349,7 @@ export function EmployeeIdCard({
           <div className="h-12 bg-[#7c3aed] px-5 flex items-center justify-between shrink-0">
             <div className="flex items-center gap-2">
               <span className="text-lg font-black tracking-tight text-white leading-none">
-                {company.companyName || 'TripleS OS'}
+                {company.companyName || 'Triple S Production'}
               </span>
             </div>
             <span className="text-[10px] font-mono font-bold tracking-[0.22em] uppercase text-white/95">
@@ -394,7 +394,7 @@ export function EmployeeIdCard({
 
             {/* Legal / Property Disclaimer */}
             <p className="text-[9.5px] text-zinc-400 leading-relaxed text-left">
-              This ID remains property of TripleS OS. If found, please return to HR or contact{' '}
+              This ID remains property of {company.companyName || 'Triple S Production'}. If found, please return to HR or contact{' '}
               {emergency.phone || company.contactPhone || '+91 8956183973'}. Unauthorized use is prohibited.
             </p>
           </div>

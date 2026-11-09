@@ -38,7 +38,7 @@ describe('EmployeeIdCard UI Component Tests (Landscape Design)', () => {
       expect(html).toContain('Harishchandra Nanavare')
       expect(html).toContain('EMP-002')
       expect(html).toContain('Engineering')
-      expect(html).toContain('TripleS OS')
+      expect(html).toContain('Triple S Production')
       expect(html).toContain('AGENCY PERSONNEL')
       expect(html).toContain('EMPLOYEE')
       expect(html).toContain('ID NUMBER')
@@ -48,7 +48,7 @@ describe('EmployeeIdCard UI Component Tests (Landscape Design)', () => {
       expect(html).toContain('OFFICE')
       expect(html).toContain('VALID THRU')
       expect(html).toContain('AUTHORIZED SIGNATURE')
-      expect(html).toContain('TripleS Admin')
+      expect(html).toContain('Triple S Admin')
       expect(html).toContain('HN') // Initials fallback when no profile photo
     })
 
@@ -73,7 +73,7 @@ describe('EmployeeIdCard UI Component Tests (Landscape Design)', () => {
         <EmployeeIdCard employee={sampleEmployee} isFlipped={true} />
       )
 
-      expect(html).toContain('TripleS OS')
+      expect(html).toContain('Triple S Production')
       expect(html).toContain('AGENCY PERSONNEL')
       expect(html).toContain('EMERGENCY CONTACT &amp; MEDICAL')
       expect(html).toContain('CONTACT NAME / PHONE')
@@ -81,7 +81,7 @@ describe('EmployeeIdCard UI Component Tests (Landscape Design)', () => {
       expect(html).toContain('BLOOD GROUP')
       expect(html).toContain('B+')
       expect(html).toContain('Authorizing Digital Signature...')
-      expect(html).toContain('This ID remains property of TripleS OS.')
+      expect(html).toContain('This ID remains property of Triple S Production.')
       expect(html).toContain('REF:')
     })
   })

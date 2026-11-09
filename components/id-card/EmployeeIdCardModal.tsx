@@ -48,7 +48,7 @@ export function EmployeeIdCardModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         showCloseButton={false}
-        className="w-[96vw] sm:max-w-xl md:max-w-2xl p-6 sm:p-8 overflow-hidden border-zinc-800 bg-[#0b0c0e]/95 backdrop-blur-2xl flex flex-col items-center justify-center shadow-2xl rounded-3xl"
+        className="w-[96vw] sm:max-w-xl md:max-w-2xl p-6 sm:p-8 overflow-hidden border-zinc-200 dark:border-zinc-800 bg-white/95 dark:bg-[#0b0c0e]/95 backdrop-blur-2xl flex flex-col items-center justify-center shadow-2xl rounded-3xl"
       >
         {/* Printable Section Style Sheet */}
         <style jsx global>{`
@@ -79,10 +79,10 @@ export function EmployeeIdCardModal({
         <div className="w-full relative flex items-center justify-center mb-2">
           {/* Centered Pill & Title */}
           <div className="flex flex-col items-center justify-center text-center">
-            <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[10.5px] font-semibold tracking-widest uppercase border border-purple-500/35 bg-purple-500/10 text-purple-300">
+            <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[10.5px] font-semibold tracking-widest uppercase border border-zinc-300 bg-zinc-100 text-zinc-700 dark:border-purple-500/35 dark:bg-purple-500/10 dark:text-purple-300">
               OFFICIAL DOCUMENT
             </span>
-            <DialogTitle className="text-2xl font-bold tracking-tight text-white mt-1.5">
+            <DialogTitle className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-white mt-1.5">
               Digital Identity Card
             </DialogTitle>
             <DialogDescription className="sr-only">
@@ -96,7 +96,7 @@ export function EmployeeIdCardModal({
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="h-8 w-8 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800/80 cursor-pointer"
+              className="h-8 w-8 rounded-full text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800/80 cursor-pointer"
               title="Close modal"
             >
               <X className="h-4 w-4" />
@@ -116,13 +116,13 @@ export function EmployeeIdCardModal({
           />
         </div>
 
-        {/* Bottom Action Buttons (Matching Screenshot) */}
+        {/* Bottom Action Buttons */}
         <div className="flex items-center justify-center gap-3 mt-1">
-          {/* Flip Card Pill */}
+          {/* Flip Card Pill: Black in Light theme, White in Dark theme */}
           <Button
             type="button"
             onClick={() => setIsFlipped(!isFlipped)}
-            className="h-10 px-5 rounded-xl font-semibold bg-[#7c3aed] hover:bg-[#6d28d9] text-white shadow-md gap-2 cursor-pointer transition-all"
+            className="h-10 px-5 rounded-xl font-semibold bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200 shadow-md gap-2 cursor-pointer transition-all"
             title="Click to flip ID card"
           >
             <RotateCw className="w-4 h-4" />
@@ -134,7 +134,7 @@ export function EmployeeIdCardModal({
             type="button"
             variant="outline"
             onClick={handleExportPDF}
-            className="h-10 px-5 rounded-xl font-medium border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white shadow-sm gap-2 cursor-pointer transition-all"
+            className="h-10 px-5 rounded-xl font-medium border-zinc-300 bg-white text-zinc-900 hover:bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900/80 dark:text-zinc-200 dark:hover:bg-zinc-800 dark:hover:text-white shadow-sm gap-2 cursor-pointer transition-all"
             title="Print or export ID badge as PDF"
           >
             <Download className="w-4 h-4" />
