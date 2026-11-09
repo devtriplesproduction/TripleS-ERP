@@ -17,13 +17,11 @@ import {
 } from './EmployeeIdCard'
 import {
   RotateCw,
-  Printer,
   Sun,
   Moon,
   Columns,
   Layers,
   CreditCard,
-  CheckCircle2,
   X
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -44,10 +42,6 @@ export function EmployeeIdCardModal({
   const [isFlipped, setIsFlipped] = useState(false)
   const [theme, setTheme] = useState<'dark' | 'light'>('dark')
   const [viewMode, setViewMode] = useState<'interactive' | 'side-by-side'>('interactive')
-
-  const handlePrint = () => {
-    window.print()
-  }
 
   const employeeName =
     employee.fullName ||
@@ -237,7 +231,7 @@ export function EmployeeIdCardModal({
             </div>
           )}
 
-          {/* Hidden Print Target Container (Active when window.print() is executed) */}
+          {/* Hidden Print Target Container */}
           <div
             id="triples-print-badge-container"
             className="hidden"
@@ -257,34 +251,6 @@ export function EmployeeIdCardModal({
               isFlipped={true}
               interactive={false}
             />
-          </div>
-        </div>
-
-        {/* Pinned Modal Footer */}
-        <div className="shrink-0 px-4 sm:px-6 py-2 border-t border-border/50 bg-background flex flex-col sm:flex-row items-center justify-between gap-2">
-          <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-            <span>ISO CR80 standard badge format (53.98 × 85.6 mm) with scan verification.</span>
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onClose}
-              className="h-8 text-xs flex-1 sm:flex-none cursor-pointer"
-            >
-              Close
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={handlePrint}
-              className="h-8 text-xs flex-1 sm:flex-none gap-1.5 font-semibold bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm cursor-pointer"
-            >
-              <Printer className="w-3.5 h-3.5" />
-              <span>Print / Save Badge</span>
-            </Button>
           </div>
         </div>
       </DialogContent>
