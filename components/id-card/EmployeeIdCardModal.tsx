@@ -106,14 +106,18 @@ export function EmployeeIdCardModal({
         </div>
 
         {/* Center Card Container */}
-        <div className="my-5 flex justify-center w-full">
-          <EmployeeIdCard
-            employee={employee}
-            company={company}
-            isFlipped={isFlipped}
-            onFlip={() => setIsFlipped(!isFlipped)}
-            interactive={true}
-          />
+        <div className="my-4 sm:my-5 flex justify-center items-center w-full overflow-hidden">
+          <div className="w-[540px] max-w-full flex justify-center items-center">
+            <div className="origin-top sm:origin-center scale-[0.58] min-[400px]:scale-[0.72] min-[520px]:scale-[0.85] sm:scale-100 transition-transform h-[195px] min-[400px]:h-[240px] min-[520px]:h-[285px] sm:h-[330px]">
+              <EmployeeIdCard
+                employee={employee}
+                company={company}
+                isFlipped={isFlipped}
+                onFlip={() => setIsFlipped(!isFlipped)}
+                interactive={true}
+              />
+            </div>
+          </div>
         </div>
 
         {/* Bottom Action Buttons */}

@@ -89,7 +89,13 @@ export function EmployeeDetailsClient({
     phone: employee.phone || undefined,
     email: employee.email || undefined,
     emergencyContact: employee.emergency_contact || undefined,
-    profilePhoto: localPhotoUrl || employee.profile_photo || undefined,
+    profilePhoto: localPhotoUrl || (
+      employee.profile_photo
+        ? (employee.profile_photo.startsWith('http://') || employee.profile_photo.startsWith('https://') || employee.profile_photo.startsWith('data:') || employee.profile_photo.startsWith('/')
+            ? employee.profile_photo
+            : supabase.storage.from('employee-documents').getPublicUrl(employee.profile_photo).data.publicUrl)
+        : undefined
+    ),
     status: employee.status || 'Active',
     workLocation: employee.work_location || undefined,
     role: employee.role || undefined,
@@ -1021,13 +1027,15 @@ export function EmployeeDetailsClient({
               <Edit2 className="w-3.5 h-3.5" /> Edit Employee
             </button>
           )}
-          <button
+          <Button
             type="button"
+            variant="outline"
             onClick={() => setShowIdCardModal(true)}
-            className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-foreground/90 hover:bg-muted/60 hover:text-foreground transition-colors cursor-pointer"
+            className="flex items-center justify-start gap-2.5 w-full text-left px-3 py-2.5 h-auto rounded-xl text-sm font-medium text-foreground hover:bg-muted/60 transition-colors cursor-pointer border-border"
           >
-            <CreditCard className="w-3.5 h-3.5 text-primary" /> View & Print ID Badge
-          </button>
+            <CreditCard className="w-4 h-4 text-primary" />
+            <span>View Digital ID Card</span>
+          </Button>
           <ChangePasswordAction employee={employee} />
           <HodAssignmentAction employee={employee} onHodChange={setIsHod} />
           <DeactivateEmployeeAction

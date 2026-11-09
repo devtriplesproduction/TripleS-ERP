@@ -102,18 +102,20 @@ export default async function SettingsPage() {
               </div>
             </div>
 
-            {/* Employee ID Badge Quick Action */}
-            <div className="p-4 rounded-xl border border-border/60 bg-gradient-to-r from-muted/30 via-background to-muted/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div className="space-y-0.5">
-                <p className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <CreditCard className="w-4 h-4 text-primary" /> Official Staff Identity Badge
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  View, flip, and print your standardized corporate identity card with verification QR.
-                </p>
+            {/* Employee ID Badge Quick Action - User side only (hidden on Admin side) */}
+            {user.role !== 'Admin' && user.role !== 'HR' && (
+              <div className="p-4 rounded-xl border border-border/60 bg-gradient-to-r from-muted/30 via-background to-muted/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <CreditCard className="w-4 h-4 text-primary" /> Official Staff Identity Badge
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    View, flip, and print your standardized corporate identity card with verification QR.
+                  </p>
+                </div>
+                <UserProfileIdCardButton user={user} />
               </div>
-              <UserProfileIdCardButton user={user} />
-            </div>
+            )}
           </CardContent>
         </Card>
 

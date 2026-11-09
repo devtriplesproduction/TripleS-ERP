@@ -55,6 +55,35 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
   const [selectedIdCardEmployee, setSelectedIdCardEmployee] = useState<EmployeeIdCardData | null>(null)
   const itemsPerPage = 10
 
+  const resolveProfilePhotoUrl = (photo?: string | null) => {
+    if (!photo) return undefined
+    if (photo.startsWith('http://') || photo.startsWith('https://') || photo.startsWith('data:') || photo.startsWith('/')) {
+      return photo
+    }
+    return supabase.storage.from('employee-documents').getPublicUrl(photo).data.publicUrl
+  }
+
+  const handleOpenIdCard = (emp: Employee) => {
+    setSelectedIdCardEmployee({
+      id: emp.id,
+      firstName: emp.first_name,
+      lastName: emp.last_name,
+      fullName: `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
+      employeeId: emp.employee_id_number || (emp as any).employee_id || 'EMP-001',
+      designation: emp.designation || emp.job_title || 'Staff Member',
+      department: emp.department || 'Operations',
+      dob: emp.dob || undefined,
+      joiningDate: emp.joining_date || undefined,
+      bloodGroup: (emp as any).blood_group || 'O+',
+      phone: emp.phone || undefined,
+      email: emp.email || undefined,
+      emergencyContact: emp.emergency_contact || undefined,
+      profilePhoto: resolveProfilePhotoUrl(emp.profile_photo),
+      status: emp.status || emp.employment_status || 'Active',
+      workLocation: (emp as any).work_location || 'OFFICE',
+    })
+  }
+
   const uniqueDepartments = Array.from(new Set(employees.map(e => e.department))).filter(Boolean)
   const uniqueJobTitles = Array.from(new Set(employees.map(e => e.job_title))).filter(Boolean)
 
@@ -308,29 +337,14 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
                     <TableCell className="text-right pr-4">
                       <div className="flex items-center justify-end gap-2">
                         <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setSelectedIdCardEmployee({
-                            id: emp.id,
-                            firstName: emp.first_name,
-                            lastName: emp.last_name,
-                            fullName: `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
-                            employeeId: emp.employee_id_number || (emp as any).employee_id || 'EMP-001',
-                            designation: emp.designation || emp.job_title || 'Staff Member',
-                            department: emp.department || 'Operations',
-                            dob: emp.dob || undefined,
-                            joiningDate: emp.joining_date || undefined,
-                            bloodGroup: (emp as any).blood_group || 'O+',
-                            phone: emp.phone || undefined,
-                            email: emp.email || undefined,
-                            emergencyContact: emp.emergency_contact || undefined,
-                            profilePhoto: emp.profile_photo || undefined,
-                            status: emp.status || emp.employment_status || 'Active',
-                          })}
-                          className="h-8 w-8 bg-input hover:bg-primary/10 text-muted-foreground hover:text-primary rounded-md border border-border cursor-pointer"
-                          title="View & Print ID Badge"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenIdCard(emp)}
+                          className="h-8 px-2.5 bg-background hover:bg-muted text-foreground rounded-md border border-border gap-1.5 font-medium text-xs cursor-pointer shadow-xs"
+                          title={`View Digital ID Card for ${emp.first_name} ${emp.last_name}`}
                         >
-                          <CreditCard className="h-4 w-4" />
+                          <CreditCard className="h-3.5 w-3.5 text-primary" />
+                          <span>ID Card</span>
                         </Button>
                         <ConfirmModal
                           title="Delete Employee"
@@ -451,12 +465,23 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
                   </div>
                 </div>
 
-                <div>
+                <div className="grid grid-cols-2 gap-2 pt-1">
+                  <Button 
+                    type="button"
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => handleOpenIdCard(emp)}
+                    className="min-h-[40px] text-xs justify-center gap-1.5 font-medium cursor-pointer"
+                  >
+                    <CreditCard className="w-3.5 h-3.5 text-primary" />
+                    <span>View ID Card</span>
+                  </Button>
                   <Link 
                     href={`/hr/onboarding/${emp.id}`}
-                    className={cn(buttonVariants({ variant: "outline" }), "w-full min-h-[44px] text-xs justify-center gap-2")}
+                    className={cn(buttonVariants({ variant: "outline" }), "min-h-[40px] text-xs justify-center gap-1.5 font-medium")}
                   >
-                    <Eye className="w-4 h-4" /> View Full Profile
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>View Profile</span>
                   </Link>
                 </div>
               </div>

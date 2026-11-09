@@ -168,7 +168,12 @@ export function EmployeeIdCard({
   className,
 }: EmployeeIdCardProps) {
   const [internalFlipped, setInternalFlipped] = useState(false)
+  const [imageError, setImageError] = useState(false)
   const isFlipped = controlledFlipped !== undefined ? controlledFlipped : internalFlipped
+
+  React.useEffect(() => {
+    setImageError(false)
+  }, [employee.profilePhoto])
 
   const handleCardClick = () => {
     if (!interactive) return
@@ -245,10 +250,11 @@ export function EmployeeIdCard({
           <div className="flex-1 px-5 pt-4 pb-2 flex items-start gap-5">
             {/* Photo Container */}
             <div className="w-[100px] h-[112px] rounded-2xl overflow-hidden shrink-0 border border-zinc-700/60 bg-zinc-850 shadow-md">
-              {employee.profilePhoto ? (
+              {employee.profilePhoto && !imageError ? (
                 <img
                   src={employee.profilePhoto}
                   alt={fullName}
+                  onError={() => setImageError(true)}
                   className="w-full h-full object-cover"
                 />
               ) : (

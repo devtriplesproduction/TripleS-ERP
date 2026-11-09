@@ -58,7 +58,10 @@ export function Header({ user }: HeaderProps) {
 
         <NotificationBell />
 
-        <NavbarIdBadgeTrigger user={user} />
+        {/* User-side only ID Badge trigger (hidden on Admin side) */}
+        {user.role !== 'Admin' && user.role !== 'HR' && (
+          <NavbarIdBadgeTrigger user={user} />
+        )}
         
         <div className="flex items-center gap-2 sm:gap-3 pl-1 sm:pl-2 border-l border-border">
           <Avatar className="h-8 w-8 sm:h-9 sm:w-9 border border-border shrink-0">
