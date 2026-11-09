@@ -4,7 +4,9 @@ import { PageHeader } from '@/components/PageHeader'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { Settings, User, Shield, Briefcase, Mail, Building, Key, CheckCircle2, Download, ExternalLink, Clock } from 'lucide-react'
+import { UserChangePasswordButton } from '@/components/settings/UserChangePasswordModal'
+import { UserProfileIdCardButton } from '@/components/id-card/UserProfileIdCardButton'
+import { Settings, User, Shield, Briefcase, Mail, Building, Key, CheckCircle2, Download, ExternalLink, Clock, CreditCard } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Settings & Profile | TripleS ERP',
@@ -99,6 +101,19 @@ export default async function SettingsPage() {
                 </div>
               </div>
             </div>
+
+            {/* Employee ID Badge Quick Action */}
+            <div className="p-4 rounded-xl border border-border/60 bg-gradient-to-r from-muted/30 via-background to-muted/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="space-y-0.5">
+                <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-primary" /> Official Staff Identity Badge
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  View, flip, and print your standardized corporate identity card with verification QR.
+                </p>
+              </div>
+              <UserProfileIdCardButton user={user} />
+            </div>
           </CardContent>
         </Card>
 
@@ -168,15 +183,20 @@ export default async function SettingsPage() {
 
           <Card className="shadow-sm border border-border/60">
             <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Key className="h-4 w-4 text-primary" />
-                Security & Session
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Key className="h-4 w-4 text-primary" />
+                  Security & Password
+                </CardTitle>
+                <Badge variant="outline" className="text-[10px] uppercase font-semibold">
+                  Account
+                </Badge>
+              </div>
               <CardDescription>
-                Active session authentication status.
+                Active session authentication and login credentials.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4">
               <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400 font-medium">
                 <CheckCircle2 className="h-4 w-4" />
                 <span>Session is securely authenticated</span>
@@ -184,6 +204,12 @@ export default async function SettingsPage() {
               <p className="text-xs text-muted-foreground leading-relaxed">
                 Role-based access permissions are enforced on every request using strict server-side RBAC validation.
               </p>
+              <div className="pt-2 border-t border-border/50 flex justify-center">
+                <UserChangePasswordButton
+                  userEmail={user.email}
+                  userName={user.employee_name}
+                />
+              </div>
             </CardContent>
           </Card>
         </div>

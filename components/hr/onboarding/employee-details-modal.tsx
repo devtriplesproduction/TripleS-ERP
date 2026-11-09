@@ -49,6 +49,8 @@ import { HodStatusBadge } from '@/components/hr/onboarding/hod-status-badge'
 import { EmployeeAttendanceCalendar } from '@/components/hr/onboarding/employee-attendance-calendar'
 import { EmployeeSecurityAuditTab } from '@/components/hr/onboarding/employee-security-audit-tab'
 import { DeactivateEmployeeAction } from '@/components/hr/onboarding/deactivate-employee-action'
+import { EmployeeIdCardModal } from '@/components/id-card/EmployeeIdCardModal'
+import type { EmployeeIdCardData } from '@/components/id-card/EmployeeIdCard'
 
 export function EmployeeDetailsClient({
   employee,
@@ -71,6 +73,27 @@ export function EmployeeDetailsClient({
   const [localPhotoUrl, setLocalPhotoUrl] = useState<string | null>(null)
   const [isHod, setIsHod] = useState<boolean>(Boolean(employee.is_hod))
   const [employmentStatus, setEmploymentStatus] = useState<string>(employee.employment_status || 'Active')
+  const [showIdCardModal, setShowIdCardModal] = useState(false)
+
+  const idCardData: EmployeeIdCardData = {
+    id: employee.id,
+    firstName: employee.first_name,
+    lastName: employee.last_name,
+    fullName: `${employee.first_name || ''} ${employee.last_name || ''}`.trim(),
+    employeeId: employee.employee_id_number || (employee as any).employee_id || 'EMP-001',
+    designation: employee.designation || employee.job_title || 'Staff Member',
+    department: employee.department || 'Operations',
+    dob: employee.dob || undefined,
+    joiningDate: employee.joining_date || undefined,
+    bloodGroup: (employee as any).blood_group || 'O+',
+    phone: employee.phone || undefined,
+    email: employee.email || undefined,
+    emergencyContact: employee.emergency_contact || undefined,
+    profilePhoto: localPhotoUrl || employee.profile_photo || undefined,
+    status: employee.status || 'Active',
+    workLocation: employee.work_location || undefined,
+    role: employee.role || undefined,
+  }
   const [role, setRole] = useState<string | null>(currentUserRole || null)
 
   useEffect(() => {
@@ -998,8 +1021,12 @@ export function EmployeeDetailsClient({
               <Edit2 className="w-3.5 h-3.5" /> Edit Employee
             </button>
           )}
-          <button className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-sm text-muted-foreground hover:bg-muted/60 hover:text-foreground transition-colors">
-            <Download className="w-3.5 h-3.5" /> Download Profile PDF
+          <button
+            type="button"
+            onClick={() => setShowIdCardModal(true)}
+            className="flex items-center gap-2.5 w-full text-left px-3 py-2.5 rounded-xl text-sm font-medium text-foreground/90 hover:bg-muted/60 hover:text-foreground transition-colors cursor-pointer"
+          >
+            <CreditCard className="w-3.5 h-3.5 text-primary" /> View & Print ID Badge
           </button>
           <ChangePasswordAction employee={employee} />
           <HodAssignmentAction employee={employee} onHodChange={setIsHod} />
@@ -2067,6 +2094,15 @@ placeholder="dd/mm/yyyy"
         </TabsContent>
 
       </Tabs>
+
+      {/* Staff ID Badge Modal */}
+      {showIdCardModal && (
+        <EmployeeIdCardModal
+          isOpen={showIdCardModal}
+          onClose={() => setShowIdCardModal(false)}
+          employee={idCardData}
+        />
+      )}
     </div>
   )
 }
