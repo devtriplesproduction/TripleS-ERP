@@ -58,7 +58,7 @@ export function EmployeeIdCardModal({
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         showCloseButton={false}
-        className="w-[96vw] sm:!max-w-3xl md:!max-w-4xl lg:!max-w-5xl p-0 overflow-hidden border-border/80 bg-background/95 backdrop-blur-xl min-h-[660px] max-h-[95vh] flex flex-col shadow-2xl"
+        className="w-[96vw] sm:!max-w-3xl md:!max-w-4xl lg:!max-w-5xl p-0 overflow-hidden border-border/80 bg-background/95 backdrop-blur-xl max-h-[92vh] flex flex-col shadow-2xl"
       >
         {/* Printable Section Style Sheet */}
         <style jsx global>{`
@@ -89,7 +89,7 @@ export function EmployeeIdCardModal({
         `}</style>
 
         {/* Modal Header */}
-        <div className="shrink-0 px-4 sm:px-6 py-2.5 sm:py-3 border-b border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+        <div className="shrink-0 px-4 sm:px-6 py-2 sm:py-2.5 border-b border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
           <div className="space-y-0.5">
             <div className="flex items-center gap-2 flex-wrap">
               <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -186,10 +186,10 @@ export function EmployeeIdCardModal({
           </div>
         </div>
 
-        {/* Modal Center: Full ID Card Single-View (No scroll down needed, plenty of width and length) */}
+        {/* Modal Center: Full ID Card Single-View (Sleek minimized height) */}
         <div
           className={cn(
-            'flex-1 px-4 py-4 sm:py-6 flex flex-col items-center justify-center relative transition-colors duration-300 overflow-y-auto sm:overflow-hidden min-h-[530px]',
+            'flex-1 px-4 py-2.5 sm:py-3.5 flex flex-col items-center justify-center relative transition-colors duration-300 overflow-y-auto sm:overflow-hidden',
             theme === 'dark' ? 'bg-muted/15' : 'bg-slate-200/50'
           )}
         >
@@ -208,7 +208,7 @@ export function EmployeeIdCardModal({
             </div>
           ) : (
             /* 2-Up Side-by-Side View */
-            <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 w-full max-w-4xl py-2">
+            <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 w-full max-w-4xl py-1">
               <div className="flex flex-col items-center gap-1">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                   Front Face
@@ -261,7 +261,7 @@ export function EmployeeIdCardModal({
         </div>
 
         {/* Pinned Modal Footer */}
-        <div className="shrink-0 px-4 sm:px-6 py-2.5 border-t border-border/50 bg-background flex flex-col sm:flex-row items-center justify-between gap-2.5">
+        <div className="shrink-0 px-4 sm:px-6 py-2 border-t border-border/50 bg-background flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
             <span>ISO CR80 standard badge format (53.98 × 85.6 mm) with scan verification.</span>
