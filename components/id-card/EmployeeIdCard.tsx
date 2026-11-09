@@ -259,7 +259,7 @@ export function EmployeeIdCard({
           {/* FRONT HEADER: Prominent Brand & Badge Title */}
           <div
             className={cn(
-              'relative z-10 px-3.5 pt-2.5 pb-2 flex items-center justify-between border-b shadow-2xs',
+              'relative z-10 px-3.5 pt-3 pb-2.5 flex items-center justify-between border-b shadow-2xs shrink-0',
               isDark
                 ? 'border-zinc-800/80 bg-zinc-950/70'
                 : 'border-slate-200/90 bg-white/95'
@@ -286,7 +286,7 @@ export function EmployeeIdCard({
               <div className="leading-tight truncate text-left">
                 <span
                   className={cn(
-                    'block text-xs font-black tracking-wider uppercase truncate',
+                    'block text-[12.5px] font-black tracking-wider uppercase truncate',
                     isDark ? 'text-zinc-100' : 'text-slate-900 font-extrabold'
                   )}
                 >
