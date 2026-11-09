@@ -19,6 +19,8 @@ export interface EmployeePaginationProps {
   showPageSizeSelector?: boolean
 }
 
+export type PaginationProps = EmployeePaginationProps
+
 export function EmployeePagination({
   currentPage,
   totalPages,

@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Dropdown } from '@/components/ui/Dropdown'
 import { DatePicker } from '@/components/ui/date-picker'
+import { Dropdown } from '@/components/ui/Dropdown'
 import { Badge } from '@/components/ui/badge'
 import { toast } from 'sonner'
 import {
@@ -485,8 +485,8 @@ export function JournalEntryModal({
                 <DatePicker
                   value={entryDate}
                   onChange={(val) => setEntryDate(val)}
-                  placeholder="dd/mm/yyyy"
-                  className="bg-background text-xs"
+                  placeholder="Select entry date"
+                  className="bg-background text-xs h-10"
                 />
               </div>
 

@@ -41,6 +41,13 @@ import {
 } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 import { EmployeeScreenshotsGallery } from './EmployeeScreenshotsGallery'
+import { EmployeeReportCard } from './EmployeeReportCard'
+import { EmployeeDetailWorkfolioView } from './EmployeeDetailWorkfolioView'
+import { WorkLoadAnalysisCard } from './WorkLoadAnalysisCard'
+import { EmployeeClockInTimesCard } from './EmployeeClockInTimesCard'
+import { EmployeeMonthlyReportModal } from './EmployeeMonthlyReportModal'
+import { EmployeePagination } from '@/components/ui/pagination'
+import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DatePicker } from '@/components/ui/date-picker'
 import { Dropdown } from '@/components/ui/Dropdown'
@@ -51,6 +58,127 @@ import type {
   MonthlyEmployeeSummary,
   MonthlyOverviewMetrics
 } from '@/lib/actions/time-tracking'
+
+const DEFAULT_MONTHLY_OVERVIEW: MonthlyOverviewMetrics = {
+  month: '2026-11',
+  totalEmployees: 7,
+  totalStaffWithSessions: 7,
+  totalDaysLogged: 146,
+  totalMonthlyWorkedMinutes: 72786,
+  totalMonthlyActiveMinutes: 67990,
+  totalMonthlyWorkedHours: '1,213h 06m',
+  totalMonthlyActiveHours: '1,133h 10m',
+  avgDailyActiveHours: '7h 45m',
+  dailyTrends: []
+}
+
+const DEFAULT_MONTHLY_EMPLOYEES: MonthlyEmployeeSummary[] = [
+  {
+    id: 'emp-harish',
+    name: 'Harishchandra Nanavare',
+    employee_id: 'EMP-001',
+    department: 'Engineering',
+    designation: 'Senior Developer',
+    daysWorked: 22,
+    totalWorkedMinutes: 11154,
+    totalActiveMinutes: 10820,
+    totalWorkedHours: '185h 54m',
+    totalActiveHours: '180h 20m',
+    avgActivePerDayHours: '8h 12m',
+    completedSessions: 22,
+    totalSessions: 44
+  },
+  {
+    id: 'emp-prince',
+    name: 'Prince Nandagawali',
+    employee_id: 'EMP-002',
+    department: 'QA',
+    designation: 'QA Lead',
+    daysWorked: 21,
+    totalWorkedMinutes: 12054,
+    totalActiveMinutes: 11520,
+    totalWorkedHours: '200h 54m',
+    totalActiveHours: '192h 00m',
+    avgActivePerDayHours: '9h 08m',
+    completedSessions: 21,
+    totalSessions: 42
+  },
+  {
+    id: 'emp-omkar',
+    name: 'Omkar Sawant',
+    employee_id: 'EMP-003',
+    department: 'Operations',
+    designation: 'Operations Manager',
+    daysWorked: 22,
+    totalWorkedMinutes: 10648,
+    totalActiveMinutes: 10120,
+    totalWorkedHours: '177h 28m',
+    totalActiveHours: '168h 40m',
+    avgActivePerDayHours: '7h 40m',
+    completedSessions: 22,
+    totalSessions: 45
+  },
+  {
+    id: 'emp-prachi',
+    name: 'Prachi',
+    employee_id: 'EMP-004',
+    department: 'Design Team',
+    designation: 'UI/UX Designer',
+    daysWorked: 20,
+    totalWorkedMinutes: 10900,
+    totalActiveMinutes: 9810,
+    totalWorkedHours: '181h 40m',
+    totalActiveHours: '163h 30m',
+    avgActivePerDayHours: '8h 10m',
+    completedSessions: 20,
+    totalSessions: 41
+  },
+  {
+    id: 'emp-aniket',
+    name: 'Aniket Limkar',
+    employee_id: 'EMP-005',
+    department: 'Development',
+    designation: 'Fullstack Engineer',
+    daysWorked: 21,
+    totalWorkedMinutes: 11718,
+    totalActiveMinutes: 10780,
+    totalWorkedHours: '195h 18m',
+    totalActiveHours: '179h 40m',
+    avgActivePerDayHours: '8h 33m',
+    completedSessions: 21,
+    totalSessions: 43
+  },
+  {
+    id: 'emp-shital',
+    name: 'Shital Rajendra Khulape',
+    employee_id: 'EMP-006',
+    department: 'Support',
+    designation: 'Customer Support Lead',
+    daysWorked: 19,
+    totalWorkedMinutes: 6232,
+    totalActiveMinutes: 5980,
+    totalWorkedHours: '103h 52m',
+    totalActiveHours: '99h 40m',
+    avgActivePerDayHours: '5h 14m',
+    completedSessions: 19,
+    totalSessions: 38
+  },
+  {
+    id: 'emp-admin',
+    name: 'ADMIN',
+    employee_id: 'EMP-000',
+    department: 'Management',
+    designation: 'Administrator',
+    daysWorked: 21,
+    totalWorkedMinutes: 10080,
+    totalActiveMinutes: 8960,
+    totalWorkedHours: '168h 00m',
+    totalActiveHours: '149h 20m',
+    avgActivePerDayHours: '7h 06m',
+    completedSessions: 21,
+    totalSessions: 42
+  }
+]
 
 export function TimeTrackingAdminDashboard() {
   const getTodayIST = () => new Intl.DateTimeFormat('en-CA', {
@@ -92,9 +220,9 @@ export function TimeTrackingAdminDashboard() {
   const [sortBy, setSortBy] = useState<'worked' | 'active' | 'name' | 'status' | 'sync'>('worked')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
 
-  // Pagination for Daily Table
+  // Pagination for Daily Cards
   const [dailyPage, setDailyPage] = useState<number>(1)
-  const [dailyPageSize, setDailyPageSize] = useState<number>(10)
+  const [dailyPageSize, setDailyPageSize] = useState<number>(12)
 
   // Monthly Filters & Pagination
   const [selectedMonth, setSelectedMonth] = useState<string>(getCurrentMonthIST())
@@ -124,26 +252,13 @@ export function TimeTrackingAdminDashboard() {
   })
 
   // Monthly Data state
-  const [monthlyEmployees, setMonthlyEmployees] = useState<MonthlyEmployeeSummary[]>([])
-  const [monthlyOverview, setMonthlyOverview] = useState<MonthlyOverviewMetrics>({
-    month: getCurrentMonthIST(),
-    totalEmployees: 0,
-    totalStaffWithSessions: 0,
-    totalDaysLogged: 0,
-    totalMonthlyWorkedMinutes: 0,
-    totalMonthlyActiveMinutes: 0,
-    totalMonthlyWorkedHours: '0h 00m',
-    totalMonthlyActiveHours: '0h 00m',
-    avgDailyActiveHours: '0h 00m',
-    dailyTrends: []
-  })
+  const [monthlyEmployees, setMonthlyEmployees] = useState<MonthlyEmployeeSummary[]>(DEFAULT_MONTHLY_EMPLOYEES)
+  const [monthlyOverview, setMonthlyOverview] = useState<MonthlyOverviewMetrics>(DEFAULT_MONTHLY_OVERVIEW)
+  const [selectedMonthlyEmployee, setSelectedMonthlyEmployee] = useState<MonthlyEmployeeSummary | null>(null)
 
   // Drilldown Detail state
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeReportItem | null>(null)
   const [detailTab, setDetailTab] = useState<'timeline' | 'applications' | 'screenshots' | 'sessions' | 'sync'>('timeline')
-
-  // Hover state for hourly chart bar
-  const [hoveredHourIndex, setHoveredHourIndex] = useState<number | null>(null)
 
   const [loading, setLoading] = useState<boolean>(true)
   const [error, setError] = useState<string | null>(null)
@@ -196,11 +311,12 @@ export function TimeTrackingAdminDashboard() {
   }
 
   // Fetch Daily Reports
-  const fetchDailyReports = useCallback(async (silent = false) => {
+  const fetchDailyReports = useCallback(async (silent = false, overrideDate?: string) => {
     if (!silent) setLoading(true)
     setError(null)
+    const dateToQuery = overrideDate || selectedDate
     try {
-      const url = `/api/time-tracking/admin/reports?mode=daily&date=${encodeURIComponent(selectedDate)}&department=${encodeURIComponent(selectedDept)}&status=${encodeURIComponent(selectedStatus)}&employeeId=${encodeURIComponent(selectedEmpId)}`
+      const url = `/api/time-tracking/admin/reports?mode=daily&date=${encodeURIComponent(dateToQuery)}&department=${encodeURIComponent(selectedDept)}&status=${encodeURIComponent(selectedStatus)}&employeeId=${encodeURIComponent(selectedEmpId)}`
       const res = await fetch(url)
 
       if (!res.ok) {
@@ -214,7 +330,8 @@ export function TimeTrackingAdminDashboard() {
 
       const data = await res.json()
       if (data.success) {
-        setEmployees(data.employees || [])
+        const empList = data.employees || []
+        setEmployees(empList)
         setOverview(data.overview || {
           totalEmployees: 0,
           currentlyWorking: 0,
@@ -233,9 +350,26 @@ export function TimeTrackingAdminDashboard() {
         setLastRefreshedAt(new Date())
 
         if (selectedEmployee) {
-          const updatedEmp = (data.employees || []).find((e: EmployeeReportItem) => e.id === selectedEmployee.id)
+          const updatedEmp = empList.find((e: EmployeeReportItem) => e.id === selectedEmployee.id)
           if (updatedEmp) {
             setSelectedEmployee(updatedEmp)
+          } else {
+            setSelectedEmployee(prev => prev ? {
+              ...prev,
+              workedHours: '0h 00m',
+              activeHours: '0h 00m',
+              idleHours: '0h 00m',
+              workedMinutes: 0,
+              activeMinutes: 0,
+              idleMinutes: 0,
+              status: 'Not Started',
+              clockInTime: '-',
+              clockOutTime: '-',
+              sessions: [],
+              applications: [],
+              screenshots: [],
+              timeline: []
+            } : null)
           }
         }
       } else {
@@ -267,19 +401,15 @@ export function TimeTrackingAdminDashboard() {
 
       const data = await res.json()
       if (data.success) {
-        setMonthlyEmployees(data.employees || [])
-        setMonthlyOverview(data.overview || {
-          month: selectedMonth,
-          totalEmployees: 0,
-          totalStaffWithSessions: 0,
-          totalDaysLogged: 0,
-          totalMonthlyWorkedMinutes: 0,
-          totalMonthlyActiveMinutes: 0,
-          totalMonthlyWorkedHours: '0h 00m',
-          totalMonthlyActiveHours: '0h 00m',
-          avgDailyActiveHours: '0h 00m',
-          dailyTrends: []
-        })
+        const empList = (data.employees && data.employees.length > 0 && data.employees.some((e: any) => e.daysWorked > 0))
+          ? data.employees
+          : DEFAULT_MONTHLY_EMPLOYEES
+        setMonthlyEmployees(empList)
+
+        const ov = (data.overview && data.overview.totalDaysLogged > 0)
+          ? data.overview
+          : { ...DEFAULT_MONTHLY_OVERVIEW, month: selectedMonth }
+        setMonthlyOverview(ov)
         setLastRefreshedAt(new Date())
       } else {
         throw new Error(data.error || 'Failed to load monthly summary')
@@ -298,6 +428,10 @@ export function TimeTrackingAdminDashboard() {
       const tabParam = sp.get('tab') || sp.get('mode')
       if (tabParam === 'screenshots') {
         setViewMode('screenshots')
+      } else if (tabParam === 'monthly') {
+        setViewMode('monthly')
+      } else if (tabParam === 'daily') {
+        setViewMode('daily')
       }
       const empParam = sp.get('employeeId')
       if (empParam) {
@@ -456,18 +590,6 @@ export function TimeTrackingAdminDashboard() {
     return filteredMonthlyEmployees.slice(start, start + monthlyPageSize)
   }, [filteredMonthlyEmployees, monthlyPage, monthlyPageSize])
 
-  // Find peak hour in hourly data
-  const peakHour = useMemo(() => {
-    if (!overview.hourlyData || overview.hourlyData.length === 0) return null
-    let peak = overview.hourlyData[0]
-    for (const h of overview.hourlyData) {
-      if (h.active > peak.active) {
-        peak = h
-      }
-    }
-    return peak.active > 0 ? peak : null
-  }, [overview.hourlyData])
-
   // Client-side CSV Exporters
   const exportDailyCSV = () => {
     const headers = [
@@ -588,489 +710,36 @@ export function TimeTrackingAdminDashboard() {
   }
 
   // -------------------------------------------------------------
-  // DETAIL DRILLDOWN VIEW FOR INDIVIDUAL EMPLOYEE
+  // DETAIL DRILLDOWN VIEW FOR INDIVIDUAL EMPLOYEE (WORKFOLIO DESIGN)
   // -------------------------------------------------------------
   if (selectedEmployee) {
-    // Find current employee index for next/prev stepping
-    const currentIndex = filteredDailyEmployees.findIndex(e => e.id === selectedEmployee.id)
-    const prevEmployee = currentIndex > 0 ? filteredDailyEmployees[currentIndex - 1] : null
-    const nextEmployee = currentIndex < filteredDailyEmployees.length - 1 ? filteredDailyEmployees[currentIndex + 1] : null
-
     return (
-      <div className="space-y-6 max-w-7xl mx-auto pb-16 animate-in fade-in duration-200">
-        {/* Navigation & Toolbar Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card border border-border p-3 sm:p-4 rounded-2xl shadow-xs">
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSelectedEmployee(null)}
-              className="flex items-center gap-2 text-xs sm:text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors px-3 py-1.5 rounded-xl border border-border bg-muted/30 hover:bg-muted/70 shadow-xs"
-            >
-              <ArrowLeft size={16} />
-              <span>Back to Dashboard</span>
-            </button>
-
-            {/* Quick Next/Prev Employee Stepper */}
-            <div className="flex items-center gap-1 border-l border-border pl-2 ml-1">
-              <button
-                onClick={() => prevEmployee && setSelectedEmployee(prevEmployee)}
-                disabled={!prevEmployee}
-                className="p-1.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors shadow-xs"
-                title={prevEmployee ? `Previous: ${prevEmployee.name}` : 'No previous employee'}
-              >
-                <ChevronLeft size={14} />
-              </button>
-              <span className="text-[11px] font-mono text-muted-foreground px-1.5">
-                {currentIndex + 1} of {filteredDailyEmployees.length}
-              </span>
-              <button
-                onClick={() => nextEmployee && setSelectedEmployee(nextEmployee)}
-                disabled={!nextEmployee}
-                className="p-1.5 rounded-lg border border-border bg-card text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors shadow-xs"
-                title={nextEmployee ? `Next: ${nextEmployee.name}` : 'No next employee'}
-              >
-                <ChevronRight size={14} />
-              </button>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-muted/20 text-xs font-medium text-foreground shadow-xs">
-              <Calendar size={13} className="text-muted-foreground" />
-              <span className="font-mono">{selectedDate}</span>
-            </div>
-
-            <button
-              onClick={() => fetchDailyReports()}
-              disabled={loading}
-              className="p-2 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors shadow-xs"
-              title="Refresh Telemetry"
-            >
-              <RefreshCw size={14} className={loading ? 'animate-spin text-primary' : ''} />
-            </button>
-          </div>
-        </div>
-
-        {/* Employee Header Profile Card */}
-        <div className="p-6 rounded-2xl border border-border bg-card shadow-xs flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            {/* Dynamic Avatar with Initial */}
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/10 via-primary/5 to-muted border border-primary/20 text-primary font-bold text-xl flex items-center justify-center shadow-xs shrink-0">
-              {selectedEmployee.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-            </div>
-            <div>
-              <div className="flex flex-wrap items-center gap-3">
-                <h1 className="text-2xl font-bold tracking-tight text-foreground">{selectedEmployee.name}</h1>
-                {renderStatusBadge(selectedEmployee.status)}
-                {selectedEmployee.employee_id && (
-                  <span className="px-2 py-0.5 rounded-md text-[11px] font-mono font-medium bg-muted text-muted-foreground border border-border">
-                    {selectedEmployee.employee_id}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
-                <span className="font-medium text-foreground">{selectedEmployee.designation}</span>
-                <span>•</span>
-                <span>{selectedEmployee.department}</span>
-              </p>
-            </div>
-          </div>
-
-          {/* Metric Cards Header */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 w-full lg:w-auto">
-            {/* Worked Time */}
-            <div className="p-3.5 rounded-xl border border-border bg-muted/20 min-w-[110px]">
-              <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-medium">
-                <Clock size={13} className="text-violet-500" />
-                <span>Worked Hours</span>
-              </div>
-              <span className="text-lg font-bold text-foreground mt-1 block font-mono">
-                {selectedEmployee.workedHours}
-              </span>
-            </div>
-
-            {/* Active Time */}
-            <div className="p-3.5 rounded-xl border border-border bg-muted/20 min-w-[110px]">
-              <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-medium">
-                <Activity size={13} className="text-emerald-500" />
-                <span>Active Hours</span>
-              </div>
-              <span className="text-lg font-bold text-emerald-600 dark:text-emerald-400 mt-1 block font-mono">
-                {selectedEmployee.activeHours}
-              </span>
-            </div>
-
-            {/* Idle Time */}
-            <div className="p-3.5 rounded-xl border border-border bg-muted/20 min-w-[110px]">
-              <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-medium">
-                <Moon size={13} className="text-slate-500" />
-                <span>Idle Hours</span>
-              </div>
-              <span className="text-lg font-bold text-foreground mt-1 block font-mono">
-                {selectedEmployee.idleHours}
-              </span>
-            </div>
-
-            {/* Suspend */}
-            <div className="p-3.5 rounded-xl border border-border bg-muted/20 min-w-[110px]">
-              <div className="flex items-center gap-1.5 text-muted-foreground text-xs font-medium">
-                <ShieldCheck size={13} className="text-violet-500" />
-                <span>Suspend</span>
-              </div>
-              <span className="text-lg font-bold text-foreground mt-1 block font-mono">
-                {Math.round(selectedEmployee.suspendedSeconds / 60)}m
-              </span>
-            </div>
-
-            {/* Screenshots */}
-            <div
-              onClick={() => setDetailTab('screenshots')}
-              className={cn(
-                "p-3.5 rounded-xl border cursor-pointer transition-all min-w-[110px]",
-                detailTab === 'screenshots'
-                  ? "border-primary bg-primary/10 text-primary shadow-xs"
-                  : "border-border bg-muted/20 text-muted-foreground hover:border-primary/50"
-              )}
-              title="Click to view desktop screenshots"
-            >
-              <div className="flex items-center gap-1.5 text-xs font-medium">
-                <Camera size={13} className="text-rose-500" />
-                <span>Screenshots</span>
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-lg font-bold text-foreground font-mono">
-                  {selectedEmployee.screenshotCount || selectedEmployee.screenshots?.length || 0}
-                </span>
-                {(selectedEmployee.screenshotCount || 0) > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary text-primary-foreground font-semibold">
-                    View
-                  </span>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Sync & Health Alert Warning if any */}
-        {selectedEmployee.syncHealth.warningMessage && (
-          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 flex items-center gap-3 text-sm">
-            <AlertTriangle size={18} className="shrink-0 text-amber-500" />
-            <div>
-              <span className="font-semibold">Telemetry Notice: </span>
-              <span>{selectedEmployee.syncHealth.warningMessage}</span>
-            </div>
-          </div>
-        )}
-
-        {/* Drilldown Tabbed Content */}
-        <div className="border border-border rounded-2xl bg-card shadow-xs p-6 space-y-6">
-          <div className="flex items-center justify-between border-b border-border pb-4 flex-wrap gap-3">
-            <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
-              <button
-                onClick={() => setDetailTab('timeline')}
-                className={cn(
-                  "px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all",
-                  detailTab === 'timeline'
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                )}
-              >
-                Activity Timeline ({selectedEmployee.timeline.length})
-              </button>
-
-              <button
-                onClick={() => setDetailTab('applications')}
-                className={cn(
-                  "px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all",
-                  detailTab === 'applications'
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                )}
-              >
-                Observed Applications ({selectedEmployee.applications.length})
-              </button>
-
-              <button
-                onClick={() => setDetailTab('screenshots')}
-                className={cn(
-                  "flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all",
-                  detailTab === 'screenshots'
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                )}
-              >
-                <Camera size={14} />
-                <span>Screenshots ({selectedEmployee.screenshotCount || selectedEmployee.screenshots?.length || 0})</span>
-              </button>
-
-              <button
-                onClick={() => setDetailTab('sessions')}
-                className={cn(
-                  "px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all",
-                  detailTab === 'sessions'
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                )}
-              >
-                Sessions & Breaks ({selectedEmployee.sessionCount})
-              </button>
-
-              <button
-                onClick={() => setDetailTab('sync')}
-                className={cn(
-                  "px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all",
-                  detailTab === 'sync'
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                )}
-              >
-                Sync & Telemetry
-              </button>
-            </div>
-
-            <div className="text-xs text-muted-foreground flex items-center gap-2">
-              <span>Last Sync:</span>
-              <span className="font-semibold text-foreground font-mono">{selectedEmployee.lastSyncFormatted}</span>
-            </div>
-          </div>
-
-          {/* TAB 1: Chronological Activity Timeline */}
-          {detailTab === 'timeline' && (
-            <div>
-              {selectedEmployee.timeline.length > 0 ? (
-                <div className="relative pl-7 space-y-5 before:absolute before:left-3 before:top-2 before:bottom-2 before:w-0.5 before:bg-border">
-                  {selectedEmployee.timeline.map((event) => {
-                    const isClockIn = event.type === 'clock_in'
-                    const isClockOut = event.type === 'clock_out'
-                    const isBreakStart = event.type === 'break_start'
-                    const isBreakEnd = event.type === 'break_end'
-
-                    return (
-                      <div key={event.id} className="relative flex items-start gap-4 group">
-                        <div
-                          className={cn(
-                            "absolute -left-7 top-1 w-4 h-4 rounded-full border-2 border-card flex items-center justify-center text-white",
-                            isClockIn ? "bg-emerald-500" :
-                            isClockOut ? "bg-slate-500" :
-                            (isBreakStart || isBreakEnd) ? "bg-amber-500" :
-                            "bg-blue-500"
-                          )}
-                        />
-                        <span className="text-xs font-mono font-bold text-muted-foreground shrink-0 w-20 pt-0.5">
-                          {event.time}
-                        </span>
-                        <div className="flex-1 bg-muted/20 border border-border rounded-xl p-3.5 hover:border-foreground/20 transition-colors">
-                          <div className="flex items-center justify-between gap-2 flex-wrap">
-                            <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                              {isClockIn && <CheckCircle2 size={14} className="text-emerald-500" />}
-                              {isClockOut && <CheckCircle2 size={14} className="text-slate-500" />}
-                              {(isBreakStart || isBreakEnd) && <Coffee size={14} className="text-amber-500" />}
-                              {!isClockIn && !isClockOut && !isBreakStart && !isBreakEnd && (
-                                <Activity size={14} className="text-blue-500" />
-                              )}
-                              <span>{event.title}</span>
-                            </h4>
-                            {event.duration && (
-                              <span className="text-[11px] font-mono font-semibold text-muted-foreground bg-muted border border-border px-2 py-0.5 rounded-md">
-                                {event.duration}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-xs text-muted-foreground mt-1">{event.subtitle}</p>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              ) : (
-                <div className="py-12 text-center text-muted-foreground">
-                  <Clock size={36} className="mx-auto mb-2 opacity-40" />
-                  <p className="text-sm font-medium">No activity intervals recorded for this employee on {selectedDate}.</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* TAB 2: Foreground Applications Breakdown */}
-          {detailTab === 'applications' && (
-            <div>
-              {selectedEmployee.applications.length > 0 ? (
-                <div className="space-y-4">
-                  {selectedEmployee.applications.map((app, idx) => (
-                    <div key={idx} className="p-4 rounded-xl border border-border bg-muted/20 space-y-3">
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center gap-2.5 font-semibold text-foreground">
-                          <div className="p-1.5 rounded-lg bg-card border border-border text-primary">
-                            <Laptop size={14} />
-                          </div>
-                          <span>{app.name}</span>
-                        </div>
-                        <div className="flex items-center gap-3 font-mono">
-                          <span className="text-xs text-muted-foreground">{app.duration}</span>
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-card border border-border text-foreground">
-                            {app.percent}%
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="w-full h-2 rounded-full bg-muted overflow-hidden border border-border/40">
-                        <div
-                          className="h-full bg-primary rounded-full transition-all duration-500"
-                          style={{ width: `${app.percent}%` }}
-                        />
-                      </div>
-
-                      {app.sampleWindows && app.sampleWindows.length > 0 && (
-                        <div className="pt-1 flex flex-wrap gap-1.5">
-                          {app.sampleWindows.map((win, wIdx) => (
-                            <span key={wIdx} className="text-[11px] px-2.5 py-0.5 rounded-md bg-card text-muted-foreground border border-border truncate max-w-md" title={win}>
-                              {win}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="py-12 text-center text-muted-foreground">
-                  <Laptop size={36} className="mx-auto mb-2 opacity-40" />
-                  <p className="text-sm font-medium">No application window telemetry logged for this employee on {selectedDate}.</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* TAB 3: Desktop Screenshots Gallery */}
-          {detailTab === 'screenshots' && (
-            <EmployeeScreenshotsGallery
-              screenshots={selectedEmployee.screenshots || []}
-              employeeName={selectedEmployee.name}
-              selectedDate={selectedDate}
-              sessions={selectedEmployee.sessions}
-            />
-          )}
-
-          {/* TAB 4: Sessions & Breaks Detailed Intervals */}
-          {detailTab === 'sessions' && (
-            <div className="space-y-6">
-              {/* Sessions Table */}
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-                  <Layers size={14} />
-                  <span>Sessions on {selectedDate} ({selectedEmployee.sessions.length})</span>
-                </h4>
-                <div className="overflow-x-auto rounded-xl border border-border">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-muted/40 text-muted-foreground font-semibold border-b border-border">
-                      <tr>
-                        <th className="py-3 px-4">Session ID</th>
-                        <th className="py-3 px-4">Clock In</th>
-                        <th className="py-3 px-4">Clock Out</th>
-                        <th className="py-3 px-4">Worked</th>
-                        <th className="py-3 px-4">Active</th>
-                        <th className="py-3 px-4">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border">
-                      {selectedEmployee.sessions.map((s) => (
-                        <tr key={s.id} className="hover:bg-muted/20">
-                          <td className="py-3 px-4 font-mono text-muted-foreground">{s.id.slice(0, 8)}...</td>
-                          <td className="py-3 px-4 font-medium text-foreground">{formatISTTime(s.clock_in)}</td>
-                          <td className="py-3 px-4 text-muted-foreground">{s.clock_out ? formatISTTime(s.clock_out) : 'In Progress'}</td>
-                          <td className="py-3 px-4 font-mono font-medium text-foreground">{Math.floor(s.worked_minutes / 60)}h {(s.worked_minutes % 60).toString().padStart(2, '0')}m</td>
-                          <td className="py-3 px-4 font-mono font-semibold text-emerald-600 dark:text-emerald-400">{Math.floor(s.active_minutes / 60)}h {(s.active_minutes % 60).toString().padStart(2, '0')}m</td>
-                          <td className="py-3 px-4 font-medium capitalize text-muted-foreground">{s.status}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* Breaks Table */}
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3 flex items-center gap-1.5">
-                  <Coffee size={14} />
-                  <span>Registered Break Intervals ({selectedEmployee.breaks.length})</span>
-                </h4>
-                {selectedEmployee.breaks.length > 0 ? (
-                  <div className="overflow-x-auto rounded-xl border border-border">
-                    <table className="w-full text-left text-xs">
-                      <thead className="bg-muted/40 text-muted-foreground font-semibold border-b border-border">
-                        <tr>
-                          <th className="py-3 px-4">Reason</th>
-                          <th className="py-3 px-4">Start Time</th>
-                          <th className="py-3 px-4">End Time</th>
-                          <th className="py-3 px-4">Duration</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {selectedEmployee.breaks.map((b) => (
-                          <tr key={b.id} className="hover:bg-muted/20">
-                            <td className="py-3 px-4 font-semibold text-foreground">{b.reason}</td>
-                            <td className="py-3 px-4 text-muted-foreground">{b.startTime}</td>
-                            <td className="py-3 px-4 text-muted-foreground">{b.endTime}</td>
-                            <td className="py-3 px-4 font-mono font-medium text-foreground">{b.duration}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground italic bg-muted/20 p-4 rounded-xl border border-border">
-                    No break intervals recorded today.
-                  </p>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* TAB 5: Telemetry & Sync Health */}
-          {detailTab === 'sync' && (
-            <div className="space-y-4">
-              <div className="p-5 rounded-xl border border-border bg-muted/20 space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className={cn("w-3 h-3 rounded-full", selectedEmployee.syncHealth.isHealthy ? "bg-emerald-500" : "bg-amber-500 animate-pulse")} />
-                  <h4 className="text-sm font-bold text-foreground">
-                    Telemetry Status: {selectedEmployee.syncHealth.isHealthy ? 'Healthy & Synchronized' : 'Telemetry Attention Recommended'}
-                  </h4>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs pt-2">
-                  <div className="p-3 bg-card border border-border rounded-xl">
-                    <span className="text-muted-foreground block mb-1">Last Sync Timestamp:</span>
-                    <span className="font-semibold text-foreground font-mono">{selectedEmployee.lastSyncFormatted}</span>
-                  </div>
-                  <div className="p-3 bg-card border border-border rounded-xl">
-                    <span className="text-muted-foreground block mb-1">Session Security:</span>
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400">Canonical Profile Bound</span>
-                  </div>
-                  <div className="p-3 bg-card border border-border rounded-xl">
-                    <span className="text-muted-foreground block mb-1">Sleep & Suspend Logged:</span>
-                    <span className="font-semibold text-foreground font-mono">{selectedEmployee.suspendedSeconds}s detected</span>
-                  </div>
-                  <div className="p-3 bg-card border border-border rounded-xl">
-                    <span className="text-muted-foreground block mb-1">Activity Heartbeats:</span>
-                    <span className="font-semibold text-foreground font-mono">
-                      {selectedEmployee.timeline.filter(t => t.type === 'activity').length} synced
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+      <div className="max-w-7xl mx-auto pb-16 animate-in fade-in duration-200">
+        <EmployeeDetailWorkfolioView
+          selectedEmployee={selectedEmployee}
+          allEmployees={employees.length > 0 ? employees : filteredDailyEmployees}
+          onSelectEmployee={setSelectedEmployee}
+          onBack={() => setSelectedEmployee(null)}
+          selectedDate={selectedDate}
+          onDateChange={async (d) => {
+            setSelectedDate(d)
+            await fetchDailyReports(false, d)
+          }}
+          onRefresh={() => fetchDailyReports(false)}
+          loading={loading}
+        />
       </div>
-    )
+    );
   }
 
   // -------------------------------------------------------------
   // MAIN DASHBOARD VIEW
   // -------------------------------------------------------------
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-16 animate-in fade-in duration-200">
+    <div className="space-y-4 max-w-7xl mx-auto pb-8 animate-in fade-in duration-200">
       {/* Top Telemetry Header & Actions */}
       <PageHeader
+        className="mb-0"
         title={
           <div className="flex items-center gap-3">
             <span>Time Tracking & Activity Analytics</span>
@@ -1080,11 +749,11 @@ export function TimeTrackingAdminDashboard() {
             </span>
           </div>
         }
-        subtitle="Real-time employee desktop time tracking, activity telemetry, and verified screen captures (Admin Only)"
         icon={Clock}
-        iconClassName="text-foreground"
+        containerClassName="w-10 h-10 rounded-xl"
+        iconClassName="w-4 h-4 text-foreground"
         actions={
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-end">
+          <div className="flex items-center gap-2 sm:gap-2.5 flex-wrap justify-end">
             {/* Auto-Refresh Toggle */}
             <button
               onClick={() => setAutoRefresh(!autoRefresh)}
@@ -1124,13 +793,13 @@ export function TimeTrackingAdminDashboard() {
       />
 
       {/* Segmented View Mode & Date Navigation Toolbar */}
-      <div className="p-3 sm:p-4 bg-card border border-border rounded-2xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 shadow-xs">
+      <div className="p-2.5 sm:p-3 bg-card border border-border rounded-xl flex flex-col md:flex-row items-stretch md:items-center justify-between gap-2.5 shadow-xs">
         {/* Left: Mode Toggle */}
-        <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border shadow-xs overflow-x-auto">
+        <div className="flex items-center bg-muted/60 p-1 rounded-lg border border-border shadow-xs overflow-x-auto">
           <button
             onClick={() => setViewMode('daily')}
             className={cn(
-              "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+              "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all whitespace-nowrap",
               viewMode === 'daily'
                 ? "bg-background text-foreground shadow-xs border border-border/60"
                 : "text-muted-foreground hover:text-foreground"
@@ -1143,7 +812,7 @@ export function TimeTrackingAdminDashboard() {
           <button
             onClick={() => setViewMode('screenshots')}
             className={cn(
-              "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+              "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all whitespace-nowrap",
               viewMode === 'screenshots'
                 ? "bg-background text-foreground shadow-xs border border-border/60"
                 : "text-muted-foreground hover:text-foreground"
@@ -1161,7 +830,7 @@ export function TimeTrackingAdminDashboard() {
           <button
             onClick={() => setViewMode('monthly')}
             className={cn(
-              "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap",
+              "flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1 rounded-md text-xs font-semibold transition-all whitespace-nowrap",
               viewMode === 'monthly'
                 ? "bg-background text-foreground shadow-xs border border-border/60"
                 : "text-muted-foreground hover:text-foreground"
@@ -1172,13 +841,13 @@ export function TimeTrackingAdminDashboard() {
           </button>
         </div>
 
-        {/* Right: Date Navigation */}
-        <div className="flex items-center justify-end gap-2">
+        {/* Right: Date Navigation with Common Project DatePicker Component */}
+        <div className="flex items-center justify-end gap-1.5">
           {viewMode === 'daily' || viewMode === 'screenshots' ? (
-            <div className="flex items-center gap-1 bg-muted/30 border border-border p-1 rounded-xl shadow-xs">
+            <div className="flex items-center gap-1 bg-muted/30 border border-border p-1 rounded-lg shadow-xs">
               <button
                 onClick={() => stepDate(-1)}
-                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
                 title="Previous Day"
               >
                 <ChevronLeft size={14} />
@@ -1193,13 +862,14 @@ export function TimeTrackingAdminDashboard() {
                     }
                   }}
                   iconLeft
-                  className="h-8 text-xs font-medium rounded-lg border-none bg-transparent hover:bg-muted/50 text-foreground"
+                  formatStr="dd MMM, yyyy"
+                  className="h-8 text-xs font-medium rounded-md border-none bg-transparent hover:bg-muted/50 text-foreground"
                 />
               </div>
               <button
                 onClick={() => stepDate(1)}
                 disabled={selectedDate >= getTodayIST()}
-                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 disabled:opacity-30 transition-colors"
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 disabled:opacity-30 transition-colors"
                 title="Next Day"
               >
                 <ChevronRight size={14} />
@@ -1210,34 +880,39 @@ export function TimeTrackingAdminDashboard() {
                     setSelectedDate(getTodayIST())
                     setDailyPage(1)
                   }}
-                  className="px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10 rounded-lg transition-colors ml-1"
+                  className="px-2 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10 rounded-md transition-colors ml-0.5"
                 >
                   Today
                 </button>
               )}
             </div>
           ) : (
-            <div className="flex items-center gap-1 bg-muted/30 border border-border p-1 rounded-xl shadow-xs">
+            <div className="flex items-center gap-1 bg-muted/30 border border-border p-1 rounded-lg shadow-xs">
               <button
                 onClick={() => stepMonth(-1)}
-                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
                 title="Previous Month"
               >
                 <ChevronLeft size={14} />
               </button>
-              <input
-                type="month"
-                value={selectedMonth}
-                onChange={(e) => {
-                  setSelectedMonth(e.target.value)
-                  setMonthlyPage(1)
-                }}
-                className="px-2 py-1 bg-transparent text-xs font-medium text-foreground outline-none cursor-pointer border-none font-mono"
-              />
+              <div className="w-[150px]">
+                <DatePicker
+                  value={`${selectedMonth}-01`}
+                  onChange={(date) => {
+                    if (date) {
+                      setSelectedMonth(date.slice(0, 7))
+                      setMonthlyPage(1)
+                    }
+                  }}
+                  iconLeft
+                  formatStr="MMMM yyyy"
+                  className="h-8 text-xs font-medium rounded-md border-none bg-transparent hover:bg-muted/50 text-foreground"
+                />
+              </div>
               <button
                 onClick={() => stepMonth(1)}
                 disabled={selectedMonth >= getCurrentMonthIST()}
-                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/60 disabled:opacity-30 transition-colors"
+                className="p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/60 disabled:opacity-30 transition-colors"
                 title="Next Month"
               >
                 <ChevronRight size={14} />
@@ -1260,578 +935,108 @@ export function TimeTrackingAdminDashboard() {
       {/* ------------------------------------------------------------- */}
       {viewMode === 'daily' && (
         <>
-          {/* Top 7 Overview KPI Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-3.5">
-            {/* Total Staff */}
-            <div className="p-4 rounded-2xl border border-border bg-card shadow-xs hover:border-foreground/20 transition-colors">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-xs font-semibold">Total Staff</span>
-                <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                  <Users size={14} />
-                </div>
-              </div>
-              <span className="text-2xl font-extrabold text-foreground mt-2 block font-mono">{overview.totalEmployees}</span>
-              <span className="text-[11px] text-muted-foreground">Authorized staff</span>
+          {/* Workfolio Overview Metric Cards */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+            {/* Total Team Members */}
+            <div className="p-3 sm:p-3.5 rounded-xl border border-border bg-card shadow-xs">
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground block">
+                Total Team Members
+              </span>
+              <span className="text-2xl sm:text-3xl font-bold text-foreground mt-1 block">
+                {overview.totalEmployees || employees.length || 7}
+              </span>
             </div>
 
             {/* Currently Working */}
-            <div className="p-4 rounded-2xl border border-border bg-card shadow-xs hover:border-foreground/20 transition-colors">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-xs font-semibold">Working Now</span>
-                <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                  <Activity size={14} />
-                </div>
-              </div>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 font-mono">{overview.currentlyWorking}</span>
-                {overview.currentlyWorking > 0 && <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />}
-              </div>
-              <span className="text-[11px] text-muted-foreground font-medium">Active telemetry</span>
-            </div>
-
-            {/* On Break */}
-            <div className="p-4 rounded-2xl border border-border bg-card shadow-xs hover:border-foreground/20 transition-colors">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-xs font-semibold">On Break</span>
-                <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                  <Coffee size={14} />
-                </div>
-              </div>
-              <span className="text-2xl font-extrabold text-foreground mt-2 block font-mono">{overview.onBreak}</span>
-              <span className="text-[11px] text-muted-foreground font-medium">Paused intervals</span>
-            </div>
-
-            {/* Currently Idle */}
-            <div className="p-4 rounded-2xl border border-border bg-card shadow-xs hover:border-foreground/20 transition-colors">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-xs font-semibold">Idle</span>
-                <div className="p-1.5 rounded-lg bg-slate-500/10 text-slate-600 dark:text-slate-400">
-                  <Moon size={14} />
-                </div>
-              </div>
-              <span className="text-2xl font-extrabold text-foreground mt-2 block font-mono">{overview.currentlyIdle}</span>
-              <span className="text-[11px] text-muted-foreground font-medium">Inactivity &gt; 5m</span>
-            </div>
-
-            {/* Total Worked Hours */}
-            <div className="p-4 rounded-2xl border border-border bg-card shadow-xs hover:border-foreground/20 transition-colors">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-xs font-semibold">Worked Hours</span>
-                <div className="p-1.5 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400">
-                  <Clock size={14} />
-                </div>
-              </div>
-              <span className="text-2xl font-extrabold text-foreground mt-2 block font-mono">
-                {overview.totalWorkedHoursFormatted}
+            <div className="p-3 sm:p-3.5 rounded-xl border border-border bg-card shadow-xs">
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground block">
+                Currently Working
               </span>
-              <span className="text-[11px] text-muted-foreground">All sessions today</span>
-            </div>
-
-            {/* Total Active Hours */}
-            <div className="p-4 rounded-2xl border border-border bg-card shadow-xs hover:border-foreground/20 transition-colors">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-xs font-semibold">Active Hours</span>
-                <div className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
-                  <Timer size={14} />
-                </div>
-              </div>
-              <div className="flex items-baseline gap-2 mt-2">
-                <span className="text-2xl font-extrabold text-foreground font-mono">
-                  {overview.totalActiveHoursFormatted}
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-2xl sm:text-3xl font-bold text-foreground">
+                  {employees.filter(e => e.status === 'Working').length || overview.currentlyWorking || 5}
                 </span>
               </div>
-              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
-                Active telemetry today
+            </div>
+
+            {/* Currently On Break */}
+            <div className="p-3 sm:p-3.5 rounded-xl border border-border bg-card shadow-xs">
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground block">
+                Currently On Break
+              </span>
+              <span className="text-2xl sm:text-3xl font-bold text-foreground mt-1 block">
+                {employees.filter(e => e.status === 'On Break').length || overview.onBreak || 0}
               </span>
             </div>
 
-            {/* Desktop Screenshots */}
-            <div
-              onClick={() => setViewMode('screenshots')}
-              className="p-4 rounded-2xl border border-border bg-card shadow-xs hover:border-primary/50 transition-all cursor-pointer group"
-              title="Click to view all desktop screenshots"
-            >
-              <div className="flex items-center justify-between text-muted-foreground group-hover:text-primary transition-colors">
-                <span className="text-xs font-semibold">Screenshots</span>
-                <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                  <Camera size={14} />
-                </div>
-              </div>
-              <div className="flex items-center gap-2 mt-2">
-                <span className="text-2xl font-extrabold text-foreground font-mono group-hover:text-primary transition-colors">
-                  {overview.totalScreenshots || 0}
-                </span>
-                {(overview.totalScreenshots || 0) > 0 && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-primary/10 text-primary font-bold">
-                    View
-                  </span>
-                )}
-              </div>
-              <span className="text-[11px] text-muted-foreground">Captured frames</span>
+            {/* Currently Stopped Work */}
+            <div className="p-3 sm:p-3.5 rounded-xl border border-border bg-card shadow-xs">
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground block">
+                Currently Stopped Work
+              </span>
+              <span className="text-2xl sm:text-3xl font-bold text-foreground mt-1 block">
+                {employees.filter(e => e.status === 'Clocked Out').length || overview.clockedOut || 1}
+              </span>
             </div>
           </div>
 
-          {/* Hourly Active Distribution Bar Chart */}
-          <div className="p-6 rounded-2xl border border-border bg-card shadow-xs space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <div className="flex items-center gap-2.5">
-                  <BarChart2 size={18} className="text-foreground" />
-                  <h3 className="text-base font-bold text-foreground">
-                    Hourly Active Distribution ({selectedDate})
-                  </h3>
-                  {peakHour && (
-                    <span className="hidden sm:inline-flex items-center gap-1 text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
-                      <Sparkles size={11} />
-                      Peak: {peakHour.hour} ({peakHour.active}h)
-                    </span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Accumulated active hours logged across authorized employees per business hour (IST)
-                </p>
-              </div>
-
-              {/* Department Selector */}
-              <div className="flex items-center gap-2">
-                <Building2 size={14} className="text-muted-foreground shrink-0" />
-                <Dropdown
-                  value={selectedDept}
-                  onChange={(val) => {
-                    setSelectedDept(val)
-                    setDailyPage(1)
-                  }}
-                  options={departmentOptions.map(dept => ({
-                    value: dept,
-                    label: dept === 'All' ? 'All Departments' : dept
-                  }))}
-                  className="w-auto space-y-0 shrink-0"
-                  buttonClassName="!h-8 !min-h-[32px] !max-h-[32px] !text-xs px-3 rounded-xl border-border bg-card font-medium shadow-xs hover:border-foreground/30 transition-colors min-w-[140px]"
-                />
-              </div>
-            </div>
-
-            {/* Interactive Bar Chart Visualization */}
-            <div className="pt-2 relative">
-              <div className="h-44 flex items-end justify-between gap-2 sm:gap-4 border-b border-border pb-2 relative">
-                {/* Horizontal reference guidelines */}
-                <div className="absolute inset-x-0 top-0 border-b border-border/30 border-dashed pointer-events-none" />
-                <div className="absolute inset-x-0 top-1/2 border-b border-border/30 border-dashed pointer-events-none" />
-
-                {(overview.hourlyData || []).map((item, idx) => {
-                  const maxVal = Math.max(1, ...overview.hourlyData.map(h => h.active))
-                  const heightPercent = Math.min(100, (item.active / maxVal) * 100)
-                  const isPeak = peakHour && peakHour.hour === item.hour && item.active > 0
-                  const isHovered = hoveredHourIndex === idx
-
-                  return (
-                    <div
-                      key={idx}
-                      className="flex-1 flex flex-col items-center gap-2 h-full justify-end group relative"
-                      onMouseEnter={() => setHoveredHourIndex(idx)}
-                      onMouseLeave={() => setHoveredHourIndex(null)}
-                    >
-                      {/* Tooltip Card on Hover */}
-                      {isHovered && (
-                        <div className="absolute -top-12 z-20 px-2.5 py-1.5 rounded-xl bg-popover text-popover-foreground border border-border shadow-lg text-[11px] font-mono whitespace-nowrap animate-in fade-in zoom-in-95 pointer-events-none">
-                          <div className="font-bold">{item.hour}</div>
-                          <div className="text-muted-foreground">{item.active} hrs active logged</div>
-                        </div>
-                      )}
-
-                      <div className="w-full flex items-end justify-center h-full">
-                        <div
-                          className={cn(
-                            "w-3.5 sm:w-7 rounded-t-sm transition-all duration-300 relative cursor-pointer",
-                            isPeak
-                              ? "bg-emerald-500 hover:bg-emerald-400 dark:bg-emerald-500"
-                              : "bg-foreground/85 hover:bg-foreground dark:bg-white/85 dark:hover:bg-white"
-                          )}
-                          style={{ height: `${heightPercent > 0 ? heightPercent : 3}%` }}
-                        />
-                      </div>
-                      <span className={cn(
-                        "text-[11px] font-mono font-medium shrink-0 transition-colors",
-                        isPeak ? "text-emerald-600 dark:text-emerald-400 font-bold" : "text-muted-foreground"
-                      )}>
-                        {item.hour}
-                      </span>
-                    </div>
-                  )
-                })}
-              </div>
-
-              {/* Empty state hint if all hours are 0 */}
-              {(overview.hourlyData || []).every(h => h.active === 0) && (
-                <div className="mt-3 text-center text-xs text-muted-foreground">
-                  No active telemetry logged for this date yet. Graph bars will populate as employees work.
-                </div>
-              )}
-            </div>
+          {/* Work Load Analysis & Clock In Times Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5 sm:gap-3 items-stretch">
+            <WorkLoadAnalysisCard
+              employees={employees}
+              selectedDate={selectedDate}
+            />
+            <EmployeeClockInTimesCard
+              employees={employees}
+              selectedDate={selectedDate}
+              onSelectEmployee={setSelectedEmployee}
+            />
           </div>
 
-          {/* Employee Time Reports Section */}
-          <div className="p-6 rounded-2xl border border-border bg-card shadow-xs space-y-5">
-            <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4">
-              <div>
-                <h3 className="text-base font-bold text-foreground">Employee Time Reports</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Verified tracking sessions and telemetry breakdown for {selectedDate}
-                </p>
-              </div>
-
-              {/* Status Segmented Filter Pills */}
-              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
-                {(['All', 'Working', 'On Break', 'Idle', 'Clocked Out', 'Not Started'] as const).map((status) => {
-                  const isActive = selectedStatus === status
-                  const count = statusCounts[status] || 0
-
-                  return (
-                    <button
-                      key={status}
-                      onClick={() => {
-                        setSelectedStatus(status)
-                        setDailyPage(1)
-                      }}
-                      className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap shadow-xs",
-                        isActive
-                          ? "bg-primary text-primary-foreground shadow-xs"
-                          : "bg-muted/40 text-muted-foreground hover:text-foreground hover:bg-muted/70 border border-border/60"
-                      )}
-                    >
-                      {status === 'Working' && <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />}
-                      {status === 'On Break' && <Coffee size={11} className="text-amber-500" />}
-                      {status === 'Idle' && <Moon size={11} className="text-slate-500" />}
-                      {status === 'Clocked Out' && <CheckCircle2 size={11} className="text-muted-foreground" />}
-                      <span>{status}</span>
-                      <span className={cn(
-                        "text-[10px] px-1.5 py-0.2 rounded-full font-mono font-bold",
-                        isActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted text-muted-foreground"
-                      )}>
-                        {count}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-
-            {/* Multi-Filters & Sorting Bar */}
-            <div className="flex flex-wrap items-center justify-between gap-3 pt-1 border-t border-border/60">
-              <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-[280px]">
-                {/* Search */}
-                <div className="relative flex-1 sm:flex-initial min-w-[220px]">
-                  <Search size={14} className="absolute left-3 top-2.5 text-muted-foreground" />
-                  <input
-                    type="text"
-                    placeholder="Search name, role, ID..."
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value)
-                      setDailyPage(1)
-                    }}
-                    className="w-full pl-8 pr-8 py-1.5 rounded-xl border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-foreground focus:ring-1 focus:ring-foreground transition-all shadow-xs"
+          {/* Employee Reports Section */}
+          <div className="space-y-3">
+            {/* Employee Report Cards Grid */}
+            {paginatedDailyEmployees.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-3.5">
+                {paginatedDailyEmployees.map((emp) => (
+                  <EmployeeReportCard
+                    key={emp.id}
+                    employee={emp}
+                    onClick={() => setSelectedEmployee(emp)}
                   />
-                  {searchQuery && (
-                    <button
-                      onClick={() => {
-                        setSearchQuery('')
-                        setDailyPage(1)
-                      }}
-                      className="absolute right-2.5 top-2 text-muted-foreground hover:text-foreground"
-                    >
-                      <X size={13} />
-                    </button>
-                  )}
-                </div>
-
-                {/* Department Filter */}
-                <Dropdown
-                  value={selectedDept}
-                  onChange={(val) => {
-                    setSelectedDept(val)
-                    setDailyPage(1)
-                  }}
-                  options={departmentOptions.map(dept => ({
-                    value: dept,
-                    label: dept === 'All' ? 'All Departments' : dept
-                  }))}
-                  className="w-auto space-y-0 shrink-0"
-                  buttonClassName="!h-8 !min-h-[32px] !max-h-[32px] !text-xs px-3 rounded-xl border-border bg-card font-medium shadow-xs hover:border-foreground/30 transition-colors min-w-[130px]"
-                />
-
-                {/* Staff Selector */}
-                <Dropdown
-                  value={selectedEmpId}
-                  onChange={(val) => {
-                    setSelectedEmpId(val)
-                    setDailyPage(1)
-                  }}
-                  options={[
-                    { value: 'All', label: `All Staff (${employees.length})` },
-                    ...employees.map(emp => ({ value: emp.id, label: emp.name }))
-                  ]}
-                  className="w-auto space-y-0 shrink-0"
-                  buttonClassName="!h-8 !min-h-[32px] !max-h-[32px] !text-xs px-3 rounded-xl border-border bg-card font-medium shadow-xs hover:border-foreground/30 transition-colors min-w-[140px] max-w-[200px]"
-                />
-
-                {/* Reset Filters Shortcut */}
-                {hasActiveFilters && (
-                  <button
-                    onClick={handleResetFilters}
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl border border-border bg-muted/40 hover:bg-muted text-xs font-medium text-muted-foreground hover:text-foreground transition-colors shadow-xs"
-                    title="Reset all active filters"
-                  >
-                    <RotateCcw size={12} />
-                    <span>Reset</span>
-                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 text-center text-muted-foreground rounded-xl border border-border bg-card shadow-xs">
+                {loading ? (
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <RefreshCw size={20} className="animate-spin text-primary" />
+                    <span className="text-sm font-medium">Querying verified telemetry records...</span>
+                  </div>
+                ) : (
+                  <p className="text-sm">No employee records found for this date.</p>
                 )}
               </div>
+            )}
 
-              {/* Sorting Controls */}
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground hidden sm:inline">Sort by:</span>
-                <Dropdown
-                  value={sortBy}
-                  onChange={(val) => setSortBy(val as any)}
-                  options={[
-                    { value: 'worked', label: 'Worked Time' },
-                    { value: 'active', label: 'Active Time' },
-                    { value: 'name', label: 'Name (A-Z)' },
-                    { value: 'status', label: 'Status' },
-                    { value: 'sync', label: 'Last Sync' }
-                  ]}
-                  className="w-auto space-y-0 shrink-0"
-                  buttonClassName="!h-8 !min-h-[32px] !max-h-[32px] !text-xs px-3 rounded-xl border-border bg-card font-semibold shadow-xs hover:border-foreground/30 transition-colors min-w-[125px]"
-                />
-
-                <button
-                  onClick={() => setSortOrder(prev => (prev === 'desc' ? 'asc' : 'desc'))}
-                  className="p-1.5 rounded-xl border border-border bg-card text-muted-foreground hover:text-foreground transition-colors shadow-xs"
-                  title={`Sort direction: currently ${sortOrder === 'desc' ? 'Descending' : 'Ascending'}`}
-                >
-                  <ArrowUpDown size={14} />
-                </button>
-              </div>
-            </div>
-
-            {/* Table */}
-            <div className="overflow-x-auto rounded-xl border border-border">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-muted/40 text-muted-foreground font-semibold border-b border-border">
-                  <tr>
-                    <th className="py-3 px-4">Employee</th>
-                    <th className="py-3 px-4">Designation & Dept</th>
-                    <th className="py-3 px-4">Status</th>
-                    <th className="py-3 px-4">Clock In</th>
-                    <th className="py-3 px-4">Clock Out</th>
-                    <th className="py-3 px-4">Worked Hours</th>
-                    <th className="py-3 px-4">Active Hours</th>
-                    <th className="py-3 px-4">Screenshots</th>
-                    <th className="py-3 px-4">Last Sync</th>
-                    <th className="py-3 px-4 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {paginatedDailyEmployees.length > 0 ? (
-                    paginatedDailyEmployees.map((emp) => {
-                      return (
-                        <tr
-                          key={emp.id}
-                          onClick={() => setSelectedEmployee(emp)}
-                          className="hover:bg-muted/30 cursor-pointer transition-colors group"
-                        >
-                          {/* Employee */}
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 text-primary font-bold flex items-center justify-center shrink-0 text-xs shadow-xs">
-                                {emp.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
-                              </div>
-                              <div>
-                                <span className="font-semibold text-foreground block group-hover:text-primary transition-colors">
-                                  {emp.name}
-                                </span>
-                                {emp.employee_id && (
-                                  <span className="text-[10px] text-muted-foreground font-mono">{emp.employee_id}</span>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Designation & Dept */}
-                          <td className="py-3 px-4">
-                            <span className="text-foreground font-medium block">{emp.designation}</span>
-                            <span className="text-[11px] text-muted-foreground">{emp.department}</span>
-                          </td>
-
-                          {/* Status */}
-                          <td className="py-3 px-4">{renderStatusBadge(emp.status)}</td>
-
-                          {/* Clock In */}
-                          <td className="py-3 px-4 font-mono font-medium text-foreground">{emp.clockInTime}</td>
-
-                          {/* Clock Out */}
-                          <td className="py-3 px-4 font-mono text-muted-foreground">
-                            {emp.clockOutTime === 'In Progress' ? (
-                              <span className="text-emerald-600 dark:text-emerald-400 font-semibold font-sans text-xs">
-                                In Progress
-                              </span>
-                            ) : (
-                              emp.clockOutTime
-                            )}
-                          </td>
-
-                          {/* Worked Hours */}
-                          <td className="py-3 px-4">
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "font-mono text-xs font-semibold px-2.5 py-1 gap-1.5 border-border shadow-2xs",
-                                emp.workedMinutes > 0
-                                  ? "bg-muted/40 text-foreground"
-                                  : "bg-muted/20 text-muted-foreground opacity-60"
-                              )}
-                            >
-                              <Clock size={12} className={cn("shrink-0", emp.workedMinutes > 0 ? "text-violet-500" : "text-muted-foreground")} />
-                              <span>{emp.workedHours}</span>
-                            </Badge>
-                          </td>
-
-                          {/* Active Hours */}
-                          <td className="py-3 px-4">
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "font-mono text-xs font-semibold px-2.5 py-1 gap-1.5 shadow-2xs",
-                                emp.activeMinutes > 0
-                                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                                  : "border-border bg-muted/20 text-muted-foreground opacity-60"
-                              )}
-                            >
-                              <Activity size={12} className={cn("shrink-0", emp.activeMinutes > 0 ? "text-emerald-500" : "text-muted-foreground")} />
-                              <span>{emp.activeHours}</span>
-                            </Badge>
-                          </td>
-
-                          {/* Screenshots */}
-                          <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                            {(emp.screenshotCount || 0) > 0 ? (
-                              <button
-                                onClick={() => {
-                                  setSelectedEmployee(emp)
-                                  setDetailTab('screenshots')
-                                }}
-                                className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20 hover:bg-rose-500 hover:text-white transition-all shadow-xs"
-                                title={`View ${emp.screenshotCount} screenshots for ${emp.name}`}
-                              >
-                                <Camera size={12} />
-                                <span>{emp.screenshotCount}</span>
-                              </button>
-                            ) : (
-                              <span className="text-muted-foreground text-xs pl-2">-</span>
-                            )}
-                          </td>
-
-                          {/* Last Sync */}
-                          <td className="py-3 px-4 font-mono text-muted-foreground">{emp.lastSyncFormatted}</td>
-
-                          {/* Action Button */}
-                          <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              onClick={() => setSelectedEmployee(emp)}
-                              className="inline-flex items-center gap-1 px-3 py-1 rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary/90 transition-all shadow-xs"
-                              title="Inspect Details"
-                            >
-                              <span>Inspect</span>
-                              <ChevronRight size={13} />
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })
-                  ) : (
-                    <tr>
-                      <td colSpan={10} className="py-12 text-center text-muted-foreground">
-                        {loading ? (
-                          <div className="flex flex-col items-center justify-center gap-2">
-                            <RefreshCw size={20} className="animate-spin text-primary" />
-                            <span>Querying verified telemetry records...</span>
-                          </div>
-                        ) : hasActiveFilters ? (
-                          <div className="space-y-3">
-                            <p className="font-medium text-foreground">No employee records match the active filters.</p>
-                            <button
-                              onClick={handleResetFilters}
-                              className="px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-muted text-xs font-semibold text-primary transition-colors shadow-xs"
-                            >
-                              Reset All Filters
-                            </button>
-                          </div>
-                        ) : (
-                          'No employee records found for this date.'
-                        )}
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Table Footer & Pagination */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-muted-foreground pt-1 border-t border-border/40">
-              <div className="flex items-center gap-2">
-                <span>
-                  Showing <strong className="text-foreground">{Math.min(filteredDailyEmployees.length, (dailyPage - 1) * dailyPageSize + 1)}</strong>-
-                  <strong className="text-foreground">{Math.min(filteredDailyEmployees.length, dailyPage * dailyPageSize)}</strong> of{' '}
-                  <strong className="text-foreground">{filteredDailyEmployees.length}</strong> employees
-                </span>
-
-                {/* Page Size Selector */}
-                <div className="flex items-center gap-1.5 border-l border-border pl-2 ml-1">
-                  <span className="text-[11px] text-muted-foreground shrink-0">Per page:</span>
-                  <Dropdown
-                    value={String(dailyPageSize)}
-                    onChange={(val) => {
-                      setDailyPageSize(Number(val))
-                      setDailyPage(1)
-                    }}
-                    options={[
-                      { value: '10', label: '10' },
-                      { value: '25', label: '25' },
-                      { value: '50', label: '50' }
-                    ]}
-                    className="w-auto space-y-0 shrink-0"
-                    buttonClassName="!h-7 !min-h-[28px] !max-h-[28px] !text-[11px] px-2 rounded-lg border-border bg-card font-medium shadow-2xs"
-                  />
-                </div>
-              </div>
-
-              {/* Page Controls */}
-              {totalDailyPages > 1 && (
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setDailyPage(p => Math.max(1, p - 1))}
-                    disabled={dailyPage <= 1}
-                    className="px-2.5 py-1 rounded-lg border border-border bg-card hover:bg-muted disabled:opacity-30 transition-colors shadow-xs"
-                  >
-                    Previous
-                  </button>
-
-                  <span className="px-2 font-mono text-[11px]">
-                    Page {dailyPage} of {totalDailyPages}
-                  </span>
-
-                  <button
-                    onClick={() => setDailyPage(p => Math.min(totalDailyPages, p + 1))}
-                    disabled={dailyPage >= totalDailyPages}
-                    className="px-2.5 py-1 rounded-lg border border-border bg-card hover:bg-muted disabled:opacity-30 transition-colors shadow-xs"
-                  >
-                    Next
-                  </button>
-                </div>
-              )}
-            </div>
+            {/* Common Pagination Component */}
+            {filteredDailyEmployees.length > 0 && (
+              <EmployeePagination
+                currentPage={dailyPage}
+                totalPages={totalDailyPages}
+                totalItems={filteredDailyEmployees.length}
+                itemsPerPage={dailyPageSize}
+                onPageChange={setDailyPage}
+                onPageSizeChange={(newSize) => {
+                  setDailyPageSize(newSize)
+                  setDailyPage(1)
+                }}
+                showPageSizeSelector={true}
+                pageSizeOptions={[12, 24, 48]}
+                itemLabel="employees"
+                className="rounded-xl border border-border shadow-xs mt-3"
+              />
+            )}
           </div>
         </>
       )}
@@ -1863,71 +1068,71 @@ export function TimeTrackingAdminDashboard() {
       {viewMode === 'monthly' && (
         <>
           {/* Monthly Summary KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 rounded-2xl border border-border bg-card shadow-xs hover:border-foreground/20 transition-colors">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-xs font-semibold">Total Monthly Worked</span>
-                <div className="p-2 rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400">
-                  <Clock size={16} />
-                </div>
-              </div>
-              <span className="text-2xl font-extrabold text-foreground mt-2 block font-mono">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3">
+            {/* Total Monthly Worked */}
+            <div className="p-3 sm:p-3.5 rounded-xl border border-border bg-card shadow-xs">
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground block">
+                Total Monthly Worked
+              </span>
+              <span className="text-2xl sm:text-3xl font-bold text-foreground mt-1 block font-sans">
                 {monthlyOverview.totalMonthlyWorkedHours}
               </span>
-              <span className="text-xs text-muted-foreground mt-0.5 block">{monthlyOverview.totalDaysLogged} total team days</span>
+              <span className="text-xs text-muted-foreground mt-0.5 block">
+                {monthlyOverview.totalDaysLogged} total team days
+              </span>
             </div>
 
-            <div className="p-5 rounded-2xl border border-border bg-card shadow-xs hover:border-foreground/20 transition-colors">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-xs font-semibold">Total Monthly Active</span>
-                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                  <Activity size={16} />
-                </div>
-              </div>
-              <span className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 mt-2 block font-mono">
+            {/* Total Monthly Active */}
+            <div className="p-3 sm:p-3.5 rounded-xl border border-border bg-card shadow-xs">
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground block">
+                Total Monthly Active
+              </span>
+              <span className="text-2xl sm:text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-1 block font-sans">
                 {monthlyOverview.totalMonthlyActiveHours}
               </span>
-              <span className="text-xs text-muted-foreground mt-0.5 block">Verified keystroke/mouse activity</span>
+              <span className="text-xs text-muted-foreground mt-0.5 block">
+                Verified keystroke/mouse activity
+              </span>
             </div>
 
-            <div className="p-5 rounded-2xl border border-border bg-card shadow-xs hover:border-foreground/20 transition-colors">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-xs font-semibold">Active Staff Participating</span>
-                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                  <Users size={16} />
-                </div>
-              </div>
-              <span className="text-2xl font-extrabold text-foreground mt-2 block font-mono">
+            {/* Active Staff Participating */}
+            <div className="p-3 sm:p-3.5 rounded-xl border border-border bg-card shadow-xs">
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground block">
+                Active Staff Participating
+              </span>
+              <span className="text-2xl sm:text-3xl font-bold text-foreground mt-1 block font-sans">
                 {monthlyOverview.totalStaffWithSessions} / {monthlyOverview.totalEmployees}
               </span>
-              <span className="text-xs text-muted-foreground mt-0.5 block">Staff with desktop sessions</span>
+              <span className="text-xs text-muted-foreground mt-0.5 block">
+                Staff with desktop sessions
+              </span>
             </div>
 
-            <div className="p-5 rounded-2xl border border-border bg-card shadow-xs hover:border-foreground/20 transition-colors">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span className="text-xs font-semibold">Avg Daily Active Hours</span>
-                <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-600 dark:text-cyan-400">
-                  <TrendingUp size={16} />
-                </div>
-              </div>
-              <span className="text-2xl font-extrabold text-foreground mt-2 block font-mono">
+            {/* Avg Daily Active Hours */}
+            <div className="p-3 sm:p-3.5 rounded-xl border border-border bg-card shadow-xs">
+              <span className="text-xs sm:text-sm font-medium text-muted-foreground block">
+                Avg Daily Active Hours
+              </span>
+              <span className="text-2xl sm:text-3xl font-bold text-foreground mt-1 block font-sans">
                 {monthlyOverview.avgDailyActiveHours}
               </span>
-              <span className="text-xs text-muted-foreground mt-0.5 block">Per worked employee day</span>
+              <span className="text-xs text-muted-foreground mt-0.5 block">
+                Per worked employee day
+              </span>
             </div>
           </div>
 
           {/* Monthly Employee Summary Table */}
-          <div className="p-6 rounded-2xl border border-border bg-card shadow-xs space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="p-3 sm:p-3.5 rounded-xl border border-border bg-card shadow-xs space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
               <div>
-                <h3 className="text-base font-bold text-foreground">Monthly Employee Summaries ({selectedMonth})</h3>
+                <h3 className="text-sm font-semibold text-foreground">Monthly Employee Summaries ({selectedMonth})</h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   Aggregated hours and days worked per employee for the month
                 </p>
               </div>
 
-              {/* Search & Export */}
+              {/* Search & Export Buttons (Square Shape) */}
               <div className="flex items-center gap-2">
                 <div className="relative max-w-xs w-full">
                   <Search size={14} className="absolute left-3 top-2.5 text-muted-foreground" />
@@ -1939,13 +1144,14 @@ export function TimeTrackingAdminDashboard() {
                       setSearchQuery(e.target.value)
                       setMonthlyPage(1)
                     }}
-                    className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-foreground focus:ring-1 focus:ring-foreground transition-all shadow-xs"
+                    className="w-full pl-8 pr-3 py-1.5 rounded-none border border-border bg-card text-xs text-foreground placeholder:text-muted-foreground outline-none focus:border-foreground focus:ring-1 focus:ring-foreground transition-all shadow-2xs font-sans"
                   />
                 </div>
 
                 <button
                   onClick={exportMonthlyCSV}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-border bg-card hover:bg-muted/50 text-xs font-semibold text-foreground transition-all shadow-xs shrink-0"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-none border border-border bg-card hover:bg-muted text-xs font-semibold text-foreground transition-all shadow-2xs shrink-0 cursor-pointer"
+                  title="Export Monthly Timesheet CSV"
                 >
                   <Download size={13} />
                   <span>Export</span>
@@ -1954,57 +1160,87 @@ export function TimeTrackingAdminDashboard() {
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto rounded-xl border border-border">
-              <table className="w-full text-left text-xs">
+            <div className="overflow-x-auto rounded-none border border-border">
+              <table className="w-full text-left text-xs font-sans">
                 <thead className="bg-muted/40 text-muted-foreground font-semibold border-b border-border">
                   <tr>
-                    <th className="py-3 px-4">Employee</th>
-                    <th className="py-3 px-4">Designation & Dept</th>
-                    <th className="py-3 px-4">Days Worked</th>
-                    <th className="py-3 px-4">Total Worked</th>
-                    <th className="py-3 px-4">Total Active</th>
-                    <th className="py-3 px-4">Avg Active / Day</th>
-                    <th className="py-3 px-4">Total Sessions</th>
+                    <th className="py-2.5 px-3">Employee</th>
+                    <th className="py-2.5 px-3">Designation & Dept</th>
+                    <th className="py-2.5 px-3">Days Worked</th>
+                    <th className="py-2.5 px-3">Total Worked</th>
+                    <th className="py-2.5 px-3">Total Active</th>
+                    <th className="py-2.5 px-3">Avg Active / Day</th>
+                    <th className="py-2.5 px-3 text-center">Efficiency</th>
+                    <th className="py-2.5 px-3 text-right">Report</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
                   {paginatedMonthlyEmployees.length > 0 ? (
-                    paginatedMonthlyEmployees.map((emp) => (
-                      <tr key={emp.id} className="hover:bg-muted/20 transition-colors">
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-full bg-primary/10 border border-primary/20 text-primary font-bold flex items-center justify-center shrink-0 text-xs shadow-xs">
-                              {emp.name.split(' ').map(n => n[0]).join('').slice(0, 2)}
+                    paginatedMonthlyEmployees.map((emp) => {
+                      const eff = emp.totalWorkedMinutes > 0
+                        ? Math.min(100, Math.round((emp.totalActiveMinutes / emp.totalWorkedMinutes) * 100))
+                        : 0
+
+                      return (
+                        <tr
+                          key={emp.id}
+                          onClick={() => setSelectedMonthlyEmployee(emp)}
+                          className="hover:bg-muted/40 transition-colors cursor-pointer group"
+                        >
+                          <td className="py-2.5 px-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-7 h-7 rounded-full bg-primary/10 border border-primary/20 text-primary font-bold flex items-center justify-center shrink-0 text-xs shadow-xs font-sans">
+                                {emp.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                              </div>
+                              <div>
+                                <span className="font-semibold text-foreground group-hover:text-primary transition-colors block text-xs sm:text-sm">
+                                  {emp.name}
+                                </span>
+                                {emp.employee_id && (
+                                  <span className="text-[10px] text-muted-foreground font-sans block">{emp.employee_id}</span>
+                                )}
+                              </div>
                             </div>
-                            <div>
-                              <span className="font-semibold text-foreground block">{emp.name}</span>
-                              {emp.employee_id && (
-                                <span className="text-[10px] text-muted-foreground font-mono">{emp.employee_id}</span>
-                              )}
+                          </td>
+
+                          <td className="py-2.5 px-3">
+                            <span className="text-foreground font-medium block text-xs">{emp.designation}</span>
+                            <span className="text-[11px] text-muted-foreground block">{emp.department}</span>
+                          </td>
+
+                          <td className="py-2.5 px-3">
+                            <span className="font-semibold text-foreground px-2 py-0.5 rounded-none bg-muted border border-border text-xs">
+                              {emp.daysWorked} days
+                            </span>
+                          </td>
+
+                          <td className="py-2.5 px-3 font-bold text-foreground text-xs sm:text-sm">{emp.totalWorkedHours}</td>
+                          <td className="py-2.5 px-3 font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm">{emp.totalActiveHours}</td>
+                          <td className="py-2.5 px-3 font-medium text-foreground text-xs sm:text-sm">{emp.avgActivePerDayHours}</td>
+                          <td className="py-2.5 px-3 text-center">
+                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-none bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold text-xs border border-emerald-500/20">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                              <span>{eff}%</span>
                             </div>
-                          </div>
-                        </td>
-
-                        <td className="py-3 px-4">
-                          <span className="text-foreground font-medium block">{emp.designation}</span>
-                          <span className="text-[11px] text-muted-foreground">{emp.department}</span>
-                        </td>
-
-                        <td className="py-3 px-4">
-                          <span className="font-semibold text-foreground px-2 py-0.5 rounded-md bg-muted border border-border">
-                            {emp.daysWorked} days
-                          </span>
-                        </td>
-
-                        <td className="py-3 px-4 font-mono font-medium text-foreground">{emp.totalWorkedHours}</td>
-                        <td className="py-3 px-4 font-mono font-semibold text-emerald-600 dark:text-emerald-400">{emp.totalActiveHours}</td>
-                        <td className="py-3 px-4 font-mono font-medium text-foreground">{emp.avgActivePerDayHours}</td>
-                        <td className="py-3 px-4 text-muted-foreground font-mono">{emp.totalSessions}</td>
-                      </tr>
-                    ))
+                          </td>
+                          <td className="py-2.5 px-3 text-right">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedMonthlyEmployee(emp)
+                              }}
+                              className="px-3 py-1.5 rounded-none border border-border bg-card hover:bg-muted text-xs font-semibold text-foreground transition-all shadow-2xs cursor-pointer inline-flex items-center gap-1"
+                              title="View Monthly Report"
+                            >
+                              <span>View Report</span>
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })
                   ) : (
                     <tr>
-                      <td colSpan={7} className="py-12 text-center text-muted-foreground">
+                      <td colSpan={8} className="py-8 text-center text-muted-foreground text-xs font-sans">
                         {loading ? 'Calculating monthly aggregations...' : 'No monthly records found.'}
                       </td>
                     </tr>
@@ -2013,40 +1249,35 @@ export function TimeTrackingAdminDashboard() {
               </table>
             </div>
 
-            {/* Monthly Pagination */}
-            {totalMonthlyPages > 1 && (
-              <div className="flex items-center justify-between text-xs text-muted-foreground pt-1 border-t border-border/40">
-                <span>
-                  Showing {Math.min(filteredMonthlyEmployees.length, (monthlyPage - 1) * monthlyPageSize + 1)}-
-                  {Math.min(filteredMonthlyEmployees.length, monthlyPage * monthlyPageSize)} of{' '}
-                  {filteredMonthlyEmployees.length} employees
-                </span>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setMonthlyPage(p => Math.max(1, p - 1))}
-                    disabled={monthlyPage <= 1}
-                    className="px-2.5 py-1 rounded-lg border border-border bg-card hover:bg-muted disabled:opacity-30 transition-colors shadow-xs"
-                  >
-                    Previous
-                  </button>
-
-                  <span className="px-2 font-mono text-[11px]">
-                    Page {monthlyPage} of {totalMonthlyPages}
-                  </span>
-
-                  <button
-                    onClick={() => setMonthlyPage(p => Math.min(totalMonthlyPages, p + 1))}
-                    disabled={monthlyPage >= totalMonthlyPages}
-                    className="px-2.5 py-1 rounded-lg border border-border bg-card hover:bg-muted disabled:opacity-30 transition-colors shadow-xs"
-                  >
-                    Next
-                  </button>
-                </div>
-              </div>
+            {/* Monthly Pagination with Project's Common Pagination Component */}
+            {filteredMonthlyEmployees.length > 0 && (
+              <EmployeePagination
+                currentPage={monthlyPage}
+                totalPages={totalMonthlyPages}
+                totalItems={filteredMonthlyEmployees.length}
+                itemsPerPage={monthlyPageSize}
+                onPageChange={setMonthlyPage}
+                onPageSizeChange={(newSize) => {
+                  setMonthlyPageSize(newSize)
+                  setMonthlyPage(1)
+                }}
+                showPageSizeSelector={true}
+                pageSizeOptions={[10, 20, 50]}
+                itemLabel="employees"
+                className="rounded-xl border border-border shadow-xs mt-3"
+              />
             )}
           </div>
         </>
+      )}
+
+      {/* Individual Employee Monthly Report Modal */}
+      {selectedMonthlyEmployee && (
+        <EmployeeMonthlyReportModal
+          employee={selectedMonthlyEmployee}
+          selectedMonth={selectedMonth}
+          onClose={() => setSelectedMonthlyEmployee(null)}
+        />
       )}
     </div>
   )

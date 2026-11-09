@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import { toggleTaskStatus } from '@/lib/actions/onboarding'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
@@ -36,7 +37,7 @@ export function ChecklistItem({
         className="border-input data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:text-primary-foreground"
       />
       <div className="flex-1 flex items-center justify-between">
-        <label 
+        <Label
           htmlFor={task.id}
           className={cn(
             "text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer",
@@ -44,7 +45,7 @@ export function ChecklistItem({
           )}
         >
           {task.task_name}
-        </label>
+        </Label>
         {task.is_required ? (
           <Badge variant="outline" className="text-[10px] uppercase tracking-wider text-muted-foreground border-border">Required</Badge>
         ) : (

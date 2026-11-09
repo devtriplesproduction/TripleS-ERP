@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { Plus, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Trash2, Edit2, LayoutList, LayoutGrid } from "lucide-react";
+import { Plus, Calendar as CalendarIcon, ChevronLeft, ChevronRight, Trash2, Edit2, LayoutList, LayoutGrid, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { createHolidayAction, updateHolidayAction, deleteHolidayAction } from "@/actions/holiday.actions";
 import { broadcastNotificationUpdate } from "@/lib/notifications-client";
@@ -19,7 +20,6 @@ import { cn } from "@/lib/utils";
 import { DatePicker } from "@/components/ui/date-picker";
 import { ConfirmModal } from "@/components/ui/confirm-modal";
 import { getISTDateString } from "@/lib/utils/time";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { PageHeader } from "@/components/PageHeader";
 
 export interface Holiday {
@@ -46,7 +46,6 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
   const [name, setName] = useState("");
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [isOptional, setIsOptional] = useState<boolean>(false);
-  const [holidayType, setHolidayType] = useState<"PAID" | "UNPAID">("PAID");
 
   const months = useMemo(() => {
     const m = Array.from({ length: 12 }, (_, i) => ({
@@ -65,8 +64,8 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
 
   const totalHolidays = holidays.filter(h => parseLocalDate(h.date).getFullYear() === currentYear).length;
 
-  const handleOpenNew = () => { setEditingId(null); setName(""); setDate(undefined); setIsOptional(false); setHolidayType("PAID"); setIsOpen(true); };
-  const handleOpenEdit = (h: Holiday) => { setEditingId(h.id); setName(h.name); setDate(parseLocalDate(h.date)); setIsOptional(h.is_optional || false); setHolidayType(h.holiday_type || "PAID"); setIsOpen(true); };
+  const handleOpenNew = () => { setEditingId(null); setName(""); setDate(undefined); setIsOptional(false); setIsOpen(true); };
+  const handleOpenEdit = (h: Holiday) => { setEditingId(h.id); setName(h.name); setDate(parseLocalDate(h.date)); setIsOptional(h.is_optional || false); setIsOpen(true); };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -116,7 +115,7 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
       <h3 className="text-lg font-bold text-foreground">No holidays for {currentYear}</h3>
       <p className="text-sm text-muted-foreground mt-1 max-w-xs">No public holidays have been added yet.</p>
       {isAdmin && (
-        <Button onClick={handleOpenNew} variant="default" className="mt-5 min-h-[44px] h-10 rounded-xl gap-2 px-4">
+        <Button onClick={handleOpenNew} className="mt-5 min-h-[40px] h-10 rounded-xl gap-2 px-4 bg-black text-white hover:bg-black hover:text-white border border-black dark:bg-white dark:text-black dark:hover:bg-white dark:hover:text-black dark:border-white shadow-sm font-semibold text-sm cursor-pointer">
           <Plus className="w-4 h-4" /> Add First Holiday
         </Button>
       )}
@@ -125,7 +124,7 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
 
   return (
     <div className="space-y-6">
-      <PageHeader
+      <PageHeader 
         title={<>Holiday <span className="text-primary">Calendar</span></>}
         subtitle={`${totalHolidays} public ${totalHolidays === 1 ? "holiday" : "holidays"} in ${currentYear}`}
         icon={CalendarIcon}
@@ -165,7 +164,7 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
             </div>
 
             {isAdmin && (
-              <Button onClick={handleOpenNew} variant="default" className="min-h-[44px] sm:min-h-9 h-9 sm:h-10 rounded-xl gap-2 px-3 sm:px-4 text-xs sm:text-sm">
+              <Button onClick={handleOpenNew} className="h-9 sm:h-10 rounded-xl gap-2 px-3 sm:px-4 text-xs sm:text-sm font-semibold bg-black text-white hover:bg-black hover:text-white border border-black dark:bg-white dark:text-black dark:hover:bg-white dark:hover:text-black dark:border-white cursor-pointer shadow-xs">
                 <Plus className="w-4 h-4" /> Add Holiday
               </Button>
             )}
@@ -230,7 +229,7 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
       {view === "grid" && (
         months.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {months.map(({ month, abbr, name, holidays }) => (
+            {months.map(({ month, name, holidays }) => (
               <div key={month} className="rounded-2xl ring-1 ring-border bg-card overflow-hidden flex flex-col">
                 <div className="px-4 sm:px-5 py-3 sm:py-4 flex justify-between items-center border-b border-border">
                   <p className="text-sm sm:text-base font-bold text-foreground">{name}</p>
@@ -276,54 +275,77 @@ export function HolidayManager({ initialHolidays, isAdmin }: { initialHolidays: 
       )}
 
       <Dialog open={isOpen} onOpenChange={(open) => { if (!open && !isSubmitting) setIsOpen(false); }}>
-        <DialogContent className="w-[calc(100vw-1.5rem)] sm:max-w-[480px] p-0 overflow-hidden rounded-[24px] shadow-2xl border-0 bg-background max-h-[calc(100dvh-2rem)] overflow-y-auto">
-          <div className="bg-muted/30 p-4 sm:p-6 border-b border-border">
-            <DialogHeader>
-              <div className="flex items-center gap-3 sm:gap-3.5">
-                <div className="h-10 w-10 sm:h-11 sm:w-11 bg-primary rounded-2xl flex items-center justify-center shadow-md shadow-primary/20 rotate-3 shrink-0">
-                  <CalendarIcon className="w-5 h-5 text-primary-foreground -rotate-3" />
-                </div>
-                <div>
-                  <DialogTitle className="text-lg sm:text-xl font-bold text-foreground">
-                    {editingId ? "Edit Holiday" : "Add Holiday"}
-                  </DialogTitle>
-                  <DialogDescription className="text-xs sm:text-sm text-muted-foreground">
-                    {editingId ? "Update the details below." : "Add a new public holiday."}
-                  </DialogDescription>
-                </div>
+        <DialogContent className="sm:max-w-[480px] w-[calc(100vw-2rem)] p-5 sm:p-6 gap-0 bg-card border border-border shadow-2xl rounded-2xl overflow-hidden font-sans select-none">
+          <DialogHeader className="p-0 pb-4 pr-8 border-b border-border/60 bg-transparent flex flex-col gap-1">
+            <div className="flex items-center gap-2.5">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                <CalendarIcon className="w-5 h-5" />
               </div>
-            </DialogHeader>
-          </div>
-          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5">
-            <div className="space-y-2">
-              <Label className="text-xs sm:text-sm font-semibold ml-1">Holiday Name</Label>
+              <div className="min-w-0 flex-1">
+                <DialogTitle className="text-lg font-bold text-foreground leading-tight">
+                  {editingId ? "Edit Holiday" : "Add Holiday"}
+                </DialogTitle>
+                <DialogDescription className="sr-only">Holiday details</DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <form onSubmit={handleSubmit} className="pt-4 space-y-4 font-sans">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-foreground flex items-center justify-between">
+                <span>Holiday Name <span className="text-destructive">*</span></span>
+              </Label>
               <Input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder="E.g., New Year's Day"
-                className="bg-muted/30 border-transparent focus:bg-background focus:border-primary focus-visible:ring-primary/20 py-4 sm:py-6 px-3 sm:px-4 rounded-xl text-sm min-h-[44px]"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label className="text-xs sm:text-sm font-semibold ml-1">Date</Label>
-              <DatePicker
-                value={date}
-                onChange={(d) => setDate(d ? parseLocalDate(d) : undefined)}
-                className="bg-muted/30 border-transparent focus-visible:bg-background focus-visible:border-primary focus-visible:ring-primary/20 min-h-[44px] sm:h-[52px] px-3 sm:px-4 rounded-xl text-sm"
-                iconLeft={true}
-                showChevron={true}
-                placeholder="dd/mm/yyyy"
+                placeholder="E.g., Republic Day"
+                className="h-10 text-sm bg-background rounded-lg border border-border text-foreground placeholder:text-muted-foreground focus-visible:ring-1 focus-visible:ring-foreground transition-all"
+                required
+                autoFocus
               />
             </div>
 
-            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-2">
-              <Button type="button" variant="outline" onClick={() => setIsOpen(false)} className="min-h-[44px] sm:h-11 px-5 rounded-xl w-full sm:w-auto">
+            <div className="space-y-1.5">
+              <Label className="text-sm font-medium text-foreground flex items-center justify-between">
+                <span>Holiday Date <span className="text-destructive">*</span></span>
+              </Label>
+              <DatePicker 
+                value={date} 
+                onChange={(d) => setDate(d ? new Date(d) : undefined)} 
+                className="h-10 text-sm bg-background rounded-lg border border-border text-foreground"
+                iconLeft={true}
+                showChevron={true}
+                placeholder="Select Date"
+                formatStr="dd MMM, yyyy"
+              />
+            </div>
+
+            <DialogFooter className="pt-4 border-t border-border/60 flex flex-row items-center justify-center sm:justify-center gap-3 -mx-5 sm:-mx-6 -mb-5 sm:-mb-6 p-4 sm:p-5 bg-muted/15 rounded-b-2xl mt-4">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setIsOpen(false)}
+                disabled={isSubmitting}
+                className="text-sm h-10 px-5 rounded-lg cursor-pointer border-border hover:bg-muted font-medium transition-all min-w-[110px]"
+              >
                 Cancel
               </Button>
-              <Button type="submit" variant="default" disabled={isSubmitting} className="min-h-[44px] sm:h-11 px-7 rounded-xl shadow-md shadow-primary/20 w-full sm:w-auto">
-                {isSubmitting ? "Saving…" : editingId ? "Save Changes" : "Add Holiday"}
+              <Button
+                type="submit"
+                disabled={isSubmitting}
+                className="text-sm h-10 px-6 font-semibold rounded-lg bg-black text-white hover:bg-black hover:text-white border border-black shadow-xs cursor-pointer disabled:opacity-80 disabled:cursor-not-allowed dark:bg-white dark:text-black dark:hover:bg-white dark:hover:text-black dark:border-white min-w-[140px]"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    <span>{editingId ? "Saving…" : "Adding…"}</span>
+                  </>
+                ) : (
+                  editingId ? "Save Changes" : "Add Holiday"
+                )}
               </Button>
-            </div>
+            </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>

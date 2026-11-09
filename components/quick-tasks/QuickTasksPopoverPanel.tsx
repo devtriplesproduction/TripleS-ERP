@@ -25,6 +25,7 @@ import {
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import type {
   QuickTask,
   QuickTaskStatus,
@@ -593,7 +594,7 @@ export function QuickTasksPopoverPanel({
 
               {/* Task Description multiline textarea */}
               <div className="space-y-1">
-                <textarea
+                <Textarea
                   ref={inlineDescriptionRef}
                   value={inlineDescription}
                   onChange={(e) => setInlineDescription(e.target.value)}

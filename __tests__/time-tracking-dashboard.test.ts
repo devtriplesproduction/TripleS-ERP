@@ -1,3 +1,4 @@
+import React from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { hasRouteAccess, ROLE_ROUTE_MAP } from '@/config/rbac'
 

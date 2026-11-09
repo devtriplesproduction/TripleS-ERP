@@ -1,6 +1,7 @@
 import React, { forwardRef } from "react";
 import { cn } from "@/lib/utils";
 import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from "./select";
+import { Label } from "./label";
 
 export interface DropdownOption {
   label: string;
@@ -13,6 +14,7 @@ export interface DropdownProps {
   onChange?: (value: string) => void;
   placeholder?: React.ReactNode;
   label?: string;
+  labelClassName?: string;
   error?: string;
   disabled?: boolean;
   required?: boolean;
@@ -34,6 +36,7 @@ export const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
       onChange,
       placeholder = "Select an option",
       label,
+      labelClassName,
       error,
       disabled,
       required,
@@ -51,10 +54,10 @@ export const Dropdown = forwardRef<HTMLDivElement, DropdownProps>(
     return (
       <div className={cn("w-full space-y-1.5", className)} ref={ref}>
         {label && (
-          <label htmlFor={id} className="block text-sm font-medium text-foreground">
+          <Label htmlFor={id} className={cn("block text-sm font-medium text-foreground", labelClassName)}>
             {label}
-            {required && <span className="text-error ml-1">*</span>}
-          </label>
+            {required && <span className="text-destructive ml-1">*</span>}
+          </Label>
         )}
         <Select
           name={name}

@@ -63,7 +63,7 @@ const DEFAULT_FALLBACK_ITEMS: ContentItem[] = [
     body: 'Public release announcement and technical release highlights for ERP 2.0 launch.',
     content_type: 'Release Notes',
     owner_id: 'af354098-e268-4294-889f-130387cf916b',
-    owner_name: 'Kavita Verma',
+    owner_name: 'Content Operations',
     status: 'In Review',
     tags: ['Press Release', 'Launch'],
     created_at: '2026-10-25T09:00:00.000Z',
@@ -80,7 +80,7 @@ const DEFAULT_FALLBACK_ITEMS: ContentItem[] = [
     body: 'API endpoint references, payload examples, and webhook specifications.',
     content_type: 'Article',
     owner_id: 'af354098-e268-4294-889f-130387cf916b',
-    owner_name: 'Kavita Verma',
+    owner_name: 'Content Operations',
     status: 'In Progress',
     tags: ['API', 'Documentation'],
     created_at: '2026-10-26T09:00:00.000Z',
@@ -97,14 +97,14 @@ const DEFAULT_FALLBACK_ITEMS: ContentItem[] = [
     body: 'Comprehensive step-by-step guide for new employee profile configuration and attendance.',
     content_type: 'Blog',
     owner_id: 'af354098-e268-4294-889f-130387cf916b',
-    owner_name: 'Kavita Verma',
+    owner_name: 'Content Operations',
     status: 'Completed',
     tags: ['Onboarding', 'Guide'],
     created_at: '2026-10-20T09:00:00.000Z',
     updated_at: '2026-10-27T11:00:00.000Z',
     due_date: dayjs().format('YYYY-MM-DD'),
     assigned_to_id: 'emp-3',
-    assigned_to_name: 'Kavita Verma',
+    assigned_to_name: 'Content Operations',
     priority: 'Medium',
   },
 ]
@@ -221,13 +221,13 @@ export function HeadOfContentDashboard({
       }
     })
 
-    const list = Object.values(memberMap).filter((m) => m.assigned > 0 || m.name.includes('Kavita') || m.name.includes('Harishchandra') || m.name.includes('Prince'))
+    const list = Object.values(memberMap).filter((m) => m.assigned > 0 || m.name.includes('Harishchandra') || m.name.includes('Prince'))
     return list.length > 0
       ? list
       : [
           { id: '1', name: 'Harishchandra Nanavare', role: 'Team Lead', assigned: 5, inProgress: 2, completed: 3, overdue: 0 },
           { id: '2', name: 'Prince Nandagawali', role: 'Content Writer', assigned: 4, inProgress: 2, completed: 1, overdue: 1 },
-          { id: '3', name: 'Kavita Verma', role: 'Head of Content', assigned: 6, inProgress: 1, completed: 5, overdue: 0 },
+          { id: '3', name: 'Content Operations', role: 'Head of Content', assigned: 6, inProgress: 1, completed: 5, overdue: 0 },
         ]
   }, [items, employees])
 

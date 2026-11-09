@@ -12,5 +12,45 @@
     "created_by": "6eaa69b5-833e-44ff-9b5e-e52fd3963839",
     "created_at": "2026-10-26T12:08:27.143Z",
     "updated_at": "2026-11-03T05:21:24.686Z"
+  },
+  {
+    "id": "d-1",
+    "employee_id": "emp-deduct-multi",
+    "payroll_year": 2026,
+    "payroll_month": 10,
+    "deduction_type": "TDS",
+    "amount": 1500,
+    "status": "ACTIVE",
+    "reason": "TDS"
+  },
+  {
+    "id": "d-2",
+    "employee_id": "emp-deduct-multi",
+    "payroll_year": 2026,
+    "payroll_month": 10,
+    "deduction_type": "Salary Advance",
+    "amount": 2000,
+    "status": "ACTIVE",
+    "reason": "Advance"
+  },
+  {
+    "id": "d-3",
+    "employee_id": "emp-deduct-multi",
+    "payroll_year": 2026,
+    "payroll_month": 10,
+    "deduction_type": "Damage Recovery",
+    "amount": 500,
+    "status": "ACTIVE",
+    "reason": "Damage"
+  },
+  {
+    "id": "ded-1",
+    "employee_id": "emp-man-ded",
+    "payroll_year": 2026,
+    "payroll_month": 10,
+    "deduction_type": "Security Deposit",
+    "amount": 1500,
+    "status": "ACTIVE",
+    "reason": "Key deposit"
   }
 ]

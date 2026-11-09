@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Calendar, Clock, FileText, UploadCloud, Info } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DatePicker } from "@/components/ui/date-picker"
+import { Textarea } from "@/components/ui/textarea"
+import { Label } from "@/components/ui/label"
 import { createClient } from "@/lib/supabase/client"
 import { toast } from "sonner"
 import { formatHoursMinutes } from "@/lib/utils/time"
@@ -179,9 +181,9 @@ export function LeaveForm({
         {/* Request Type and Leave Type in one horizontal row */}
         <div className={cn("grid gap-4 sm:gap-5", requestType === 'LEAVE' ? "grid-cols-1 sm:grid-cols-2" : "grid-cols-1")}>
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground">
+            <Label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground">
               <FileText className="w-4 h-4 text-muted-foreground shrink-0" /> Request Type
-            </label>
+            </Label>
             <Select value={requestType} onValueChange={handleRequestTypeChange}>
               <SelectTrigger className="w-full bg-background border-border h-10 text-xs sm:text-sm">
                 <SelectValue placeholder="Select Request Type" />
@@ -195,9 +197,9 @@ export function LeaveForm({
 
           {requestType === 'LEAVE' && (
             <div className="space-y-2">
-              <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground">
+              <Label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground">
                 <FileText className="w-4 h-4 text-muted-foreground shrink-0" /> Leave Type
-              </label>
+              </Label>
               <Select value={leaveType} onValueChange={handleLeaveTypeChange}>
                 <SelectTrigger className="w-full bg-background border-border h-10 text-xs sm:text-sm">
                   <SelectValue placeholder="Select Leave Type" />
@@ -219,9 +221,9 @@ export function LeaveForm({
 
         {/* Dynamic Duration Label Based on Request Type */}
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground">
+          <Label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground">
             <Clock className="w-4 h-4 text-muted-foreground shrink-0" /> {requestType === 'WFH' ? 'WFH Duration' : 'Leave Duration'}
-          </label>
+          </Label>
           <Select value={duration} onValueChange={(val) => val && setDuration(val)}>
             <SelectTrigger className="w-full bg-background border-border h-10 text-xs sm:text-sm">
               <SelectValue placeholder="Select Duration" />
@@ -235,9 +237,9 @@ export function LeaveForm({
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground">
+            <Label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground">
               <Calendar className="w-4 h-4 text-muted-foreground shrink-0" /> Start Date
-            </label>
+            </Label>
             <DatePicker 
               value={startDate}
               onChange={setStartDate}
@@ -248,9 +250,9 @@ export function LeaveForm({
             />
           </div>
           <div className="space-y-2">
-            <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground">
+            <Label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground">
               <Calendar className="w-4 h-4 text-muted-foreground shrink-0" /> End Date
-            </label>
+            </Label>
             <DatePicker 
               value={endDate}
               onChange={setEndDate}
@@ -263,11 +265,11 @@ export function LeaveForm({
         </div>
 
         <div className="space-y-2">
-          <label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground">
+          <Label className="flex items-center gap-2 text-xs sm:text-sm font-medium text-foreground">
             <FileText className="w-4 h-4 text-muted-foreground shrink-0" /> Reason
-          </label>
-          <textarea 
-            className="w-full min-h-[90px] p-3 text-xs sm:text-sm rounded-lg bg-background border border-border text-foreground outline-none focus:ring-1 focus:ring-foreground resize-y"
+          </Label>
+          <Textarea 
+            className="w-full min-h-[90px] p-3 text-xs sm:text-sm rounded-lg bg-background border border-border text-foreground resize-y"
             placeholder={requestType === 'WFH' ? 'Briefly explain your reason for work from home...' : 'Briefly explain your reason for leave...'}
             value={reason}
             onChange={(e) => setReason(e.target.value)}

@@ -22,7 +22,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { DatePicker } from '@/components/ui/date-picker'
-import { formatDate } from '@/lib/utils/date'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { toast } from 'sonner'
 import { JournalEntry, LedgerAccount } from '@/types/accounting'
 import {
@@ -52,6 +52,7 @@ export function JournalEntryList({
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null)
   const [viewingEntry, setViewingEntry] = useState<JournalEntry | null>(null)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; entryNum: string } | null>(null)
 
   // Status options
   const statusOptions = [
@@ -107,11 +108,10 @@ export function JournalEntryList({
   }
 
   // Delete draft handler
-  const handleDeleteDraft = async (id: string, entryNum: string) => {
-    if (!confirm(`Are you sure you want to delete draft journal entry ${entryNum}?`)) {
-      return
-    }
-
+  const confirmDeleteDraft = async () => {
+    if (!deleteTarget) return
+    const { id, entryNum } = deleteTarget
+    setDeleteTarget(null)
     setActionLoadingId(id)
     try {
       const res = await deleteJournalEntryAction(id)
@@ -219,25 +219,21 @@ export function JournalEntryList({
 
           {/* Date range filters */}
           <div className="flex items-center gap-1.5">
-            <div className="w-32">
-              <DatePicker
-                value={startDate}
-                onChange={(val) => setStartDate(val)}
-                placeholder="From date"
-                isClearable
-                className="text-xs h-9 bg-background"
-              />
-            </div>
+            <DatePicker
+              value={startDate}
+              onChange={(val) => setStartDate(val)}
+              placeholder="From date"
+              isClearable
+              className="text-xs h-9 w-36 bg-background"
+            />
             <span className="text-muted-foreground text-xs font-bold">to</span>
-            <div className="w-32">
-              <DatePicker
-                value={endDate}
-                onChange={(val) => setEndDate(val)}
-                placeholder="To date"
-                isClearable
-                className="text-xs h-9 bg-background"
-              />
-            </div>
+            <DatePicker
+              value={endDate}
+              onChange={(val) => setEndDate(val)}
+              placeholder="To date"
+              isClearable
+              className="text-xs h-9 w-36 bg-background"
+            />
           </div>
 
           {(search || statusFilter !== 'ALL' || startDate || endDate) && (
@@ -322,7 +318,7 @@ export function JournalEntryList({
 
                     {/* Date */}
                     <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
-                      {formatDate(entry.entry_date)}
+                      {entry.entry_date}
                     </td>
 
                     {/* Narration */}
@@ -425,7 +421,7 @@ export function JournalEntryList({
                             type="button"
                             variant="ghost"
                             size="icon"
-                            onClick={() => handleDeleteDraft(entry.id, entry.entry_number)}
+                            onClick={() => setDeleteTarget({ id: entry.id, entryNum: entry.entry_number })}
                             disabled={actionLoadingId === entry.id}
                             className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                             title="Delete Draft"
@@ -455,6 +451,18 @@ export function JournalEntryList({
         }}
         entryToEdit={editingEntry}
         ledgerAccounts={ledgerAccounts}
+      />
+
+      {/* Delete Draft Confirm Modal */}
+      <ConfirmModal
+        isOpen={!!deleteTarget}
+        title="Delete Draft Journal Entry"
+        message={`Are you sure you want to delete draft journal entry ${deleteTarget?.entryNum}? This action cannot be undone.`}
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmDeleteDraft}
+        onCancel={() => setDeleteTarget(null)}
       />
 
       {/* View Detail Modal */}

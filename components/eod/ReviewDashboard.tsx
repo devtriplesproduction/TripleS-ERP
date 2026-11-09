@@ -4,6 +4,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/Dropdown';
+import { ConfirmModal } from '@/components/ui/confirm-modal';
 import {
   Search,
   CheckCircle2,
@@ -20,7 +21,6 @@ import { Input } from '@/components/ui/input';
 import { EODReport } from '@/lib/actions/eod';
 import { reviewEODAction, batchReviewEODAction, updateEODAction } from '@/actions/eod.actions';
 import { DatePicker } from '@/components/ui/date-picker';
-import { parseDate } from '@/lib/utils/date';
 import { EodCard } from './EodCard';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -66,6 +66,7 @@ export function ReviewDashboard({
 
   const [submittingIds, setSubmittingIds] = useState<Set<string>>(new Set());
   const [batchProcessing, setBatchProcessing] = useState(false);
+  const [isBatchConfirmOpen, setIsBatchConfirmOpen] = useState(false);
 
   const handleSaveEdit = async (eodId: string, formDataFields: any) => {
     setSubmittingIds(prev => new Set(prev).add(eodId));
@@ -155,9 +156,13 @@ export function ReviewDashboard({
       return;
     }
 
-    if (!confirm(`Are you sure you want to approve all ${pendingIds.length} pending EOD reports in this view?`)) {
-      return;
-    }
+    setIsBatchConfirmOpen(true);
+    return;
+  };
+
+  const confirmBatchApprovePending = async () => {
+    const pendingIds = filteredEods.filter(e => e.status === 'Pending').map(e => e.id);
+    setIsBatchConfirmOpen(false);
 
     setBatchProcessing(true);
     const idempotencyKey = `dashboard-batch-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
@@ -443,7 +448,7 @@ export function ReviewDashboard({
               )
               .sort((a, b) => b[0].localeCompare(a[0]))
               .map(([date, groupEods]) => {
-                const dateObj = parseDate(date) || new Date();
+                const dateObj = new Date(date);
                 const dateString = dateObj.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).toUpperCase();
                 return (
                   <div key={date} className="space-y-4">
@@ -484,6 +489,24 @@ export function ReviewDashboard({
           </div>
         )}
       </div>
+      <ConfirmModal
+        isOpen={isBatchConfirmOpen}
+        title="Approve All Pending Reports"
+        message={`Are you sure you want to approve all ${filteredEods.filter(e => e.status === 'Pending').length} pending EOD reports in this view?`}
+        confirmText="Approve All"
+        cancelText="Cancel"
+        onConfirm={confirmBatchApprovePending}
+        onCancel={() => setIsBatchConfirmOpen(false)}
+      />
+      <ConfirmModal
+        isOpen={isBatchConfirmOpen}
+        title="Approve All Pending Reports"
+        message={`Are you sure you want to approve all ${filteredEods.filter(e => e.status === 'Pending').length} pending EOD reports in this view?`}
+        confirmText="Approve All"
+        cancelText="Cancel"
+        onConfirm={confirmBatchApprovePending}
+        onCancel={() => setIsBatchConfirmOpen(false)}
+      />
     </div>
   );
 }

@@ -15,32 +15,26 @@ import {
   HardDrive,
   User,
   Calendar,
-  Trash2,
   Monitor,
   Info
 } from 'lucide-react'
 import type { ScreenshotItem } from '@/lib/actions/time-tracking'
-import { DeleteScreenshotConfirmationModal } from './DeleteScreenshotConfirmationModal'
 
 interface ScreenshotLightboxModalProps {
   screenshots: ScreenshotItem[]
   initialIndex?: number
   employeeName?: string
   onClose: () => void
-  onDeleteScreenshot?: (screenshotId: string) => Promise<boolean>
 }
 
 export function ScreenshotLightboxModal({
   screenshots,
   initialIndex = 0,
   employeeName,
-  onClose,
-  onDeleteScreenshot
+  onClose
 }: ScreenshotLightboxModalProps) {
   const [currentIndex, setCurrentIndex] = useState<number>(initialIndex)
   const [zoomLevel, setZoomLevel] = useState<number>(1)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState<boolean>(false)
-  const [isDeleting, setIsDeleting] = useState<boolean>(false)
   const [imageError, setImageError] = useState<boolean>(false)
 
   // Ensure index remains in bounds
@@ -64,24 +58,6 @@ export function ScreenshotLightboxModal({
   const handleZoomIn = () => setZoomLevel(prev => Math.min(prev + 0.25, 3))
   const handleZoomOut = () => setZoomLevel(prev => Math.max(prev - 0.25, 0.5))
   const handleResetZoom = () => setZoomLevel(1)
-
-  const handleConfirmDelete = async () => {
-    if (!current || !onDeleteScreenshot) return
-    setIsDeleting(true)
-    try {
-      const ok = await onDeleteScreenshot(current.id)
-      if (ok) {
-        setShowDeleteConfirm(false)
-        if (screenshots.length <= 1) {
-          onClose()
-        } else {
-          setCurrentIndex(prev => (prev > 0 ? prev - 1 : 0))
-        }
-      }
-    } finally {
-      setIsDeleting(false)
-    }
-  }
 
   // Keyboard navigation
   useEffect(() => {
@@ -220,17 +196,6 @@ export function ScreenshotLightboxModal({
             </a>
           )}
 
-          {/* Delete screenshot button */}
-          {onDeleteScreenshot && (
-            <button
-              onClick={() => setShowDeleteConfirm(true)}
-              className="p-2 rounded-xl border border-destructive/30 bg-destructive/10 text-destructive hover:bg-destructive hover:text-destructive-foreground transition-all shadow-sm"
-              title="Delete Screenshot"
-            >
-              <Trash2 size={15} />
-            </button>
-          )}
-
           {/* Close button */}
           <button
             onClick={onClose}
@@ -361,18 +326,6 @@ export function ScreenshotLightboxModal({
           </div>
         )}
       </div>
-
-      {/* Delete Confirmation Modal */}
-      {showDeleteConfirm && (
-        <DeleteScreenshotConfirmationModal
-          isOpen={showDeleteConfirm}
-          onClose={() => setShowDeleteConfirm(false)}
-          onConfirm={handleConfirmDelete}
-          itemCount={1}
-          isDeleting={isDeleting}
-          screenshotTitle={current.windowTitle || `${current.appName} - ${current.capturedAtFormatted}`}
-        />
-      )}
     </div>
   )
 }

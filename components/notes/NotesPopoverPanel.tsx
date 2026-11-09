@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import type { PersonalNote } from '@/types/notes'
 import {
   getPersonalNotesAction,
@@ -343,7 +344,7 @@ export function NotesPopoverPanel({ onClose }: NotesPopoverPanelProps) {
                 </div>
 
                 {/* Content */}
-                <textarea
+                <Textarea
                   value={newContent}
                   onChange={(e) => setNewContent(e.target.value)}
                   placeholder="Take a note..."

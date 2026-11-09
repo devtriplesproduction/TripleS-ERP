@@ -9,6 +9,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -147,10 +148,10 @@ export function EditPersonalNoteModal({
         <form onSubmit={handleSubmit} className="space-y-3.5">
           {/* Note Title */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+            <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
               <span>Title</span>
               <span className="text-[10px] text-muted-foreground font-normal">Optional</span>
-            </label>
+            </Label>
             <Input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -161,10 +162,10 @@ export function EditPersonalNoteModal({
 
           {/* Note Content */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+            <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
               <span>Content</span>
               <span className="text-[10px] text-muted-foreground font-normal">Details / Checklists</span>
-            </label>
+            </Label>
             <Textarea
               value={content}
               onChange={(e) => setContent(e.target.value)}

@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { Task, TaskStatus, TaskPriority } from '@/types/project-management'
@@ -302,13 +303,13 @@ export function TaskFormModal({
               <Label htmlFor="task-desc" className="text-sm font-medium">
                 Description & Specifications
               </Label>
-              <textarea
+              <Textarea
                 id="task-desc"
                 rows={3}
                 placeholder="Task details, requirements, acceptance criteria..."
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full text-sm bg-background border border-border rounded-md p-2.5 outline-hidden focus:border-foreground/50 transition-colors"
+                className="w-full text-sm bg-background border border-border rounded-md p-2.5 resize-none"
               />
             </div>
 

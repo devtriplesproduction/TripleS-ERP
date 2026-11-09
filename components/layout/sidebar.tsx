@@ -18,8 +18,6 @@ import {
   CheckSquare,
   Clock,
   FileText,
-  Download,
-  ExternalLink,
   Landmark,
 } from 'lucide-react'
 import { useState } from 'react'
@@ -238,31 +236,7 @@ export function Sidebar({ userRole, isHod, hasProjectAccess, hasTasks, departmen
         </nav>
       </div>
 
-      <div className="p-3 sm:p-4 border-t border-border shrink-0 space-y-2">
-        {/* Time Tracker Desktop Software Download */}
-        <a
-          href="https://triples-time-tracker.vercel.app/"
-          target="_blank"
-          rel="noopener noreferrer"
-          onClick={closeSidebar}
-          className="flex items-center justify-between p-2.5 rounded-xl border border-primary/25 bg-primary/5 hover:bg-primary/10 transition-all group"
-          title="Download TripleS Time Tracker Desktop App"
-        >
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-              <Download className="h-4 w-4" />
-            </div>
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-semibold text-foreground truncate">Time Tracker</span>
-                <span className="text-[10px] font-medium px-1.5 py-0.2 rounded-full bg-primary/15 text-primary border border-primary/20">App</span>
-              </div>
-              <p className="text-[11px] text-muted-foreground truncate">Download software</p>
-            </div>
-          </div>
-          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary transition-colors shrink-0 ml-1" />
-        </a>
-
+      <div className="p-3 sm:p-4 border-t border-border shrink-0">
         <Link
           href="/settings"
           onClick={closeSidebar}

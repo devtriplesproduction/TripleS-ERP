@@ -20,10 +20,9 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Badge } from '@/components/ui/badge'
 import { Dropdown } from '@/components/ui/Dropdown'
-import { DatePicker } from '@/components/ui/date-picker'
-import { formatDate } from '@/lib/utils/date'
 import { toast } from 'sonner'
 import {
   LedgerAccount,
@@ -300,25 +299,21 @@ export function LedgerAccountDetailView({
           </div>
 
           <div className="flex items-center gap-1.5">
-            <div className="w-32">
-              <DatePicker
-                value={startDate}
-                onChange={(val) => setStartDate(val)}
-                placeholder="From date"
-                isClearable
-                className="text-xs h-9 bg-background"
-              />
-            </div>
+            <DatePicker
+              value={startDate}
+              onChange={(val) => setStartDate(val)}
+              placeholder="From date"
+              isClearable
+              className="text-xs h-9 w-36 bg-background"
+            />
             <span className="text-muted-foreground text-xs font-bold">to</span>
-            <div className="w-32">
-              <DatePicker
-                value={endDate}
-                onChange={(val) => setEndDate(val)}
-                placeholder="To date"
-                isClearable
-                className="text-xs h-9 bg-background"
-              />
-            </div>
+            <DatePicker
+              value={endDate}
+              onChange={(val) => setEndDate(val)}
+              placeholder="To date"
+              isClearable
+              className="text-xs h-9 w-36 bg-background"
+            />
           </div>
 
           {(search || typeFilter !== 'ALL' || campaignFilter || startDate || endDate) && (
@@ -379,7 +374,7 @@ export function LedgerAccountDetailView({
                 filtered.map((tx) => (
                   <tr key={tx.id} className="hover:bg-muted/30 transition-colors">
                     <td className="py-2.5 px-4 text-muted-foreground whitespace-nowrap">
-                      {formatDate(tx.transaction_date)}
+                      {tx.transaction_date}
                     </td>
 
                     <td className="py-2.5 px-4 font-mono font-medium whitespace-nowrap">

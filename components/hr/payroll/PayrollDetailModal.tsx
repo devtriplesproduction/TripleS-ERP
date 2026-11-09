@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import {
   Clock,
   Wallet,
@@ -55,6 +56,7 @@ export function PayrollDetailModal({
 }: PayrollDetailModalProps) {
   const { toast } = useToast()
   const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [cancelTarget, setCancelTarget] = useState<{ id: string; type: string; amt: number } | null>(null)
   const [isAdjustOpen, setIsAdjustOpen] = useState(false)
   const [adjustAmount, setAdjustAmount] = useState<string>('')
   const [adjustReason, setAdjustReason] = useState<string>('')
@@ -74,10 +76,13 @@ export function PayrollDetailModal({
       return
     }
 
-    if (!confirm(`Are you sure you want to cancel the ${type} deduction of ₹${amt.toFixed(2)}?`)) {
-      return
-    }
+    setCancelTarget({ id: deductionId, type, amt })
+  }
 
+  const confirmCancelDeduction = async () => {
+    if (!cancelTarget) return
+    const { id: deductionId, type } = cancelTarget
+    setCancelTarget(null)
     setCancellingId(deductionId)
     try {
       const res = await cancelPayrollDeductionAction(deductionId)
@@ -166,8 +171,8 @@ export function PayrollDetailModal({
                 <LayoutList className="h-5 w-5 shrink-0 text-foreground" />
                 <span className="truncate">Payroll Detail: {payroll.name}</span>
                 {isLocked && (
-                  <Badge variant="outline" className="text-xs rounded-md border-emerald-500 text-emerald-600 dark:text-emerald-400 gap-1 font-semibold">
-                    <Lock className="h-3 w-3" />
+                  <Badge variant="outline" className="text-xs rounded-md border-border text-foreground gap-1 font-semibold">
+                    <Lock className="h-3 w-3 text-muted-foreground" />
                     Locked Snapshot
                   </Badge>
                 )}
@@ -185,7 +190,7 @@ export function PayrollDetailModal({
                     onClose()
                     onAddDeductionClick(payroll.employeeId)
                   }}
-                  className="self-start sm:self-auto gap-1.5 text-xs rounded-md text-rose-500 border-rose-500/30 hover:bg-rose-500/10 hover:text-rose-400"
+                  className="self-start sm:self-auto gap-1.5 text-xs rounded-md"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Add Deduction
@@ -208,22 +213,22 @@ export function PayrollDetailModal({
 
         {/* Proration Detail Card (if employee joined/left mid-month or had a hike) */}
         {proration && proration.isProrated && (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3.5 text-xs text-amber-900 dark:text-amber-200 space-y-2 mt-2">
+          <div className="bg-muted/40 border border-border rounded-lg p-3.5 text-xs text-foreground space-y-2 mt-2">
             <div className="flex items-center gap-2 font-semibold">
-              <CalendarCheck className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <CalendarCheck className="h-4 w-4 text-muted-foreground" />
               <span>Prorated Payroll Period</span>
-              <Badge variant="outline" className="text-[10px] rounded-sm text-amber-600 border-amber-500">
+              <Badge variant="outline" className="text-[10px] rounded-sm text-muted-foreground border-border">
                 {proration.eligibleWorkingDays} / {proration.scheduledWorkingDays} Working Days
               </Badge>
             </div>
-            <p className="text-muted-foreground dark:text-amber-300/80">
+            <p className="text-muted-foreground">
               {proration.reason || `Active employment period: ${formatDate(proration.effectiveStartDate)} to ${formatDate(proration.effectiveEndDate)}. Absence deductions are only calculated within this window.`}
             </p>
 
             {proration.hikeSplits && proration.hikeSplits.length > 0 && (
               <div className="mt-2 space-y-1">
                 <span className="font-semibold text-foreground flex items-center gap-1">
-                  <TrendingUp className="h-3.5 w-3.5 text-emerald-500" />
+                  <TrendingUp className="h-3.5 w-3.5 text-muted-foreground" />
                   Salary Revision Split Breakdown:
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
@@ -260,7 +265,7 @@ export function PayrollDetailModal({
               <StatItem
                 label="Attendance Deduction (-)"
                 value={`₹${(payroll.attendanceDeduction ?? payroll.unpaidLeaveDeduction).toFixed(2)}`}
-                valueClass="font-semibold text-rose-500"
+                valueClass="font-semibold text-foreground"
               />
               <StatItem
                 label="Employee Deductions (-)"
@@ -288,23 +293,23 @@ export function PayrollDetailModal({
               <StatItem label="Standard Expected Hrs" value={`${payroll.standardHours.toFixed(1)}h`} />
               <StatItem label="Actual Worked Hrs" value={`${payroll.actualWorkedHours.toFixed(1)}h`} />
               <StatItem label="Paid Leave Credited Hrs" value={`${payroll.creditedLeaveHours.toFixed(1)}h`} />
-              <StatItem label="Unpaid Leave Hrs" value={`${payroll.unpaidLeaveHours.toFixed(1)}h`} valueClass="text-rose-500" />
+              <StatItem label="Unpaid Leave Hrs" value={`${payroll.unpaidLeaveHours.toFixed(1)}h`} valueClass="text-muted-foreground" />
               <StatItem label="Paid Holidays Hrs" value={`${payroll.paidHolidayHours.toFixed(1)}h`} />
               <StatItem label="WFH Hours" value={`${payroll.wfhHours.toFixed(1)}h`} />
 
               <div className="mt-4 pt-4 border-t border-border space-y-1">
                 {payroll.daysFullDay !== undefined && (
-                  <StatItem label="Full Working Days (8h+)" value={payroll.daysFullDay.toString()} valueClass="text-emerald-500 font-semibold" />
+                  <StatItem label="Full Working Days (8h+)" value={payroll.daysFullDay.toString()} valueClass="text-foreground font-semibold" />
                 )}
                 <StatItem label="Half Days (4h-7h59m)" value={payroll.daysHalfDay.toString()} />
-                <StatItem label="Unpaid Days (<4h)" value={payroll.daysUnpaidLeaveEod.toString()} valueClass="text-rose-500" />
+                <StatItem label="Unpaid Days (<4h)" value={payroll.daysUnpaidLeaveEod.toString()} valueClass="text-muted-foreground" />
                 {payroll.daysAbsent !== undefined && payroll.daysAbsent > 0 && (
-                  <StatItem label="Absent Days (Unexcused)" value={payroll.daysAbsent.toString()} valueClass="text-rose-500 font-semibold" />
+                  <StatItem label="Absent Days (Unexcused)" value={payroll.daysAbsent.toString()} valueClass="text-foreground font-semibold" />
                 )}
                 <StatItem
                   label="Comp Off Earned (Informational)"
                   value={`${(payroll.compOffMinutesEarned / 60).toFixed(1)} hrs (${payroll.compOffMinutesEarned} mins)`}
-                  valueClass="text-emerald-500 font-semibold"
+                  valueClass="text-foreground font-semibold"
                 />
               </div>
             </CardContent>
@@ -316,16 +321,12 @@ export function PayrollDetailModal({
           <Card className="mt-4 bg-card/50 border-border">
             <CardHeader className="pb-3 flex flex-row items-center justify-between">
               <CardTitle className="text-xs sm:text-sm flex items-center gap-2 text-foreground">
-                <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                <ShieldCheck className="h-4 w-4 text-muted-foreground" />
                 Automated Reconciliation Audit
               </CardTitle>
               <Badge
                 variant="outline"
-                className={`text-xs rounded-md gap-1 font-semibold ${
-                  payroll.reconciliation.status === 'RECONCILED'
-                    ? 'border-emerald-500 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10'
-                    : 'border-rose-500 text-rose-600 dark:text-rose-400 bg-rose-500/10'
-                }`}
+                className="text-xs rounded-md gap-1 font-semibold border-border text-foreground bg-muted/40"
               >
                 {payroll.reconciliation.status === 'RECONCILED' ? (
                   <>
@@ -347,25 +348,21 @@ export function PayrollDetailModal({
                   Scheduled Working Days Baseline
                 </span>
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Scheduled Days:</span>
-                  <span className="font-medium text-foreground">{payroll.reconciliation.scheduledWorkingDays} days</span>
-                </div>
-                <div className="flex justify-between text-muted-foreground">
                   <span>Payable Days:</span>
-                  <span className="font-medium text-emerald-500">{payroll.reconciliation.payableDays} days</span>
+                  <span className="font-medium text-foreground">{payroll.reconciliation.payableDays} days</span>
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Deducted Days:</span>
-                  <span className="font-medium text-rose-500">{payroll.reconciliation.deductedDays} days</span>
+                  <span className="font-medium text-foreground">{payroll.reconciliation.deductedDays} days</span>
                 </div>
                 <div className="pt-1 border-t border-border/50 flex justify-between font-semibold">
                   <span>Total Accounted:</span>
-                  <span className="text-emerald-500">{payroll.reconciliation.payableDays + payroll.reconciliation.deductedDays} / {payroll.reconciliation.scheduledWorkingDays} scheduled days</span>
+                  <span className="text-foreground">{payroll.reconciliation.payableDays + payroll.reconciliation.deductedDays} / {payroll.reconciliation.scheduledWorkingDays} scheduled days</span>
                 </div>
                 <div className="pt-1 text-[10px] text-muted-foreground flex justify-between">
                   <span>Divisor Policy:</span>
                   <span className="font-mono text-foreground">
-                    {payroll.reconciliation.divisorMode === 'fixed_26' ? 'Fixed (26 Days)' : `Mon–Sat (${payroll.reconciliation.divisorDays || payroll.reconciliation.scheduledWorkingDays} Days)`}
+                    {payroll.reconciliation.divisorMode === 'fixed_26' ? 'Fixed (26 Days)' : `Mon–Sat (${payroll.reconciliation.scheduledWorkingDays} Days)`}
                   </span>
                 </div>
               </div>
@@ -376,45 +373,21 @@ export function PayrollDetailModal({
                   Financial Baseline Reconciliation
                 </span>
                 <div className="flex justify-between text-muted-foreground">
-                  <span>Daily Rate:</span>
-                  <span className="font-mono text-foreground">
-                    ₹{(payroll.reconciliation.dailyRate || (payroll.salary / (payroll.reconciliation.divisorDays || payroll.reconciliation.scheduledWorkingDays || 1))).toFixed(2)}/day
-                  </span>
-                </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Gross Scheduled Pay:</span>
-                  <span className="font-medium text-foreground">
-                    ₹{(payroll.reconciliation.grossScheduledPay || payroll.grossPay || (payroll.reconciliation.scheduledWorkingDays * (payroll.reconciliation.dailyRate || 0))).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Attendance Deductions:</span>
-                  <span className="font-medium text-rose-500">
-                    -₹{(payroll.reconciliation.attendanceDeduction ?? (payroll.attendanceDeduction || payroll.reconciliation.totalDeductions)).toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between text-muted-foreground">
-                  <span>Earned Pay:</span>
-                  <span className="font-medium text-emerald-500">
-                    ₹{payroll.reconciliation.earnedPay.toFixed(2)}
-                  </span>
-                </div>
-                {payroll.reconciliation.totalDeductions > (payroll.reconciliation.attendanceDeduction ?? 0) && (
-                  <div className="flex justify-between text-muted-foreground">
-                    <span>Manual Deductions:</span>
-                    <span className="font-medium text-rose-500">
-                      -₹{(payroll.reconciliation.totalDeductions - (payroll.reconciliation.attendanceDeduction ?? 0)).toFixed(2)}
-                    </span>
-                  </div>
-                )}
-                <div className="pt-1 border-t border-border/50 flex justify-between font-bold">
                   <span>Net Payable:</span>
-                  <span className="text-foreground">₹{payroll.reconciliation.netPayable.toFixed(2)}</span>
+                  <span className="font-medium text-foreground">₹{payroll.reconciliation.netPayable.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Total Deductions:</span>
+                  <span className="font-medium text-foreground">₹{payroll.reconciliation.totalDeductions.toFixed(2)}</span>
+                </div>
+                <div className="pt-1 border-t border-border/50 flex justify-between font-semibold">
+                  <span>Reconciled Sum:</span>
+                  <span className="text-foreground">₹{(payroll.reconciliation.netPayable + payroll.reconciliation.totalDeductions).toFixed(2)} / ₹{payroll.reconciliation.baseSalary.toFixed(2)}</span>
                 </div>
                 <div className="pt-1 text-[10px] text-muted-foreground flex justify-between">
-                  <span>Reconciliation Status:</span>
-                  <span className={payroll.reconciliation.isFinancialReconciled ? 'text-emerald-500 font-semibold' : 'text-rose-500 font-semibold'}>
-                    {payroll.reconciliation.isFinancialReconciled ? '✓ Math Reconciled' : '⚠ Discrepancy'}
+                  <span>Daily Rate:</span>
+                  <span className="font-mono text-foreground">
+                    ₹{(payroll.reconciliation.dailyRate || (payroll.salary / (payroll.reconciliation.scheduledWorkingDays || 26))).toFixed(2)}/day
                   </span>
                 </div>
               </div>
@@ -427,7 +400,7 @@ export function PayrollDetailModal({
           <Card className="mt-4 bg-card/50 border-border">
             <CardHeader className="pb-3 flex flex-row items-center justify-between">
               <CardTitle className="text-xs sm:text-sm flex items-center gap-2 text-foreground">
-                <CalendarCheck className="h-4 w-4 text-emerald-500" />
+                <CalendarCheck className="h-4 w-4 text-muted-foreground" />
                 Date-wise Calculation Breakdown ({payroll.dailyBreakdown.length} Days)
               </CardTitle>
               <Badge variant="outline" className="text-[11px] font-normal text-muted-foreground rounded-sm">
@@ -464,40 +437,26 @@ export function PayrollDetailModal({
                         <td className="py-2 px-2 text-right font-mono">{d.payableWorkedHours > 0 ? `${d.payableWorkedHours}h` : '-'}</td>
                         <td className="py-2 px-2 text-right font-mono font-medium">
                           {d.payableFraction > 0 ? (
-                            <span className="text-emerald-600 dark:text-emerald-400">{d.payableFraction}</span>
+                            <span className="text-foreground">{d.payableFraction}</span>
                           ) : (
                             <span className="text-muted-foreground">0</span>
                           )}
                         </td>
-                        <td className="py-2 px-2 text-right font-mono font-medium text-emerald-600 dark:text-emerald-400">
+                        <td className="py-2 px-2 text-right font-mono font-medium text-foreground">
                           {d.salaryCredit > 0 ? `₹${d.salaryCredit.toFixed(2)}` : '-'}
                         </td>
-                        <td className="py-2 px-2 text-right font-mono font-medium text-rose-500">
+                        <td className="py-2 px-2 text-right font-mono font-medium text-muted-foreground">
                           {d.deductionAmount > 0 ? `-₹${d.deductionAmount.toFixed(2)}` : '-'}
                         </td>
                         <td className="py-2 px-2 text-right font-mono">
                           {d.compOffMinutesEarned > 0 ? (
-                            <span className="text-emerald-500 font-semibold">{d.compOffMinutesEarned}m ({(d.compOffMinutesEarned / 60).toFixed(1)}h)</span>
+                            <span className="text-foreground font-semibold">{d.compOffMinutesEarned}m ({(d.compOffMinutesEarned / 60).toFixed(1)}h)</span>
                           ) : '-'}
                         </td>
                         <td className="py-2 px-3 text-center">
                           <Badge
                             variant="outline"
-                            className={`text-[10px] rounded-sm px-1.5 py-0 font-medium ${
-                              d.status === 'FULL_DAY'
-                                ? 'border-emerald-500/50 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10'
-                                : d.status === 'HALF_DAY'
-                                ? 'border-amber-500/50 text-amber-600 dark:text-amber-400 bg-amber-500/10'
-                                : d.status === 'LEAVE'
-                                ? 'border-blue-500/50 text-blue-600 dark:text-blue-400 bg-blue-500/10'
-                                : d.status === 'HOLIDAY'
-                                ? 'border-purple-500/50 text-purple-600 dark:text-purple-400 bg-purple-500/10'
-                                : d.status === 'SUNDAY'
-                                ? 'border-sky-500/50 text-sky-600 dark:text-sky-400 bg-sky-500/10'
-                                : d.status === 'ABSENT' || d.status === 'UNPAID'
-                                ? 'border-rose-500/50 text-rose-600 dark:text-rose-400 bg-rose-500/10'
-                                : 'border-border text-muted-foreground'
-                            }`}
+                            className="text-[10px] rounded-sm px-1.5 py-0 font-medium border-border text-muted-foreground bg-muted/40"
                           >
                             {d.status}
                           </Badge>
@@ -561,7 +520,7 @@ export function PayrollDetailModal({
                         variant="ghost"
                         onClick={() => handleCancelDeduction(d.id, d.deduction_type, Number(d.amount))}
                         disabled={cancellingId === d.id}
-                        className="self-end sm:self-center h-8 text-rose-500 hover:text-rose-400 hover:bg-rose-500/10 px-2 text-xs gap-1 rounded-md"
+                        className="self-end sm:self-center h-8 text-muted-foreground hover:text-foreground hover:bg-muted px-2 text-xs gap-1 rounded-md"
                       >
                         {cancellingId === d.id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -623,6 +582,16 @@ export function PayrollDetailModal({
           </div>
         )}
       </DialogContent>
+      <ConfirmModal
+        open={!!cancelTarget}
+        title="Cancel Payroll Deduction"
+        description={`Are you sure you want to cancel the ${cancelTarget?.type} deduction of ₹${cancelTarget?.amt.toFixed(2)}?`}
+        confirmText="Cancel Deduction"
+        cancelText="Keep"
+        variant="destructive"
+        onConfirm={confirmCancelDeduction}
+        onOpenChange={(open) => !open && setCancelTarget(null)}
+      />
     </Dialog>
   )
 }

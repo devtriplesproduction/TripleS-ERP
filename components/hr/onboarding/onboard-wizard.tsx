@@ -16,12 +16,12 @@ import Image from "next/image"
 import { onboardEmployeeAction, uploadEmployeeFileAction } from "@/lib/actions/onboarding"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { DatePicker } from "@/components/ui/date-picker"
 import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { PageHeader } from "@/components/PageHeader"
 import { format } from "date-fns"
-import { formatDateReadable } from "@/lib/utils/date"
 import { useRouter } from "next/navigation"
 import { jsPDF } from "jspdf"
 import html2canvas from "html2canvas"
@@ -135,14 +135,14 @@ const STEPS = [
   { id: 4, title: 'Review', subtitle: 'Review & create' }
 ]
 
-function EditableFileItem({
-  f,
-  onDelete,
-  onRename
-}: {
-  f: UploadedFile,
-  onDelete: () => void,
-  onRename: (newName: string) => void
+function EditableFileItem({ 
+  f, 
+  onDelete, 
+  onRename 
+}: { 
+  f: UploadedFile, 
+  onDelete: () => void, 
+  onRename: (newName: string) => void 
 }) {
   const [isEditing, setIsEditing] = useState(false)
   const [editValue, setEditValue] = useState("")
@@ -185,10 +185,10 @@ function EditableFileItem({
         <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
         <div className="min-w-0 flex-1">
           {isEditing ? (
-            <input
+            <input 
               autoFocus
-              type="text"
-              value={editValue}
+              type="text" 
+              value={editValue} 
               onChange={e => setEditValue(e.target.value)}
               onKeyDown={handleKeyDown}
               className="h-7 text-sm px-2 w-full font-medium rounded-md border border-border bg-background text-foreground outline-none focus:outline-none focus:border-border transition-colors"
@@ -563,7 +563,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
       addSection("Personal Information", [
         ["First Name", vals.first_name],
         ["Last Name", vals.last_name],
-        ["Date of Birth", formatDateReadable(vals.dob, "-")],
+        ["Date of Birth", vals.dob ? format(new Date(vals.dob as string), "dd MMM yyyy") : "-"],
         ["Gender", vals.gender],
         ["Phone", vals.phone_number],
         ["Personal Email", vals.personal_email],
@@ -583,7 +583,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
         ["Status", vals.employment_status],
         ...(vals.employment_type !== 'Intern' ? [
         ] : []),
-        ["Joining Date", formatDateReadable(vals.joining_date, "-")],
+        ["Joining Date", vals.joining_date ? format(new Date(vals.joining_date as string), "dd MMM yyyy") : "-"],
         ...(vals.employment_type !== 'Intern' ? [
           ["Experience", formatExperience(vals.experience_type, vals.experience_years, vals.experience_months)] as [string, any],
         ] : []),
@@ -596,8 +596,8 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
         ]),
         ...(vals.employment_status === 'Probation' ? [
           ["Probation Period", vals.probation_period] as [string, any],
-          ["Probation Start", formatDateReadable(vals.probation_start_date, "-")] as [string, any],
-          ["Probation End", formatDateReadable(vals.probation_end_date, "-")] as [string, any],
+          ["Probation Start", vals.probation_start_date ? format(new Date(vals.probation_start_date as string), "dd MMM yyyy") : "-"] as [string, any],
+          ["Probation End", vals.probation_end_date ? format(new Date(vals.probation_end_date as string), "dd MMM yyyy") : "-"] as [string, any],
         ] : [])
       ])
 
@@ -753,7 +753,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         {/* Fields */}
                         <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-4">
                           <div className="flex flex-col gap-1.5" id="field-first_name">
-                            <label className="text-sm font-medium text-secondary-foreground">First Name <span className="text-destructive">*</span></label>
+                            <Label className="text-sm font-medium text-secondary-foreground">First Name <span className="text-destructive">*</span></Label>
                             <Input
                               {...register("first_name")}
                               placeholder="Enter first name"
@@ -765,7 +765,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                           </div>
 
                           <div className="flex flex-col gap-1.5" id="field-last_name">
-                            <label className="text-sm font-medium text-secondary-foreground">Last Name <span className="text-destructive">*</span></label>
+                            <Label className="text-sm font-medium text-secondary-foreground">Last Name <span className="text-destructive">*</span></Label>
                             <Input
                               {...register("last_name")}
                               placeholder="Enter last name"
@@ -777,7 +777,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                           </div>
 
                           <div className="flex flex-col gap-1.5" id="field-dob">
-                            <label className="text-sm font-medium text-secondary-foreground">Date of Birth <span className="text-destructive">*</span></label>
+                            <Label className="text-sm font-medium text-secondary-foreground">Date of Birth <span className="text-destructive">*</span></Label>
                             <Controller name="dob" control={control} render={({ field }) => (
                               <DatePicker
                                 value={field.value}
@@ -796,7 +796,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                           </div>
 
                           <div className="flex flex-col gap-1.5" id="field-gender">
-                            <label className="text-sm font-medium text-secondary-foreground">Gender <span className="text-destructive">*</span></label>
+                            <Label className="text-sm font-medium text-secondary-foreground">Gender <span className="text-destructive">*</span></Label>
                             <Controller name="gender" control={control} render={({ field }) => (
                               <Select
                                 onValueChange={(val) => {
@@ -821,7 +821,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                           </div>
 
                           <div className="flex flex-col gap-1.5" id="field-personal_email">
-                            <label className="text-sm font-medium text-secondary-foreground">Personal Email</label>
+                            <Label className="text-sm font-medium text-secondary-foreground">Personal Email</Label>
                             <div className="relative">
                               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                               <Input
@@ -837,7 +837,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                           </div>
 
                           <div className="flex flex-col gap-1.5" id="field-phone_number">
-                            <label className="text-sm font-medium text-secondary-foreground">Phone Number <span className="text-destructive">*</span></label>
+                            <Label className="text-sm font-medium text-secondary-foreground">Phone Number <span className="text-destructive">*</span></Label>
                             <div className="relative">
                               <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                               <Input
@@ -863,9 +863,9 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       <div className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr] gap-3 w-full">
                         {/* Address Line 1 (50% / 2fr) */}
                         <div className="flex flex-col gap-1.5 min-w-0" id="field-address">
-                          <label className="text-sm font-medium text-secondary-foreground leading-none">
+                          <Label className="text-sm font-medium text-secondary-foreground leading-none">
                             Address Line 1
-                          </label>
+                          </Label>
                           <div className="relative w-full">
                             <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
                             <Input
@@ -884,9 +884,9 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
 
                         {/* City (25% / 1fr) */}
                         <div className="flex flex-col gap-1.5 min-w-0" id="field-city">
-                          <label className="text-sm font-medium text-secondary-foreground leading-none">
+                          <Label className="text-sm font-medium text-secondary-foreground leading-none">
                             City
-                          </label>
+                          </Label>
                           <Input
                             {...register("city")}
                             placeholder="Pune"
@@ -902,9 +902,9 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
 
                         {/* PIN Code (25% / 1fr) */}
                         <div className="flex flex-col gap-1.5 min-w-0" id="field-pincode">
-                          <label className="text-sm font-medium text-secondary-foreground leading-none">
+                          <Label className="text-sm font-medium text-secondary-foreground leading-none">
                             PIN Code
-                          </label>
+                          </Label>
                           <Input
                             {...register("pincode")}
                             placeholder="411057"
@@ -928,17 +928,17 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
 
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-x-2 gap-y-4">
                         <div className="flex flex-col gap-2">
-                          <label className="text-sm font-medium text-secondary-foreground">Contact Name</label>
+                          <Label className="text-sm font-medium text-secondary-foreground">Contact Name</Label>
                           <Input {...register("emergency_name")} placeholder="Enter contact name" />
                         </div>
 
                         <div className="flex flex-col gap-2">
-                          <label className="text-sm font-medium text-secondary-foreground">Relation</label>
+                          <Label className="text-sm font-medium text-secondary-foreground">Relation</Label>
                           <Input {...register("emergency_relationship")} placeholder="e.g. Father, Spouse" />
                         </div>
 
                         <div className="flex flex-col gap-2">
-                          <label className="text-sm font-medium text-secondary-foreground">Phone Number</label>
+                          <Label className="text-sm font-medium text-secondary-foreground">Phone Number</Label>
                           <Input {...register("emergency_phone")} placeholder="+91 98765 43210" />
                         </div>
                       </div>
@@ -958,7 +958,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-4">
                       <div className="flex flex-col gap-1.5" id="field-department">
-                        <label className="text-sm font-medium text-secondary-foreground">Department <span className="text-destructive">*</span></label>
+                        <Label className="text-sm font-medium text-secondary-foreground">Department <span className="text-destructive">*</span></Label>
                         <Controller name="department" control={control} render={({ field }) => (
                           <Select onValueChange={(v) => { field.onChange(v); setValue("division", ""); setValue("designation", ""); if (errors.department) trigger("department"); }} value={field.value}>
                             <SelectTrigger className={cn("w-full", errors.department && "border-destructive focus:ring-destructive")}><SelectValue placeholder="Select Department" /></SelectTrigger>
@@ -971,7 +971,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       </div>
 
                       <div className="flex flex-col gap-1.5" id="field-division">
-                        <label className="text-sm font-medium text-secondary-foreground">Division / Team <span className="text-destructive">*</span></label>
+                        <Label className="text-sm font-medium text-secondary-foreground">Division / Team <span className="text-destructive">*</span></Label>
                         <Controller name="division" control={control} render={({ field }) => (
                           <Select onValueChange={(v) => { field.onChange(v); setValue("designation", ""); if (errors.division) trigger("division"); }} value={field.value} disabled={!watchedDepartment}>
                             <SelectTrigger className={cn("w-full", errors.division && "border-destructive focus:ring-destructive")}><SelectValue placeholder="Select Division" /></SelectTrigger>
@@ -986,7 +986,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       </div>
 
                       <div className="flex flex-col gap-1.5" id="field-designation">
-                        <label className="text-sm font-medium text-secondary-foreground">Designation <span className="text-destructive">*</span></label>
+                        <Label className="text-sm font-medium text-secondary-foreground">Designation <span className="text-destructive">*</span></Label>
                         <Controller name="designation" control={control} render={({ field }) => (
                           <Select onValueChange={(v) => { field.onChange(v); if (errors.designation) trigger("designation"); }} value={field.value} disabled={!watchedDivision}>
                             <SelectTrigger className={cn("w-full", errors.designation && "border-destructive focus:ring-destructive")}><SelectValue placeholder="Select Designation" /></SelectTrigger>
@@ -1001,7 +1001,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       </div>
 
                       <div className="flex flex-col gap-1.5" id="field-employment_type">
-                        <label className="text-sm font-medium text-secondary-foreground">Employment Type <span className="text-destructive">*</span></label>
+                        <Label className="text-sm font-medium text-secondary-foreground">Employment Type <span className="text-destructive">*</span></Label>
                         <Controller name="employment_type" control={control} render={({ field }) => (
                           <Select onValueChange={(val) => {
                             field.onChange(val);
@@ -1032,7 +1032,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       </div>
 
                       <div className="flex flex-col gap-1.5" id="field-joining_date">
-                        <label className="text-sm font-medium text-secondary-foreground">Joining Date <span className="text-destructive">*</span></label>
+                        <Label className="text-sm font-medium text-secondary-foreground">Joining Date <span className="text-destructive">*</span></Label>
                         <Controller name="joining_date" control={control} render={({ field }) => (
                           <DatePicker
                             value={field.value}
@@ -1048,7 +1048,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
 
                       {watchedEmploymentType !== 'Intern' && (
                         <div className="flex flex-col gap-1.5" id="field-experience_type">
-                          <label className="text-sm font-medium text-secondary-foreground">Experience Type <span className="text-destructive">*</span></label>
+                          <Label className="text-sm font-medium text-secondary-foreground">Experience Type <span className="text-destructive">*</span></Label>
                           <Controller name="experience_type" control={control} render={({ field }) => (
                             <Select onValueChange={(val) => {
                               field.onChange(val);
@@ -1076,7 +1076,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
 
                       {watchedEmploymentType === 'Intern' ? (
                         <div className="flex flex-col gap-1.5 pb-2" id="field-stipend">
-                          <label className="text-sm font-medium text-secondary-foreground">Stipend (INR/Month) <span className="text-destructive">*</span></label>
+                          <Label className="text-sm font-medium text-secondary-foreground">Stipend (INR/Month) <span className="text-destructive">*</span></Label>
                           <Input
                             type="number"
                             {...register("stipend")}
@@ -1092,7 +1092,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         </div>
                       ) : (
                         <div className="flex flex-col gap-1.5 pb-2" id="field-salary">
-                          <label className="text-sm font-medium text-secondary-foreground">Annual CTC (INR) <span className="text-destructive">*</span></label>
+                          <Label className="text-sm font-medium text-secondary-foreground">Annual CTC (INR) <span className="text-destructive">*</span></Label>
                           <Input
                             type="number"
                             {...register("salary", {
@@ -1120,7 +1120,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       {watchedExperienceType === 'Experienced' && (
                         <div className="space-y-2 col-span-1 sm:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-5 p-4 rounded-md bg-muted border border-border">
                           <div className="flex flex-col gap-1.5" id="field-experience_years">
-                            <label className="text-sm font-medium text-secondary-foreground">Years <span className="text-destructive">*</span></label>
+                            <Label className="text-sm font-medium text-secondary-foreground">Years <span className="text-destructive">*</span></Label>
                             <Input
                               type="number"
                               min="0"
@@ -1134,7 +1134,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                             )}
                           </div>
                           <div className="flex flex-col gap-1.5" id="field-experience_months">
-                            <label className="text-sm font-medium text-secondary-foreground">Months</label>
+                            <Label className="text-sm font-medium text-secondary-foreground">Months</Label>
                             <Input
                               type="number"
                               min="0"
@@ -1189,9 +1189,9 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-2 gap-y-4">
                       {uploadedFiles.map(f => (
-                        <EditableFileItem
-                          key={f.id}
-                          f={f}
+                        <EditableFileItem 
+                          key={f.id} 
+                          f={f} 
                           onDelete={() => setUploadedFiles(prev => prev.filter(x => x.id !== f.id))}
                           onRename={(newName) => {
                             setUploadedFiles(prev => prev.map(x => x.id === f.id ? { ...x, name: newName } : x));
@@ -1221,7 +1221,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
 
                             <div className="w-full space-y-4 text-left">
                               <div className="flex flex-col gap-2">
-                                <label className="text-sm font-medium text-secondary-foreground">Work Email</label>
+                                <Label className="text-sm font-medium text-secondary-foreground">Work Email</Label>
                                 <div className="relative group">
                                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                                   <Input readOnly value={generatedCredentials.work_email} className="pl-9 bg-muted/30 font-medium h-9 text-xs border-border/60 hover:border-border transition-colors cursor-default focus-visible:ring-0" />
@@ -1229,7 +1229,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                               </div>
 
                               <div className="flex flex-col gap-2">
-                                <label className="text-sm font-medium text-secondary-foreground">Password</label>
+                                <Label className="text-sm font-medium text-secondary-foreground">Password</Label>
                                 <div className="relative group">
                                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                                   <Input readOnly value={generatedCredentials.temp_password} className="pl-9 pr-10 bg-muted/30 font-mono h-9 text-xs border-border/60 hover:border-border transition-colors cursor-default focus-visible:ring-0" type="text" />
@@ -1243,7 +1243,7 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                               </div>
 
                               <div className="flex flex-col gap-2">
-                                <label className="text-sm font-medium text-secondary-foreground">Employee ID</label>
+                                <Label className="text-sm font-medium text-secondary-foreground">Employee ID</Label>
                                 <div className="relative group">
                                   <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors" />
                                   <Input readOnly value={generatedCredentials.employee_id} className="pl-9 bg-muted/30 font-mono h-9 text-xs border-border/60 hover:border-border transition-colors cursor-default focus-visible:ring-0" />
@@ -1278,9 +1278,9 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       </div>
                       <p className="text-xs text-muted-foreground">Employee ID and password will be auto-generated upon creation.</p>
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Employee ID</label><div className="text-sm font-medium text-muted-foreground break-words">Auto-generated</div></div>
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Work Email</label><div className="text-sm font-medium break-words">{watchedEmail}</div></div>
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Password</label><div className="text-sm font-medium text-muted-foreground break-words">Auto-generated</div></div>
+                        <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Employee ID</Label><div className="text-sm font-medium text-muted-foreground break-words">Auto-generated</div></div>
+                        <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Work Email</Label><div className="text-sm font-medium break-words">{watchedEmail}</div></div>
+                        <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Password</Label><div className="text-sm font-medium text-muted-foreground break-words">Auto-generated</div></div>
                       </div>
                     </div>
 
@@ -1300,24 +1300,24 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                       )}
 
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">First Name</label><div className="text-sm font-medium break-words">{getValues("first_name")}</div></div>
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Last Name</label><div className="text-sm font-medium break-words">{getValues("last_name")}</div></div>
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Date of Birth</label><div className="text-sm font-medium break-words">{formatDateReadable(getValues("dob"), "-")}</div></div>
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Gender</label><div className="text-sm font-medium capitalize break-words">{getValues("gender") || "-"}</div></div>
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Phone</label><div className="text-sm font-medium break-words">{getValues("phone_number") || "-"}</div></div>
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Personal Email</label><div className="text-sm font-medium break-words">{getValues("personal_email") || "-"}</div></div>
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">City</label><div className="text-sm font-medium break-words">{getValues("city") || "-"}</div></div>
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Pincode</label><div className="text-sm font-medium break-words">{getValues("pincode") || "-"}</div></div>
-                        <div className="space-y-1 min-w-0 col-span-2 sm:col-span-4"><label className="text-xs uppercase font-bold text-muted-foreground">Address</label><div className="text-sm font-medium break-words">{getValues("address") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">First Name</Label><div className="text-sm font-medium break-words">{getValues("first_name")}</div></div>
+                        <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Last Name</Label><div className="text-sm font-medium break-words">{getValues("last_name")}</div></div>
+                        <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Date of Birth</Label><div className="text-sm font-medium break-words">{getValues("dob") ? format(new Date(getValues("dob") as string), "dd MMM yyyy") : "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Gender</Label><div className="text-sm font-medium capitalize break-words">{getValues("gender") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Phone</Label><div className="text-sm font-medium break-words">{getValues("phone_number") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Personal Email</Label><div className="text-sm font-medium break-words">{getValues("personal_email") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">City</Label><div className="text-sm font-medium break-words">{getValues("city") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Pincode</Label><div className="text-sm font-medium break-words">{getValues("pincode") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0 col-span-2 sm:col-span-4"><Label className="text-xs uppercase font-bold text-muted-foreground">Address</Label><div className="text-sm font-medium break-words">{getValues("address") || "-"}</div></div>
                       </div>
 
                       {(getValues("emergency_name") || getValues("emergency_relationship") || getValues("emergency_phone")) && (
                         <div className="mt-4 bg-muted/30 p-3 rounded-lg border border-border">
                           <h4 className="text-sm font-bold mb-3">Emergency Contact</h4>
                           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                            <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Name</label><div className="text-sm font-medium break-words">{getValues("emergency_name") || "-"}</div></div>
-                            <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Relationship</label><div className="text-sm font-medium break-words">{getValues("emergency_relationship") || "-"}</div></div>
-                            <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Phone</label><div className="text-sm font-medium break-words">{getValues("emergency_phone") || "-"}</div></div>
+                            <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Name</Label><div className="text-sm font-medium break-words">{getValues("emergency_name") || "-"}</div></div>
+                            <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Relationship</Label><div className="text-sm font-medium break-words">{getValues("emergency_relationship") || "-"}</div></div>
+                            <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Phone</Label><div className="text-sm font-medium break-words">{getValues("emergency_phone") || "-"}</div></div>
                           </div>
                         </div>
                       )}
@@ -1329,22 +1329,22 @@ export function OnboardWizard({ onSuccess, onClose }: OnboardFormProps) {
                         {!generatedCredentials && <Button variant="outline" size="sm" onClick={() => setStep(2)} className="h-8 text-xs font-semibold px-3 rounded-md shadow-sm"><Edit2 className="w-3.5 h-3.5 mr-1.5" /> Edit</Button>}
                       </div>
                       <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Department</label><div className="text-sm font-medium break-words">{DEPARTMENTS.find(d => d.id === getValues("department"))?.name || getValues("department")}</div></div>
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Division</label><div className="text-sm font-medium break-words">{getValues("division") || "-"}</div></div>
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Designation</label><div className="text-sm font-medium break-words">{getValues("designation") || "-"}</div></div>
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Employment Type</label><div className="text-sm font-medium break-words">{getValues("employment_type") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Department</Label><div className="text-sm font-medium break-words">{DEPARTMENTS.find(d => d.id === getValues("department"))?.name || getValues("department")}</div></div>
+                        <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Division</Label><div className="text-sm font-medium break-words">{getValues("division") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Designation</Label><div className="text-sm font-medium break-words">{getValues("designation") || "-"}</div></div>
+                        <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Employment Type</Label><div className="text-sm font-medium break-words">{getValues("employment_type") || "-"}</div></div>
+                        
 
-
-                        <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Joining Date</label><div className="text-sm font-medium break-words">{formatDateReadable(getValues("joining_date"), "-")}</div></div>
+                        <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Joining Date</Label><div className="text-sm font-medium break-words">{getValues("joining_date") ? format(new Date(getValues("joining_date") as string), "dd MMM yyyy") : "-"}</div></div>
                         {getValues("employment_type") !== 'Intern' && (
-                          <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Experience</label><div className="text-sm font-medium break-words">{formatExperience(getValues("experience_type"), getValues("experience_years"), getValues("experience_months"))}</div></div>
+                          <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Experience</Label><div className="text-sm font-medium break-words">{formatExperience(getValues("experience_type"), getValues("experience_years"), getValues("experience_months"))}</div></div>
                         )}
                         {getValues("employment_type") === 'Intern' ? (
-                          <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Stipend</label><div className="text-sm font-medium break-words">₹ {getValues("stipend")?.toLocaleString() || "-"}</div></div>
+                          <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Stipend</Label><div className="text-sm font-medium break-words">₹ {getValues("stipend")?.toLocaleString() || "-"}</div></div>
                         ) : (
                           <>
-                            <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Annual CTC</label><div className="text-sm font-medium break-words">₹ {getValues("salary")?.toLocaleString() || "-"}</div></div>
-                            <div className="space-y-1 min-w-0"><label className="text-xs uppercase font-bold text-muted-foreground">Basic Salary</label><div className="text-sm font-medium break-words">₹ {getValues("basic_salary")?.toLocaleString() || "-"}</div></div>
+                            <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Annual CTC</Label><div className="text-sm font-medium break-words">₹ {getValues("salary")?.toLocaleString() || "-"}</div></div>
+                            <div className="space-y-1 min-w-0"><Label className="text-xs uppercase font-bold text-muted-foreground">Basic Salary</Label><div className="text-sm font-medium break-words">₹ {getValues("basic_salary")?.toLocaleString() || "-"}</div></div>
                           </>
                         )}
                       </div>

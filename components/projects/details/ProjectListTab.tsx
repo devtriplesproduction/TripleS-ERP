@@ -5,6 +5,7 @@ import { Task } from '@/types/project-management'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { Pagination } from '@/components/ui/pagination'
 import { Search, Calendar, Clock, AlertCircle } from 'lucide-react'
 import dayjs from 'dayjs'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -18,6 +19,8 @@ export function ProjectListTab({ tasks, onTaskClick }: ProjectListTabProps) {
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('ALL')
   const [priorityFilter, setPriorityFilter] = useState('ALL')
+  const [currentPage, setCurrentPage] = useState<number>(1)
+  const [pageSize, setPageSize] = useState<number>(10)
 
   const filteredTasks = tasks.filter((t) => {
     const matchesSearch = t.title.toLowerCase().includes(search.toLowerCase()) || t.task_id_display.toLowerCase().includes(search.toLowerCase())
@@ -25,6 +28,12 @@ export function ProjectListTab({ tasks, onTaskClick }: ProjectListTabProps) {
     const matchesPriority = priorityFilter === 'ALL' || t.priority === priorityFilter
     return matchesSearch && matchesStatus && matchesPriority
   })
+
+  const totalPages = Math.max(1, Math.ceil(filteredTasks.length / pageSize))
+  const paginatedTasks = filteredTasks.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  )
 
   const getPriorityVariant = (priority: string) => {
     switch (priority) {
@@ -58,14 +67,14 @@ export function ProjectListTab({ tasks, onTaskClick }: ProjectListTabProps) {
             <Input
               placeholder="Search tasks..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
               className="pl-9 filter-control text-xs bg-card border-border shadow-xs"
             />
           </div>
           <div className="flex items-center gap-2">
             <Dropdown
               value={statusFilter}
-              onChange={(val) => setStatusFilter(val || 'ALL')}
+              onChange={(val) => { setStatusFilter(val || 'ALL'); setCurrentPage(1); }}
               options={[
                 { value: 'ALL', label: 'All Status' },
                 { value: 'TODO', label: 'To Do' },
@@ -78,7 +87,7 @@ export function ProjectListTab({ tasks, onTaskClick }: ProjectListTabProps) {
             />
             <Dropdown
               value={priorityFilter}
-              onChange={(val) => setPriorityFilter(val || 'ALL')}
+              onChange={(val) => { setPriorityFilter(val || 'ALL'); setCurrentPage(1); }}
               options={[
                 { value: 'ALL', label: 'All Priority' },
                 { value: 'LOW', label: 'Low' },
@@ -115,8 +124,8 @@ export function ProjectListTab({ tasks, onTaskClick }: ProjectListTabProps) {
                   </td>
                 </tr>
               ) : (
-                filteredTasks.map((t) => {
-                  const progressVal = t.estimated_hours && t.estimated_hours > 0
+                paginatedTasks.map((t) => {
+                  const progressVal = t.estimated_hours && t.estimated_hours > 0 
                     ? Math.min(100, Math.round(((t.worked_hours || 0) / t.estimated_hours) * 100))
                     : 0;
 
@@ -167,7 +176,7 @@ export function ProjectListTab({ tasks, onTaskClick }: ProjectListTabProps) {
                       <td className="px-5 py-2 text-xs">
                         <span className={`flex items-center gap-1.5 font-medium ${t.is_overdue ? 'text-destructive' : 'text-foreground'}`}>
                           {t.is_overdue ? <AlertCircle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5 text-muted-foreground" />}
-                          {t.due_date ? dayjs(t.due_date).format('DD MMM YYYY') : '-'}
+                          {t.due_date ? dayjs(t.due_date).format('MMM DD, YYYY') : '-'}
                         </span>
                       </td>
                       <td className="px-5 py-2 text-right">
@@ -188,6 +197,24 @@ export function ProjectListTab({ tasks, onTaskClick }: ProjectListTabProps) {
           </table>
         </div>
       </div>
+
+      {filteredTasks.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredTasks.length}
+          itemsPerPage={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize)
+            setCurrentPage(1)
+          }}
+          pageSizeOptions={[10, 25, 50]}
+          showPageSizeSelector
+          itemLabel="tasks"
+          className="rounded-xl border border-border/80 bg-card px-4 py-3 shadow-xs"
+        />
+      )}
     </div>
   )
 }

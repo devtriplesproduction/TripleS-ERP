@@ -13,6 +13,7 @@ import {
 import type { PersonalNote } from '@/types/notes'
 import { updatePersonalNoteAction } from '@/lib/actions/notes'
 import { toast } from 'sonner'
+import { Textarea } from '@/components/ui/textarea'
 import dayjs from 'dayjs'
 
 interface NoteCardProps {
@@ -171,8 +172,9 @@ export function NoteCard({
       <div
         ref={cardRef}
         onClick={(e) => e.stopPropagation()}
-        className={`relative p-3 rounded-xl border border-foreground/40 bg-card shadow-md transition-all ${viewMode === 'list' ? 'w-full' : ''
-          }`}
+        className={`relative p-3 rounded-xl border border-foreground/40 bg-card shadow-md transition-all ${
+          viewMode === 'list' ? 'w-full' : ''
+        }`}
       >
         {/* Header: Title input & Pin toggle */}
         <div className="flex items-center justify-between gap-2">
@@ -189,17 +191,18 @@ export function NoteCard({
             type="button"
             onClick={onTogglePin}
             title={note.is_pinned ? 'Unpin note' : 'Pin note'}
-            className={`p-1.5 rounded-md transition-colors cursor-pointer ${note.is_pinned
+            className={`p-1.5 rounded-md transition-colors cursor-pointer ${
+              note.is_pinned
                 ? 'text-foreground bg-muted'
                 : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}
+            }`}
           >
             <Pin className={`w-3.5 h-3.5 ${note.is_pinned ? 'fill-current' : ''}`} />
           </button>
         </div>
 
         {/* Content Textarea */}
-        <textarea
+        <Textarea
           ref={textareaRef}
           value={editContent}
           onChange={(e) => setEditContent(e.target.value)}
@@ -256,8 +259,9 @@ export function NoteCard({
   return (
     <div
       onClick={onStartEdit}
-      className={`group relative p-3 rounded-xl border border-border/70 hover:border-foreground/30 bg-card hover:bg-muted/30 transition-all cursor-pointer shadow-xs hover:shadow-sm flex flex-col justify-between ${viewMode === 'list' ? 'w-full' : 'min-h-[100px]'
-        }`}
+      className={`group relative p-3 rounded-xl border border-border/70 hover:border-foreground/30 bg-card hover:bg-muted/30 transition-all cursor-pointer shadow-xs hover:shadow-sm flex flex-col justify-between ${
+        viewMode === 'list' ? 'w-full' : 'min-h-[100px]'
+      }`}
     >
       <div>
         {/* Header: Title & Pin action */}
@@ -269,10 +273,11 @@ export function NoteCard({
             type="button"
             onClick={onTogglePin}
             title={note.is_pinned ? 'Unpin note' : 'Pin note'}
-            className={`p-1 rounded-md transition-opacity cursor-pointer ${note.is_pinned
+            className={`p-1 rounded-md transition-opacity cursor-pointer ${
+              note.is_pinned
                 ? 'text-foreground opacity-100'
                 : 'text-muted-foreground opacity-60 group-hover:opacity-100 hover:text-foreground'
-              }`}
+            }`}
           >
             <Pin className={`w-3.5 h-3.5 ${note.is_pinned ? 'fill-current' : ''}`} />
           </button>
@@ -288,7 +293,7 @@ export function NoteCard({
 
       {/* Footer: Date on left, Pencil/Delete/More on right */}
       <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-border/40 text-[10px] text-muted-foreground">
-        <span>{dayjs(note.updated_at).format('DD MMM')}</span>
+        <span>{dayjs(note.updated_at).format('MMM D')}</span>
 
         <div className="flex items-center gap-1 opacity-70 group-hover:opacity-100 transition-opacity">
           {/* Edit (Pencil) Icon */}

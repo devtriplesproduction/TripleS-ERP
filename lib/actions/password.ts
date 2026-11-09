@@ -547,3 +547,164 @@ export async function changeEmployeePasswordAction(params: ChangePasswordParams)
     message: `Password for ${employeeFullName} (${employee.employee_id_number || 'Employee'}) has been updated successfully.`,
   }
 }
+
+export interface ChangeOwnPasswordParams {
+  currentPassword: string
+  newPassword: string
+  confirmPassword: string
+}
+
+/**
+ * Server action for an authenticated user to change their own password.
+ * Accessible to all authenticated users across the ERP.
+ */
+export async function changeOwnPasswordAction(params: ChangeOwnPasswordParams): Promise<{
+  success: boolean
+  message?: string
+  error?: string
+  errors?: string[]
+}> {
+  const { currentPassword, newPassword, confirmPassword } = params
+
+  // 1. Authentication Check
+  const currentUser = await getCurrentUser()
+  if (!currentUser || !currentUser.id) {
+    return {
+      success: false,
+      error: 'Authentication required. Please sign in to change your password.',
+    }
+  }
+
+  // 2. Rate Limiting Check
+  const rateLimitCheck = checkRateLimit(`user-pwd-change:${currentUser.id}`, 5, 60 * 1000)
+  if (!rateLimitCheck.success) {
+    return {
+      success: false,
+      error: `Too many password change attempts. Please wait ${rateLimitCheck.retryAfterSeconds || 60} seconds before trying again.`,
+    }
+  }
+
+  // 3. Input Validation
+  if (!currentPassword || !currentPassword.trim()) {
+    return {
+      success: false,
+      error: 'Please enter your current password.',
+    }
+  }
+
+  if (!newPassword || !newPassword.trim()) {
+    return {
+      success: false,
+      error: 'Please enter a new password.',
+    }
+  }
+
+  if (!confirmPassword || !confirmPassword.trim()) {
+    return {
+      success: false,
+      error: 'Please confirm your new password.',
+    }
+  }
+
+  if (newPassword !== confirmPassword) {
+    return {
+      success: false,
+      error: 'New password and confirm password do not match.',
+    }
+  }
+
+  if (currentPassword === newPassword) {
+    return {
+      success: false,
+      error: 'New password must be different from your current password.',
+    }
+  }
+
+  // 4. Policy validation
+  const validation = validatePassword(newPassword, confirmPassword, {
+    email: currentUser.email,
+    employeeName: currentUser.employee_name,
+  })
+
+  if (!validation.valid) {
+    return {
+      success: false,
+      error: validation.errors[0] || 'Password does not meet complexity requirements.',
+      errors: validation.errors,
+    }
+  }
+
+  // 5. Verify current password
+  try {
+    const supabase = await createClient()
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: currentUser.email,
+      password: currentPassword,
+    })
+
+    if (signInError) {
+      return {
+        success: false,
+        error: 'The current password you entered is incorrect.',
+      }
+    }
+  } catch (err: any) {
+    console.error('[changeOwnPasswordAction] Current password verification error:', err)
+    return {
+      success: false,
+      error: 'Could not verify current password. Please try again.',
+    }
+  }
+
+  // 6. Update password in Supabase Auth
+  try {
+    const admin = await createAdminClient()
+    const { error: updateError } = await admin.auth.admin.updateUserById(
+      currentUser.id,
+      { password: newPassword }
+    )
+
+    if (updateError) {
+      return {
+        success: false,
+        error: updateError.message || 'Failed to update password. Please try again.',
+      }
+    }
+
+    // 7. Record security audit log
+    try {
+      const { logSecurityEvent } = await import('@/lib/utils/audit-logger')
+      await logSecurityEvent({
+        eventType: 'password_change',
+        status: 'Success',
+        userId: currentUser.id,
+        employeeId: currentUser.onboarding_id || null,
+        employeeIdNumber: currentUser.employee_id || null,
+        employeeName: currentUser.employee_name || null,
+        authMethod: 'User Self-Service',
+        metadata: {
+          actor_email: currentUser.email,
+          actor_role: currentUser.role,
+          self_service: true,
+        },
+      })
+    } catch {
+      // Non-blocking
+    }
+
+    // 8. Revalidate
+    revalidatePath('/settings')
+
+    return {
+      success: true,
+      message: 'Your password has been changed successfully.',
+    }
+  } catch (err: any) {
+    console.error('[changeOwnPasswordAction] Unexpected error:', err)
+    return {
+      success: false,
+      error: err.message || 'An unexpected error occurred while changing your password.',
+    }
+  }
+}
+

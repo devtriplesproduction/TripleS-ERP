@@ -23,6 +23,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { toast } from 'sonner'
 import { LedgerAccount, AccountType } from '@/types/accounting'
 import { deleteLedgerAccountAction, toggleLedgerAccountStatusAction } from '@/lib/actions/accounting'
@@ -42,6 +43,7 @@ export function LedgerAccountList({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingAccount, setEditingAccount] = useState<LedgerAccount | null>(null)
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
 
   const typeOptions = [
     { value: 'ALL', label: 'All Account Types' },
@@ -90,11 +92,10 @@ export function LedgerAccountList({
     }
   }
 
-  const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`Are you sure you want to delete ledger account '${name}'?`)) {
-      return
-    }
-
+  const confirmDeleteAccount = async () => {
+    if (!deleteTarget) return
+    const { id, name } = deleteTarget
+    setDeleteTarget(null)
     setActionLoadingId(id)
     try {
       const res = await deleteLedgerAccountAction(id)
@@ -446,7 +447,7 @@ export function LedgerAccountList({
                           type="button"
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(acc.id, acc.account_name)}
+                          onClick={() => setDeleteTarget({ id: acc.id, name: acc.account_name })}
                           disabled={actionLoadingId === acc.id}
                           className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                           title="Delete Account"

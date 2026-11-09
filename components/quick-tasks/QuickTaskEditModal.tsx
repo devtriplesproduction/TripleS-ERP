@@ -9,6 +9,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Pencil,
@@ -49,6 +51,7 @@ export function QuickTaskEditModal({
   const [status, setStatus] = useState<QuickTaskStatus>('Pending')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
 
   useEffect(() => {
     if (task && isOpen) {
@@ -96,8 +99,12 @@ export function QuickTaskEditModal({
     }
   }
 
-  const handleDelete = async () => {
-    if (!confirm('Are you sure you want to delete this task?')) return
+  const handleDelete = () => {
+    setIsDeleteConfirmOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    setIsDeleteConfirmOpen(false)
     setIsDeleting(true)
     try {
       const res = await deleteQuickTaskAction(task.id)
@@ -151,7 +158,7 @@ export function QuickTaskEditModal({
         <form onSubmit={handleSubmit} className="space-y-3.5">
           {/* Description input only */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground">Task Description</label>
+            <Label className="text-xs font-semibold text-foreground">Task Description</Label>
             <Textarea
               value={description}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
@@ -165,7 +172,7 @@ export function QuickTaskEditModal({
 
           {/* Status selector */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground">Status</label>
+            <Label className="text-xs font-semibold text-foreground">Status</Label>
             <div className="grid grid-cols-2 gap-1.5 bg-muted/30 p-1 rounded-lg border border-border">
               {(['Pending', 'Completed'] as QuickTaskStatus[]).map((s) => (
                 <button
@@ -227,6 +234,16 @@ export function QuickTaskEditModal({
           </DialogFooter>
         </form>
       </DialogContent>
+      <ConfirmModal
+        isOpen={isDeleteConfirmOpen}
+        title="Delete Quick Task"
+        message="Are you sure you want to delete this task? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        variant="danger"
+        onConfirm={confirmDelete}
+        onCancel={() => setIsDeleteConfirmOpen(false)}
+      />
     </Dialog>
   )
 }

@@ -6,6 +6,8 @@ import { submitEODAction, fetchEODAction, updateEODAction } from '@/actions/eod.
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Dropdown } from '@/components/ui/Dropdown';
 import { ImagePlus, Clock, X, Plus, User, Key } from 'lucide-react';
@@ -18,19 +20,9 @@ import { toast } from 'sonner';
 type EmployeeOption = { id: string; first_name: string; last_name: string; employee_id: string };
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-const trackerSummaryCache = new Map<string, { data: any; ts: number }>();
-
-export function invalidateTrackerSummaryCache(employeeId?: string, date?: string) {
-  if (employeeId && date) {
-    trackerSummaryCache.delete(`${employeeId}_${date}`);
-  } else {
-    trackerSummaryCache.clear();
-  }
-}
 
 export function EODSubmissionForm({ employeeId, canEditDate = false, employees, canManage = false, employeeName = 'Omkar Sawant', employeeStringId = 'EMP-001' }: { employeeId: string, canEditDate?: boolean, employees?: EmployeeOption[], canManage?: boolean, employeeName?: string, employeeStringId?: string }) {
   const [loading, setLoading] = useState(false);
-  const submittingRef = useRef(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
@@ -72,24 +64,6 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
 
     let isMounted = true;
     async function loadTimeTrackerHours() {
-      const cacheKey = `${selectedEmployeeId}_${reportDate}`;
-      const cached = trackerSummaryCache.get(cacheKey);
-      if (cached && Date.now() - cached.ts < 30000) {
-        const data = cached.data;
-        if (data.isEmpty || data.totalActiveMinutes === 0) {
-          if (!isManuallyEditedRef.current) setWorkedHoursInput('0.00');
-        } else {
-          const activeMins = typeof data.totalActiveMinutes === 'number' ? data.totalActiveMinutes : null;
-          const hhmm = activeMins !== null && activeMins > 0
-            ? normalizeTrackerToHHMM(activeMins)
-            : normalizeTrackerToHHMM(data.formattedHHMM || data.formattedActive || data.formattedDisplay);
-          if (hhmm && parseHHMM(hhmm) !== null && !isManuallyEditedRef.current) {
-            setWorkedHoursInput(hhmm);
-          }
-        }
-        return;
-      }
-
       setTrackerLoading(true);
       setTrackerError(null);
       try {
@@ -99,7 +73,6 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
         if (res.ok) {
           const data = await res.json();
           if (data.success) {
-            trackerSummaryCache.set(cacheKey, { data, ts: Date.now() });
             if (data.isEmpty || data.totalActiveMinutes === 0) {
               // No sessions exist: show 0.00 if user hasn't manually edited
               if (!isManuallyEditedRef.current) {
@@ -243,8 +216,6 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (submittingRef.current) return;
-    submittingRef.current = true;
     setLoading(true);
     setError('');
     setSuccess('');
@@ -317,7 +288,6 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
       }
 
       toast.success(isUpdate ? 'EOD Updated successfully!' : 'EOD Submitted successfully!');
-      invalidateTrackerSummaryCache(selectedEmployeeId, reportDate);
       if (!isUpdate) {
         (e.target as HTMLFormElement).reset();
         setFile(null);
@@ -340,7 +310,6 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
         setError('An unexpected error occurred.');
       }
     } finally {
-      submittingRef.current = false;
       setLoading(false);
     }
   }
@@ -350,9 +319,9 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
       {canManage && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-foreground">
+            <Label className="text-sm font-semibold text-foreground">
               Employee ID *
-            </label>
+            </Label>
             <input
               type="text"
               disabled
@@ -361,9 +330,9 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-sm font-semibold text-foreground">
+            <Label className="text-sm font-semibold text-foreground">
               Employee Name *
-            </label>
+            </Label>
             <input
               type="text"
               disabled
@@ -379,7 +348,7 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
 
         {canEditDate ? (
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium text-foreground">Report Date</label>
+            <Label className="block text-sm font-medium text-foreground">Report Date</Label>
             <DatePicker
               value={reportDate}
               onChange={(date) => setReportDate(date)}
@@ -394,8 +363,8 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
           {/* LEFT COLUMN */}
           <div className="flex flex-col gap-6">
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-foreground">What did you accomplish today? *</label>
-              <textarea
+              <Label className="block text-sm font-medium text-foreground">What did you accomplish today? *</Label>
+              <Textarea
                 name="tasks_accomplished"
                 required
                 rows={6}
@@ -403,12 +372,12 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
                 onChange={(e) => setTasksAccomplished(e.target.value)}
                 className="w-full rounded-lg border border-border bg-surface px-3 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
                 placeholder={"Write the tasks you completed Today\nenter one task per line"}
-              ></textarea>
+               />
             </div>
             
             <div className="space-y-1.5 flex-1 flex flex-col">
-              <label className="block text-sm font-medium text-foreground">Pending Work / Blockers *</label>
-              <textarea
+              <Label className="block text-sm font-medium text-foreground">Pending Work / Blockers *</Label>
+              <Textarea
                 name="blockers"
                 rows={3}
                 value={blockers}
@@ -416,15 +385,15 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
                 onChange={(e) => setBlockers(e.target.value)}
                 className="flex-1 w-full rounded-lg border border-border bg-surface px-3 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
                 placeholder='Any issues blocking your work? Write "None" if there are no blockers.'
-              ></textarea>
+               />
             </div>
           </div>
 
           {/* RIGHT COLUMN */}
           <div className="flex flex-col gap-6">
             <div className="space-y-1.5">
-              <label className="block text-sm font-medium text-foreground">Tomorrow&apos;s Plan *</label>
-              <textarea
+              <Label className="block text-sm font-medium text-foreground">Tomorrow&apos;s Plan *</Label>
+              <Textarea
                 name="tomorrows_plan"
                 rows={6}
                 value={tomorrowsPlan}
@@ -432,14 +401,14 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
                 onChange={(e) => setTomorrowsPlan(e.target.value)}
                 className="w-full rounded-lg border border-border bg-surface px-3 py-3 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent resize-none"
                 placeholder="What is your plan for tomorrow?"
-              ></textarea>
+               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <label className="block text-sm font-medium text-foreground">Worked Hours <span className="text-error">*</span></label>
+                    <Label className="block text-sm font-medium text-foreground">Worked Hours <span className="text-error">*</span></Label>
                     {trackerLoading && (
                       <span className="inline-flex items-center gap-1 text-xs text-muted-foreground animate-pulse">
                         <Clock className="w-3 h-3 animate-spin text-primary" />
@@ -504,9 +473,9 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
             {location === 'Field' && (
               <div className="space-y-2 p-4 border border-dashed rounded-lg bg-surface relative">
                 <div className="flex items-center justify-between mb-2">
-                  <label className="block text-sm font-semibold text-foreground">
+                  <Label className="block text-sm font-semibold text-foreground">
                     Field Photo <span className="text-error">*</span>
-                  </label>
+                  </Label>
                   {file && (
                     <Button type="button" variant="ghost" size="sm" onClick={removePhoto} className="text-error hover:text-error hover:bg-error/10 h-8 px-2">
                       <X className="w-4 h-4 mr-1" /> Remove
@@ -516,14 +485,14 @@ export function EODSubmissionForm({ employeeId, canEditDate = false, employees, 
 
                 {!file ? (
                   <div className="flex justify-center items-center w-full">
-                    <label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-border border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <Label htmlFor="dropzone-file" className="flex flex-col items-center justify-center w-full h-32 border-2 border-border border-dashed rounded-lg cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors">
                       <div className="flex flex-col items-center justify-center pt-5 pb-6">
                         <ImagePlus className="w-8 h-8 mb-3 text-muted-foreground" />
                         <p className="mb-1 text-sm text-muted-foreground"><span className="font-semibold">Click to upload</span> or drag and drop</p>
                         <p className="text-xs text-muted-foreground">PNG, JPG up to 5MB</p>
                       </div>
                       <input id="dropzone-file" type="file" accept="image/*" onChange={handleFileChange} className="hidden" required={location === 'Field' && !existingPhotoUrl} />
-                    </label>
+                    </Label>
                   </div>
                 ) : (
                   <div className="relative w-full h-48 rounded-lg overflow-hidden border">

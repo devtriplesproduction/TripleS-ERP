@@ -8,6 +8,7 @@ import { ProjectModal } from './ProjectModal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dropdown } from '@/components/ui/Dropdown'
+import { Pagination } from '@/components/ui/pagination'
 import { Plus, Search, FolderKanban, LayoutGrid, List, FolderGit2 } from 'lucide-react'
 import { PageHeader } from '@/components/PageHeader'
 
@@ -37,6 +38,8 @@ export function ProjectGrid({
   const [clientFilter, setClientFilter] = useState('ALL')
   const [viewMode, setViewMode] = useState<'GRID' | 'LIST'>('GRID')
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [currentPage, setCurrentPage] = useState<number>(1)
+  const [pageSize, setPageSize] = useState<number>(12)
 
   const filteredProjects = projects.filter((p) => {
     const matchesSearch =
@@ -50,6 +53,12 @@ export function ProjectGrid({
 
     return matchesSearch && matchesStatus && matchesPriority && matchesClient
   })
+
+  const totalPages = Math.max(1, Math.ceil(filteredProjects.length / pageSize))
+  const paginatedProjects = filteredProjects.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  )
 
   const handleSuccess = () => {
     window.location.reload()
@@ -82,7 +91,7 @@ export function ProjectGrid({
           <Input
             placeholder="Search projects by name, client, or ID..."
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }}
             className="!h-9 !min-h-[36px] !max-h-[36px] !pl-9 !pr-4 !text-xs rounded-lg border-border/80 bg-card font-normal shadow-xs focus-visible:ring-1 focus-visible:ring-foreground/20 text-foreground w-full placeholder:text-muted-foreground"
           />
         </div>
@@ -92,7 +101,7 @@ export function ProjectGrid({
           {/* All Statuses Filter */}
           <Dropdown
             value={statusFilter}
-            onChange={(val) => setStatusFilter(val || 'ALL')}
+            onChange={(val) => { setStatusFilter(val || 'ALL'); setCurrentPage(1); }}
             options={[
               { value: 'ALL', label: 'All Statuses' },
               { value: 'PLANNING', label: 'Planning' },
@@ -108,7 +117,7 @@ export function ProjectGrid({
           {/* All Clients Filter */}
           <Dropdown
             value={clientFilter}
-            onChange={(val) => setClientFilter(val || 'ALL')}
+            onChange={(val) => { setClientFilter(val || 'ALL'); setCurrentPage(1); }}
             options={[
               { value: 'ALL', label: 'All Clients' },
               ...clients.map(c => ({ value: c.id, label: c.name }))
@@ -120,7 +129,7 @@ export function ProjectGrid({
           {/* All Priorities Filter */}
           <Dropdown
             value={priorityFilter}
-            onChange={(val) => setPriorityFilter(val || 'ALL')}
+            onChange={(val) => { setPriorityFilter(val || 'ALL'); setCurrentPage(1); }}
             options={[
               { value: 'ALL', label: 'All Priorities' },
               { value: 'LOW', label: 'Low' },
@@ -202,10 +211,29 @@ export function ProjectGrid({
           ? "grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5" 
           : "flex flex-col gap-3"
         }>
-          {filteredProjects.map((project) => (
+          {paginatedProjects.map((project) => (
             <ProjectCard key={project.id} project={project} viewMode={viewMode} />
           ))}
         </div>
+      )}
+
+      {/* Projects Pagination */}
+      {filteredProjects.length > 0 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredProjects.length}
+          itemsPerPage={pageSize}
+          onPageChange={setCurrentPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize)
+            setCurrentPage(1)
+          }}
+          pageSizeOptions={[9, 12, 24, 48]}
+          showPageSizeSelector
+          itemLabel="projects"
+          className="rounded-xl border border-border/80 bg-card px-4 py-3 shadow-xs"
+        />
       )}
 
       {/* Create Project Modal */}

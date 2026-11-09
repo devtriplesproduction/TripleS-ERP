@@ -113,7 +113,7 @@ Three distinct compounding defects caused the payroll calculation engine to fail
 - **Actual Implementation:**  
   - Implemented in [`lib/utils/salary.ts:calculateMonthlyBasicSalary`](file:///c:/Users/HP/Desktop/Triple%20S%20Production/TripleS-ERP-main/lib/utils/salary.ts#L18) and [`lib/services/payroll.service.ts:471-482`](file:///c:/Users/HP/Desktop/Triple%20S%20Production/TripleS-ERP-main/lib/services/payroll.service.ts#L471-L482).  
   - Intern check: `emp.employment_type?.toLowerCase() === 'intern' ? emp.stipend : (emp.basic_salary || emp.salary / 12)`.  
-  - Missing salary detection sets `hasMissingSalary: true` and flags a warning (e.g., Kavita Verma `EMP-011`).
+  - Missing salary detection sets `hasMissingSalary: true` and flags a warning (e.g., Former Staff (EMP-011) `EMP-011`).
 - **Result:** **PASS**
 - **Evidence:**  
   - Function: `resolveSalaryForPeriod()` in [`lib/utils/salary.ts`](file:///c:/Users/HP/Desktop/Triple%20S%20Production/TripleS-ERP-main/lib/utils/salary.ts#L167).  
@@ -373,8 +373,8 @@ The following reconciliation reflects independent recalculation executed against
 | **EMP-005** | Suraj Mane | Full Time | 22,000.00 | 208 | 0.00 | 0.00 | 8.00 | 0.00 | 0 | 21,999.90 | 0.00 | 22,000.00 | 21,999.90 | **0.10** | Inactive, 1 Paid Holiday credited |
 | **EMP-007** | Prachi Thorat | Intern | 923.08 | 208 | 64.73 | 8.00 | 8.00 | 0.00 | 44 | 153.84 | 0.00 | 923.08 | 153.84 | **769.24** | Joined Oct 19, Zero prior penalties |
 | **EMP-009** | Michael Smith | Full Time | 0.23 | 208 | 0.00 | 0.00 | 0.00 | 0.00 | 0 | 0.23 | 0.00 | 0.23 | 0.23 | **0.00** | Joined Oct 26, 6 missing days |
-| **EMP-010** | Aditya Sharma | Full Time | 9,230.77 | 208 | 0.00 | 0.00 | 0.00 | 0.00 | 0 | 9,230.76 | 0.00 | 9,230.77 | 9,230.76 | **0.01** | Joined Oct 28, 4 missing days |
-| **EMP-011** | Kavita Verma | Full Time | 0.00 | 208 | 0.00 | 0.00 | 0.00 | 0.00 | 0 | 0.00 | 0.00 | 0.00 | 0.00 | **0.00** | Missing salary configuration warning |
+| **EMP-010** | Former Staff (EMP-010) | Full Time | 9,230.77 | 208 | 0.00 | 0.00 | 0.00 | 0.00 | 0 | 9,230.76 | 0.00 | 9,230.77 | 9,230.76 | **0.01** | Joined Oct 28, 4 missing days |
+| **EMP-011** | Former Staff (EMP-011) | Full Time | 0.00 | 208 | 0.00 | 0.00 | 0.00 | 0.00 | 0 | 0.00 | 0.00 | 0.00 | 0.00 | **0.00** | Missing salary configuration warning |
 | **EMP-012** | Aniket Limkar | Intern | 192.31 | 208 | 0.00 | 0.00 | 0.00 | 0.00 | 0 | 192.31 | 0.00 | 192.31 | 192.31 | **0.00** | Joined Oct 31, 1 day prorated |
 | **Total** | *12 Employees* | — | **₹58,569.95** | — | **719.99h** | **60.00h** | **56.00h** | **24.00h** | **7,910m** | **₹34,674.38** | **₹0.00** | **₹58,569.95** | **₹34,674.38** | **₹23,895.34** | *Clean Reconciliation* |
 
@@ -430,7 +430,7 @@ The following reconciliation reflects independent recalculation executed against
   - Total Comp-Off earned across month = 3,134 minutes (52.23 hours).  
 - **Net Payable:** ₹76.90.
 
-#### Case 4: Pre-Finalization Validation Enforcement — Kavita Verma (`EMP-011`)
+#### Case 4: Pre-Finalization Validation Enforcement — Former Staff (EMP-011) (`EMP-011`)
 - **Joining Date:** October 29, 2026.  
 - **Configured Salary:** `salary = null`, `basic_salary = null`, `stipend = null`.  
 - **Engine Behavior:**  

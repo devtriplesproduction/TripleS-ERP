@@ -8,6 +8,9 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import {
   UserX,
@@ -405,11 +408,11 @@ export function DeactivateEmployeeModal({
 
           {/* Reason Field */}
           <div className="space-y-1.5">
-            <label htmlFor="deactivation-reason" className="text-xs font-semibold text-white">
+            <Label htmlFor="deactivation-reason" className="text-xs font-semibold text-white">
               {isCurrentlyInactive ? 'Reactivation Note / Reason' : 'Deactivation Reason'}
               <span className="text-muted-foreground font-normal ml-1">(Optional)</span>
-            </label>
-            <textarea
+            </Label>
+            <Textarea
               id="deactivation-reason"
               rows={2}
               value={reason}
@@ -420,30 +423,30 @@ export function DeactivateEmployeeModal({
                   ? 'e.g. Return from leave, contract renewal, reinstatement...'
                   : 'e.g. Resignation, end of contract, sabbatical...'
               }
-              className="w-full rounded-xl bg-[#0B0B0C] border border-[#2A2A2A] text-sm text-foreground p-3 focus:outline-none focus:border-zinc-500 placeholder:text-muted-foreground/50 transition-colors disabled:opacity-50"
+              className="w-full rounded-xl bg-[#0B0B0C] border border-[#2A2A2A] text-sm text-foreground p-3 resize-none"
             />
           </div>
 
           {/* Explicit Confirmation Checkbox (Required for Deactivation) */}
           {!isCurrentlyInactive && (
-            <label className={cn(
+            <Label className={cn(
               "flex items-start gap-3 p-3.5 rounded-xl border cursor-pointer select-none transition-colors",
               isConfirmed
                 ? "bg-rose-500/10 border-rose-500/35 text-white"
                 : "bg-[#151516] border-[#2A2A2A] text-[#A1A1AA] hover:border-zinc-700",
               (!impact?.canDeactivate || isLoadingImpact) && "opacity-50 pointer-events-none"
             )}>
-              <input
-                type="checkbox"
+              <Checkbox
+                id="deactivation-confirm"
                 checked={isConfirmed}
-                onChange={(e) => setIsConfirmed(e.target.checked)}
+                onCheckedChange={(checked) => setIsConfirmed(!!checked)}
                 disabled={!impact?.canDeactivate || isSubmitting || isLoadingImpact}
-                className="mt-0.5 h-4 w-4 rounded border-[#2A2A2A] text-rose-500 focus:ring-0 cursor-pointer accent-rose-600"
+                className="mt-0.5 data-[state=checked]:bg-rose-600 data-[state=checked]:border-rose-600"
               />
               <span className="text-xs leading-relaxed text-zinc-300">
                 I understand that deactivating <strong className="text-white font-semibold">{fullName}</strong> will revoke all active sessions immediately and prevent further ERP access until reactivated.
               </span>
-            </label>
+            </Label>
           )}
 
           {/* Action Error Message */}

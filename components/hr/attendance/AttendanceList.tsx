@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
@@ -11,14 +11,23 @@ import { Button } from "@/components/ui/button"
 import { Search, ChevronRight, Loader2, Calendar, CalendarCheck2 } from "lucide-react"
 import { getAttendanceEmployees, DerivedAttendance, AttendanceStatus } from "@/lib/actions/attendance"
 import { PageHeader } from "@/components/PageHeader"
+import { EmployeePagination } from "@/components/ui/pagination"
 
-export function AttendanceList({ basePath = '/hr/attendance' }: { basePath?: string }) {
-  const [employees, setEmployees] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+export function AttendanceList({
+  basePath = '/hr/attendance',
+  initialEmployees
+}: {
+  basePath?: string
+  initialEmployees?: any[]
+}) {
+  const [employees, setEmployees] = useState<any[]>(initialEmployees || [])
+  const [loading, setLoading] = useState(initialEmployees === undefined)
   const [search, setSearch] = useState("")
   const [department, setDepartment] = useState("All")
   const [month, setMonth] = useState(new Date().getMonth() + 1)
   const [year, setYear] = useState(new Date().getFullYear())
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(12)
   const router = useRouter()
 
   useEffect(() => {
@@ -37,20 +46,35 @@ export function AttendanceList({ basePath = '/hr/attendance' }: { basePath?: str
     loadEmployees()
   }, [month, year])
 
-  const filtered = employees.filter(e => {
-    if (department !== "All" && e.department !== department) return false
-    if (search) {
-      const q = search.toLowerCase()
-      if (!(e.first_name || '').toLowerCase().includes(q) && 
-          !(e.last_name || '').toLowerCase().includes(q) && 
-          !(e.employee_id || '').toLowerCase().includes(q)) {
-        return false
-      }
-    }
-    return true
-  })
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1)
+  }, [search, department, month, year])
 
-  const departments = ["All", ...Array.from(new Set(employees.map(e => e.department).filter(Boolean)))]
+  const filtered = useMemo(() => {
+    return employees.filter(e => {
+      if (department !== "All" && e.department !== department) return false
+      if (search) {
+        const q = search.toLowerCase()
+        if (!(e.first_name || '').toLowerCase().includes(q) && 
+            !(e.last_name || '').toLowerCase().includes(q) && 
+            !(e.employee_id || '').toLowerCase().includes(q)) {
+          return false
+        }
+      }
+      return true
+    })
+  }, [employees, department, search])
+
+  const totalPages = Math.ceil(filtered.length / pageSize) || 1
+  const paginatedEmployees = useMemo(() => {
+    const start = (page - 1) * pageSize
+    return filtered.slice(start, start + pageSize)
+  }, [filtered, page, pageSize])
+
+  const departments = useMemo(() => {
+    return ["All", ...Array.from(new Set(employees.map(e => e.department).filter(Boolean)))]
+  }, [employees])
 
   if (loading) {
     return <div className="flex h-[50vh] items-center justify-center"><Loader2 className="w-8 h-8 animate-spin" /></div>
@@ -116,7 +140,7 @@ export function AttendanceList({ basePath = '/hr/attendance' }: { basePath?: str
       </Card>
 
       <div className="grid gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {filtered.map(emp => (
+        {paginatedEmployees.map(emp => (
           <Card key={emp.id} className="p-4 sm:p-5 hover:bg-muted/50 transition-colors cursor-pointer border-border" onClick={() => router.push(`${basePath}/${emp.id}`)}>
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3 min-w-0">
@@ -168,6 +192,25 @@ export function AttendanceList({ basePath = '/hr/attendance' }: { basePath?: str
           </div>
         )}
       </div>
+
+      {/* Employee Attendance Pagination */}
+      {filtered.length > 0 && (
+        <EmployeePagination
+          currentPage={page}
+          totalPages={totalPages}
+          totalItems={filtered.length}
+          itemsPerPage={pageSize}
+          onPageChange={setPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize)
+            setPage(1)
+          }}
+          showPageSizeSelector={true}
+          pageSizeOptions={[9, 12, 24, 48]}
+          itemLabel="employees"
+          className="rounded-xl border border-border shadow-xs mt-4"
+        />
+      )}
     </div>
   )
 }

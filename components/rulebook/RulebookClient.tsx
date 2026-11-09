@@ -31,10 +31,10 @@ import {
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DatePicker } from '@/components/ui/date-picker'
-import { formatDateReadable } from '@/lib/utils/date'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { Button } from '@/components/ui/button'
 import { PageHeader } from '@/components/PageHeader'
@@ -92,7 +92,22 @@ const CATEGORY_META: Record<RulebookCategory, { title: string; subtitle: string;
 type SortOption = 'latest' | 'oldest' | 'title-asc' | 'title-desc' | 'pending-first' | 'acknowledged-first'
 
 function formatDate(dateStr?: string | null): string {
-  return formatDateReadable(dateStr, '-')
+  if (!dateStr) return '-'
+  try {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      const [year, month, day] = dateStr.split('-').map(Number)
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+      const formattedDay = day < 10 ? `0${day}` : `${day}`
+      return `${formattedDay} ${months[month - 1]} ${year}`
+    }
+    const d = new Date(dateStr)
+    if (isNaN(d.getTime())) return '-'
+    const day = d.getDate() < 10 ? `0${d.getDate()}` : `${d.getDate()}`
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    return `${day} ${months[d.getMonth()]} ${d.getFullYear()}`
+  } catch {
+    return '-'
+  }
 }
 
 function normalizeVersion(v: string | number | undefined | null) {
@@ -785,8 +800,8 @@ export function RulebookClient({ initialRules, userRole, employeeId, acknowledge
             {/* Description */}
             <div className="grid grid-cols-1 sm:grid-cols-4 items-start gap-1.5 sm:gap-4">
               <Label className="text-left sm:text-right text-xs sm:text-sm text-foreground mt-1 sm:mt-3">Description</Label>
-              <textarea
-                className="col-span-1 sm:col-span-3 flex min-h-[140px] w-full rounded-md border border-input bg-input-bg px-3 py-2 text-xs sm:text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+              <Textarea
+                className="col-span-1 sm:col-span-3 min-h-[140px]"
                 value={newRule.description || ''}
                 onChange={e => setNewRule({ ...newRule, description: e.target.value })}
                 placeholder="Rule details, conditions, eligibility, and procedures..."

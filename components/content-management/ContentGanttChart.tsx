@@ -5,19 +5,17 @@ import {
   Calendar,
   ChevronLeft,
   ChevronRight,
-  Clock,
   User,
   AlertTriangle,
   Search,
   Timer,
-  GripVertical,
-  Pencil,
-  CheckCircle2
+  Pencil
 } from 'lucide-react'
-import { ContentItem, ContentStatus, ContentPriority, computeDeadlineState, computeDeadlineCategory } from '@/types/content-management'
+import { ContentItem, ContentStatus, ContentPriority, computeDeadlineCategory } from '@/types/content-management'
 import { AssignableEmployee } from '@/lib/actions/team'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import dayjs from 'dayjs'
 import { cn } from '@/lib/utils'
@@ -462,31 +460,36 @@ export function ContentGanttChart({
 
                           {/* In-place Status Selector */}
                           <div onClick={(e) => e.stopPropagation()} className="inline-block">
-                            <select
+                            <Select
                               value={item.status}
-                              onChange={(e) => {
-                                e.stopPropagation()
+                              onValueChange={(val) => {
                                 if (onStatusChange) {
-                                  onStatusChange(item.id, e.target.value as ContentStatus)
+                                  onStatusChange(item.id, val as ContentStatus)
                                 }
                               }}
-                              className={cn(
-                                "text-[10px] font-semibold px-1.5 py-0.5 rounded-md border outline-none cursor-pointer transition-colors shadow-xs",
-                                item.status === 'Completed' || item.status === 'Published' || item.status === 'Approved'
-                                  ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
-                                  : item.status === 'In Review'
-                                  ? "bg-indigo-500/15 text-indigo-400 border-indigo-500/30"
-                                  : item.status === 'In Progress' || item.status === 'Changes Requested'
-                                  ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
-                                  : "bg-card text-muted-foreground border-border/80"
-                              )}
-                              title="Change task status"
                             >
-                              <option value="To Do" className="bg-popover text-popover-foreground">To Do</option>
-                              <option value="In Progress" className="bg-popover text-popover-foreground">In Progress</option>
-                              <option value="In Review" className="bg-popover text-popover-foreground">In Review</option>
-                              <option value="Completed" className="bg-popover text-popover-foreground">Completed</option>
-                            </select>
+                              <SelectTrigger
+                                className={cn(
+                                  "h-6 text-[10px] font-semibold px-2 py-0.5 rounded-md border outline-none cursor-pointer transition-colors shadow-xs w-auto gap-1",
+                                  item.status === 'Completed' || item.status === 'Published' || item.status === 'Approved'
+                                    ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30"
+                                    : item.status === 'In Review'
+                                    ? "bg-indigo-500/15 text-indigo-400 border-indigo-500/30"
+                                    : item.status === 'In Progress' || item.status === 'Changes Requested'
+                                    ? "bg-amber-500/15 text-amber-400 border-amber-500/30"
+                                    : "bg-card text-muted-foreground border-border/80"
+                                )}
+                                title="Change task status"
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="To Do">To Do</SelectItem>
+                                <SelectItem value="In Progress">In Progress</SelectItem>
+                                <SelectItem value="In Review">In Review</SelectItem>
+                                <SelectItem value="Completed">Completed</SelectItem>
+                              </SelectContent>
+                            </Select>
                           </div>
 
                           {isOverdue && (
@@ -513,17 +516,19 @@ export function ContentGanttChart({
                             {item.title}
                           </h4>
                           {onEditItem && (
-                            <button
+                            <Button
                               type="button"
+                              variant="ghost"
+                              size="icon"
                               onClick={(e) => {
                                 e.stopPropagation()
                                 onEditItem(item)
                               }}
-                              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors shrink-0"
+                              className="h-6 w-6 p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors shrink-0"
                               title="Edit task details"
                             >
                               <Pencil className="w-3 h-3" />
-                            </button>
+                            </Button>
                           )}
                         </div>
 
@@ -531,28 +536,33 @@ export function ContentGanttChart({
                         <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5 gap-2">
                           <div className="flex items-center gap-1.5 min-w-0" onClick={(e) => e.stopPropagation()}>
                             <User className="w-3 h-3 text-muted-foreground shrink-0" />
-                            <select
-                              value={selectedEmpId}
-                              onChange={(e) => {
-                                e.stopPropagation()
-                                if (onReassignTask) {
-                                  onReassignTask(item.id, e.target.value)
+                            <Select
+                              value={selectedEmpId || "unassigned"}
+                              onValueChange={(val) => {
+                                if (onReassignTask && typeof val === 'string') {
+                                  onReassignTask(item.id, val === "unassigned" ? "" : val)
                                 }
                               }}
-                              className="text-[11px] font-medium bg-card hover:bg-secondary/50 text-foreground border border-border/80 hover:border-foreground/30 rounded-md px-2 py-0.5 outline-none cursor-pointer max-w-[130px] truncate transition-colors shadow-xs"
-                              title="Change assigned employee"
                             >
-                              <option value="" className="bg-popover text-popover-foreground">
-                                {item.assigned_to_name && !employees.some((e) => e.id === item.assigned_to_id)
-                                  ? item.assigned_to_name
-                                  : 'Unassigned'}
-                              </option>
-                              {employees.map((emp) => (
-                                <option key={emp.id} value={emp.id} className="bg-popover text-popover-foreground">
-                                  {emp.name || (emp as any).employee_name}
-                                </option>
-                              ))}
-                            </select>
+                              <SelectTrigger
+                                className="h-6 text-[11px] font-medium bg-card hover:bg-secondary/50 text-foreground border border-border/80 hover:border-foreground/30 rounded-md px-2 py-0.5 outline-none cursor-pointer max-w-[130px] truncate transition-colors shadow-xs"
+                                title="Change assigned employee"
+                              >
+                                <SelectValue placeholder="Unassigned" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="unassigned">
+                                  {item.assigned_to_name && !employees.some((e) => e.id === item.assigned_to_id)
+                                    ? item.assigned_to_name
+                                    : 'Unassigned'}
+                                </SelectItem>
+                                {employees.map((emp) => (
+                                  <SelectItem key={emp.id} value={emp.id}>
+                                    {emp.name || (emp as AssignableEmployee & { employee_name?: string }).employee_name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                           <div
                             onClick={() => onItemClick && onItemClick(item)}

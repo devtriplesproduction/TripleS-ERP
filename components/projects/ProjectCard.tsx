@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { Project } from '@/types/project-management'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Calendar, Users, ClipboardList, Building2, FolderGit2, Eye } from 'lucide-react'
 import dayjs from 'dayjs'
@@ -191,12 +192,12 @@ export function ProjectCard({ project, viewMode = 'GRID' }: ProjectCardProps) {
 
             <div className="relative z-20 shrink-0">
               {/* Button is purely visual, the absolute Link covers the card, but pointer-events-none lets the Link register click while button looks active */}
-              <button 
-                className="flex items-center justify-center rounded-lg bg-foreground text-background hover:bg-foreground/90 px-4 sm:px-5 shadow-sm h-9 text-xs font-semibold transition-colors pointer-events-none"
+              <Button 
+                className="flex items-center justify-center rounded-lg bg-foreground text-background hover:bg-foreground/90 px-4 sm:px-5 shadow-xs h-9 text-xs font-semibold transition-colors pointer-events-none"
               >
                 <Eye className="mr-2 h-4 w-4" />
                 View Details
-              </button>
+              </Button>
             </div>
           </div>
         </CardContent>

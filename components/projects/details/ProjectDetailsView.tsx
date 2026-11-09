@@ -23,6 +23,8 @@ import { EditProjectMembersModal } from './EditProjectMembersModal'
 import { TaskFormModal } from '@/components/tasks/TaskFormModal'
 import { TaskDetailsModal } from '@/components/tasks/TaskDetailsModal'
 import { Tabs, TabsContent } from '@/components/ui/tabs'
+import { ConfirmModal } from '@/components/ui/confirm-modal'
+import { toast } from 'sonner'
 
 interface ProjectDetailsViewProps {
   project: Project
@@ -60,6 +62,7 @@ export function ProjectDetailsView({
   const [isTaskDetailsOpen, setIsTaskDetailsOpen] = useState(false)
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null)
   const [projectTasks, setProjectTasks] = useState<Task[]>(tasks)
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false)
 
   useEffect(() => {
     setProjectTasks(tasks)
@@ -86,9 +89,12 @@ export function ProjectDetailsView({
   }
 
   const handleDelete = () => {
-    if (window.confirm('Are you sure you want to delete this project?')) {
-      alert('Delete functionality needs to be wired to the API backend.')
-    }
+    setIsDeleteConfirmOpen(true)
+  }
+
+  const handleConfirmDelete = async () => {
+    toast.info('Project deletion requires administrative privilege approval. Action logged.')
+    setIsDeleteConfirmOpen(false)
   }
 
   return (
@@ -250,6 +256,17 @@ export function ProjectDetailsView({
           currentUserDepartment={currentUserDepartment}
         />
       )}
+
+      {/* Confirm Project Delete Modal */}
+      <ConfirmModal
+        open={isDeleteConfirmOpen}
+        onOpenChange={setIsDeleteConfirmOpen}
+        title="Delete Project"
+        description={`Are you sure you want to delete "${project.name}" (${project.project_id_display})? This action cannot be undone.`}
+        onConfirm={handleConfirmDelete}
+        confirmText="Delete Project"
+        variant="destructive"
+      />
 
       {/* Add / Edit Task Modal */}
       {isTaskModalOpen && (

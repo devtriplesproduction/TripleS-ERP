@@ -10,6 +10,8 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -284,7 +286,7 @@ export function ChangePasswordModal({
         <form onSubmit={handleSubmit} className="space-y-4 pt-1">
           {/* New Password Field */}
           <div className="space-y-1.5">
-            <label
+            <Label
               htmlFor="new-password-input"
               className="text-xs font-semibold text-foreground flex items-center justify-between"
             >
@@ -305,7 +307,7 @@ export function ChangePasswordModal({
                   </span>
                 </span>
               )}
-            </label>
+            </Label>
             <div className="relative">
               <Input
                 id="new-password-input"
@@ -353,7 +355,7 @@ export function ChangePasswordModal({
 
           {/* Confirm New Password Field */}
           <div className="space-y-1.5">
-            <label
+            <Label
               htmlFor="confirm-password-input"
               className="text-xs font-semibold text-foreground flex items-center justify-between"
             >
@@ -371,7 +373,7 @@ export function ChangePasswordModal({
                   )}
                 </span>
               )}
-            </label>
+            </Label>
             <div className="relative">
               <Input
                 id="confirm-password-input"
@@ -451,13 +453,14 @@ export function ChangePasswordModal({
                 : 'border-border/50 bg-muted/20'
             )}
           >
-            <label className="flex items-start gap-2.5 cursor-pointer select-none">
-              <input
-                type="checkbox"
+            <Label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <Checkbox
+                id="confirm-password-change"
                 checked={isConfirmed}
-                onChange={(e) => {
-                  setIsConfirmed(e.target.checked)
-                  if (e.target.checked) {
+                onCheckedChange={(checked) => {
+                  const val = !!checked
+                  setIsConfirmed(val)
+                  if (val) {
                     setShowConfirmError(false)
                     if (submitError?.includes('confirmation box')) {
                       setSubmitError(null)
@@ -465,14 +468,14 @@ export function ChangePasswordModal({
                   }
                 }}
                 disabled={!hasAccount || !canChangePassword || isSubmitting}
-                className="mt-0.5 h-4 w-4 rounded border-border text-foreground accent-foreground focus:ring-foreground/20 cursor-pointer"
+                className="mt-0.5"
               />
               <span className="text-xs text-muted-foreground leading-snug">
                 I confirm that I want to change the password for{' '}
                 <strong className="text-foreground">{fullName}</strong> ({employeeId}).
                 The employee must use this new password on their next sign-in.
               </span>
-            </label>
+            </Label>
           </div>
 
           {/* Footer Actions */}

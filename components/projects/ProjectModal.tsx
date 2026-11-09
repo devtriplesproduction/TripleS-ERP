@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Dropdown } from '@/components/ui/Dropdown'
 import { Project, ProjectStatus, ProjectPriority, Client } from '@/types/project-management'
@@ -222,13 +223,13 @@ export function ProjectModal({
             <Label htmlFor="proj-desc" className="text-sm font-medium">
               Description & Notes
             </Label>
-            <textarea
+            <Textarea
               id="proj-desc"
               rows={3}
               placeholder="Scope, constraints, architecture notes..."
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full text-sm bg-background border border-border rounded-md p-2.5 outline-hidden focus:border-foreground/50 transition-colors"
+              className="w-full text-sm bg-background border border-border rounded-md p-2.5 resize-none"
             />
           </div>
 

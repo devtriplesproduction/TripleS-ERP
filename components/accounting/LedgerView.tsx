@@ -5,12 +5,11 @@ import { LedgerTransaction, BankAccount } from '@/types/accounting'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Dropdown } from '@/components/ui/Dropdown'
-import { DatePicker } from '@/components/ui/date-picker'
-import { formatDate } from '@/lib/utils/date'
 import { AccountingNavTabs } from './AccountingNavTabs'
 import { ManualEntryModal } from './ManualEntryModal'
 import {
@@ -233,27 +232,23 @@ export function LedgerView({
             </span>
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">From:</span>
-              <div className="w-[140px]">
-                <DatePicker
-                  value={startDate}
-                  onChange={(val) => setStartDate(val)}
-                  placeholder="dd/mm/yyyy"
-                  isClearable
-                  className="h-8 text-xs bg-card border-border"
-                />
-              </div>
+              <DatePicker
+                value={startDate}
+                onChange={(val) => setStartDate(val)}
+                placeholder="From date"
+                isClearable
+                className="h-8 text-xs w-[140px] bg-card border-border"
+              />
             </div>
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">To:</span>
-              <div className="w-[140px]">
-                <DatePicker
-                  value={endDate}
-                  onChange={(val) => setEndDate(val)}
-                  placeholder="dd/mm/yyyy"
-                  isClearable
-                  className="h-8 text-xs bg-card border-border"
-                />
-              </div>
+              <DatePicker
+                value={endDate}
+                onChange={(val) => setEndDate(val)}
+                placeholder="To date"
+                isClearable
+                className="h-8 text-xs w-[140px] bg-card border-border"
+              />
             </div>
           </div>
         </CardContent>
@@ -294,7 +289,7 @@ export function LedgerView({
                 filtered.map((tx) => (
                   <TableRow key={tx.id} className="hover:bg-muted/30 transition-colors">
                     <TableCell className="text-muted-foreground text-xs whitespace-nowrap">
-                      {formatDate(tx.transaction_date)}
+                      {tx.transaction_date}
                     </TableCell>
                     <TableCell className="font-mono text-xs font-semibold text-foreground whitespace-nowrap">
                       {tx.reference_number}

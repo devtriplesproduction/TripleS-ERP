@@ -4,10 +4,9 @@ import { useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 import { Label } from '@/components/ui/label'
 import { Dropdown } from '@/components/ui/Dropdown'
-import { DatePicker } from '@/components/ui/date-picker'
-import { getTodayIST } from '@/lib/utils/date'
 import { toast } from 'sonner'
 import { Loader2, Plus, Scale } from 'lucide-react'
 import { BankAccount, LedgerTransactionType } from '@/types/accounting'
@@ -26,7 +25,7 @@ export function ManualEntryModal({
   onSuccess,
   bankAccounts,
 }: ManualEntryModalProps) {
-  const today = getTodayIST()
+  const today = new Date().toISOString().split('T')[0]
   const [transactionDate, setTransactionDate] = useState(today)
   const [referenceNumber, setReferenceNumber] = useState('')
   const [transactionType, setTransactionType] = useState<LedgerTransactionType>('ADJUSTMENT')
@@ -118,8 +117,8 @@ export function ManualEntryModal({
               <DatePicker
                 value={transactionDate}
                 onChange={(val) => setTransactionDate(val)}
-                placeholder="dd/mm/yyyy"
-                className="bg-input border-border"
+                placeholder="Select entry date"
+                className="bg-input border-border text-sm h-10"
               />
             </div>
 

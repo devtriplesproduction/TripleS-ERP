@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Pin,
   Archive,
@@ -214,10 +215,11 @@ export function NoteEditModal({
               type="button"
               onClick={handleTogglePin}
               title={isPinned ? 'Unpin note' : 'Pin note'}
-              className={`p-2 rounded-lg transition-colors cursor-pointer ${isPinned
+              className={`p-2 rounded-lg transition-colors cursor-pointer ${
+                isPinned
                   ? 'text-foreground bg-muted'
                   : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                }`}
+              }`}
             >
               <Pin className={`w-4 h-4 ${isPinned ? 'fill-current' : ''}`} />
             </button>
@@ -226,7 +228,7 @@ export function NoteEditModal({
 
         {/* Content Textarea */}
         <div className="flex-1 p-4 overflow-y-auto min-h-[160px] max-h-[55vh]">
-          <textarea
+          <Textarea
             value={content}
             onChange={(e) => handleContentChange(e.target.value)}
             placeholder="Note content..."
@@ -285,7 +287,7 @@ export function NoteEditModal({
               )}
               {saveStatus === 'idle' && note.updated_at && (
                 <span className="hidden sm:inline text-muted-foreground/70">
-                  Edited {dayjs(note.updated_at).format('DD MMM YYYY, h:mm A')}
+                  Edited {dayjs(note.updated_at).format('MMM D, h:mm A')}
                 </span>
               )}
             </div>

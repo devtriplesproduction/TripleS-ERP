@@ -23,6 +23,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Dropdown } from '@/components/ui/Dropdown'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Task, Project, TaskPriority, TaskStatus } from '@/types/project-management'
@@ -374,17 +375,19 @@ export function BugsIssuesView({
           </div>
 
           <div className="flex items-center gap-2">
-            <select
+            <Dropdown
               value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              className="h-9 px-3 text-xs bg-background border border-border/70 rounded-md text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
-            >
-              <option value="ALL">All Priorities</option>
-              <option value="URGENT">Urgent Priority</option>
-              <option value="HIGH">High Priority</option>
-              <option value="MEDIUM">Medium Priority</option>
-              <option value="LOW">Low Priority</option>
-            </select>
+              onChange={(val) => setPriorityFilter(val || 'ALL')}
+              options={[
+                { value: 'ALL', label: 'All Priorities' },
+                { value: 'URGENT', label: 'Urgent Priority' },
+                { value: 'HIGH', label: 'High Priority' },
+                { value: 'MEDIUM', label: 'Medium Priority' },
+                { value: 'LOW', label: 'Low Priority' },
+              ]}
+              className="w-auto space-y-0 shrink-0"
+              buttonClassName="!h-9 !min-h-[36px] !max-h-[36px] !text-xs px-3 rounded-lg border-border/80 bg-background font-normal min-w-[125px] shadow-xs hover:border-foreground/30 transition-colors"
+            />
 
             <Link href="/tasks">
               <Button variant="outline" size="sm" className="h-9 text-xs gap-1.5 shrink-0">

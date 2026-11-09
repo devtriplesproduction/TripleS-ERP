@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp, Clock, AlertTriangle, Edit2, XCircle, CheckCircle2, Loader2, Save, X, Smile } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { formatOfficeHoursAsHHMM, parseHHMM, validateHHMM, formatHoursMinutes, formatCanonicalDuration } from '@/lib/utils/time';
 
 export function EodCard({
@@ -195,7 +198,7 @@ export function EodCard({
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Worked Hours</label>
+                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Worked Hours</Label>
                     <input
                       type="text"
                       inputMode="decimal"
@@ -210,8 +213,8 @@ export function EodCard({
                   </div>
 
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Admin / HR Note</label>
-                    <textarea
+                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Admin / HR Note</Label>
+                    <Textarea
                       value={editForm.admin_note}
                       onChange={e => setEditForm(prev => ({ ...prev, admin_note: e.target.value }))}
                       placeholder="Add review comment..."

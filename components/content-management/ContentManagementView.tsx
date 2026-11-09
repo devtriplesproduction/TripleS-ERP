@@ -33,6 +33,9 @@ import {
 import { PageHeader } from '@/components/PageHeader'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
@@ -115,7 +118,7 @@ export function ContentManagementView({
   user,
 }: ContentManagementViewProps) {
   const [items, setItems] = useState<ContentItem[]>(initialItems || [])
-  
+
   // Main Tab: Task Board | Assignments | Deadlines
   const [activeTab, setActiveTab] = useState<MainTab>('board')
 
@@ -473,11 +476,11 @@ export function ContentManagementView({
       prev.map((i) =>
         i.id === taskId
           ? {
-              ...i,
-              status: newStatus,
-              progress: newProgress,
-              updated_at: new Date().toISOString(),
-            }
+            ...i,
+            status: newStatus,
+            progress: newProgress,
+            updated_at: new Date().toISOString(),
+          }
           : i
       )
     )
@@ -546,12 +549,12 @@ export function ContentManagementView({
       prev.map((i) =>
         i.id === itemId
           ? {
-              ...i,
-              assigned_to_id: newEmployeeId || null,
-              assigned_to_name: empName,
-              assigned_to_employee_id: empEmpId,
-              updated_at: new Date().toISOString(),
-            }
+            ...i,
+            assigned_to_id: newEmployeeId || null,
+            assigned_to_name: empName,
+            assigned_to_employee_id: empEmpId,
+            updated_at: new Date().toISOString(),
+          }
           : i
       )
     )
@@ -607,10 +610,10 @@ export function ContentManagementView({
       prev.map((i) =>
         i.id === itemId
           ? {
-              ...i,
-              due_date: newDue,
-              updated_at: new Date().toISOString(),
-            }
+            ...i,
+            due_date: newDue,
+            updated_at: new Date().toISOString(),
+          }
           : i
       )
     )
@@ -665,11 +668,11 @@ export function ContentManagementView({
       prev.map((i) =>
         i.id === itemId
           ? {
-              ...i,
-              start_date: newStartDate,
-              due_date: newDueDate,
-              updated_at: new Date().toISOString(),
-            }
+            ...i,
+            start_date: newStartDate,
+            due_date: newDueDate,
+            updated_at: new Date().toISOString(),
+          }
           : i
       )
     )
@@ -1763,8 +1766,8 @@ export function ContentManagementView({
                               capacityPercent >= 90
                                 ? "bg-rose-500"
                                 : capacityPercent >= 60
-                                ? "bg-amber-500"
-                                : "bg-emerald-500"
+                                  ? "bg-amber-500"
+                                  : "bg-emerald-500"
                             )}
                             style={{ width: `${capacityPercent}%` }}
                           />
@@ -1795,21 +1798,29 @@ export function ContentManagementView({
                             </div>
 
                             {/* In-place Reassign Dropdown (Content Staff Only) */}
-                            <select
+                            <Select
                               value={member.id}
-                              onChange={(e) => handleReassignTask(task.id, e.target.value)}
-                              className="h-6 text-[10px] bg-muted border border-border rounded px-1 text-muted-foreground hover:text-foreground outline-none cursor-pointer max-w-[100px] truncate"
-                              title="Reassign to another staff member"
+                              onValueChange={(val) => {
+                                if (val) handleReassignTask(task.id, val)
+                              }}
                             >
-                              <option value={member.id}>{member.name.split(' ')[0]}</option>
-                              {contentEmployees
-                                .filter((e) => e.id !== member.id)
-                                .map((e) => (
-                                  <option key={e.id} value={e.id}>
-                                    &rarr; {e.name?.split(' ')[0] || 'Staff'}
-                                  </option>
-                                ))}
-                            </select>
+                              <SelectTrigger
+                                className="h-6 text-[10px] bg-muted border border-border rounded px-1.5 text-muted-foreground hover:text-foreground outline-none cursor-pointer max-w-[100px] truncate"
+                                title="Reassign to another staff member"
+                              >
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value={member.id}>{member.name.split(' ')[0]}</SelectItem>
+                                {contentEmployees
+                                  .filter((e) => e.id !== member.id)
+                                  .map((e) => (
+                                    <SelectItem key={e.id} value={e.id}>
+                                      &rarr; {e.name?.split(' ')[0] || 'Staff'}
+                                    </SelectItem>
+                                  ))}
+                              </SelectContent>
+                            </Select>
                           </div>
                         ))
                       )}
@@ -2178,10 +2189,10 @@ export function ContentManagementView({
             <form onSubmit={handleCreateTask} className="p-6 space-y-4 overflow-y-auto flex-1">
               {/* Task Title */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
                   <span>Task Title <span className="text-rose-500">*</span></span>
                   <span className="text-[11px] text-muted-foreground font-normal">Actionable deliverable name</span>
-                </label>
+                </Label>
                 <Input
                   required
                   placeholder="e.g., Weekly Product Announcement Newsletter"
@@ -2193,27 +2204,27 @@ export function ContentManagementView({
 
               {/* Task Description */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
                   <span>Task Description <span className="text-rose-500">*</span></span>
                   <span className="text-[11px] text-muted-foreground font-normal">Summary of the deliverable</span>
-                </label>
-                <textarea
+                </Label>
+                <Textarea
                   required
                   rows={3}
                   placeholder="Outline the main purpose, goals, target audience, and key highlights of this task..."
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2.5 rounded-xl bg-muted/30 border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-y"
+                  className="w-full rounded-xl bg-muted/30 border border-border text-xs text-foreground resize-y"
                 />
               </div>
 
               {/* Assignment & Content Type */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                  <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-primary" />
                     <span>Assign Employee</span>
-                  </label>
+                  </Label>
                   <ContentEmployeeSelect
                     employees={contentEmployees}
                     value={formData.assigned_to_id}
@@ -2224,53 +2235,65 @@ export function ContentManagementView({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Content Type</label>
-                  <select
+                  <Label className="text-xs font-semibold text-foreground">Content Type</Label>
+                  <Select
                     value={formData.content_type}
-                    onChange={(e) => setFormData({ ...formData, content_type: e.target.value })}
-                    className="w-full h-10 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground font-medium outline-none cursor-pointer"
+                    onValueChange={(val) => setFormData({ ...formData, content_type: val || '' })}
                   >
-                    {contentTypeOptions.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
+                    <SelectTrigger className="w-full h-10 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground font-medium">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {contentTypeOptions.map((type) => (
+                        <SelectItem key={type} value={type}>
+                          {type}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
               {/* Priority, Task Status, Start Date & Due Date */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Priority</label>
-                  <select
+                  <Label className="text-xs font-semibold text-foreground">Priority</Label>
+                  <Select
                     value={formData.priority}
-                    onChange={(e) => setFormData({ ...formData, priority: e.target.value as ContentPriority })}
-                    className="w-full h-10 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground font-medium outline-none cursor-pointer"
+                    onValueChange={(val) => setFormData({ ...formData, priority: val as ContentPriority })}
                   >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                    <option value="Urgent">Urgent</option>
-                  </select>
+                    <SelectTrigger className="w-full h-10 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground font-medium">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Low">Low</SelectItem>
+                      <SelectItem value="Medium">Medium</SelectItem>
+                      <SelectItem value="High">High</SelectItem>
+                      <SelectItem value="Urgent">Urgent</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Task Status</label>
-                  <select
+                  <Label className="text-xs font-semibold text-foreground">Task Status</Label>
+                  <Select
                     value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value as ContentStatus })}
-                    className="w-full h-10 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground font-medium outline-none cursor-pointer"
+                    onValueChange={(val) => setFormData({ ...formData, status: val as ContentStatus })}
                   >
-                    <option value="To Do">To Do</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="In Review">In Review</option>
-                    <option value="Completed">Completed</option>
-                  </select>
+                    <SelectTrigger className="w-full h-10 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground font-medium">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="To Do">To Do</SelectItem>
+                      <SelectItem value="In Progress">In Progress</SelectItem>
+                      <SelectItem value="In Review">In Review</SelectItem>
+                      <SelectItem value="Completed">Completed</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Start Date</label>
+                  <Label className="text-xs font-semibold text-foreground">Start Date</Label>
                   <DatePicker
                     value={formData.start_date}
                     onChange={(val) => setFormData({ ...formData, start_date: val })}
@@ -2281,7 +2304,7 @@ export function ContentManagementView({
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-foreground">Due Date / Deadline</label>
+                  <Label className="text-xs font-semibold text-foreground">Due Date / Deadline</Label>
                   <DatePicker
                     value={formData.due_date}
                     onChange={(val) => setFormData({ ...formData, due_date: val })}
@@ -2294,25 +2317,25 @@ export function ContentManagementView({
 
               {/* Task Instructions */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+                <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
                   <span>Task Instructions & Guidelines (Optional)</span>
                   <span className="text-[11px] text-muted-foreground font-normal">Tone, word count, or required checklist</span>
-                </label>
-                <textarea
+                </Label>
+                <Textarea
                   rows={2}
                   placeholder="Provide detailed instructions, references, or specific rules for this task..."
                   value={formData.instructions}
                   onChange={(e) => setFormData({ ...formData, instructions: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-muted/30 border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all resize-y"
+                  className="w-full rounded-xl bg-muted/30 border border-border text-xs text-foreground resize-y"
                 />
               </div>
 
               {/* Reference Attachment (Optional) */}
               <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
                   <Paperclip className="w-3.5 h-3.5 text-primary" />
                   <span>Reference Attachment (Optional)</span>
-                </label>
+                </Label>
                 <div className="p-3 rounded-xl border border-dashed border-border bg-muted/20 flex flex-col sm:flex-row items-center justify-between gap-3">
                   <div className="space-y-0.5 text-center sm:text-left">
                     <p className="text-xs font-semibold text-foreground">
@@ -2323,7 +2346,7 @@ export function ContentManagementView({
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <label className="cursor-pointer px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors flex items-center gap-1.5">
+                    <Label className="cursor-pointer px-3 py-1.5 rounded-lg text-xs font-semibold bg-muted hover:bg-muted/80 text-foreground border border-border transition-colors flex items-center gap-1.5">
                       <UploadCloud className="w-3.5 h-3.5" />
                       <span>{attachmentFile ? 'Replace File' : 'Choose File'}</span>
                       <input
@@ -2337,7 +2360,7 @@ export function ContentManagementView({
                           }
                         }}
                       />
-                    </label>
+                    </Label>
                     {attachmentFile && (
                       <button
                         type="button"
@@ -2407,7 +2430,7 @@ export function ContentManagementView({
 
             <form onSubmit={handleSaveEditedTask} className="space-y-4">
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Title</label>
+                <Label className="text-xs font-semibold text-foreground">Title</Label>
                 <Input
                   required
                   value={editingItem.title}
@@ -2417,18 +2440,18 @@ export function ContentManagementView({
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Description</label>
-                <textarea
+                <Label className="text-xs font-semibold text-foreground">Description</Label>
+                <Textarea
                   rows={2}
                   value={editingItem.summary || ''}
                   onChange={(e) => setEditingItem({ ...editingItem, summary: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-muted/30 border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full rounded-xl bg-muted/30 border border-border text-xs text-foreground"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">Assign Employee</label>
+                  <Label className="text-xs font-semibold text-foreground">Assign Employee</Label>
                   <ContentEmployeeSelect
                     employees={contentEmployees}
                     value={editingItem.assigned_to_id}
@@ -2446,23 +2469,27 @@ export function ContentManagementView({
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">Priority</label>
-                  <select
+                  <Label className="text-xs font-semibold text-foreground">Priority</Label>
+                  <Select
                     value={editingItem.priority || 'Medium'}
-                    onChange={(e) => setEditingItem({ ...editingItem, priority: e.target.value as ContentPriority })}
-                    className="w-full h-9 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground outline-none"
+                    onValueChange={(val) => setEditingItem({ ...editingItem, priority: val as ContentPriority })}
                   >
-                    <option value="Low">Low</option>
-                    <option value="Medium">Medium</option>
-                    <option value="High">High</option>
-                    <option value="Urgent">Urgent</option>
-                  </select>
+                    <SelectTrigger className="w-full h-9 px-3 rounded-xl bg-muted/30 border border-border text-xs text-foreground">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Low">Low</SelectItem>
+                      <SelectItem value="Medium">Medium</SelectItem>
+                      <SelectItem value="High">High</SelectItem>
+                      <SelectItem value="Urgent">Urgent</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">Start Date</label>
+                  <Label className="text-xs font-semibold text-foreground">Start Date</Label>
                   <DatePicker
                     value={editingItem.start_date}
                     onChange={(val) => setEditingItem({ ...editingItem, start_date: val })}
@@ -2472,7 +2499,7 @@ export function ContentManagementView({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-xs font-semibold text-foreground">Due Date / Deadline</label>
+                  <Label className="text-xs font-semibold text-foreground">Due Date / Deadline</Label>
                   <DatePicker
                     value={editingItem.due_date}
                     onChange={(val) => setEditingItem({ ...editingItem, due_date: val })}
@@ -2484,12 +2511,12 @@ export function ContentManagementView({
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-semibold text-foreground">Instructions</label>
-                <textarea
+                <Label className="text-xs font-semibold text-foreground">Instructions</Label>
+                <Textarea
                   rows={2}
                   value={editingItem.instructions || ''}
                   onChange={(e) => setEditingItem({ ...editingItem, instructions: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl bg-muted/30 border border-border text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="w-full rounded-xl bg-muted/30 border border-border text-xs text-foreground"
                 />
               </div>
 

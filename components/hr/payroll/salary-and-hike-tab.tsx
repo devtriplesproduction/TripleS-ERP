@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { DatePicker } from '@/components/ui/date-picker'
@@ -16,11 +17,11 @@ import { cn } from '@/lib/utils'
 export function SalaryAndHikeTab({ employee }: { employee: any }) {
   const { toast } = useToast()
   const router = useRouter()
-
+  
   const [salaryHistory, setSalaryHistory] = useState<any[]>([])
   const [isLoadingHistory, setIsLoadingHistory] = useState(false)
   const [showInlineHikeForm, setShowInlineHikeForm] = useState(false)
-
+  
   const [incrementInput, setIncrementInput] = useState('')
   const [incrementEffectiveDate, setIncrementEffectiveDate] = useState('')
   const [isApplyingHike, setIsApplyingHike] = useState(false)
@@ -56,14 +57,14 @@ export function SalaryAndHikeTab({ employee }: { employee: any }) {
       toast({ title: 'Error', description: 'New salary cannot be lower than current salary.', variant: 'destructive' })
       return
     }
-
+    
     setIsApplyingHike(true)
     const incrementPercentage = calculateIncrementPercentage(currentSalary, newSalaryInput)
     const newPackage = newSalaryInput * 12
-
+    
     const res = await addSalaryIncrementAction(employee.id, currentSalary, newSalaryInput, incrementPercentage, incrementEffectiveDate, newPackage)
     setIsApplyingHike(false)
-
+    
     if (res.success) {
       toast({ title: 'Success', description: `Salary increment applied. New Package: ₹${newPackage.toLocaleString('en-IN')}` })
       setShowInlineHikeForm(false)
@@ -114,7 +115,7 @@ export function SalaryAndHikeTab({ employee }: { employee: any }) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-muted-foreground">Previous Salary (₹)</label>
+              <Label className="text-xs font-bold text-muted-foreground">Previous Salary (₹)</Label>
               <div className="relative">
                 <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
@@ -127,7 +128,7 @@ export function SalaryAndHikeTab({ employee }: { employee: any }) {
             </div>
 
             <div className="space-y-1">
-              <label className="text-xs font-bold text-muted-foreground">New Total Salary (₹) *</label>
+              <Label className="text-xs font-bold text-muted-foreground">New Total Salary (₹) *</Label>
               <div className="relative">
                 <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <input
@@ -144,7 +145,7 @@ export function SalaryAndHikeTab({ employee }: { employee: any }) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
             <div className="space-y-1">
-              <label className="text-xs font-bold text-muted-foreground">Effective From</label>
+              <Label className="text-xs font-bold text-muted-foreground">Effective From</Label>
               <DatePicker
                 value={incrementEffectiveDate}
                 onChange={(val) => setIncrementEffectiveDate(val)}

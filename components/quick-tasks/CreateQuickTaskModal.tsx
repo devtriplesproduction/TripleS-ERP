@@ -9,6 +9,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
+import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
   Plus,
@@ -128,10 +129,10 @@ export function CreateQuickTaskModal({
         <form onSubmit={handleSubmit} className="space-y-3.5">
           {/* Task Description */}
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-foreground flex items-center justify-between">
+            <Label className="text-xs font-semibold text-foreground flex items-center justify-between">
               <span>Task Description</span>
               <span className="text-[10px] text-muted-foreground font-normal">Required</span>
-            </label>
+            </Label>
             <Textarea
               value={description}
               onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
