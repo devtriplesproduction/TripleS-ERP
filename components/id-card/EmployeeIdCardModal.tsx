@@ -101,11 +101,13 @@ export function EmployeeIdCardModal({
             </DialogDescription>
           </div>
 
-          {/* Quick Toolbar: Three Buttons in One Line + Close */}
+          {/* Quick Toolbar: Three System Buttons in One Line + Close */}
           <div className="flex items-center gap-1.5 shrink-0 flex-nowrap self-end sm:self-auto overflow-x-auto py-0.5">
             {/* 1. Flip View Button */}
-            <button
+            <Button
               type="button"
+              variant={viewMode === 'interactive' ? 'default' : 'outline'}
+              size="sm"
               onClick={() => {
                 if (viewMode !== 'interactive') {
                   setViewMode('interactive')
@@ -113,44 +115,33 @@ export function EmployeeIdCardModal({
                   setIsFlipped(!isFlipped)
                 }
               }}
-              className={cn(
-                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap cursor-pointer transition-all border',
-                viewMode === 'interactive'
-                  ? 'bg-primary text-primary-foreground border-primary shadow-xs'
-                  : 'bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border-border/60'
-              )}
-              title={viewMode === 'interactive' ? 'Flip card face' : 'Switch to Single 3D Flip Card'}
+              className="gap-1.5 text-xs font-semibold whitespace-nowrap cursor-pointer transition-all"
+              title={viewMode === 'interactive' ? 'Click to flip card face' : 'Switch to Single 3D Flip Card'}
             >
               <RotateCw className="w-3.5 h-3.5 shrink-0" />
               <span>Flip View</span>
-            </button>
+            </Button>
 
             {/* 2. 2-Up View Button */}
-            <button
+            <Button
               type="button"
+              variant={viewMode === 'side-by-side' ? 'default' : 'outline'}
+              size="sm"
               onClick={() => setViewMode('side-by-side')}
-              className={cn(
-                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap cursor-pointer transition-all border',
-                viewMode === 'side-by-side'
-                  ? 'bg-primary text-primary-foreground border-primary shadow-xs'
-                  : 'bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border-border/60'
-              )}
+              className="gap-1.5 text-xs font-semibold whitespace-nowrap cursor-pointer transition-all"
               title="View Front & Back Side-by-Side"
             >
               <Columns className="w-3.5 h-3.5 shrink-0" />
               <span>2-Up View</span>
-            </button>
+            </Button>
 
             {/* 3. Light Card View Button */}
-            <button
+            <Button
               type="button"
+              variant={theme === 'light' ? 'default' : 'outline'}
+              size="sm"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className={cn(
-                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap cursor-pointer transition-all border',
-                theme === 'light'
-                  ? 'bg-amber-500/15 text-amber-500 border-amber-500/40 hover:bg-amber-500/25'
-                  : 'bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border-border/60'
-              )}
+              className="gap-1.5 text-xs font-semibold whitespace-nowrap cursor-pointer transition-all"
               title="Toggle Card Theme (Dark / Light)"
             >
               {theme === 'dark' ? (
@@ -164,14 +155,14 @@ export function EmployeeIdCardModal({
                   <span>Dark Card View</span>
                 </>
               )}
-            </button>
+            </Button>
 
             {/* Dedicated Header Close Button */}
             <Button
               variant="ghost"
-              size="icon"
+              size="icon-sm"
               onClick={onClose}
-              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground shrink-0 cursor-pointer ml-0.5"
+              className="text-muted-foreground hover:text-foreground shrink-0 cursor-pointer ml-0.5"
               title="Close modal"
             >
               <X className="h-4 w-4" />
