@@ -47,3 +47,4 @@ export function NavbarIdBadgeTrigger({ user }: NavbarIdBadgeTriggerProps) {
     </>
   )
 }
+
