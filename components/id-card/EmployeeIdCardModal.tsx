@@ -107,67 +107,77 @@ export function EmployeeIdCardModal({
             </DialogDescription>
           </div>
 
-          {/* Quick Toolbar */}
-          <div className="flex items-center gap-2 self-end sm:self-auto flex-wrap">
-            {/* View Mode Toggle */}
-            <div className="inline-flex items-center rounded-lg border border-border/60 bg-muted/40 p-0.5 text-xs">
-              <button
-                type="button"
-                onClick={() => setViewMode('interactive')}
-                className={cn(
-                  'flex items-center gap-1.5 px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer text-xs',
-                  viewMode === 'interactive'
-                    ? 'bg-background text-foreground shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-                title="Single 3D Flip Card"
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Flip View</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('side-by-side')}
-                className={cn(
-                  'flex items-center gap-1.5 px-2.5 py-1 rounded-md font-medium transition-all cursor-pointer text-xs',
-                  viewMode === 'side-by-side'
-                    ? 'bg-background text-foreground shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground'
-                )}
-                title="View Front & Back Side-by-Side"
-              >
-                <Columns className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">2-Up View</span>
-              </button>
-            </div>
+          {/* Quick Toolbar: Three Buttons in One Line + Close */}
+          <div className="flex items-center gap-1.5 shrink-0 flex-nowrap self-end sm:self-auto overflow-x-auto py-0.5">
+            {/* 1. Flip View Button */}
+            <button
+              type="button"
+              onClick={() => {
+                if (viewMode !== 'interactive') {
+                  setViewMode('interactive')
+                } else {
+                  setIsFlipped(!isFlipped)
+                }
+              }}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap cursor-pointer transition-all border',
+                viewMode === 'interactive'
+                  ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                  : 'bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border-border/60'
+              )}
+              title={viewMode === 'interactive' ? 'Flip card face' : 'Switch to Single 3D Flip Card'}
+            >
+              <RotateCw className="w-3.5 h-3.5 shrink-0" />
+              <span>Flip View</span>
+            </button>
 
-            {/* Theme Toggle Button */}
-            <Button
-              variant="outline"
-              size="sm"
+            {/* 2. 2-Up View Button */}
+            <button
+              type="button"
+              onClick={() => setViewMode('side-by-side')}
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap cursor-pointer transition-all border',
+                viewMode === 'side-by-side'
+                  ? 'bg-primary text-primary-foreground border-primary shadow-xs'
+                  : 'bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border-border/60'
+              )}
+              title="View Front & Back Side-by-Side"
+            >
+              <Columns className="w-3.5 h-3.5 shrink-0" />
+              <span>2-Up View</span>
+            </button>
+
+            {/* 3. Light Card View Button */}
+            <button
+              type="button"
               onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="h-7 px-2.5 gap-1.5 text-xs font-medium cursor-pointer"
+              className={cn(
+                'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-semibold whitespace-nowrap cursor-pointer transition-all border',
+                theme === 'light'
+                  ? 'bg-amber-500/15 text-amber-500 border-amber-500/40 hover:bg-amber-500/25'
+                  : 'bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground border-border/60'
+              )}
               title="Toggle Card Theme (Dark / Light)"
             >
               {theme === 'dark' ? (
                 <>
-                  <Sun className="w-3.5 h-3.5 text-amber-400" />
-                  <span className="hidden sm:inline">Light Card</span>
+                  <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>Light Card View</span>
                 </>
               ) : (
                 <>
-                  <Moon className="w-3.5 h-3.5 text-indigo-400" />
-                  <span className="hidden sm:inline">Dark Card</span>
+                  <Moon className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <span>Dark Card View</span>
                 </>
               )}
-            </Button>
+            </button>
 
             {/* Dedicated Header Close Button */}
             <Button
               variant="ghost"
               size="icon"
               onClick={onClose}
-              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
+              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground shrink-0 cursor-pointer ml-0.5"
               title="Close modal"
             >
               <X className="h-4 w-4" />
@@ -177,7 +187,12 @@ export function EmployeeIdCardModal({
         </div>
 
         {/* Modal Center: Full ID Card Single-View (No scroll down needed) */}
-        <div className="flex-1 overflow-hidden px-4 py-2.5 sm:py-3.5 bg-muted/15 flex flex-col items-center justify-center relative">
+        <div
+          className={cn(
+            'flex-1 overflow-hidden px-4 py-2.5 sm:py-3.5 flex flex-col items-center justify-center relative transition-colors duration-300',
+            theme === 'dark' ? 'bg-muted/15' : 'bg-slate-200/50'
+          )}
+        >
           {viewMode === 'interactive' ? (
             <div className="flex flex-col items-center justify-center gap-2 my-auto">
               <div className="relative group">
