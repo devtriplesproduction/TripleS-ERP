@@ -194,7 +194,7 @@ export function EmployeeIdCardModal({
           )}
         >
           {viewMode === 'interactive' ? (
-            <div className="flex flex-col items-center justify-center gap-3">
+            <div className="flex flex-col items-center justify-center">
               <div className="relative group">
                 <EmployeeIdCard
                   employee={employee}
@@ -204,22 +204,6 @@ export function EmployeeIdCardModal({
                   onFlip={() => setIsFlipped(!isFlipped)}
                   interactive={true}
                 />
-              </div>
-
-              {/* Sub-hint & Flip Button */}
-              <div className="flex items-center gap-2 mt-1">
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => setIsFlipped(!isFlipped)}
-                  className="h-7 gap-1.5 text-xs font-semibold px-3.5 rounded-full shadow-xs cursor-pointer border border-border/50"
-                >
-                  <RotateCw className="w-3 h-3 text-primary" />
-                  <span>Flip to {isFlipped ? 'Front Face' : 'Back Face'}</span>
-                </Button>
-                <span className="text-[11px] text-muted-foreground hidden sm:inline">
-                  (Or click card directly to flip)
-                </span>
               </div>
             </div>
           ) : (
