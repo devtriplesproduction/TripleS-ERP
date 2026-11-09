@@ -8,7 +8,6 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import {
   EmployeeIdCard,
   EmployeeIdCardData,
@@ -17,14 +16,9 @@ import {
 } from './EmployeeIdCard'
 import {
   RotateCw,
-  Sun,
-  Moon,
-  Columns,
-  Layers,
-  CreditCard,
+  Download,
   X
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
 
 interface EmployeeIdCardModalProps {
   isOpen: boolean
@@ -40,19 +34,21 @@ export function EmployeeIdCardModal({
   company = DEFAULT_COMPANY,
 }: EmployeeIdCardModalProps) {
   const [isFlipped, setIsFlipped] = useState(false)
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark')
-  const [viewMode, setViewMode] = useState<'interactive' | 'side-by-side'>('interactive')
+
+  const handleExportPDF = () => {
+    window.print()
+  }
 
   const employeeName =
     employee.fullName ||
     [employee.firstName, employee.lastName].filter(Boolean).join(' ') ||
-    'Employee'
+    'Staff Member'
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent
         showCloseButton={false}
-        className="w-[96vw] sm:!max-w-3xl md:!max-w-4xl lg:!max-w-5xl p-0 overflow-hidden border-border/80 bg-background/95 backdrop-blur-xl max-h-[92vh] flex flex-col shadow-2xl"
+        className="w-[96vw] sm:max-w-xl md:max-w-2xl p-6 sm:p-8 overflow-hidden border-zinc-800 bg-[#0b0c0e]/95 backdrop-blur-2xl flex flex-col items-center justify-center shadow-2xl rounded-3xl"
       >
         {/* Printable Section Style Sheet */}
         <style jsx global>{`
@@ -70,99 +66,37 @@ export function EmployeeIdCardModal({
               top: 0 !important;
               width: 100% !important;
               display: flex !important;
-              flex-direction: row !important;
-              justify-content: center !important;
-              gap: 20mm !important;
+              flex-direction: column !important;
+              align-items: center !important;
+              gap: 15mm !important;
               padding: 15mm !important;
               background: transparent !important;
-            }
-            .no-print {
-              display: none !important;
             }
           }
         `}</style>
 
-        {/* Modal Header */}
-        <div className="shrink-0 px-4 sm:px-6 py-2 sm:py-2.5 border-b border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
-                <CreditCard className="w-4 h-4" />
-              </div>
-              <DialogTitle className="text-sm sm:text-base font-bold tracking-tight whitespace-nowrap text-foreground">
-                Staff Identity Badge
-              </DialogTitle>
-              <Badge variant="outline" className="text-[11px] font-mono font-semibold shrink-0">
-                {employee.employeeId || 'EMP-001'}
-              </Badge>
-            </div>
-            <DialogDescription className="text-[11px] text-muted-foreground truncate max-w-sm sm:max-w-md">
-              Official digital credential for {employeeName} ({employee.department || 'Staff'}) • {company.companyName || 'Triple S Production'}
+        {/* Top Header Row with Centered Title & Right Close */}
+        <div className="w-full relative flex items-center justify-center mb-2">
+          {/* Centered Pill & Title */}
+          <div className="flex flex-col items-center justify-center text-center">
+            <span className="inline-flex items-center px-3 py-0.5 rounded-full text-[10.5px] font-semibold tracking-widest uppercase border border-purple-500/35 bg-purple-500/10 text-purple-300">
+              OFFICIAL DOCUMENT
+            </span>
+            <DialogTitle className="text-2xl font-bold tracking-tight text-white mt-1.5">
+              Digital Identity Card
+            </DialogTitle>
+            <DialogDescription className="sr-only">
+              Official digital identity badge for {employeeName}
             </DialogDescription>
           </div>
 
-          {/* Quick Toolbar: Three System Buttons in One Line + Close */}
-          <div className="flex items-center gap-1.5 shrink-0 flex-nowrap self-end sm:self-auto overflow-x-auto py-0.5">
-            {/* 1. Flip View Button */}
-            <Button
-              type="button"
-              variant={viewMode === 'interactive' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => {
-                if (viewMode !== 'interactive') {
-                  setViewMode('interactive')
-                } else {
-                  setIsFlipped(!isFlipped)
-                }
-              }}
-              className="gap-1.5 text-xs font-semibold whitespace-nowrap cursor-pointer transition-all"
-              title={viewMode === 'interactive' ? 'Click to flip card face' : 'Switch to Single 3D Flip Card'}
-            >
-              <RotateCw className="w-3.5 h-3.5 shrink-0" />
-              <span>Flip View</span>
-            </Button>
-
-            {/* 2. 2-Up View Button */}
-            <Button
-              type="button"
-              variant={viewMode === 'side-by-side' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setViewMode('side-by-side')}
-              className="gap-1.5 text-xs font-semibold whitespace-nowrap cursor-pointer transition-all"
-              title="View Front & Back Side-by-Side"
-            >
-              <Columns className="w-3.5 h-3.5 shrink-0" />
-              <span>2-Up View</span>
-            </Button>
-
-            {/* 3. Light Card View Button */}
-            <Button
-              type="button"
-              variant={theme === 'light' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-              className="gap-1.5 text-xs font-semibold whitespace-nowrap cursor-pointer transition-all"
-              title="Toggle Card Theme (Dark / Light)"
-            >
-              {theme === 'dark' ? (
-                <>
-                  <Sun className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                  <span>Light Card View</span>
-                </>
-              ) : (
-                <>
-                  <Moon className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                  <span>Dark Card View</span>
-                </>
-              )}
-            </Button>
-
-            {/* Dedicated Header Close Button */}
+          {/* Top Right Dedicated Close Button */}
+          <div className="absolute right-0 top-0">
             <Button
               variant="ghost"
-              size="icon-sm"
+              size="icon"
               onClick={onClose}
-              className="text-muted-foreground hover:text-foreground shrink-0 cursor-pointer ml-0.5"
+              className="h-8 w-8 rounded-full text-zinc-400 hover:text-white hover:bg-zinc-800/80 cursor-pointer"
               title="Close modal"
             >
               <X className="h-4 w-4" />
@@ -171,78 +105,61 @@ export function EmployeeIdCardModal({
           </div>
         </div>
 
-        {/* Modal Center: Full ID Card Single-View (Sleek minimized height) */}
-        <div
-          className={cn(
-            'flex-1 px-4 py-2.5 sm:py-3.5 flex flex-col items-center justify-center relative transition-colors duration-300 overflow-y-auto sm:overflow-hidden',
-            theme === 'dark' ? 'bg-muted/15' : 'bg-slate-200/50'
-          )}
-        >
-          {viewMode === 'interactive' ? (
-            <div className="flex flex-col items-center justify-center">
-              <div className="relative group">
-                <EmployeeIdCard
-                  employee={employee}
-                  company={company}
-                  theme={theme}
-                  isFlipped={isFlipped}
-                  onFlip={() => setIsFlipped(!isFlipped)}
-                  interactive={true}
-                />
-              </div>
-            </div>
-          ) : (
-            /* 2-Up Side-by-Side View */
-            <div className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 w-full max-w-4xl py-1">
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Front Face
-                </span>
-                <EmployeeIdCard
-                  employee={employee}
-                  company={company}
-                  theme={theme}
-                  isFlipped={false}
-                  interactive={false}
-                />
-              </div>
+        {/* Center Card Container */}
+        <div className="my-5 flex justify-center w-full">
+          <EmployeeIdCard
+            employee={employee}
+            company={company}
+            isFlipped={isFlipped}
+            onFlip={() => setIsFlipped(!isFlipped)}
+            interactive={true}
+          />
+        </div>
 
-              <div className="flex flex-col items-center gap-1">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Back Face
-                </span>
-                <EmployeeIdCard
-                  employee={employee}
-                  company={company}
-                  theme={theme}
-                  isFlipped={true}
-                  interactive={false}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Hidden Print Target Container */}
-          <div
-            id="triples-print-badge-container"
-            className="hidden"
-            style={{ display: 'none' }}
+        {/* Bottom Action Buttons (Matching Screenshot) */}
+        <div className="flex items-center justify-center gap-3 mt-1">
+          {/* Flip Card Pill */}
+          <Button
+            type="button"
+            onClick={() => setIsFlipped(!isFlipped)}
+            className="h-10 px-5 rounded-xl font-semibold bg-[#7c3aed] hover:bg-[#6d28d9] text-white shadow-md gap-2 cursor-pointer transition-all"
+            title="Click to flip ID card"
           >
-            <EmployeeIdCard
-              employee={employee}
-              company={company}
-              theme={theme}
-              isFlipped={false}
-              interactive={false}
-            />
-            <EmployeeIdCard
-              employee={employee}
-              company={company}
-              theme={theme}
-              isFlipped={true}
-              interactive={false}
-            />
-          </div>
+            <RotateCw className="w-4 h-4" />
+            <span>Flip Card</span>
+          </Button>
+
+          {/* Export as PDF Pill */}
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleExportPDF}
+            className="h-10 px-5 rounded-xl font-medium border-zinc-800 bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white shadow-sm gap-2 cursor-pointer transition-all"
+            title="Print or export ID badge as PDF"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export as PDF</span>
+          </Button>
+        </div>
+
+        {/* Hidden Print Target Container */}
+        <div
+          id="triples-print-badge-container"
+          className="hidden"
+          style={{ display: 'none' }}
+        >
+          <EmployeeIdCard
+            employee={employee}
+            company={company}
+            isFlipped={false}
+            interactive={false}
+          />
+          <EmployeeIdCard
+            employee={employee}
+            company={company}
+            isFlipped={true}
+            interactive={false}
+          />
         </div>
       </DialogContent>
     </Dialog>

@@ -2,22 +2,6 @@
 
 import React, { useState } from 'react'
 import Image from 'next/image'
-import {
-  Shield,
-  MapPin,
-  Phone,
-  Mail,
-  Globe,
-  Heart,
-  Calendar,
-  Building,
-  Briefcase,
-  QrCode,
-  Sparkles,
-  Wifi,
-  CheckCircle2,
-  AlertCircle
-} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export interface EmployeeIdCardData {
@@ -61,22 +45,19 @@ interface EmployeeIdCardProps {
 }
 
 export const DEFAULT_COMPANY: CompanyCardSettings = {
-  companyName: 'Triple S Production',
+  companyName: 'TripleS OS',
   companyAddress: 'Industrial Area Phase II, Okhla, New Delhi 110020, India',
   contactEmail: 'hr@triplesproduction.com',
-  contactPhone: '+91 11 4567 8900',
+  contactPhone: '+91 8956183973',
   website: 'www.triplesproduction.com',
   logoUrl: '/logo.png',
 }
 
 /**
- * Robust Emergency Contact parser that handles:
- * - "John Doe - Father - +91 98765 43210"
- * - "John Doe - Father - +91-98765-43210" (hyphenated numbers preserved)
- * - "+91 98765 43210" (phone only)
+ * Robust Emergency Contact parser
  */
 export function parseEmergencyContactDetails(contactStr?: string) {
-  const fallback = { name: 'Company HR Desk', relation: 'Office', phone: '+91 11 4567 8900' }
+  const fallback = { name: 'HR Desk', relation: 'Office', phone: '+91 8956183973' }
   if (!contactStr || !contactStr.trim()) return fallback
 
   const trimmed = contactStr.trim()
@@ -97,7 +78,6 @@ export function parseEmergencyContactDetails(contactStr?: string) {
     }
   }
 
-  // Fallback split on single hyphens with space check
   const parts = trimmed.split('-').map((p) => p.trim())
   if (parts.length >= 3) {
     return {
@@ -113,7 +93,6 @@ export function parseEmergencyContactDetails(contactStr?: string) {
 export function formatBadgeDate(dateStr?: string) {
   if (!dateStr || dateStr === '-' || dateStr === 'N/A') return 'N/A'
   try {
-    // Prevent midnight-UTC timezone rollback by parsing YYYY-MM-DD components
     const isoMatch = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/)
     let d: Date
     if (isoMatch) {
@@ -122,15 +101,15 @@ export function formatBadgeDate(dateStr?: string) {
       d = new Date(dateStr)
     }
     if (isNaN(d.getTime())) return dateStr
-    return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+    const month = d.getMonth() + 1
+    const day = d.getDate()
+    const year = d.getFullYear()
+    return `${month}/${day}/${year}`
   } catch {
     return dateStr
   }
 }
 
-/**
- * Calculate card expiration date (defaults to 3 years from joining date or current year + 2)
- */
 export function calculateExpiryDate(joiningDateStr?: string) {
   try {
     let base = new Date()
@@ -144,19 +123,45 @@ export function calculateExpiryDate(joiningDateStr?: string) {
     }
     const validBase = isNaN(base.getTime()) ? new Date() : base
     const exp = new Date(validBase)
-    exp.setFullYear(exp.getFullYear() + 3)
+    exp.setFullYear(exp.getFullYear() + 4)
     const month = (exp.getMonth() + 1).toString().padStart(2, '0')
     const year = exp.getFullYear()
     return `${month}/${year}`
   } catch {
-    return '11/2029'
+    return '12/2030'
   }
+}
+
+/**
+ * Modern stylized QR Code Matrix (Matching reference design)
+ */
+function IdBadgeQRCode({ className }: { className?: string }) {
+  return (
+    <div className={cn('w-10 h-10 text-white flex items-center justify-center shrink-0', className)}>
+      <svg viewBox="0 0 40 40" className="w-full h-full fill-current">
+        {/* Top-left position marker */}
+        <rect x="2" y="2" width="10" height="10" rx="2.5" fill="none" stroke="currentColor" strokeWidth="2.5" />
+        <circle cx="7" cy="7" r="2" />
+        {/* Top-right position marker */}
+        <rect x="28" y="2" width="10" height="10" rx="2.5" fill="none" stroke="currentColor" strokeWidth="2.5" />
+        <circle cx="33" cy="7" r="2" />
+        {/* Bottom-left position marker */}
+        <rect x="2" y="28" width="10" height="10" rx="2.5" fill="none" stroke="currentColor" strokeWidth="2.5" />
+        <circle cx="7" cy="33" r="2" />
+        {/* Dot pattern */}
+        <circle cx="17.5" cy="7" r="1.8" />
+        <circle cx="20" cy="20" r="2.2" />
+        <circle cx="33" cy="20" r="1.8" />
+        <circle cx="20" cy="33" r="1.8" />
+        <circle cx="33" cy="33" r="1.8" />
+      </svg>
+    </div>
+  )
 }
 
 export function EmployeeIdCard({
   employee,
   company = DEFAULT_COMPANY,
-  theme = 'dark',
   isFlipped: controlledFlipped,
   onFlip,
   interactive = true,
@@ -179,16 +184,19 @@ export function EmployeeIdCard({
     [employee.firstName, employee.lastName].filter(Boolean).join(' ') ||
     'Staff Member'
 
-  const employeeCode = employee.employeeId || 'EMP-001'
-  const designation = (employee.designation || employee.role || 'Team Member')
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (c) => c.toUpperCase())
-  const department = employee.department || 'Operations'
+  const employeeCode = employee.employeeId || employee.id || 'EMP-007'
+  const department = employee.department || 'Development'
+  const joinedDate = formatBadgeDate(employee.joiningDate) || '6/14/2026'
+  const location = employee.workLocation || 'OFFICE'
   const bloodGroup = employee.bloodGroup || 'O+'
-  const joiningDateFormatted = formatBadgeDate(employee.joiningDate)
-  const expiryFormatted = calculateExpiryDate(employee.joiningDate)
-  const emergency = parseEmergencyContactDetails(employee.emergencyContact)
-  const isWorking = employee.status?.toLowerCase() === 'working' || employee.status?.toLowerCase() === 'active'
+  const expiryDate = calculateExpiryDate(employee.joiningDate)
+  const emergency = parseEmergencyContactDetails(employee.emergencyContact || employee.phone)
+
+  // Reference alphanumeric token
+  const refCode = (employee.id || employeeCode)
+    .replace(/[^a-zA-Z0-9]/g, '')
+    .substring(0, 8)
+    .toUpperCase() || 'B9EFCBDA'
 
   const initials = fullName
     .split(' ')
@@ -196,8 +204,6 @@ export function EmployeeIdCard({
     .join('')
     .substring(0, 2)
     .toUpperCase()
-
-  const isDark = theme === 'dark'
 
   return (
     <div
@@ -207,363 +213,125 @@ export function EmployeeIdCard({
         interactive ? 'cursor-pointer' : 'cursor-default',
         className
       )}
-      style={{ width: '280px', height: '440px' }}
+      style={{ width: '540px', maxWidth: '100%', height: '330px' }}
       title={interactive ? 'Click to flip card' : undefined}
     >
       <div
         className={cn(
-          'relative w-full h-full duration-700 [transform-style:preserve-3d] transition-transform rounded-[20px]',
+          'relative w-full h-full duration-700 [transform-style:preserve-3d] transition-transform rounded-[22px]',
           isFlipped ? '[transform:rotateY(180deg)]' : ''
         )}
       >
         {/* ================================================================= */}
-        {/* FRONT SIDE                                                        */}
+        {/* FRONT SIDE (LANDSCAPE)                                            */}
         {/* ================================================================= */}
         <div
-          className={cn(
-            'absolute inset-0 w-full h-full rounded-[20px] overflow-hidden flex flex-col justify-between shadow-2xl border',
-            isDark
-              ? 'bg-gradient-to-b from-zinc-900 via-zinc-950 to-black text-zinc-100 border-zinc-800/90 shadow-[0_20px_50px_rgba(0,0,0,0.85)]'
-              : 'bg-gradient-to-b from-slate-50 via-white to-slate-100 text-slate-800 border-slate-300/80 shadow-[0_20px_45px_rgba(15,23,42,0.15)]'
-          )}
+          className="absolute inset-0 w-full h-full rounded-[22px] overflow-hidden flex flex-col justify-between shadow-2xl border border-zinc-800/90 bg-[#121316] text-white"
           style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
         >
-          {/* Subtle Background Pattern & Glows */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <div
-              className={cn(
-                'absolute -top-20 -right-20 w-52 h-52 rounded-full blur-3xl',
-                isDark ? 'bg-emerald-500 opacity-20' : 'bg-emerald-200/60 opacity-40'
-              )}
-            />
-            <div
-              className={cn(
-                'absolute -bottom-24 -left-24 w-52 h-52 rounded-full blur-3xl',
-                isDark ? 'bg-indigo-500 opacity-15' : 'bg-sky-200/50 opacity-40'
-              )}
-            />
-            {/* Holographic Security Micro-Grid Lines */}
-            <div
-              className={cn(
-                'absolute inset-0',
-                isDark ? 'opacity-[0.035]' : 'opacity-[0.05]'
-              )}
-              style={{
-                backgroundImage:
-                  'radial-gradient(circle at 1px 1px, currentColor 1px, transparent 0)',
-                backgroundSize: '16px 16px',
-              }}
-            />
+          {/* Top Brand Header Bar: Purple Accent */}
+          <div className="h-12 bg-[#7c3aed] px-5 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-black tracking-tight text-white leading-none">
+                {company.companyName || 'TripleS OS'}
+              </span>
+            </div>
+            <span className="text-[10px] font-mono font-bold tracking-[0.22em] uppercase text-white/95">
+              AGENCY PERSONNEL
+            </span>
           </div>
 
-          {/* FRONT HEADER: Prominent Brand & Badge Title */}
-          <div
-            className={cn(
-              'relative z-10 px-3.5 pt-3 pb-2.5 flex items-center justify-between border-b shadow-2xs shrink-0',
-              isDark
-                ? 'border-zinc-800/80 bg-zinc-950/70'
-                : 'border-slate-200/90 bg-white/95'
-            )}
-          >
-            <div className="flex items-center gap-2 min-w-0">
-              <div
-                className={cn(
-                  'w-7 h-7 rounded-lg flex items-center justify-center p-1 shrink-0 border shadow-xs',
-                  isDark
-                    ? 'bg-zinc-900 border-zinc-700/90'
-                    : 'bg-slate-50 border-slate-200'
-                )}
-              >
-                <Image
-                  src={company.logoUrl || '/logo.png'}
-                  alt="Triple S Production"
-                  width={20}
-                  height={20}
-                  className="object-contain"
-                  priority
-                />
-              </div>
-              <div className="leading-tight truncate text-left">
-                <span
-                  className={cn(
-                    'block text-[12.5px] font-black tracking-wider uppercase truncate',
-                    isDark ? 'text-zinc-100' : 'text-slate-900 font-extrabold'
-                  )}
-                >
-                  {company.companyName || 'Triple S Production'}
-                </span>
-                <span
-                  className={cn(
-                    'block text-[8px] tracking-[0.18em] font-bold uppercase',
-                    isDark ? 'text-emerald-400' : 'text-emerald-600'
-                  )}
-                >
-                  Staff Identity Card
-                </span>
-              </div>
-            </div>
-
-            {/* Contactless / NFC Wave Icon */}
-            <div className="flex items-center pl-1.5 shrink-0">
-              <Wifi
-                className={cn(
-                  'w-3.5 h-3.5 rotate-90 stroke-[2.2]',
-                  isDark ? 'text-zinc-400' : 'text-slate-600'
-                )}
-              />
-            </div>
-          </div>
-
-          {/* FRONT BODY: Photo, Smart Chip, and Identity Core */}
-          <div className="relative z-10 px-3.5 flex flex-col items-center pt-1 pb-1 text-center">
-            {/* Smart EMV Chip Graphic + Hologram Pill */}
-            <div className="w-full flex items-center justify-between px-0.5 mb-1">
-              <div
-                className={cn(
-                  'w-7 h-5 rounded border flex items-center justify-center relative overflow-hidden shadow-xs',
-                  isDark
-                    ? 'bg-gradient-to-tr from-amber-600 via-amber-400 to-yellow-200 border-amber-300/60'
-                    : 'bg-gradient-to-tr from-amber-400 via-yellow-300 to-amber-200 border-amber-400/80 shadow-xs'
-                )}
-                title="Secure Smart NFC"
-              >
-                <div className="absolute inset-0 border border-black/20 grid grid-cols-2 grid-rows-2">
-                  <div className="border-r border-b border-black/25" />
-                  <div className="border-b border-black/25" />
-                  <div className="border-r border-black/25" />
-                  <div />
-                </div>
-              </div>
-
-              {/* Holographic Pill */}
-              <div
-                className={cn(
-                  'text-[7.5px] font-extrabold tracking-widest uppercase px-2 py-0.5 rounded-full border flex items-center gap-1 shadow-xs',
-                  isDark
-                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                    : 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold'
-                )}
-              >
-                <Sparkles className={cn('w-2.5 h-2.5', isDark ? 'text-emerald-400' : 'text-emerald-700')} />
-                <span>Verified</span>
-              </div>
-            </div>
-
+          {/* Main Body (Left Photo, Right Grid) */}
+          <div className="flex-1 px-5 pt-4 pb-2 flex items-start gap-5">
             {/* Photo Container */}
-            <div className="relative mt-0.5 mb-1.5">
-              <div
-                className={cn(
-                  'w-[84px] h-[94px] rounded-2xl overflow-hidden p-1 shadow-md border-2',
-                  isDark
-                    ? 'bg-zinc-900 border-zinc-700/80 shadow-[0_4px_16px_rgba(0,0,0,0.6)]'
-                    : 'bg-white border-slate-300 shadow-[0_6px_16px_rgba(15,23,42,0.08)]'
-                )}
-              >
-                {employee.profilePhoto ? (
-                  <img
-                    src={employee.profilePhoto}
-                    alt={fullName}
-                    className="w-full h-full object-cover rounded-xl"
-                  />
-                ) : (
-                  <div
-                    className={cn(
-                      'w-full h-full rounded-xl flex flex-col items-center justify-center font-bold text-lg tracking-wider',
-                      isDark
-                        ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 text-zinc-300'
-                        : 'bg-gradient-to-br from-slate-100 to-slate-200 text-slate-800 font-extrabold'
-                    )}
-                  >
-                    <span>{initials}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Status Indicator Pip */}
-              <div
-                className={cn(
-                  'absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 flex items-center justify-center text-white text-[7.5px] shadow-sm',
-                  isDark ? 'border-zinc-950' : 'border-white',
-                  isWorking ? 'bg-emerald-500' : 'bg-neutral-500'
-                )}
-                title={isWorking ? 'Active' : 'Offline'}
-              >
-                <CheckCircle2 className="w-2.5 h-2.5" />
-              </div>
+            <div className="w-[100px] h-[112px] rounded-2xl overflow-hidden shrink-0 border border-zinc-700/60 bg-zinc-850 shadow-md">
+              {employee.profilePhoto ? (
+                <img
+                  src={employee.profilePhoto}
+                  alt={fullName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center font-bold text-2xl tracking-wider text-zinc-300 bg-gradient-to-br from-zinc-800 to-zinc-900">
+                  <span>{initials}</span>
+                </div>
+              )}
             </div>
 
-            {/* Employee Name & Code */}
-            <h2
-              className={cn(
-                'text-[14px] font-black tracking-tight leading-snug line-clamp-1',
-                isDark ? 'text-zinc-100' : 'text-slate-900'
-              )}
-            >
-              {fullName}
-            </h2>
-            <div className="mt-0.5 mb-1 flex items-center gap-1.5">
-              <span
-                className={cn(
-                  'text-[9px] font-mono font-bold px-1.5 py-0.5 rounded tracking-wider border',
-                  isDark
-                    ? 'bg-zinc-900 text-zinc-300 border-zinc-700/80'
-                    : 'bg-slate-100 text-slate-800 border-slate-300 font-semibold'
-                )}
-              >
-                {employeeCode}
+            {/* Information Core */}
+            <div className="flex-1 min-w-0 text-left">
+              <h2 className="text-xl font-bold text-white tracking-tight leading-tight truncate">
+                {fullName}
+              </h2>
+              <span className="inline-block text-[11px] font-extrabold text-emerald-400 tracking-wider uppercase mt-0.5">
+                EMPLOYEE
               </span>
-              <span
-                className={cn(
-                  'text-[9px] font-semibold',
-                  isDark ? 'text-zinc-500' : 'text-slate-400'
-                )}
-              >
-                •
-              </span>
-              <span
-                className={cn(
-                  'text-[9.5px] font-bold',
-                  isDark ? 'text-primary' : 'text-emerald-700'
-                )}
-              >
-                {department}
-              </span>
-            </div>
 
-            <p
-              className={cn(
-                'text-[10px] font-medium line-clamp-1 max-w-[240px]',
-                isDark ? 'text-zinc-400' : 'text-slate-600 font-semibold'
-              )}
-            >
-              {designation}
-            </p>
+              {/* 2x2 Details Grid */}
+              <div className="grid grid-cols-2 gap-x-6 gap-y-2.5 mt-2.5 text-left">
+                {/* ID Number */}
+                <div className="min-w-0">
+                  <span className="text-[8.5px] uppercase font-bold text-zinc-400 tracking-wider block">
+                    ID NUMBER
+                  </span>
+                  <span className="text-xs font-bold text-white font-mono break-all block leading-tight mt-0.5 truncate">
+                    {employeeCode}
+                  </span>
+                </div>
 
-            {/* 3-Column Quick Metrics Block */}
-            <div
-              className={cn(
-                'w-full grid grid-cols-3 gap-1 rounded-xl p-1.5 mt-2 border text-left shadow-2xs',
-                isDark
-                  ? 'bg-zinc-900/70 border-zinc-800/80'
-                  : 'bg-white/95 border-slate-200/90'
-              )}
-            >
-              <div>
-                <span
-                  className={cn(
-                    'text-[7px] uppercase tracking-wider font-bold block',
-                    isDark ? 'text-zinc-400' : 'text-slate-500'
-                  )}
-                >
-                  Joined
-                </span>
-                <span
-                  className={cn(
-                    'text-[8.5px] font-bold truncate block',
-                    isDark ? 'text-zinc-100' : 'text-slate-900'
-                  )}
-                >
-                  {joiningDateFormatted}
-                </span>
-              </div>
-              <div
-                className={cn(
-                  'border-x px-1',
-                  isDark ? 'border-zinc-800' : 'border-slate-200'
-                )}
-              >
-                <span
-                  className={cn(
-                    'text-[7px] uppercase tracking-wider font-bold block',
-                    isDark ? 'text-zinc-400' : 'text-slate-500'
-                  )}
-                >
-                  Blood Grp
-                </span>
-                <span className="text-[8.5px] font-bold text-rose-600 flex items-center gap-0.5">
-                  <Heart className="w-2.5 h-2.5 fill-rose-600" />
-                  {bloodGroup}
-                </span>
-              </div>
-              <div className="pl-0.5">
-                <span
-                  className={cn(
-                    'text-[7px] uppercase tracking-wider font-bold block',
-                    isDark ? 'text-zinc-400' : 'text-slate-500'
-                  )}
-                >
-                  Valid Thru
-                </span>
-                <span
-                  className={cn(
-                    'text-[8.5px] font-bold truncate block',
-                    isDark ? 'text-zinc-100' : 'text-slate-900'
-                  )}
-                >
-                  {expiryFormatted}
-                </span>
+                {/* Department */}
+                <div className="min-w-0">
+                  <span className="text-[8.5px] uppercase font-bold text-zinc-400 tracking-wider block">
+                    DEPARTMENT
+                  </span>
+                  <span className="text-xs font-semibold text-white block mt-0.5 truncate">
+                    {department}
+                  </span>
+                </div>
+
+                {/* Joined */}
+                <div className="min-w-0">
+                  <span className="text-[8.5px] uppercase font-bold text-zinc-400 tracking-wider block">
+                    JOINED
+                  </span>
+                  <span className="text-xs font-semibold text-white block mt-0.5">
+                    {joinedDate}
+                  </span>
+                </div>
+
+                {/* Location */}
+                <div className="min-w-0">
+                  <span className="text-[8.5px] uppercase font-bold text-zinc-400 tracking-wider block">
+                    LOCATION
+                  </span>
+                  <span className="text-xs font-semibold text-white uppercase block mt-0.5">
+                    {location}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
 
-          {/* FRONT FOOTER: Holographic Strip & Authorized Signatory */}
-          <div className="relative z-10 px-3.5 pb-2.5 pt-1">
-            <div
-              className={cn(
-                'flex items-end justify-between border-t pt-1.5',
-                isDark ? 'border-zinc-800/80' : 'border-slate-200'
-              )}
-            >
-              <div className="flex flex-col text-left">
-                <span
-                  className={cn(
-                    'text-[6.5px] font-mono tracking-widest uppercase font-semibold',
-                    isDark ? 'text-zinc-400' : 'text-slate-600'
-                  )}
-                >
-                  CARD ID: TSP-{employeeCode.replace(/\D/g, '').padStart(4, '0')}
-                </span>
-                <span
-                  className={cn(
-                    'text-[6px] font-medium',
-                    isDark ? 'text-zinc-500' : 'text-slate-500'
-                  )}
-                >
-                  SYSTEM GENERATED • SECURE IDENTIFIER
-                </span>
+          {/* Lower Strip: QR Code, Valid Thru, and Authorized Signature */}
+          <div className="h-16 bg-[#0c0d10] px-5 border-t border-zinc-800/80 flex items-center justify-between shrink-0">
+            {/* Left QR Pattern */}
+            <IdBadgeQRCode />
+
+            {/* Right Meta (Valid Thru + White Signature Box) */}
+            <div className="flex items-center gap-3">
+              {/* Valid Thru Pill */}
+              <div className="px-3 py-1 rounded-md bg-zinc-900 border border-zinc-800 text-[10.5px] font-mono text-zinc-400 flex items-center gap-1.5">
+                <span>VALID THRU</span>
+                <span className="text-white font-bold">{expiryDate}</span>
               </div>
 
-              {/* Stylized Executive Signatory */}
-              <div className="flex flex-col items-center">
-                <div className="h-4 w-16 flex items-center justify-center">
-                  <svg
-                    viewBox="0 0 100 30"
-                    className={cn(
-                      'w-full h-full stroke-current opacity-85',
-                      isDark ? 'text-zinc-300' : 'text-slate-800'
-                    )}
-                  >
-                    <path
-                      d="M 5 22 Q 25 5 45 18 T 85 10 T 95 24"
-                      fill="none"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                </div>
-                <div
-                  className={cn(
-                    'w-16 border-t mt-0.5',
-                    isDark ? 'border-zinc-700' : 'border-slate-400'
-                  )}
-                />
-                <span
-                  className={cn(
-                    'text-[6px] font-bold tracking-wider uppercase mt-0.5',
-                    isDark ? 'text-zinc-400' : 'text-slate-600'
-                  )}
-                >
-                  Authorized Signatory
+              {/* White Signature Card */}
+              <div className="rounded-lg bg-white px-5 py-1.5 shadow-sm text-center">
+                <span className="font-serif italic text-base font-bold text-zinc-900 leading-tight block">
+                  TripleS Admin
+                </span>
+                <span className="text-[7.5px] font-black uppercase tracking-wider text-zinc-600 block mt-0.5">
+                  AUTHORIZED SIGNATURE
                 </span>
               </div>
             </div>
@@ -571,259 +339,75 @@ export function EmployeeIdCard({
         </div>
 
         {/* ================================================================= */}
-        {/* BACK SIDE                                                         */}
+        {/* BACK SIDE (LANDSCAPE)                                             */}
         {/* ================================================================= */}
         <div
-          className={cn(
-            'absolute inset-0 w-full h-full rounded-[20px] overflow-hidden flex flex-col justify-between shadow-2xl border [transform:rotateY(180deg)]',
-            isDark
-              ? 'bg-gradient-to-b from-zinc-900 via-zinc-950 to-black text-zinc-100 border-zinc-800/90 shadow-[0_20px_50px_rgba(0,0,0,0.85)]'
-              : 'bg-gradient-to-b from-slate-50 via-white to-slate-100 text-slate-800 border-slate-300/80 shadow-[0_20px_45px_rgba(15,23,42,0.15)]'
-          )}
+          className="absolute inset-0 w-full h-full rounded-[22px] overflow-hidden flex flex-col justify-between shadow-2xl border border-zinc-800/90 bg-[#121316] text-white [transform:rotateY(180deg)]"
           style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
         >
-          {/* Top Magnetic Security Stripe */}
-          <div>
-            <div
-              className={cn(
-                'w-full h-7 flex items-center px-3.5 justify-between border-b',
-                isDark
-                  ? 'bg-gradient-to-r from-zinc-800 via-zinc-900 to-zinc-800 border-zinc-700/80 text-white'
-                  : 'bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 border-slate-700 text-white'
-              )}
-            >
-              <div className="flex items-center gap-1.5 overflow-hidden">
-                <span className="text-[7.5px] font-mono tracking-[0.16em] text-zinc-200 uppercase font-bold truncate">
-                  {company.companyName || 'Triple S Production'}
-                </span>
-                <span className="text-[7px] text-zinc-400">•</span>
-                <span className="text-[7px] font-mono tracking-[0.2em] text-zinc-300 uppercase shrink-0">
-                  SECURITY SMART ENCODING
-                </span>
-              </div>
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0 ml-1" />
-            </div>
-
-            {/* Corporate HQ Directory */}
-            <div className="px-3.5 pt-2 pb-1 space-y-1 text-[8.5px]">
-              <div className="flex items-start gap-1.5">
-                <MapPin
-                  className={cn(
-                    'w-2.5 h-2.5 shrink-0 mt-0.5',
-                    isDark ? 'text-primary' : 'text-emerald-700'
-                  )}
-                />
-                <p
-                  className={cn(
-                    'leading-snug line-clamp-2 text-left font-medium',
-                    isDark ? 'text-zinc-400' : 'text-slate-700'
-                  )}
-                >
-                  {company.companyAddress || DEFAULT_COMPANY.companyAddress}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <Phone
-                  className={cn(
-                    'w-2.5 h-2.5 shrink-0',
-                    isDark ? 'text-primary' : 'text-emerald-700'
-                  )}
-                />
-                <span
-                  className={cn(
-                    'font-bold',
-                    isDark ? 'text-zinc-100' : 'text-slate-900'
-                  )}
-                >
-                  {company.contactPhone || DEFAULT_COMPANY.contactPhone}
-                </span>
-              </div>
-
-              <div className="flex items-center gap-1.5">
-                <Mail
-                  className={cn(
-                    'w-2.5 h-2.5 shrink-0',
-                    isDark ? 'text-primary' : 'text-emerald-700'
-                  )}
-                />
-                <span
-                  className={cn(
-                    'font-bold',
-                    isDark ? 'text-zinc-100' : 'text-slate-900'
-                  )}
-                >
-                  {company.contactEmail || DEFAULT_COMPANY.contactEmail}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* BACK MIDDLE: Emergency & QR Code Verification */}
-          <div className="px-3.5 py-1 space-y-1.5">
-            {/* Emergency Contact Block */}
-            <div
-              className={cn(
-                'rounded-lg p-1.5 border shadow-2xs',
-                isDark
-                  ? 'bg-zinc-900/80 border-zinc-800'
-                  : 'bg-white/95 border-slate-200/90'
-              )}
-            >
-              <div className="flex items-center justify-between mb-0.5">
-                <div className="flex items-center gap-1 text-rose-600 font-bold text-[8px] uppercase tracking-wider">
-                  <AlertCircle className="w-2.5 h-2.5" />
-                  <span>In Case of Emergency</span>
-                </div>
-                <span
-                  className={cn(
-                    'text-[7px] font-mono font-semibold',
-                    isDark ? 'text-zinc-500' : 'text-slate-500'
-                  )}
-                >
-                  EMERGENCY SOS
-                </span>
-              </div>
-              <div className="text-[8.5px] space-y-0.5 text-left">
-                <p
-                  className={cn(
-                    'font-bold',
-                    isDark ? 'text-zinc-100' : 'text-slate-900'
-                  )}
-                >
-                  {emergency.name}{' '}
-                  <span
-                    className={cn(
-                      'font-normal',
-                      isDark ? 'text-zinc-400' : 'text-slate-600'
-                    )}
-                  >
-                    ({emergency.relation})
-                  </span>
-                </p>
-                <p
-                  className={cn(
-                    'font-mono font-bold',
-                    isDark ? 'text-primary' : 'text-emerald-700'
-                  )}
-                >
-                  {emergency.phone}
-                </p>
-              </div>
-            </div>
-
-            {/* Live Verification QR Block */}
-            <div
-              className={cn(
-                'rounded-lg p-1.5 border flex items-center gap-2 shadow-2xs',
-                isDark
-                  ? 'bg-zinc-900/50 border-zinc-800/80'
-                  : 'bg-white/95 border-slate-200/90'
-              )}
-            >
-              {/* SVG QR Code Pattern */}
-              <div className="p-1 rounded bg-white shrink-0 border border-slate-200 shadow-xs">
-                <svg viewBox="0 0 45 45" className="w-9 h-9 fill-zinc-950">
-                  <rect x="2" y="2" width="12" height="12" fill="none" stroke="#000" strokeWidth="2.5" />
-                  <rect x="5.5" y="5.5" width="5" height="5" />
-                  <rect x="31" y="2" width="12" height="12" fill="none" stroke="#000" strokeWidth="2.5" />
-                  <rect x="34.5" y="5.5" width="5" height="5" />
-                  <rect x="2" y="31" width="12" height="12" fill="none" stroke="#000" strokeWidth="2.5" />
-                  <rect x="5.5" y="31.5" width="5" height="5" />
-                  <rect x="18" y="4" width="3" height="3" />
-                  <rect x="24" y="4" width="3" height="3" />
-                  <rect x="18" y="10" width="3" height="3" />
-                  <rect x="4" y="18" width="3" height="3" />
-                  <rect x="10" y="18" width="3" height="3" />
-                  <rect x="18" y="18" width="3" height="3" />
-                  <rect x="24" y="18" width="3" height="3" />
-                  <rect x="32" y="18" width="3" height="3" />
-                  <rect x="38" y="18" width="3" height="3" />
-                  <rect x="4" y="24" width="3" height="3" />
-                  <rect x="18" y="24" width="3" height="3" />
-                  <rect x="24" y="24" width="3" height="3" />
-                  <rect x="38" y="24" width="3" height="3" />
-                  <rect x="18" y="32" width="3" height="3" />
-                  <rect x="24" y="32" width="3" height="3" />
-                  <rect x="32" y="32" width="3" height="3" />
-                  <rect x="38" y="38" width="3" height="3" />
-                </svg>
-              </div>
-
-              <div className="flex-1 text-left">
-                <span
-                  className={cn(
-                    'text-[8px] font-bold block',
-                    isDark ? 'text-zinc-100' : 'text-slate-900'
-                  )}
-                >
-                  Scan to Verify Badge
-                </span>
-                <span
-                  className={cn(
-                    'text-[7px] leading-tight block mt-0.5 font-medium',
-                    isDark ? 'text-zinc-400' : 'text-slate-600'
-                  )}
-                >
-                  Point camera to confirm real-time identity & employment clearance on TripleS OS.
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* BACK FOOTER: Terms & Barcode */}
-          <div className="px-3.5 pb-2 pt-0.5 space-y-1">
-            <ol
-              className={cn(
-                'list-decimal pl-3 text-[6.5px] leading-tight space-y-0.5 text-left font-medium',
-                isDark ? 'text-zinc-400' : 'text-slate-600'
-              )}
-            >
-              <li>This card remains the property of {company.companyName || 'Triple S Production'}.</li>
-              <li>Display visibly during office hours and client field visits.</li>
-              <li>If found, please return to the corporate address above.</li>
-            </ol>
-
-            {/* Alphanumeric Barcode Strip */}
-            <div className="pt-0.5 flex flex-col items-center">
-              <div
-                className={cn(
-                  'h-4.5 w-full flex items-center justify-center gap-[2px]',
-                  isDark ? 'opacity-80 text-zinc-300' : 'opacity-90 text-slate-800'
-                )}
-              >
-                <div className="w-[3px] h-full bg-current" />
-                <div className="w-[1px] h-full bg-current" />
-                <div className="w-[4px] h-full bg-current" />
-                <div className="w-[2px] h-full bg-current" />
-                <div className="w-[1px] h-full bg-current" />
-                <div className="w-[3px] h-full bg-current" />
-                <div className="w-[2px] h-full bg-current" />
-                <div className="w-[5px] h-full bg-current" />
-                <div className="w-[1px] h-full bg-current" />
-                <div className="w-[3px] h-full bg-current" />
-                <div className="w-[2px] h-full bg-current" />
-                <div className="w-[4px] h-full bg-current" />
-                <div className="w-[1px] h-full bg-current" />
-                <div className="w-[3px] h-full bg-current" />
-                <div className="w-[2px] h-full bg-current" />
-                <div className="w-[4px] h-full bg-current" />
-                <div className="w-[1px] h-full bg-current" />
-                <div className="w-[3px] h-full bg-current" />
-                <div className="w-[5px] h-full bg-current" />
-                <div className="w-[2px] h-full bg-current" />
-                <div className="w-[1px] h-full bg-current" />
-                <div className="w-[3px] h-full bg-current" />
-              </div>
-              <span
-                className={cn(
-                  'text-[6px] font-mono tracking-[0.25em] uppercase mt-0.5 font-semibold',
-                  isDark ? 'text-zinc-400' : 'text-slate-600'
-                )}
-              >
-                *{employeeCode}-{expiryFormatted.replace('/', '')}*
+          {/* Top Brand Header Bar: Purple Accent */}
+          <div className="h-12 bg-[#7c3aed] px-5 flex items-center justify-between shrink-0">
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-black tracking-tight text-white leading-none">
+                {company.companyName || 'TripleS OS'}
               </span>
             </div>
+            <span className="text-[10px] font-mono font-bold tracking-[0.22em] uppercase text-white/95">
+              AGENCY PERSONNEL
+            </span>
+          </div>
+
+          {/* Back Core Body */}
+          <div className="flex-1 px-5 py-3.5 flex flex-col justify-between text-left">
+            {/* Section Header */}
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-[#a855f7] block">
+                EMERGENCY CONTACT & MEDICAL
+              </span>
+
+              {/* 2-Column Emergency Data */}
+              <div className="mt-2.5 flex items-start justify-between gap-6">
+                <div>
+                  <span className="text-[8.5px] uppercase font-bold text-zinc-400 tracking-wider block">
+                    CONTACT NAME / PHONE
+                  </span>
+                  <span className="text-xs font-bold text-white block mt-0.5">
+                    {emergency.phone || company.contactPhone || '+91 8956183973'}
+                  </span>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-[8.5px] uppercase font-bold text-zinc-400 tracking-wider block">
+                    BLOOD GROUP
+                  </span>
+                  <span className="text-xs font-bold text-white block mt-0.5">
+                    {bloodGroup}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* White Digital Signature Strip */}
+            <div className="w-full rounded-md py-2 px-3 bg-white text-center text-xs font-medium italic text-zinc-600 shadow-sm border border-zinc-200">
+              Authorizing Digital Signature...
+            </div>
+
+            {/* Legal / Property Disclaimer */}
+            <p className="text-[9.5px] text-zinc-400 leading-relaxed text-left">
+              This ID remains property of TripleS OS. If found, please return to HR or contact{' '}
+              {emergency.phone || company.contactPhone || '+91 8956183973'}. Unauthorized use is prohibited.
+            </p>
+          </div>
+
+          {/* Lower Strip: QR Code & Reference Code */}
+          <div className="h-14 bg-[#0c0d10] px-5 border-t border-zinc-800/80 flex items-center justify-between shrink-0">
+            {/* Left QR Pattern */}
+            <IdBadgeQRCode />
+
+            {/* Right Reference Token */}
+            <span className="text-xs font-mono font-bold tracking-widest text-zinc-500 uppercase">
+              REF: {refCode}
+            </span>
           </div>
         </div>
       </div>

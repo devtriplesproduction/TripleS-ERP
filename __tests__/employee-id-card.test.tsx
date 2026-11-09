@@ -10,9 +10,9 @@ import {
   DEFAULT_COMPANY
 } from '../components/id-card/EmployeeIdCard'
 
-describe('EmployeeIdCard UI Component Tests', () => {
+describe('EmployeeIdCard UI Component Tests (Landscape Design)', () => {
   const sampleEmployee: EmployeeIdCardData = {
-    id: 'emp-002',
+    id: 'b9efcbda-434b-422c-9d49-f178e91c6d8a',
     firstName: 'Harishchandra',
     lastName: 'Nanavare',
     fullName: 'Harishchandra Nanavare',
@@ -26,23 +26,30 @@ describe('EmployeeIdCard UI Component Tests', () => {
     email: 'harish@triplesproduction.com',
     emergencyContact: 'Sunita Nanavare - Spouse - +91-98220-45678',
     status: 'Working',
+    workLocation: 'OFFICE',
   }
 
   describe('Front Face Rendering', () => {
-    it('renders employee name, ID badge, designation, and department in front view', () => {
+    it('renders employee name, ID number, department, location and brand headers', () => {
       const html = renderToStaticMarkup(
-        <EmployeeIdCard employee={sampleEmployee} isFlipped={false} theme="dark" />
+        <EmployeeIdCard employee={sampleEmployee} isFlipped={false} />
       )
 
       expect(html).toContain('Harishchandra Nanavare')
       expect(html).toContain('EMP-002')
       expect(html).toContain('Engineering')
-      expect(html).toContain('Senior Full-Stack Engineer')
-      expect(html).toContain('Triple S Production')
-      expect(html).toContain('Staff Identity Card')
-      expect(html).toContain('B+')
+      expect(html).toContain('TripleS OS')
+      expect(html).toContain('AGENCY PERSONNEL')
+      expect(html).toContain('EMPLOYEE')
+      expect(html).toContain('ID NUMBER')
+      expect(html).toContain('DEPARTMENT')
+      expect(html).toContain('JOINED')
+      expect(html).toContain('LOCATION')
+      expect(html).toContain('OFFICE')
+      expect(html).toContain('VALID THRU')
+      expect(html).toContain('AUTHORIZED SIGNATURE')
+      expect(html).toContain('TripleS Admin')
       expect(html).toContain('HN') // Initials fallback when no profile photo
-      expect(html).toContain('SYSTEM GENERATED • SECURE IDENTIFIER')
     })
 
     it('renders profile photo image when profilePhoto url is supplied', () => {
@@ -52,57 +59,30 @@ describe('EmployeeIdCard UI Component Tests', () => {
       }
 
       const html = renderToStaticMarkup(
-        <EmployeeIdCard employee={employeeWithPhoto} isFlipped={false} theme="dark" />
+        <EmployeeIdCard employee={employeeWithPhoto} isFlipped={false} />
       )
 
       expect(html).toContain('src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200"')
       expect(html).toContain('alt="Harishchandra Nanavare"')
     })
-
-    it('renders active verified status check and smart NFC chip', () => {
-      const html = renderToStaticMarkup(
-        <EmployeeIdCard employee={sampleEmployee} isFlipped={false} theme="dark" />
-      )
-
-      expect(html).toContain('Verified')
-      expect(html).toContain('Secure Smart NFC')
-    })
   })
 
   describe('Back Face Rendering', () => {
-    it('renders magnetic stripe, company address, and emergency contact details in back view', () => {
+    it('renders emergency contact, blood group, signature strip and disclaimer in back view', () => {
       const html = renderToStaticMarkup(
-        <EmployeeIdCard employee={sampleEmployee} isFlipped={true} theme="dark" />
+        <EmployeeIdCard employee={sampleEmployee} isFlipped={true} />
       )
 
-      expect(html).toContain('SECURITY SMART ENCODING')
-      expect(html).toContain('Industrial Area Phase II, Okhla')
-      expect(html).toContain('Sunita Nanavare')
-      expect(html).toContain('(Spouse)')
+      expect(html).toContain('TripleS OS')
+      expect(html).toContain('AGENCY PERSONNEL')
+      expect(html).toContain('EMERGENCY CONTACT &amp; MEDICAL')
+      expect(html).toContain('CONTACT NAME / PHONE')
       expect(html).toContain('+91-98220-45678')
-      expect(html).toContain('Scan to Verify Badge')
-      expect(html).toContain('This card remains the property of Triple S Production')
-      expect(html).toContain('*EMP-002-')
-    })
-  })
-
-  describe('Theme Customization', () => {
-    it('applies dark gradient styling in dark mode', () => {
-      const html = renderToStaticMarkup(
-        <EmployeeIdCard employee={sampleEmployee} isFlipped={false} theme="dark" />
-      )
-
-      expect(html).toContain('from-zinc-900 via-zinc-950 to-black')
-      expect(html).toContain('text-zinc-100')
-    })
-
-    it('applies light gradient styling in light mode', () => {
-      const html = renderToStaticMarkup(
-        <EmployeeIdCard employee={sampleEmployee} isFlipped={false} theme="light" />
-      )
-
-      expect(html).toContain('from-slate-50 via-white to-slate-100')
-      expect(html).toContain('text-slate-800')
+      expect(html).toContain('BLOOD GROUP')
+      expect(html).toContain('B+')
+      expect(html).toContain('Authorizing Digital Signature...')
+      expect(html).toContain('This ID remains property of TripleS OS.')
+      expect(html).toContain('REF:')
     })
   })
 
@@ -116,21 +96,20 @@ describe('EmployeeIdCard UI Component Tests', () => {
 
     it('falls back gracefully on empty or null emergency contact string', () => {
       const parsed = parseEmergencyContactDetails(undefined)
-      expect(parsed.name).toBe('Company HR Desk')
+      expect(parsed.name).toBe('HR Desk')
       expect(parsed.relation).toBe('Office')
-      expect(parsed.phone).toBe('+91 11 4567 8900')
+      expect(parsed.phone).toBe('+91 8956183973')
     })
 
     it('formats badge dates cleanly', () => {
-      expect(formatBadgeDate('2024-03-15')).toBe('15 Mar 2024')
+      expect(formatBadgeDate('2024-03-15')).toBe('3/15/2024')
       expect(formatBadgeDate('')).toBe('N/A')
       expect(formatBadgeDate('-')).toBe('N/A')
     })
 
-    it('calculates 3-year card expiry date accurately', () => {
+    it('calculates 4-year card expiry date accurately', () => {
       const expiry = calculateExpiryDate('2024-05-10')
-      expect(expiry).toBe('05/2027')
+      expect(expiry).toBe('05/2028')
     })
   })
 })
-
