@@ -81,7 +81,7 @@ describe('EmployeeIdCard UI Component Tests', () => {
       expect(html).toContain('(Spouse)')
       expect(html).toContain('+91-98220-45678')
       expect(html).toContain('Scan to Verify Badge')
-      expect(html).toContain('This card remains the exclusive property of Triple S Production')
+      expect(html).toContain('This card remains the property of Triple S Production')
       expect(html).toContain('*EMP-002-')
     })
   })
@@ -133,3 +133,4 @@ describe('EmployeeIdCard UI Component Tests', () => {
     })
   })
 })
+

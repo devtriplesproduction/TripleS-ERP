@@ -4,7 +4,6 @@ import React, { useState } from 'react'
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog'
@@ -25,8 +24,7 @@ import {
   Layers,
   CreditCard,
   CheckCircle2,
-  Sparkles,
-  Download
+  X
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -58,7 +56,10 @@ export function EmployeeIdCardModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-4xl p-0 overflow-hidden border-border/80 bg-background/95 backdrop-blur-xl">
+      <DialogContent
+        showCloseButton={false}
+        className="sm:!max-w-2xl md:!max-w-3xl lg:!max-w-4xl w-[95vw] p-0 overflow-hidden border-border/80 bg-background/95 backdrop-blur-xl max-h-[92vh] flex flex-col shadow-2xl"
+      >
         {/* Printable Section Style Sheet */}
         <style jsx global>{`
           @media print {
@@ -88,26 +89,26 @@ export function EmployeeIdCardModal({
         `}</style>
 
         {/* Modal Header */}
-        <div className="px-6 pt-6 pb-4 border-b border-border/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
+        <div className="shrink-0 px-5 sm:px-6 pt-5 pb-3.5 border-b border-border/50 flex flex-col md:flex-row md:items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
                 <CreditCard className="w-4 h-4" />
               </div>
-              <DialogTitle className="text-lg font-bold tracking-tight">
+              <DialogTitle className="text-base sm:text-lg font-bold tracking-tight whitespace-nowrap text-foreground">
                 Staff Identity Badge
               </DialogTitle>
-              <Badge variant="outline" className="text-xs font-mono font-semibold">
+              <Badge variant="outline" className="text-xs font-mono font-semibold shrink-0">
                 {employee.employeeId || 'EMP-001'}
               </Badge>
             </div>
-            <DialogDescription className="text-xs text-muted-foreground">
+            <DialogDescription className="text-xs text-muted-foreground truncate max-w-md">
               Official digital credential for {employeeName} ({employee.department || 'Staff'}).
             </DialogDescription>
           </div>
 
           {/* Quick Toolbar */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-end md:self-auto flex-wrap">
             {/* View Mode Toggle */}
             <div className="inline-flex items-center rounded-lg border border-border/60 bg-muted/40 p-0.5 text-xs">
               <button
@@ -160,13 +161,25 @@ export function EmployeeIdCardModal({
                 </>
               )}
             </Button>
+
+            {/* Dedicated Header Close Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
+              title="Close modal"
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </Button>
           </div>
         </div>
 
-        {/* Modal Center: Card Display Area */}
-        <div className="p-6 md:p-8 bg-muted/15 flex flex-col items-center justify-center min-h-[460px] relative overflow-hidden">
+        {/* Modal Center: Scrollable Card Display Area */}
+        <div className="flex-1 overflow-y-auto px-4 py-5 sm:p-6 bg-muted/15 flex flex-col items-center justify-center min-h-[460px] relative">
           {viewMode === 'interactive' ? (
-            <div className="flex flex-col items-center gap-4">
+            <div className="flex flex-col items-center gap-3.5 my-auto">
               <div className="relative group">
                 <EmployeeIdCard
                   employee={employee}
@@ -179,12 +192,12 @@ export function EmployeeIdCardModal({
               </div>
 
               {/* Sub-hint & Flip Button */}
-              <div className="flex items-center gap-2 mt-1">
+              <div className="flex items-center gap-2 mt-0.5">
                 <Button
                   variant="secondary"
                   size="sm"
                   onClick={() => setIsFlipped(!isFlipped)}
-                  className="h-8 gap-1.5 text-xs font-semibold px-4 rounded-full shadow-xs cursor-pointer"
+                  className="h-8 gap-1.5 text-xs font-semibold px-4 rounded-full shadow-xs cursor-pointer border border-border/50"
                 >
                   <RotateCw className="w-3.5 h-3.5 text-primary" />
                   <span>Flip to {isFlipped ? 'Front Face' : 'Back Face'}</span>
@@ -196,10 +209,10 @@ export function EmployeeIdCardModal({
             </div>
           ) : (
             /* 2-Up Side-by-Side View */
-            <div className="flex flex-wrap items-center justify-center gap-6 md:gap-8 w-full max-w-3xl py-2">
-              <div className="flex flex-col items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-6 w-full max-w-3xl my-auto py-2">
+              <div className="flex flex-col items-center gap-1.5">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Front Side
+                  Front Face
                 </span>
                 <EmployeeIdCard
                   employee={employee}
@@ -207,13 +220,12 @@ export function EmployeeIdCardModal({
                   theme={theme}
                   isFlipped={false}
                   interactive={false}
-                  className="scale-95 origin-top"
                 />
               </div>
 
-              <div className="flex flex-col items-center gap-2">
+              <div className="flex flex-col items-center gap-1.5">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Back Side
+                  Back Face
                 </span>
                 <EmployeeIdCard
                   employee={employee}
@@ -221,7 +233,6 @@ export function EmployeeIdCardModal({
                   theme={theme}
                   isFlipped={true}
                   interactive={false}
-                  className="scale-95 origin-top"
                 />
               </div>
             </div>
@@ -250,11 +261,11 @@ export function EmployeeIdCardModal({
           </div>
         </div>
 
-        {/* Modal Footer */}
-        <div className="px-6 py-4 border-t border-border/50 bg-background flex flex-col sm:flex-row items-center justify-between gap-3">
+        {/* Pinned Modal Footer */}
+        <div className="shrink-0 px-5 sm:px-6 py-3 border-t border-border/50 bg-background flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
-            <span>CR80 ISO standard format (53.98 × 85.6 mm) ready for laminate badge printing.</span>
+            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+            <span>ISO CR80 standard badge format (53.98 × 85.6 mm) with scan verification.</span>
           </div>
 
           <div className="flex items-center gap-2 w-full sm:w-auto">

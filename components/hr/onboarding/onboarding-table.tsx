@@ -17,9 +17,8 @@ import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { ConfirmModal } from '@/components/ui/confirm-modal'
 import { DatePicker } from '@/components/ui/date-picker'
-import { formatDateReadable } from '@/lib/utils/date'
 import { EmployeePagination } from '@/components/ui/pagination'
-import { ChevronLeft, ChevronRight, Trash2, Search, Filter, Loader2, Eye, Calendar, Building2, Briefcase, Star, X } from 'lucide-react'
+import { Trash2, Search, Filter, Loader2, Eye, Calendar, Building2, Briefcase, Star, X, CreditCard } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 import { Employee } from '@/lib/supabase/types'
@@ -27,6 +26,8 @@ import { createClient } from '@/lib/supabase/client'
 import { deleteEmployee, deleteEmployeesBulk } from '@/lib/actions/onboarding'
 import { useToast } from '@/hooks/use-toast'
 import { useAnimatedPlaceholder } from '@/hooks/use-animated-placeholder'
+import { EmployeeIdCardModal } from '@/components/id-card/EmployeeIdCardModal'
+import type { EmployeeIdCardData } from '@/components/id-card/EmployeeIdCard'
 
 const SEARCH_PHRASES = [
   'Search by name...',
@@ -51,6 +52,7 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
   const [statusFilter, setStatusFilter] = useState('')
   const [currentPage, setCurrentPage] = useState(1)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc')
+  const [selectedIdCardEmployee, setSelectedIdCardEmployee] = useState<EmployeeIdCardData | null>(null)
   const itemsPerPage = 10
 
   const uniqueDepartments = Array.from(new Set(employees.map(e => e.department))).filter(Boolean)
@@ -289,7 +291,7 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
                     <TableCell className="text-sm text-foreground">{emp.department || 'Not Set'}</TableCell>
                     <TableCell className="text-sm text-foreground">{emp.job_title || 'Not Set'}</TableCell>
                     <TableCell className="text-sm text-foreground">
-                      {formatDateReadable(emp.joining_date)}
+                      {new Date(emp.joining_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </TableCell>
                     <TableCell>
                       <Badge className={cn(
@@ -305,6 +307,31 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
                     </TableCell>
                     <TableCell className="text-right pr-4">
                       <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => setSelectedIdCardEmployee({
+                            id: emp.id,
+                            firstName: emp.first_name,
+                            lastName: emp.last_name,
+                            fullName: `${emp.first_name || ''} ${emp.last_name || ''}`.trim(),
+                            employeeId: emp.employee_id_number || (emp as any).employee_id || 'EMP-001',
+                            designation: emp.designation || emp.job_title || 'Staff Member',
+                            department: emp.department || 'Operations',
+                            dob: emp.dob || undefined,
+                            joiningDate: emp.joining_date || undefined,
+                            bloodGroup: (emp as any).blood_group || 'O+',
+                            phone: emp.phone || undefined,
+                            email: emp.email || undefined,
+                            emergencyContact: emp.emergency_contact || undefined,
+                            profilePhoto: emp.profile_photo || undefined,
+                            status: emp.status || emp.employment_status || 'Active',
+                          })}
+                          className="h-8 w-8 bg-input hover:bg-primary/10 text-muted-foreground hover:text-primary rounded-md border border-border cursor-pointer"
+                          title="View & Print ID Badge"
+                        >
+                          <CreditCard className="h-4 w-4" />
+                        </Button>
                         <ConfirmModal
                           title="Delete Employee"
                           description={`Are you sure you want to delete ${emp.first_name} ${emp.last_name}? This action cannot be undone.`}
@@ -419,7 +446,7 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
                       <Calendar className="w-3 h-3" /> Joined
                     </span>
                     <span className="font-medium text-foreground">
-                      {formatDateReadable(emp.joining_date)}
+                      {new Date(emp.joining_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
                     </span>
                   </div>
                 </div>
@@ -438,46 +465,26 @@ export function OnboardingTable({ employees }: { employees: Employee[] }) {
         </div>
         
         {/* Pagination Footer */}
-        {totalPages > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 sm:px-6 py-4 border-t border-border bg-card">
-            <p className="text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
-              Showing {(currentPage - 1) * itemsPerPage + 1} to {Math.min(currentPage * itemsPerPage, sortedEmployees.length)} of {sortedEmployees.length} results
-            </p>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-8 w-8 bg-transparent border-border text-muted-foreground hover:bg-muted disabled:opacity-50" 
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <Button 
-                  key={page}
-                  variant={currentPage === page ? "default" : "outline"}
-                  size="icon" 
-                  className={cn("h-8 w-8 text-xs", currentPage !== page && "bg-transparent border-border text-muted-foreground hover:bg-muted")}
-                  onClick={() => setCurrentPage(page)}
-                >
-                  {page}
-                </Button>
-              ))}
-              <Button 
-                variant="outline" 
-                size="icon" 
-                className="h-8 w-8 bg-transparent border-border text-muted-foreground hover:bg-muted disabled:opacity-50"
-                disabled={currentPage === totalPages}
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
+        {sortedEmployees.length > 0 && (
+          <EmployeePagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={sortedEmployees.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setCurrentPage}
+            itemLabel="employees"
+          />
         )}
+        </div>
 
-      </div>
+      {/* ID Badge Preview Modal */}
+      {selectedIdCardEmployee && (
+        <EmployeeIdCardModal
+          isOpen={!!selectedIdCardEmployee}
+          onClose={() => setSelectedIdCardEmployee(null)}
+          employee={selectedIdCardEmployee}
+        />
+      )}
     </div>
   )
 }

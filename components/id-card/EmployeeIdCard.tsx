@@ -203,11 +203,11 @@ export function EmployeeIdCard({
     <div
       onClick={handleCardClick}
       className={cn(
-        'relative select-none [perspective:1200px]',
+        'relative select-none [perspective:1200px] shrink-0',
         interactive ? 'cursor-pointer' : 'cursor-default',
         className
       )}
-      style={{ width: '340px', height: '540px' }}
+      style={{ width: '320px', height: '506px' }}
       title={interactive ? 'Click to flip card' : undefined}
     >
       <div
@@ -232,13 +232,13 @@ export function EmployeeIdCard({
           <div className="absolute inset-0 pointer-events-none overflow-hidden">
             <div
               className={cn(
-                'absolute -top-24 -right-24 w-60 h-60 rounded-full blur-3xl opacity-20',
+                'absolute -top-20 -right-20 w-56 h-56 rounded-full blur-3xl opacity-20',
                 isDark ? 'bg-emerald-500' : 'bg-blue-400'
               )}
             />
             <div
               className={cn(
-                'absolute -bottom-28 -left-28 w-60 h-60 rounded-full blur-3xl opacity-15',
+                'absolute -bottom-24 -left-24 w-56 h-56 rounded-full blur-3xl opacity-15',
                 isDark ? 'bg-indigo-500' : 'bg-indigo-400'
               )}
             />
@@ -254,26 +254,25 @@ export function EmployeeIdCard({
           </div>
 
           {/* FRONT HEADER: Brand & Badge Title */}
-          <div className="relative z-10 px-5 pt-4 pb-2 flex items-center justify-between border-b border-border/40">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-zinc-950/80 border border-zinc-700/80 flex items-center justify-center p-1 shadow-xs">
+          <div className="relative z-10 px-4 pt-3.5 pb-2 flex items-center justify-between border-b border-border/40">
+            <div className="flex items-center gap-2">
+              <div className="w-7 h-7 rounded-lg bg-zinc-950/80 border border-zinc-700/80 flex items-center justify-center p-1 shadow-xs">
                 <Image
                   src={company.logoUrl || '/logo.png'}
                   alt="TripleS Logo"
-                  width={24}
-                  height={24}
+                  width={20}
+                  height={20}
                   className="object-contain"
                   onError={(e) => {
-                    // Fallback to text icon if logo fails
                     e.currentTarget.style.display = 'none'
                   }}
                 />
               </div>
               <div className="leading-tight">
-                <span className="text-[11px] font-black tracking-wider uppercase bg-clip-text text-transparent bg-gradient-to-r from-zinc-100 to-zinc-400">
+                <span className="text-[10px] font-black tracking-wider uppercase bg-clip-text text-transparent bg-gradient-to-r from-zinc-100 to-zinc-400">
                   {company.companyName || 'Triple S Production'}
                 </span>
-                <span className="block text-[8px] tracking-[0.18em] font-semibold text-muted-foreground uppercase">
+                <span className="block text-[7.5px] tracking-[0.16em] font-semibold text-muted-foreground uppercase">
                   Staff Identity Card
                 </span>
               </div>
@@ -283,7 +282,7 @@ export function EmployeeIdCard({
             <div className="flex items-center gap-1.5">
               <Wifi
                 className={cn(
-                  'w-4 h-4 rotate-90 stroke-[2.2]',
+                  'w-3.5 h-3.5 rotate-90 stroke-[2.2]',
                   isDark ? 'text-zinc-500' : 'text-slate-400'
                 )}
               />
@@ -291,12 +290,12 @@ export function EmployeeIdCard({
           </div>
 
           {/* FRONT BODY: Photo, Smart Chip, and Identity Core */}
-          <div className="relative z-10 px-5 flex flex-col items-center pt-2 pb-1 text-center">
+          <div className="relative z-10 px-4 flex flex-col items-center pt-1.5 pb-1 text-center">
             {/* Smart EMV Chip Graphic + Hologram Pill */}
-            <div className="w-full flex items-center justify-between px-1 mb-2">
+            <div className="w-full flex items-center justify-between px-1 mb-1.5">
               <div
                 className={cn(
-                  'w-9 h-7 rounded-md border flex items-center justify-center relative overflow-hidden shadow-xs',
+                  'w-8 h-6 rounded-md border flex items-center justify-center relative overflow-hidden shadow-xs',
                   isDark
                     ? 'bg-gradient-to-tr from-amber-600 via-amber-400 to-yellow-200 border-amber-300/60'
                     : 'bg-gradient-to-tr from-amber-500 via-yellow-400 to-amber-200 border-amber-400'
@@ -314,7 +313,7 @@ export function EmployeeIdCard({
               {/* Holographic Pill */}
               <div
                 className={cn(
-                  'text-[8.5px] font-extrabold tracking-widest uppercase px-2 py-0.5 rounded-full border flex items-center gap-1',
+                  'text-[8px] font-extrabold tracking-widest uppercase px-2 py-0.5 rounded-full border flex items-center gap-1',
                   isDark
                     ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                     : 'bg-emerald-50 text-emerald-700 border-emerald-300'
@@ -326,10 +325,10 @@ export function EmployeeIdCard({
             </div>
 
             {/* Photo Container */}
-            <div className="relative mt-1 mb-3">
+            <div className="relative mt-0.5 mb-2">
               <div
                 className={cn(
-                  'w-[104px] h-[116px] rounded-2xl overflow-hidden p-1 shadow-md border-2',
+                  'w-[96px] h-[108px] rounded-2xl overflow-hidden p-1 shadow-md border-2',
                   isDark
                     ? 'bg-zinc-900 border-zinc-700/80 shadow-[0_4px_16px_rgba(0,0,0,0.6)]'
                     : 'bg-white border-slate-200 shadow-[0_4px_12px_rgba(0,0,0,0.08)]'
@@ -344,7 +343,7 @@ export function EmployeeIdCard({
                 ) : (
                   <div
                     className={cn(
-                      'w-full h-full rounded-xl flex flex-col items-center justify-center font-bold text-2xl tracking-wider',
+                      'w-full h-full rounded-xl flex flex-col items-center justify-center font-bold text-xl tracking-wider',
                       isDark
                         ? 'bg-gradient-to-br from-zinc-800 to-zinc-900 text-zinc-300'
                         : 'bg-gradient-to-br from-slate-100 to-slate-200 text-slate-700'
@@ -358,24 +357,24 @@ export function EmployeeIdCard({
               {/* Status Indicator Pip */}
               <div
                 className={cn(
-                  'absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 flex items-center justify-center text-white text-[9px] shadow-sm',
+                  'absolute -bottom-1 -right-1 w-4.5 h-4.5 rounded-full border-2 flex items-center justify-center text-white text-[8px] shadow-sm',
                   isDark ? 'border-zinc-950' : 'border-white',
                   isWorking ? 'bg-emerald-500' : 'bg-neutral-500'
                 )}
                 title={isWorking ? 'Active' : 'Offline'}
               >
-                <CheckCircle2 className="w-3.5 h-3.5" />
+                <CheckCircle2 className="w-3 h-3" />
               </div>
             </div>
 
             {/* Employee Name & Code */}
-            <h2 className="text-base font-black tracking-tight leading-tight line-clamp-1">
+            <h2 className="text-[15px] font-black tracking-tight leading-snug line-clamp-1">
               {fullName}
             </h2>
-            <div className="mt-0.5 mb-1.5 flex items-center gap-1.5">
+            <div className="mt-0.5 mb-1 flex items-center gap-1.5">
               <span
                 className={cn(
-                  'text-[10px] font-mono font-bold px-2 py-0.5 rounded-md tracking-wider border',
+                  'text-[9.5px] font-mono font-bold px-1.5 py-0.5 rounded tracking-wider border',
                   isDark
                     ? 'bg-zinc-900 text-zinc-300 border-zinc-700/80'
                     : 'bg-slate-100 text-slate-700 border-slate-300'
@@ -383,43 +382,43 @@ export function EmployeeIdCard({
               >
                 {employeeCode}
               </span>
-              <span className="text-[10px] text-muted-foreground font-semibold">•</span>
-              <span className="text-[10.5px] font-semibold text-primary">{department}</span>
+              <span className="text-[9.5px] text-muted-foreground font-semibold">•</span>
+              <span className="text-[10px] font-semibold text-primary">{department}</span>
             </div>
 
-            <p className="text-[11px] font-medium text-muted-foreground line-clamp-1 max-w-[270px]">
+            <p className="text-[10.5px] font-medium text-muted-foreground line-clamp-1 max-w-[260px]">
               {designation}
             </p>
 
             {/* 3-Column Quick Metrics Block */}
             <div
               className={cn(
-                'w-full grid grid-cols-3 gap-1 rounded-xl p-2 mt-3 border text-left',
+                'w-full grid grid-cols-3 gap-1 rounded-xl p-2 mt-2.5 border text-left',
                 isDark ? 'bg-zinc-900/70 border-zinc-800/80' : 'bg-slate-50 border-slate-200'
               )}
             >
               <div>
-                <span className="text-[8px] uppercase tracking-wider font-bold text-muted-foreground block">
+                <span className="text-[7.5px] uppercase tracking-wider font-bold text-muted-foreground block">
                   Joined
                 </span>
-                <span className="text-[9.5px] font-semibold truncate block">
+                <span className="text-[9px] font-semibold truncate block">
                   {joiningDateFormatted}
                 </span>
               </div>
               <div className="border-x px-1.5 border-border/40">
-                <span className="text-[8px] uppercase tracking-wider font-bold text-muted-foreground block">
+                <span className="text-[7.5px] uppercase tracking-wider font-bold text-muted-foreground block">
                   Blood Grp
                 </span>
-                <span className="text-[9.5px] font-bold text-rose-500 flex items-center gap-0.5">
+                <span className="text-[9px] font-bold text-rose-500 flex items-center gap-0.5">
                   <Heart className="w-2.5 h-2.5 fill-rose-500" />
                   {bloodGroup}
                 </span>
               </div>
               <div className="pl-1">
-                <span className="text-[8px] uppercase tracking-wider font-bold text-muted-foreground block">
+                <span className="text-[7.5px] uppercase tracking-wider font-bold text-muted-foreground block">
                   Valid Thru
                 </span>
-                <span className="text-[9.5px] font-semibold truncate block">
+                <span className="text-[9px] font-semibold truncate block">
                   {expiryFormatted}
                 </span>
               </div>
@@ -427,20 +426,20 @@ export function EmployeeIdCard({
           </div>
 
           {/* FRONT FOOTER: Holographic Strip & Authorized Signatory */}
-          <div className="relative z-10 px-5 pb-4 pt-1">
-            <div className="flex items-end justify-between border-t border-border/40 pt-2">
+          <div className="relative z-10 px-4 pb-3 pt-1">
+            <div className="flex items-end justify-between border-t border-border/40 pt-1.5">
               <div className="flex flex-col">
-                <span className="text-[7.5px] font-mono tracking-widest text-muted-foreground uppercase">
+                <span className="text-[7px] font-mono tracking-widest text-muted-foreground uppercase">
                   CARD ID: TSP-{employeeCode.replace(/\D/g, '').padStart(4, '0')}
                 </span>
-                <span className="text-[7px] text-muted-foreground/80">
+                <span className="text-[6.5px] text-muted-foreground/80">
                   SYSTEM GENERATED • SECURE IDENTIFIER
                 </span>
               </div>
 
               {/* Stylized Executive Signatory */}
               <div className="flex flex-col items-center">
-                <div className="h-6 w-20 flex items-center justify-center">
+                <div className="h-5 w-18 flex items-center justify-center">
                   <svg viewBox="0 0 100 30" className="w-full h-full stroke-current opacity-75">
                     <path
                       d="M 5 22 Q 25 5 45 18 T 85 10 T 95 24"
@@ -450,8 +449,8 @@ export function EmployeeIdCard({
                     />
                   </svg>
                 </div>
-                <div className="w-20 border-t border-muted-foreground/40 mt-0.5" />
-                <span className="text-[7px] font-bold tracking-wider text-muted-foreground uppercase mt-0.5">
+                <div className="w-18 border-t border-muted-foreground/40 mt-0.5" />
+                <span className="text-[6.5px] font-bold tracking-wider text-muted-foreground uppercase mt-0.5">
                   Authorized Signatory
                 </span>
               </div>
@@ -475,36 +474,36 @@ export function EmployeeIdCard({
           <div>
             <div
               className={cn(
-                'w-full h-9 flex items-center px-4 justify-between border-b',
+                'w-full h-8 flex items-center px-4 justify-between border-b',
                 isDark
                   ? 'bg-gradient-to-r from-zinc-800 via-zinc-900 to-zinc-800 border-zinc-700/80'
                   : 'bg-gradient-to-r from-slate-800 via-slate-900 to-slate-800 border-slate-700 text-white'
               )}
             >
-              <span className="text-[7.5px] font-mono tracking-[0.25em] text-zinc-400 uppercase">
+              <span className="text-[7px] font-mono tracking-[0.25em] text-zinc-400 uppercase">
                 SECURITY SMART ENCODING
               </span>
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             </div>
 
             {/* Corporate HQ Directory */}
-            <div className="px-5 pt-3 pb-2 space-y-1.5 text-[9.5px]">
+            <div className="px-4 pt-2.5 pb-1.5 space-y-1 text-[9px]">
               <div className="flex items-start gap-2">
-                <MapPin className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                <MapPin className="w-3 h-3 text-primary shrink-0 mt-0.5" />
                 <p className="text-muted-foreground leading-snug line-clamp-2">
                   {company.companyAddress || DEFAULT_COMPANY.companyAddress}
                 </p>
               </div>
 
               <div className="flex items-center gap-2">
-                <Phone className="w-3.5 h-3.5 text-primary shrink-0" />
+                <Phone className="w-3 h-3 text-primary shrink-0" />
                 <span className="font-semibold text-foreground">
                   {company.contactPhone || DEFAULT_COMPANY.contactPhone}
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
-                <Mail className="w-3.5 h-3.5 text-primary shrink-0" />
+                <Mail className="w-3 h-3 text-primary shrink-0" />
                 <span className="font-semibold text-foreground">
                   {company.contactEmail || DEFAULT_COMPANY.contactEmail}
                 </span>
@@ -513,22 +512,22 @@ export function EmployeeIdCard({
           </div>
 
           {/* BACK MIDDLE: Emergency & QR Code Verification */}
-          <div className="px-5 py-1 space-y-2.5">
+          <div className="px-4 py-1 space-y-2">
             {/* Emergency Contact Block */}
             <div
               className={cn(
-                'rounded-xl p-2.5 border',
+                'rounded-xl p-2 border',
                 isDark ? 'bg-zinc-900/80 border-zinc-800' : 'bg-slate-50 border-slate-200'
               )}
             >
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-1.5 text-rose-500 font-bold text-[9px] uppercase tracking-wider">
+              <div className="flex items-center justify-between mb-0.5">
+                <div className="flex items-center gap-1 text-rose-500 font-bold text-[8.5px] uppercase tracking-wider">
                   <AlertCircle className="w-3 h-3" />
                   <span>In Case of Emergency</span>
                 </div>
-                <span className="text-[8px] text-muted-foreground font-mono">EMERGENCY SOS</span>
+                <span className="text-[7.5px] text-muted-foreground font-mono">EMERGENCY SOS</span>
               </div>
-              <div className="text-[9.5px] space-y-0.5">
+              <div className="text-[9px] space-y-0.5">
                 <p className="font-bold text-foreground">
                   {emergency.name}{' '}
                   <span className="text-muted-foreground font-normal">({emergency.relation})</span>
@@ -540,23 +539,19 @@ export function EmployeeIdCard({
             {/* Live Verification QR Block */}
             <div
               className={cn(
-                'rounded-xl p-2.5 border flex items-center gap-3',
+                'rounded-xl p-2 border flex items-center gap-2.5',
                 isDark ? 'bg-zinc-900/50 border-zinc-800/80' : 'bg-white border-slate-200'
               )}
             >
               {/* SVG QR Code Pattern */}
               <div className="p-1 rounded-lg bg-white shrink-0 border border-slate-200 shadow-xs">
-                <svg viewBox="0 0 45 45" className="w-12 h-12 fill-zinc-950">
-                  {/* Outer corner top-left */}
+                <svg viewBox="0 0 45 45" className="w-11 h-11 fill-zinc-950">
                   <rect x="2" y="2" width="12" height="12" fill="none" stroke="#000" strokeWidth="2.5" />
                   <rect x="5.5" y="5.5" width="5" height="5" />
-                  {/* Outer corner top-right */}
                   <rect x="31" y="2" width="12" height="12" fill="none" stroke="#000" strokeWidth="2.5" />
                   <rect x="34.5" y="5.5" width="5" height="5" />
-                  {/* Outer corner bottom-left */}
                   <rect x="2" y="31" width="12" height="12" fill="none" stroke="#000" strokeWidth="2.5" />
                   <rect x="5.5" y="31.5" width="5" height="5" />
-                  {/* Internal Data Dots Matrix */}
                   <rect x="18" y="4" width="3" height="3" />
                   <rect x="24" y="4" width="3" height="3" />
                   <rect x="18" y="10" width="3" height="3" />
@@ -578,10 +573,10 @@ export function EmployeeIdCard({
               </div>
 
               <div className="flex-1">
-                <span className="text-[9px] font-bold text-foreground block">
+                <span className="text-[8.5px] font-bold text-foreground block">
                   Scan to Verify Badge
                 </span>
-                <span className="text-[8px] text-muted-foreground leading-tight block mt-0.5">
+                <span className="text-[7.5px] text-muted-foreground leading-tight block mt-0.5">
                   Point camera to confirm real-time identity & employment clearance on TripleS OS.
                 </span>
               </div>
@@ -589,17 +584,16 @@ export function EmployeeIdCard({
           </div>
 
           {/* BACK FOOTER: Terms & Barcode */}
-          <div className="px-5 pb-3 pt-1 space-y-1.5">
-            <ol className="list-decimal pl-3.5 text-[7.5px] text-muted-foreground leading-tight space-y-0.5">
-              <li>This card remains the exclusive property of {company.companyName || 'Triple S Production'}.</li>
-              <li>Display visibly during office hours and project field operations.</li>
+          <div className="px-4 pb-2.5 pt-1 space-y-1">
+            <ol className="list-decimal pl-3.5 text-[7px] text-muted-foreground leading-tight space-y-0.5">
+              <li>This card remains the property of {company.companyName || 'Triple S Production'}.</li>
+              <li>Display visibly during office hours and client field visits.</li>
               <li>If found, please return to the corporate address above.</li>
             </ol>
 
             {/* Alphanumeric Barcode Strip */}
-            <div className="pt-1 flex flex-col items-center">
-              <div className="h-6 w-full flex items-center justify-center gap-[2.5px] opacity-80">
-                {/* Synthetic Code-128 SVG Barcode */}
+            <div className="pt-0.5 flex flex-col items-center">
+              <div className="h-5 w-full flex items-center justify-center gap-[2.5px] opacity-80">
                 <div className="w-[3px] h-full bg-current" />
                 <div className="w-[1px] h-full bg-current" />
                 <div className="w-[4px] h-full bg-current" />
@@ -623,7 +617,7 @@ export function EmployeeIdCard({
                 <div className="w-[1px] h-full bg-current" />
                 <div className="w-[3px] h-full bg-current" />
               </div>
-              <span className="text-[7px] font-mono tracking-[0.25em] text-muted-foreground uppercase mt-0.5">
+              <span className="text-[6.5px] font-mono tracking-[0.25em] text-muted-foreground uppercase mt-0.5">
                 *{employeeCode}-{expiryFormatted.replace('/', '')}*
               </span>
             </div>
