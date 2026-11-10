@@ -60,6 +60,7 @@ export function EmployeeDetailsClient({
   currentUserRole?: string | null
 }) {
   const router = useRouter()
+  const supabase = createClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
   const [isUploadingDoc, setIsUploadingDoc] = useState(false)
@@ -75,6 +76,14 @@ export function EmployeeDetailsClient({
   const [employmentStatus, setEmploymentStatus] = useState<string>(employee.employment_status || 'Active')
   const [showIdCardModal, setShowIdCardModal] = useState(false)
 
+  const resolvePhotoUrl = (photo?: string | null) => {
+    if (!photo) return undefined
+    if (photo.startsWith('http://') || photo.startsWith('https://') || photo.startsWith('data:') || photo.startsWith('/')) {
+      return photo
+    }
+    return supabase.storage.from('employee-documents').getPublicUrl(photo).data.publicUrl
+  }
+
   const idCardData: EmployeeIdCardData = {
     id: employee.id,
     firstName: employee.first_name,
@@ -89,13 +98,7 @@ export function EmployeeDetailsClient({
     phone: employee.phone || undefined,
     email: employee.email || undefined,
     emergencyContact: employee.emergency_contact || undefined,
-    profilePhoto: localPhotoUrl || (
-      employee.profile_photo
-        ? (employee.profile_photo.startsWith('http://') || employee.profile_photo.startsWith('https://') || employee.profile_photo.startsWith('data:') || employee.profile_photo.startsWith('/')
-            ? employee.profile_photo
-            : supabase.storage.from('employee-documents').getPublicUrl(employee.profile_photo).data.publicUrl)
-        : undefined
-    ),
+    profilePhoto: localPhotoUrl || resolvePhotoUrl(employee.profile_photo),
     status: employee.status || 'Active',
     workLocation: employee.work_location || undefined,
     role: employee.role || undefined,
@@ -801,10 +804,7 @@ export function EmployeeDetailsClient({
     }
   }
 
-  const supabase = createClient()
-  const photoUrl = employee.profile_photo
-    ? supabase.storage.from('employee-documents').getPublicUrl(employee.profile_photo).data.publicUrl
-    : null
+  const photoUrl = resolvePhotoUrl(employee.profile_photo) || null
 
   const profileCompletion = 100
   const formattedJoined = employee.joining_date
