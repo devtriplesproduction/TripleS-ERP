@@ -346,12 +346,12 @@ export function CompanySettingsForm({
           </CardContent>
         </Card>
 
-        {/* Save button bar */}
-        <div className="flex items-center justify-end gap-3 pt-2">
+        {/* Save button bar - CENTERED SQUARE BUTTON */}
+        <div className="flex items-center justify-center gap-3 pt-4">
           <Button
             type="submit"
             disabled={saving}
-            className="h-11 px-6 bg-primary text-primary-foreground hover:bg-primary/90 font-medium"
+            className="h-10 px-8 rounded-lg bg-primary text-primary-foreground hover:bg-primary font-semibold shadow-xs"
           >
             {saving ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />

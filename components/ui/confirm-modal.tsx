@@ -85,7 +85,7 @@ export function ConfirmModal({
           <DialogTitle>{title}</DialogTitle>
           {effectiveDescription && <DialogDescription>{effectiveDescription}</DialogDescription>}
         </DialogHeader>
-        <DialogFooter className="gap-2 sm:gap-3">
+        <DialogFooter className="gap-2 sm:gap-3 justify-center sm:justify-center">
           <Button
             type="button"
             variant="outline"

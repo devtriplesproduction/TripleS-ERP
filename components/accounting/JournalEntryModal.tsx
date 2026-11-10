@@ -723,56 +723,53 @@ export function JournalEntryModal({
         </div>
 
         {/* Modal Action Footer */}
-        <DialogFooter className="px-6 py-3.5 border-t border-border bg-muted/20 flex flex-row items-center justify-between sm:justify-between w-full">
+        <DialogFooter className="px-6 py-3.5 border-t border-border bg-muted/20 flex flex-row items-center justify-center gap-3 w-full">
           <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             onClick={onClose}
             disabled={loading}
-            className="text-xs"
+            className="rounded-lg text-xs px-5 hover:bg-transparent hover:text-foreground font-semibold"
           >
             Cancel
           </Button>
 
-          <div className="flex items-center gap-2">
-            {/* Save Draft Button: Always allowed */}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleSubmit('Draft')}
-              disabled={loading}
-              className="text-xs"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
-                  Saving...
-                </>
-              ) : (
-                'Save Draft'
-              )}
-            </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => handleSubmit('Draft')}
+            disabled={loading}
+            className="rounded-lg text-xs px-5 hover:bg-transparent hover:text-foreground font-semibold"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                Saving...
+              </>
+            ) : (
+              'Save Draft'
+            )}
+          </Button>
 
-            {/* Post Journal Entry: Strictly validates Debit == Credit */}
-            <Button
-              type="button"
-              onClick={() => handleSubmit('Posted')}
-              disabled={loading || !totals.isBalanced}
-              className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
-                  Posting...
-                </>
-              ) : (
-                <>
-                  <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
-                  Post Journal Entry
-                </>
-              )}
-            </Button>
-          </div>
+          {/* Post Journal Entry: Strictly validates Debit == Credit */}
+          <Button
+            type="button"
+            onClick={() => handleSubmit('Posted')}
+            disabled={loading || !totals.isBalanced}
+            className="rounded-lg text-xs px-6 bg-emerald-600 hover:bg-emerald-600 text-white font-semibold shadow-xs"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                Posting...
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" />
+                Post Journal Entry
+              </>
+            )}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

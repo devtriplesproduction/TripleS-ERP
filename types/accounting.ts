@@ -470,3 +470,148 @@ export interface UpdateJournalEntryInput extends Partial<CreateJournalEntryInput
   id: string
 }
 
+// ==========================================
+// Retainer Contracts (Recurring Income)
+// ==========================================
+export interface RetainerContract {
+  id: string
+  contract_name: string
+  client_id?: string | null
+  client_name: string
+  service: string
+  monthly_price: number
+  start_date: string
+  status: 'Active' | 'Paused' | 'Cancelled'
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateRetainerContractInput {
+  contract_name: string
+  client_id?: string | null
+  client_name: string
+  service: string
+  monthly_price: number
+  start_date: string
+  status?: 'Active' | 'Paused' | 'Cancelled'
+}
+
+// ==========================================
+// Recurring Expenses
+// ==========================================
+export interface RecurringExpenseRule {
+  id: string
+  internal_name: string
+  vendor_name?: string | null
+  monthly_amount: number
+  category: string
+  first_payment_date: string
+  due_day_of_month: number
+  status: 'Active' | 'Paused' | 'Cancelled'
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateRecurringExpenseInput {
+  internal_name: string
+  vendor_name?: string | null
+  monthly_amount: number
+  category: string
+  first_payment_date: string
+  due_day_of_month: number
+  status?: 'Active' | 'Paused' | 'Cancelled'
+}
+
+// ==========================================
+// Receivables
+// ==========================================
+export type ReceivableStatus = 'Overdue' | 'On Hold' | 'Received'
+
+export interface ReceivableRecord {
+  id: string
+  client_name: string
+  project_plan: string
+  expected_date: string
+  overdue_days: number
+  amount: number
+  status: ReceivableStatus
+  notes?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CreateReceivableInput {
+  client_name: string
+  project_plan: string
+  expected_date: string
+  amount: number
+  status?: ReceivableStatus
+  notes?: string | null
+}
+
+// ==========================================
+// Reports & Analytics
+// ==========================================
+export interface ExpenseCategoryShare {
+  name: string
+  amount: number
+  percentage: number
+  color: string
+}
+
+export interface NetProfitDataPoint {
+  month: string
+  netProfit: number
+}
+
+export interface CashflowHealthPoint {
+  month: string
+  inflow: number
+  burn: number
+  net: number
+}
+
+export interface CollectionStatusPoint {
+  month: string
+  overdue: number
+  pending: number
+  received: number
+}
+
+export interface ProfitabilityEfficiencyPoint {
+  month: string
+  revenue: number
+  netProfit: number
+  marginPct: number
+}
+
+export interface RevenueShareItem {
+  name: string
+  amount: number
+  percentage: number
+  color: string
+}
+
+export interface AvailableStatementItem {
+  id: string
+  title: string
+  period: string
+  generatedAt: string
+  format: 'PDF' | 'CSV'
+  downloadUrl?: string
+}
+
+export interface AccountingReportMetrics {
+  estRunwayMonths: number
+  avgMonthlyBurn: number
+  expenseBreakdown: ExpenseCategoryShare[]
+  netProfitTrend: NetProfitDataPoint[]
+  cashflowHealth: CashflowHealthPoint[]
+  collectionStatus: CollectionStatusPoint[]
+  profitabilityTrend: ProfitabilityEfficiencyPoint[]
+  revenueByService: RevenueShareItem[]
+  revenueByClient: RevenueShareItem[]
+  availableStatements: AvailableStatementItem[]
+}
+
+

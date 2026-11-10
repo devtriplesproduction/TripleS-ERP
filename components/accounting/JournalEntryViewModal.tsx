@@ -224,8 +224,8 @@ export function JournalEntryViewModal({
           </div>
         </div>
 
-        <DialogFooter className="px-6 py-3 border-t border-border bg-muted/20 flex justify-end">
-          <Button type="button" variant="outline" onClick={onClose} className="text-xs">
+        <DialogFooter className="px-6 py-3 border-t border-border bg-muted/20 flex justify-center">
+          <Button type="button" variant="outline" onClick={onClose} className="rounded-lg text-xs px-6 hover:bg-transparent hover:text-foreground font-semibold">
             Close
           </Button>
         </DialogFooter>

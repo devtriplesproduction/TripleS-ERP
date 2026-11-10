@@ -152,7 +152,7 @@ export function CompanySettingsView() {
                     Summary card for company registration and contact profile
                   </CardDescription>
                 </div>
-                <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-muted text-muted-foreground border border-border/60">
+                <span className="text-[11px] font-medium px-2.5 py-0.5 rounded-md bg-muted text-muted-foreground border border-border/60">
                   Overview
                 </span>
               </div>
@@ -464,14 +464,14 @@ export function CompanySettingsView() {
         </div>
 
         {/* ========================================================= */}
-        {/* ACTIONS BAR                                               */}
+        {/* ACTIONS BAR - CENTERED SQUARE BUTTONS                     */}
         {/* ========================================================= */}
-        <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-3 pt-2">
+        <div className="flex flex-col-reverse sm:flex-row items-center justify-center gap-3 pt-4">
           <Button
             type="button"
             variant="outline"
             onClick={handleReset}
-            className="w-full sm:w-auto h-11 px-6 border-border/80 hover:bg-muted/70 text-foreground font-medium"
+            className="w-full sm:w-auto h-10 px-6 rounded-lg border-border hover:bg-transparent hover:text-foreground text-foreground font-semibold"
           >
             <RotateCcw className="mr-2 h-4 w-4 text-muted-foreground" />
             Cancel / Reset
@@ -480,7 +480,7 @@ export function CompanySettingsView() {
           <Button
             type="submit"
             disabled={saving}
-            className="w-full sm:w-auto h-11 px-8 bg-primary text-primary-foreground hover:bg-primary/90 font-medium shadow-xs"
+            className="w-full sm:w-auto h-10 px-8 rounded-lg bg-primary text-primary-foreground hover:bg-primary font-semibold shadow-xs"
           >
             <Save className="mr-2 h-4 w-4" />
             Save Changes

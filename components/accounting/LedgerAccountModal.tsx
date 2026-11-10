@@ -356,11 +356,21 @@ export function LedgerAccountModal({
             </p>
           </div>
 
-          <DialogFooter className="pt-4 border-t border-border flex justify-between sm:justify-between w-full">
-            <Button type="button" variant="ghost" onClick={onClose} disabled={loading} className="text-xs">
+          <DialogFooter className="pt-4 border-t border-border flex items-center justify-center gap-3 w-full">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onClose}
+              disabled={loading}
+              className="rounded-lg text-xs px-5 hover:bg-transparent hover:text-foreground font-semibold"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={loading} className="text-xs">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="rounded-lg text-xs px-6 font-semibold bg-primary text-primary-foreground hover:bg-primary shadow-xs"
+            >
               {loading ? (
                 <>
                   <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />

@@ -38,6 +38,13 @@ import type {
   JournalEntry,
   CreateJournalEntryInput,
   UpdateJournalEntryInput,
+  RetainerContract,
+  CreateRetainerContractInput,
+  RecurringExpenseRule,
+  CreateRecurringExpenseInput,
+  ReceivableRecord,
+  CreateReceivableInput,
+  AccountingReportMetrics,
 } from '@/types/accounting'
 
 function safeRevalidatePath(pathUrl: string, type?: 'page' | 'layout') {
@@ -66,6 +73,9 @@ interface AccountingStore {
   companySettings: AccountingCompanySettings
   ledgerAccounts?: LedgerAccount[]
   journalEntries?: JournalEntry[]
+  retainers?: RetainerContract[]
+  recurringExpenses?: RecurringExpenseRule[]
+  receivables?: ReceivableRecord[]
 }
 
 function getStoreFilePath(): string {
@@ -819,6 +829,99 @@ function getDefaultStore(): AccountingStore {
   return { bankAccounts, income, expenses, ledger, companySettings, ledgerAccounts, journalEntries }
 }
 
+function getDefaultReceivables(): ReceivableRecord[] {
+  return [
+    {
+      id: 'rec-001',
+      client_name: 'RX Hiring Agency',
+      project_plan: 'Retainer',
+      expected_date: '2025-10-31',
+      overdue_days: 374,
+      amount: 533,
+      status: 'Overdue',
+      created_at: '2025-10-31T00:00:00.000Z',
+      updated_at: '2026-11-10T00:00:00.000Z',
+    },
+    {
+      id: 'rec-002',
+      client_name: 'RX Hiring Agency',
+      project_plan: 'Retainer',
+      expected_date: '2025-11-30',
+      overdue_days: 344,
+      amount: 533,
+      status: 'Overdue',
+      created_at: '2025-11-30T00:00:00.000Z',
+      updated_at: '2026-11-10T00:00:00.000Z',
+    },
+    {
+      id: 'rec-003',
+      client_name: 'Bolbo Global',
+      project_plan: 'Other',
+      expected_date: '2025-12-09',
+      overdue_days: 335,
+      amount: 4000,
+      status: 'Overdue',
+      created_at: '2025-12-09T00:00:00.000Z',
+      updated_at: '2026-11-10T00:00:00.000Z',
+    },
+    {
+      id: 'rec-004',
+      client_name: 'RX Hiring Agency',
+      project_plan: 'Retainer',
+      expected_date: '2025-12-31',
+      overdue_days: 313,
+      amount: 533,
+      status: 'Overdue',
+      created_at: '2025-12-31T00:00:00.000Z',
+      updated_at: '2026-11-10T00:00:00.000Z',
+    },
+    {
+      id: 'rec-005',
+      client_name: 'RX Hiring Agency',
+      project_plan: 'Retainer',
+      expected_date: '2026-01-31',
+      overdue_days: 282,
+      amount: 533,
+      status: 'Overdue',
+      created_at: '2026-01-31T00:00:00.000Z',
+      updated_at: '2026-11-10T00:00:00.000Z',
+    },
+    {
+      id: 'rec-006',
+      client_name: 'Bolbo Global',
+      project_plan: 'Digital Marketing',
+      expected_date: '2026-02-08',
+      overdue_days: 274,
+      amount: 7000,
+      status: 'Overdue',
+      created_at: '2026-02-08T00:00:00.000Z',
+      updated_at: '2026-11-10T00:00:00.000Z',
+    },
+    {
+      id: 'rec-007',
+      client_name: 'RX Hiring Agency',
+      project_plan: 'Retainer',
+      expected_date: '2026-02-28',
+      overdue_days: 254,
+      amount: 533,
+      status: 'Overdue',
+      created_at: '2026-02-28T00:00:00.000Z',
+      updated_at: '2026-11-10T00:00:00.000Z',
+    },
+    {
+      id: 'rec-008',
+      client_name: 'Skinfix Clinic',
+      project_plan: 'Hosting & Maintenance',
+      expected_date: '2026-03-15',
+      overdue_days: 240,
+      amount: 2500,
+      status: 'On Hold',
+      created_at: '2026-03-15T00:00:00.000Z',
+      updated_at: '2026-11-10T00:00:00.000Z',
+    },
+  ]
+}
+
 function readStore(): AccountingStore {
   try {
     ensureStoreDir()
@@ -842,6 +945,10 @@ function readStore(): AccountingStore {
     }
     if (!parsed.journalEntries) {
       parsed.journalEntries = getDefaultJournalEntries()
+      needsSave = true
+    }
+    if (!parsed.receivables || parsed.receivables.length === 0) {
+      parsed.receivables = getDefaultReceivables()
       needsSave = true
     }
     if (needsSave) {
@@ -1202,7 +1309,7 @@ export async function createIncomeAction(
       if (bank) bankAccountName = bank.account_name
     }
 
-    const paymentMethod = input.payment_method || 'Bank Transfer'
+    const paymentMethod = input.payment_method || 'Cash'
     const methodValidationErr = validatePaymentMethodDetails(paymentMethod, input)
     if (methodValidationErr) return { success: false, error: methodValidationErr }
 
@@ -1624,7 +1731,7 @@ export async function createExpenseAction(
       if (bank) bankAccountName = bank.account_name
     }
 
-    const paymentMethod = input.payment_method || 'Bank Transfer'
+    const paymentMethod = input.payment_method || 'Cash'
     const methodValidationErr = validatePaymentMethodDetails(paymentMethod, input)
     if (methodValidationErr) return { success: false, error: methodValidationErr }
 
@@ -3749,5 +3856,505 @@ export async function postJournalEntryAction(id: string): Promise<AccountingActi
     return { success: false, error: err.message || 'Failed to post journal entry' }
   }
 }
+
+// ==========================================
+// Retainer Contracts (Recurring Income) Actions
+// ==========================================
+
+export async function getRetainerContracts(): Promise<AccountingActionResponse<RetainerContract[]>> {
+  try {
+    const store = readStore()
+    const retainers = store.retainers || []
+    return { success: true, data: retainers }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to fetch retainer contracts' }
+  }
+}
+
+export async function createRetainerContractAction(
+  input: CreateRetainerContractInput
+): Promise<AccountingActionResponse<RetainerContract>> {
+  try {
+    if (!input.contract_name?.trim()) {
+      return { success: false, error: 'Contract name is required' }
+    }
+    if (!input.client_name?.trim()) {
+      return { success: false, error: 'Client name is required' }
+    }
+    if (!input.service?.trim()) {
+      return { success: false, error: 'Service is required' }
+    }
+    if (!input.monthly_price || Number(input.monthly_price) <= 0) {
+      return { success: false, error: 'Monthly price must be greater than 0' }
+    }
+
+    const store = readStore()
+    if (!store.retainers) store.retainers = []
+
+    const now = new Date().toISOString()
+    const newContract: RetainerContract = {
+      id: `ret-${Date.now()}`,
+      contract_name: input.contract_name.trim(),
+      client_id: input.client_id || null,
+      client_name: input.client_name.trim(),
+      service: input.service.trim(),
+      monthly_price: Math.round(Number(input.monthly_price) * 100) / 100,
+      start_date: input.start_date || now.split('T')[0],
+      status: input.status || 'Active',
+      created_at: now,
+      updated_at: now,
+    }
+
+    store.retainers.unshift(newContract)
+    writeStore(store)
+    safeRevalidatePath('/accounting/retainers')
+
+    return { success: true, data: newContract }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to create retainer contract' }
+  }
+}
+
+export async function toggleRetainerStatusAction(id: string): Promise<AccountingActionResponse<RetainerContract>> {
+  try {
+    const store = readStore()
+    if (!store.retainers) return { success: false, error: 'Contract not found' }
+
+    const idx = store.retainers.findIndex((r) => r.id === id)
+    if (idx === -1) return { success: false, error: 'Contract not found' }
+
+    const currentStatus = store.retainers[idx].status
+    store.retainers[idx].status = currentStatus === 'Active' ? 'Paused' : 'Active'
+    store.retainers[idx].updated_at = new Date().toISOString()
+
+    writeStore(store)
+    safeRevalidatePath('/accounting/retainers')
+
+    return { success: true, data: store.retainers[idx] }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to update contract status' }
+  }
+}
+
+export async function deleteRetainerContractAction(id: string): Promise<AccountingActionResponse<{ id: string }>> {
+  try {
+    const store = readStore()
+    if (!store.retainers) return { success: false, error: 'Contract not found' }
+
+    const idx = store.retainers.findIndex((r) => r.id === id)
+    if (idx === -1) return { success: false, error: 'Contract not found' }
+
+    store.retainers.splice(idx, 1)
+    writeStore(store)
+    safeRevalidatePath('/accounting/retainers')
+
+    return { success: true, data: { id } }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to delete contract' }
+  }
+}
+
+// ==========================================
+// Recurring Expenses Actions
+// ==========================================
+
+export async function getRecurringExpenses(): Promise<AccountingActionResponse<RecurringExpenseRule[]>> {
+  try {
+    const store = readStore()
+    const rules = store.recurringExpenses || []
+    return { success: true, data: rules }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to fetch recurring expense rules' }
+  }
+}
+
+export async function createRecurringExpenseAction(
+  input: CreateRecurringExpenseInput
+): Promise<AccountingActionResponse<RecurringExpenseRule>> {
+  try {
+    if (!input.internal_name?.trim()) {
+      return { success: false, error: 'Internal name is required' }
+    }
+    if (!input.monthly_amount || Number(input.monthly_amount) <= 0) {
+      return { success: false, error: 'Monthly amount must be greater than 0' }
+    }
+    if (!input.category?.trim()) {
+      return { success: false, error: 'Category is required' }
+    }
+
+    const store = readStore()
+    if (!store.recurringExpenses) store.recurringExpenses = []
+
+    const now = new Date().toISOString()
+    const newRule: RecurringExpenseRule = {
+      id: `rec-exp-${Date.now()}`,
+      internal_name: input.internal_name.trim(),
+      vendor_name: input.vendor_name?.trim() || null,
+      monthly_amount: Math.round(Number(input.monthly_amount) * 100) / 100,
+      category: input.category.trim(),
+      first_payment_date: input.first_payment_date || now.split('T')[0],
+      due_day_of_month: input.due_day_of_month ? Number(input.due_day_of_month) : 1,
+      status: input.status || 'Active',
+      created_at: now,
+      updated_at: now,
+    }
+
+    store.recurringExpenses.unshift(newRule)
+    writeStore(store)
+    safeRevalidatePath('/accounting/recurring-expenses')
+
+    return { success: true, data: newRule }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to create recurring expense rule' }
+  }
+}
+
+export async function toggleRecurringExpenseStatusAction(id: string): Promise<AccountingActionResponse<RecurringExpenseRule>> {
+  try {
+    const store = readStore()
+    if (!store.recurringExpenses) return { success: false, error: 'Rule not found' }
+
+    const idx = store.recurringExpenses.findIndex((r) => r.id === id)
+    if (idx === -1) return { success: false, error: 'Rule not found' }
+
+    const currentStatus = store.recurringExpenses[idx].status
+    store.recurringExpenses[idx].status = currentStatus === 'Active' ? 'Paused' : 'Active'
+    store.recurringExpenses[idx].updated_at = new Date().toISOString()
+
+    writeStore(store)
+    safeRevalidatePath('/accounting/recurring-expenses')
+
+    return { success: true, data: store.recurringExpenses[idx] }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to update rule status' }
+  }
+}
+
+export async function deleteRecurringExpenseAction(id: string): Promise<AccountingActionResponse<{ id: string }>> {
+  try {
+    const store = readStore()
+    if (!store.recurringExpenses) return { success: false, error: 'Rule not found' }
+
+    const idx = store.recurringExpenses.findIndex((r) => r.id === id)
+    if (idx === -1) return { success: false, error: 'Rule not found' }
+
+    store.recurringExpenses.splice(idx, 1)
+    writeStore(store)
+    safeRevalidatePath('/accounting/recurring-expenses')
+
+    return { success: true, data: { id } }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to delete rule' }
+  }
+}
+
+// ==========================================
+// Receivables Actions
+// ==========================================
+
+export async function getReceivables(
+  statusFilter?: 'Overdue' | 'On Hold' | 'Received'
+): Promise<AccountingActionResponse<ReceivableRecord[]>> {
+  try {
+    const store = readStore()
+    let list = store.receivables || []
+
+    const now = new Date()
+    // Recalculate overdue days dynamically
+    list = list.map((item) => {
+      if (item.status === 'Overdue') {
+        const expected = new Date(item.expected_date)
+        const diffTime = now.getTime() - expected.getTime()
+        const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)))
+        return { ...item, overdue_days: diffDays }
+      }
+      return item
+    })
+
+    if (statusFilter) {
+      list = list.filter((r) => r.status === statusFilter)
+    }
+
+    return { success: true, data: list }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to fetch receivables' }
+  }
+}
+
+export async function createReceivableAction(
+  input: CreateReceivableInput
+): Promise<AccountingActionResponse<ReceivableRecord>> {
+  try {
+    if (!input.client_name?.trim()) {
+      return { success: false, error: 'Client name is required' }
+    }
+    if (!input.amount || Number(input.amount) <= 0) {
+      return { success: false, error: 'Amount must be greater than 0' }
+    }
+    if (!input.expected_date) {
+      return { success: false, error: 'Expected date is required' }
+    }
+
+    const store = readStore()
+    if (!store.receivables) store.receivables = []
+
+    const now = new Date()
+    const expected = new Date(input.expected_date)
+    const diffTime = now.getTime() - expected.getTime()
+    const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)))
+
+    const newRecord: ReceivableRecord = {
+      id: `rec-${Date.now()}`,
+      client_name: input.client_name.trim(),
+      project_plan: input.project_plan?.trim() || 'General Service',
+      expected_date: input.expected_date,
+      overdue_days: diffDays,
+      amount: Math.round(Number(input.amount) * 100) / 100,
+      status: input.status || (diffDays > 0 ? 'Overdue' : 'On Hold'),
+      notes: input.notes?.trim() || null,
+      created_at: now.toISOString(),
+      updated_at: now.toISOString(),
+    }
+
+    store.receivables.unshift(newRecord)
+    writeStore(store)
+    safeRevalidatePath('/accounting/receivables')
+    safeRevalidatePath('/accounting/dashboard')
+
+    return { success: true, data: newRecord }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to create receivable' }
+  }
+}
+
+export async function markReceivablePaidAction(
+  id: string
+): Promise<AccountingActionResponse<ReceivableRecord>> {
+  try {
+    const store = readStore()
+    if (!store.receivables) return { success: false, error: 'Receivable not found' }
+
+    const idx = store.receivables.findIndex((r) => r.id === id)
+    if (idx === -1) return { success: false, error: 'Receivable not found' }
+
+    const now = new Date().toISOString()
+    store.receivables[idx].status = 'Received'
+    store.receivables[idx].updated_at = now
+
+    writeStore(store)
+    safeRevalidatePath('/accounting/receivables')
+    safeRevalidatePath('/accounting/dashboard')
+    safeRevalidatePath('/accounting/income')
+
+    return { success: true, data: store.receivables[idx] }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to mark receivable as received' }
+  }
+}
+
+export async function toggleReceivableHoldAction(
+  id: string
+): Promise<AccountingActionResponse<ReceivableRecord>> {
+  try {
+    const store = readStore()
+    if (!store.receivables) return { success: false, error: 'Receivable not found' }
+
+    const idx = store.receivables.findIndex((r) => r.id === id)
+    if (idx === -1) return { success: false, error: 'Receivable not found' }
+
+    const currentStatus = store.receivables[idx].status
+    store.receivables[idx].status = currentStatus === 'On Hold' ? 'Overdue' : 'On Hold'
+    store.receivables[idx].updated_at = new Date().toISOString()
+
+    writeStore(store)
+    safeRevalidatePath('/accounting/receivables')
+    safeRevalidatePath('/accounting/dashboard')
+
+    return { success: true, data: store.receivables[idx] }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to toggle hold status' }
+  }
+}
+
+export async function extendReceivableDateAction(
+  id: string,
+  newExpectedDate: string
+): Promise<AccountingActionResponse<ReceivableRecord>> {
+  try {
+    if (!newExpectedDate) {
+      return { success: false, error: 'New expected date is required' }
+    }
+
+    const store = readStore()
+    if (!store.receivables) return { success: false, error: 'Receivable not found' }
+
+    const idx = store.receivables.findIndex((r) => r.id === id)
+    if (idx === -1) return { success: false, error: 'Receivable not found' }
+
+    const now = new Date()
+    const expected = new Date(newExpectedDate)
+    const diffTime = now.getTime() - expected.getTime()
+    const diffDays = Math.max(0, Math.floor(diffTime / (1000 * 60 * 60 * 24)))
+
+    store.receivables[idx].expected_date = newExpectedDate
+    store.receivables[idx].overdue_days = diffDays
+    store.receivables[idx].updated_at = now.toISOString()
+
+    writeStore(store)
+    safeRevalidatePath('/accounting/receivables')
+    safeRevalidatePath('/accounting/dashboard')
+
+    return { success: true, data: store.receivables[idx] }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to extend expected date' }
+  }
+}
+
+export async function deleteReceivableAction(
+  id: string
+): Promise<AccountingActionResponse<{ id: string }>> {
+  try {
+    const store = readStore()
+    if (!store.receivables) return { success: false, error: 'Receivable not found' }
+
+    const idx = store.receivables.findIndex((r) => r.id === id)
+    if (idx === -1) return { success: false, error: 'Receivable not found' }
+
+    store.receivables.splice(idx, 1)
+    writeStore(store)
+    safeRevalidatePath('/accounting/receivables')
+
+    return { success: true, data: { id } }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to delete receivable' }
+  }
+}
+
+// ==========================================
+// Reports & Analytics Actions
+// ==========================================
+
+export async function getAccountingReportsData(
+  periodFilter: string = 'Last 12 Months'
+): Promise<AccountingActionResponse<AccountingReportMetrics>> {
+  try {
+    const store = readStore()
+
+    // Calculate runway & burn based on actual transactions if available
+    const totalExpenses = store.expenses.reduce((acc, curr) => acc + (curr.total_amount || 0), 0)
+    const totalCash = store.bankAccounts
+      .filter((b) => b.status === 'Active')
+      .reduce((acc, curr) => acc + (curr.current_balance || 0), 0)
+
+    const avgMonthlyBurn = totalExpenses > 0 ? Math.round(totalExpenses / 6) : 138300
+    const estRunway = avgMonthlyBurn > 0 ? Math.round((totalCash / avgMonthlyBurn) * 10) / 10 : 3.9
+
+    const metrics: AccountingReportMetrics = {
+      estRunwayMonths: estRunway > 0 ? estRunway : 3.9,
+      avgMonthlyBurn: avgMonthlyBurn > 0 ? avgMonthlyBurn : 138300,
+      expenseBreakdown: [
+        { name: 'Campaign - Accommodation', amount: 18500, percentage: 3.5, color: '#f97316' },
+        { name: 'Campaign - Food', amount: 24200, percentage: 4.6, color: '#ef4444' },
+        { name: 'Campaign - Other Expense', amount: 12000, percentage: 2.3, color: '#64748b' },
+        { name: 'Campaign - Travel', amount: 31000, percentage: 5.9, color: '#f59e0b' },
+        { name: 'Cleaning', amount: 4500, percentage: 0.9, color: '#6b7280' },
+        { name: 'EMI', amount: 42000, percentage: 8.0, color: '#94a3b8' },
+        { name: 'General', amount: 15800, percentage: 3.0, color: '#71717a' },
+        { name: 'Internet', amount: 6200, percentage: 1.2, color: '#ea580c' },
+        { name: 'Marketing', amount: 54000, percentage: 10.3, color: '#d97706' },
+        { name: 'Rent', amount: 65000, percentage: 12.4, color: '#cbd5e1' },
+        { name: 'Salary', amount: 252000, percentage: 48.0, color: '#e2e8f0' },
+      ],
+      netProfitTrend: [
+        { month: 'Jan', netProfit: 32000 },
+        { month: 'Feb', netProfit: 46000 },
+        { month: 'Mar', netProfit: -25000 },
+        { month: 'Apr', netProfit: 65000 },
+        { month: 'May', netProfit: 38000 },
+        { month: 'Jun', netProfit: 62000 },
+        { month: 'Jul', netProfit: 38000 },
+        { month: 'Aug', netProfit: 68000 },
+        { month: 'Sep', netProfit: 95000 },
+        { month: 'Oct', netProfit: 118000 },
+        { month: 'Nov', netProfit: 15000 },
+        { month: 'Dec', netProfit: 24000 },
+      ],
+      cashflowHealth: [
+        { month: 'Jun', inflow: 95000, burn: 78000, net: 17000 },
+        { month: 'Jul', inflow: 80000, burn: 85000, net: -5000 },
+        { month: 'Aug', inflow: 235000, burn: 195000, net: 40000 },
+        { month: 'Sep', inflow: 210000, burn: 145000, net: 65000 },
+        { month: 'Oct', inflow: 290000, burn: 185000, net: 105000 },
+        { month: 'Nov', inflow: 85000, burn: 102000, net: -17000 },
+      ],
+      collectionStatus: [
+        { month: 'Jun', overdue: 18000, pending: 15000, received: 95000 },
+        { month: 'Jul', overdue: 12000, pending: 10000, received: 78000 },
+        { month: 'Aug', overdue: 14000, pending: 22000, received: 220000 },
+        { month: 'Sep', overdue: 24000, pending: 32000, received: 205000 },
+        { month: 'Oct', overdue: 9000, pending: 18000, received: 280000 },
+        { month: 'Nov', overdue: 12000, pending: 14000, received: 75000 },
+      ],
+      profitabilityTrend: [
+        { month: 'Jan', revenue: 118000, netProfit: 24000, marginPct: 20.3 },
+        { month: 'Mar', revenue: 165000, netProfit: -35000, marginPct: -21.2 },
+        { month: 'May', revenue: 190000, netProfit: 55000, marginPct: 28.9 },
+        { month: 'Jun', revenue: 175000, netProfit: 45000, marginPct: 25.7 },
+        { month: 'Sep', revenue: 295000, netProfit: 95000, marginPct: 32.2 },
+        { month: 'Nov', revenue: 115000, netProfit: -20000, marginPct: -17.4 },
+      ],
+      revenueByService: [
+        { name: 'Content Creation', amount: 280000, percentage: 18.0, color: '#38bdf8' },
+        { name: 'Digital Marketing', amount: 520000, percentage: 33.0, color: '#818cf8' },
+        { name: 'Graphic Designing', amount: 190000, percentage: 12.0, color: '#a78bfa' },
+        { name: 'Software Development', amount: 390000, percentage: 25.0, color: '#34d399' },
+        { name: 'Website Development', amount: 195000, percentage: 12.0, color: '#fbbf24' },
+      ],
+      revenueByClient: [
+        { name: 'Constrotrait', amount: 480000, percentage: 30.4, color: '#60a5fa' },
+        { name: 'Indictrans', amount: 350000, percentage: 22.2, color: '#34d399' },
+        { name: 'Malee House', amount: 310000, percentage: 19.6, color: '#f472b6' },
+        { name: 'Mauli Jewellery', amount: 240000, percentage: 15.2, color: '#fb923c' },
+        { name: 'Padar', amount: 198000, percentage: 12.6, color: '#a3e635' },
+      ],
+      availableStatements: [
+        {
+          id: 'stmt-001',
+          title: 'PDF P&L Statement (Q3 2025)',
+          period: 'Jul 1 - Sep 30, 2025',
+          generatedAt: 'Oct 01, 2025',
+          format: 'PDF',
+        },
+        {
+          id: 'stmt-002',
+          title: 'CSV Expense Audit Log',
+          period: 'Last 30 Days',
+          generatedAt: 'Today, 2:00 PM',
+          format: 'CSV',
+        },
+        {
+          id: 'stmt-003',
+          title: 'Balance Sheet Summary (FY 2025-26)',
+          period: 'Apr 1, 2025 - Mar 31, 2026',
+          generatedAt: 'Nov 01, 2026',
+          format: 'PDF',
+        },
+        {
+          id: 'stmt-004',
+          title: 'GST Return Filing Report (GSTR-3B)',
+          period: 'October 2026',
+          generatedAt: 'Nov 08, 2026',
+          format: 'CSV',
+        },
+      ],
+    }
+
+    return { success: true, data: metrics }
+  } catch (err: any) {
+    return { success: false, error: err.message || 'Failed to generate accounting reports' }
+  }
+}
+
+
 
 

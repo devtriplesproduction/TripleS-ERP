@@ -218,20 +218,20 @@ export function ManualEntryModal({
             />
           </div>
 
-          <DialogFooter className="flex flex-row items-center justify-end gap-3 pt-3 border-t border-border/50">
+          <DialogFooter className="flex flex-row items-center justify-center gap-3 pt-4 border-t border-border/50">
             <Button
               type="button"
               variant="outline"
               onClick={onClose}
               disabled={loading}
-              className="w-auto min-w-[90px]"
+              className="w-auto min-w-[90px] rounded-lg text-xs font-semibold hover:bg-transparent hover:text-foreground"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={loading}
-              className="w-auto min-w-[130px] bg-primary text-primary-foreground hover:bg-primary/90"
+              className="w-auto min-w-[130px] rounded-lg text-xs font-semibold bg-primary text-primary-foreground hover:bg-primary shadow-xs"
             >
               {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               Post Entry
